@@ -1,12 +1,12 @@
 const tools = [
-  {name:'Percentage Calculator',category:'Calculators',icon:'%',description:'Calculate percentages, changes and values quickly.',path:'#',featured:true},
-  {name:'Word Counter',category:'Text',icon:'Aa',description:'Count words, characters, sentences and paragraphs.',path:'#',featured:true},
-  {name:'JSON Formatter',category:'Developer',icon:'{}',description:'Format, validate and inspect JSON instantly.',path:'#',featured:true},
-  {name:'Image Compressor',category:'Image',icon:'▧',description:'Reduce image file size while keeping useful quality.',path:'#',featured:true},
+  {name:'Percentage Calculator',category:'Calculators',icon:'%',description:'Calculate percentages, changes and values quickly.',path:'tools/percentage-calculator/',featured:true},
+  {name:'Word Counter',category:'Text',icon:'Aa',description:'Count words, characters, sentences and paragraphs.',path:'tools/word-counter/',featured:true},
+  {name:'JSON Formatter',category:'Developer',icon:'{}',description:'Format, validate and inspect JSON instantly.',path:'tools/json-formatter/',featured:true},
+  {name:'Image Compressor',category:'Image',icon:'▧',description:'Reduce image file size while keeping useful quality.',path:'tools/image-compressor/',featured:true},
   {name:'PDF Merge',category:'PDF & Documents',icon:'PDF',description:'Combine multiple PDF files into a single document.',path:'#',featured:true},
   {name:'Unit Converter',category:'Converters',icon:'↔',description:'Convert length, weight, temperature, data and more.',path:'#',featured:true},
-  {name:'Age Calculator',category:'Calculators',icon:'⌛',description:'Calculate exact age and time since a date.',path:'#'},
-  {name:'Discount Calculator',category:'Calculators',icon:'$',description:'Find sale price, savings and discount percentage.',path:'#'},
+  {name:'Age Calculator',category:'Calculators',icon:'⌛',description:'Calculate exact age and time since a date.',path:'tools/age-calculator/'},
+  {name:'Discount Calculator',category:'Calculators',icon:'$',description:'Find sale price, savings and discount percentage.',path:'tools/discount-calculator/'},
   {name:'EMI Calculator',category:'Calculators',icon:'₹',description:'Estimate monthly loan payments and interest.',path:'#'},
   {name:'Date Difference',category:'Date & Time',icon:'◷',description:'Find the exact difference between two dates.',path:'#'},
   {name:'Time Zone Converter',category:'Date & Time',icon:'◴',description:'Compare times across time zones.',path:'#'},
@@ -39,11 +39,12 @@ const categories = [
 const $ = (selector) => document.querySelector(selector);
 
 function card(tool){
+  const disabled = tool.path === '#';
   return `<article class="tool-card" data-name="${tool.name.toLowerCase()}" data-category="${tool.category.toLowerCase()}">
     <div class="tool-icon">${tool.icon}</div>
     <h3>${tool.name}</h3>
     <p>${tool.description}</p>
-    <a class="tool-action" href="${tool.path}" onclick="return false">Open tool →</a>
+    <a class="tool-action" href="${tool.path}" ${disabled ? 'aria-disabled="true"' : ''}>${disabled ? 'Coming soon' : 'Open tool →'}</a>
   </article>`;
 }
 
@@ -53,33 +54,24 @@ function renderTools(list = tools){
   $('#empty-state').hidden = list.length !== 0;
 }
 
-function renderFeatured(){
-  $('#featured-grid').innerHTML = tools.filter(t => t.featured).map(card).join('');
-}
+function renderFeatured(){ $('#featured-grid').innerHTML = tools.filter(t => t.featured).map(card).join(''); }
 
 function renderCategories(){
   $('#category-grid').innerHTML = categories.map(([name,icon,count]) => `
     <button class="category-card" type="button" data-category-button="${name}">
       <span class="category-icon">${icon}</span><span><strong>${name}</strong><small>${count}</small></span>
     </button>`).join('');
-
-  document.querySelectorAll('[data-category-button]').forEach(button => {
-    button.addEventListener('click', () => {
-      const category = button.dataset.categoryButton;
-      const filtered = tools.filter(t => t.category === category);
-      $('#all-tools').scrollIntoView({behavior:'smooth', block:'start'});
-      renderTools(filtered);
-      $('#tool-search').value = category;
-    });
-  });
+  document.querySelectorAll('[data-category-button]').forEach(button => button.addEventListener('click', () => {
+    const category = button.dataset.categoryButton;
+    renderTools(tools.filter(t => t.category === category));
+    $('#tool-search').value = category;
+    $('#all-tools').scrollIntoView({behavior:'smooth', block:'start'});
+  }));
 }
 
 $('#tool-search').addEventListener('input', (event) => {
   const q = event.target.value.trim().toLowerCase();
-  const filtered = !q ? tools : tools.filter(t => `${t.name} ${t.category} ${t.description}`.toLowerCase().includes(q));
-  renderTools(filtered);
+  renderTools(!q ? tools : tools.filter(t => `${t.name} ${t.category} ${t.description}`.toLowerCase().includes(q)));
 });
 
-renderFeatured();
-renderCategories();
-renderTools();
+renderFeatured(); renderCategories(); renderTools();
