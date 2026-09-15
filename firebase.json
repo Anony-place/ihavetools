@@ -1,0 +1,12 @@
+{
+  "hosting": {
+    "site": "ihavetools",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
