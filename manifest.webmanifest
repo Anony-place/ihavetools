@@ -1,0 +1,8 @@
+{
+  "name": "iHaveTools",
+  "short_name": "iHaveTools",
+  "start_url": "/",
+  "display": "standalone",
+  "description": "Fast, free online tools for everyday work.",
+  "icons": []
+}
