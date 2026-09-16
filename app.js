@@ -1,77 +1,47 @@
 const tools = [
-  {name:'Percentage Calculator',category:'Calculators',icon:'%',description:'Calculate percentages, changes and values quickly.',path:'tools/percentage-calculator/',featured:true},
+  {name:'Percentage Calculator',category:'Calculators',icon:'%',description:'Calculate a percentage of any number.',path:'tools/percentage-calculator/',featured:true},
+  {name:'Percentage Change',category:'Calculators',icon:'↕',description:'Calculate percentage increase or decrease between two values.',path:'tools/percentage-change/',featured:true},
   {name:'Word Counter',category:'Text',icon:'Aa',description:'Count words, characters, sentences and paragraphs.',path:'tools/word-counter/',featured:true},
-  {name:'JSON Formatter',category:'Developer',icon:'{}',description:'Format, validate and inspect JSON instantly.',path:'tools/json-formatter/',featured:true},
-  {name:'Image Compressor',category:'Image',icon:'▧',description:'Reduce image file size while keeping useful quality.',path:'tools/image-compressor/',featured:true},
-  {name:'PDF Merge',category:'PDF & Documents',icon:'PDF',description:'Combine multiple PDF files into a single document.',path:'#',featured:true},
-  {name:'Unit Converter',category:'Converters',icon:'↔',description:'Convert length, weight, temperature, data and more.',path:'#',featured:true},
-  {name:'Age Calculator',category:'Calculators',icon:'⌛',description:'Calculate exact age and time since a date.',path:'tools/age-calculator/'},
-  {name:'Discount Calculator',category:'Calculators',icon:'$',description:'Find sale price, savings and discount percentage.',path:'tools/discount-calculator/'},
-  {name:'EMI Calculator',category:'Calculators',icon:'₹',description:'Estimate monthly loan payments and interest.',path:'#'},
-  {name:'Date Difference',category:'Date & Time',icon:'◷',description:'Find the exact difference between two dates.',path:'#'},
-  {name:'Time Zone Converter',category:'Date & Time',icon:'◴',description:'Compare times across time zones.',path:'#'},
-  {name:'JPG to PNG',category:'Image',icon:'JPG',description:'Convert JPG images to PNG format in your browser.',path:'#'},
-  {name:'Image Resizer',category:'Image',icon:'↗',description:'Resize images to exact pixel dimensions.',path:'#'},
-  {name:'PDF Split',category:'PDF & Documents',icon:'✂',description:'Extract selected pages or split a PDF into parts.',path:'#'},
-  {name:'PDF Compressor',category:'PDF & Documents',icon:'▤',description:'Shrink PDF file size for easier sharing.',path:'#'},
+  {name:'JSON Formatter',category:'Developer',icon:'{}',description:'Format and validate JSON instantly.',path:'tools/json-formatter/',featured:true},
+  {name:'Image Compressor',category:'Image',icon:'▧',description:'Compress an image directly in your browser.',path:'tools/image-compressor/',featured:true},
+  {name:'Age Calculator',category:'Calculators',icon:'⌛',description:'Calculate your age from your date of birth.',path:'tools/age-calculator/'},
+  {name:'Discount Calculator',category:'Calculators',icon:'%',description:'Calculate sale price, savings and final price.',path:'tools/discount-calculator/'},
+  {name:'EMI Calculator',category:'Calculators',icon:'₹',description:'Calculate monthly EMI, total interest and repayment.',path:'tools/emi-calculator/'},
+  {name:'Date Difference',category:'Date & Time',icon:'◷',description:'Calculate the number of days between two dates.',path:'#'},
+  {name:'JPG to PNG',category:'Image',icon:'JPG',description:'Convert JPG images to PNG in your browser.',path:'#'},
+  {name:'Image Resizer',category:'Image',icon:'↗',description:'Resize an image to exact pixel dimensions.',path:'#'},
+  {name:'PDF Merge',category:'PDF & Documents',icon:'PDF',description:'Combine PDF files in your browser.',path:'#'},
+  {name:'PDF Split',category:'PDF & Documents',icon:'✂',description:'Split or extract selected PDF pages.',path:'#'},
+  {name:'PDF Compressor',category:'PDF & Documents',icon:'▤',description:'Reduce PDF file size.',path:'#'},
   {name:'Character Counter',category:'Text',icon:'123',description:'Count characters with or without spaces.',path:'#'},
-  {name:'Case Converter',category:'Text',icon:'Tt',description:'Convert text to upper, lower, title or sentence case.',path:'#'},
-  {name:'Remove Duplicate Lines',category:'Text',icon:'≡',description:'Clean repeated lines from any text.',path:'#'},
-  {name:'Base64 Encoder',category:'Developer',icon:'64',description:'Encode and decode Base64 text locally.',path:'#'},
-  {name:'URL Encoder',category:'Developer',icon:'URL',description:'Encode or decode URLs and query strings.',path:'#'},
-  {name:'UUID Generator',category:'Developer',icon:'ID',description:'Generate standards-friendly UUIDs instantly.',path:'#'},
+  {name:'Case Converter',category:'Text',icon:'Tt',description:'Convert text between lower, upper, title and sentence case.',path:'#'},
+  {name:'Remove Duplicate Lines',category:'Text',icon:'≡',description:'Remove repeated lines from text.',path:'#'},
+  {name:'Base64 Encoder & Decoder',category:'Developer',icon:'64',description:'Encode and decode Base64 text locally.',path:'tools/base64/',featured:true},
+  {name:'URL Encoder & Decoder',category:'Developer',icon:'URL',description:'Encode and decode URL components locally.',path:'tools/url-encoder/'},
+  {name:'UUID Generator',category:'Developer',icon:'ID',description:'Generate random UUIDs in your browser.',path:'tools/uuid-generator/'},
   {name:'Timestamp Converter',category:'Developer',icon:'TS',description:'Convert Unix timestamps to readable dates.',path:'#'},
-  {name:'QR Code Generator',category:'Miscellaneous',icon:'QR',description:'Create QR codes from text, links and data.',path:'#'},
-  {name:'Password Generator',category:'Security',icon:'••',description:'Generate strong random passwords in your browser.',path:'#'},
-  {name:'HEX RGB Converter',category:'Color',icon:'#',description:'Convert colors between HEX, RGB and HSL.',path:'#'},
-  {name:'CSV to JSON',category:'Data',icon:'CSV',description:'Convert tabular CSV data into JSON.',path:'#'},
-  {name:'JSON to CSV',category:'Data',icon:'↳',description:'Turn JSON arrays into downloadable CSV data.',path:'#'},
-  {name:'Markdown Preview',category:'Text',icon:'MD',description:'Preview Markdown with clean readable formatting.',path:'#'},
+  {name:'QR Code Generator',category:'Miscellaneous',icon:'QR',description:'Create QR codes from text and links.',path:'#'},
+  {name:'Password Generator',category:'Security',icon:'••',description:'Generate strong random passwords locally.',path:'#'},
+  {name:'HEX RGB Converter',category:'Color',icon:'#',description:'Convert colors between common formats.',path:'#'},
+  {name:'CSV to JSON',category:'Data',icon:'CSV',description:'Convert CSV rows into JSON.',path:'#'},
+  {name:'JSON to CSV',category:'Data',icon:'↳',description:'Convert JSON arrays into CSV.',path:'#'},
+  {name:'Markdown Preview',category:'Text',icon:'MD',description:'Preview Markdown with readable formatting.',path:'#'}
 ];
 
 const categories = [
-  ['PDF & Documents','📄','15+ tools'],['Image','🖼️','15+ tools'],['Video','🎬','Coming soon'],['Audio','🎵','Coming soon'],
-  ['Text','📝','10+ tools'],['Calculators','🔢','20+ tools'],['Converters','🔄','15+ tools'],['Developer','💻','20+ tools'],
-  ['Security','🔐','10+ tools'],['Web & SEO','🌐','Coming soon'],['Color','🎨','10+ tools'],['Data','📊','10+ tools'],
-  ['Math','∑','Coming soon'],['Date & Time','🕐','10+ tools'],['Student','📚','Coming soon'],['Miscellaneous','🧰','10+ tools']
+  ['PDF & Documents','📄','3 live tools'],['Image','🖼️','1 live tool'],['Video','🎬','Planned'],['Audio','🎵','Planned'],
+  ['Text','📝','1 live tool'],['Calculators','🔢','4 live tools'],['Converters','🔄','Planned'],['Developer','💻','4 live tools'],
+  ['Security','🔐','Planned'],['Web & SEO','🌐','Planned'],['Color','🎨','Planned'],['Data','📊','Planned'],
+  ['Math','∑','Planned'],['Date & Time','🕐','Planned'],['Student','📚','Planned'],['Miscellaneous','🧰','Planned']
 ];
 
 const $ = (selector) => document.querySelector(selector);
-
 function card(tool){
   const disabled = tool.path === '#';
-  return `<article class="tool-card" data-name="${tool.name.toLowerCase()}" data-category="${tool.category.toLowerCase()}">
-    <div class="tool-icon">${tool.icon}</div>
-    <h3>${tool.name}</h3>
-    <p>${tool.description}</p>
-    <a class="tool-action" href="${tool.path}" ${disabled ? 'aria-disabled="true"' : ''}>${disabled ? 'Coming soon' : 'Open tool →'}</a>
-  </article>`;
+  return `<article class="tool-card${disabled?' is-disabled':''}" data-name="${tool.name.toLowerCase()}" data-category="${tool.category.toLowerCase()}"><div class="tool-icon">${tool.icon}</div><h3>${tool.name}</h3><p>${tool.description}</p>${disabled?'<span class="tool-action disabled-action">Coming soon</span>':`<a class="tool-action" href="${tool.path}">Open tool →</a>`}</article>`;
 }
-
-function renderTools(list = tools){
-  $('#tool-grid').innerHTML = list.map(card).join('');
-  $('#result-count').textContent = `${list.length} tools`;
-  $('#empty-state').hidden = list.length !== 0;
-}
-
-function renderFeatured(){ $('#featured-grid').innerHTML = tools.filter(t => t.featured).map(card).join(''); }
-
-function renderCategories(){
-  $('#category-grid').innerHTML = categories.map(([name,icon,count]) => `
-    <button class="category-card" type="button" data-category-button="${name}">
-      <span class="category-icon">${icon}</span><span><strong>${name}</strong><small>${count}</small></span>
-    </button>`).join('');
-  document.querySelectorAll('[data-category-button]').forEach(button => button.addEventListener('click', () => {
-    const category = button.dataset.categoryButton;
-    renderTools(tools.filter(t => t.category === category));
-    $('#tool-search').value = category;
-    $('#all-tools').scrollIntoView({behavior:'smooth', block:'start'});
-  }));
-}
-
-$('#tool-search').addEventListener('input', (event) => {
-  const q = event.target.value.trim().toLowerCase();
-  renderTools(!q ? tools : tools.filter(t => `${t.name} ${t.category} ${t.description}`.toLowerCase().includes(q)));
-});
-
-renderFeatured(); renderCategories(); renderTools();
+function renderTools(list=tools){$('#tool-grid').innerHTML=list.map(card).join('');$('#result-count').textContent=`${list.filter(t=>t.path!=='#').length} live • ${list.filter(t=>t.path==='#').length} planned`;$('#empty-state').hidden=list.length!==0;}
+function renderFeatured(){$('#featured-grid').innerHTML=tools.filter(t=>t.featured).map(card).join('');}
+function renderCategories(){$('#category-grid').innerHTML=categories.map(([name,icon,count])=>`<button class="category-card" type="button" data-category-button="${name}"><span class="category-icon">${icon}</span><span><strong>${name}</strong><small>${count}</small></span></button>`).join('');document.querySelectorAll('[data-category-button]').forEach(button=>button.addEventListener('click',()=>{const category=button.dataset.categoryButton;renderTools(tools.filter(t=>t.category===category));$('#tool-search').value=category;$('#all-tools').scrollIntoView({behavior:'smooth',block:'start'});}));}
+$('#tool-search').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();renderTools(!q?tools:tools.filter(t=>`${t.name} ${t.category} ${t.description}`.toLowerCase().includes(q)));});
+renderFeatured();renderCategories();renderTools();
