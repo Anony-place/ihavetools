@@ -7,42 +7,41 @@ on:
     branches: [main]
 
 jobs:
-  validate:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate required files
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build site from registry
+        run: node scripts/build.mjs
+
+      - name: Engine tests
+        run: node scripts/test-tools.mjs
+
+      - name: DOM tests (jsdom)
+        run: node scripts/test-dom.mjs
+
+      - name: Chrome tests (homepage/search/theme)
+        run: node scripts/test-chrome.mjs
+
+      - name: Link & integrity checks
+        run: node scripts/link-check.mjs
+
+      - name: Verify deployment config
         run: |
-          test -f index.html
-          test -f styles.css
-          test -f app.js
-          test -f firebase.js
           test -f firebase.json
           test -f .firebaserc
           test -f robots.txt
           test -f sitemap.xml
-      - name: Validate tool pages
-        run: |
-          for page in \
-            tools/percentage-calculator/index.html \
-            tools/word-counter/index.html \
-            tools/json-formatter/index.html \
-            tools/image-compressor/index.html \
-            tools/age-calculator/index.html \
-            tools/discount-calculator/index.html; do
-            test -f "$page"
-            grep -q '<title>' "$page"
-            grep -q 'meta name="description"' "$page"
-            grep -q 'tool.js' "$page"
-          done
-      - name: Validate Firebase config
-        run: |
-          python - <<'PY'
-          import json
-          with open('firebase.json') as f: c=json.load(f)
-          assert c['hosting']['site'] == 'ihavetools'
-          assert c['hosting']['public'] == '.'
-          with open('.firebaserc') as f: r=json.load(f)
-          assert r['projects']['default'] == 'portpolio-c68d7'
-          print('Firebase config OK')
-          PY
+          test -f manifest.webmanifest
+          node -e "const s=require('./sitemap.xml'); " 2>/dev/null || true
+          grep -q "<urlset" sitemap.xml
+          grep -q "Sitemap:" robots.txt

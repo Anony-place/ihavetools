@@ -7,6 +7,33 @@
       ".firebaserc",
       "**/.*",
       "**/node_modules/**"
+    ],
+    "redirects": [
+      {
+        "source": "/tools/base64",
+        "destination": "/tools/base64-encoder/",
+        "type": 301
+      },
+      {
+        "source": "/tools/base64/",
+        "destination": "/tools/base64-encoder/",
+        "type": 301
+      },
+      {
+        "source": "/tools/jpg-to-png",
+        "destination": "/tools/image-converter/",
+        "type": 301
+      },
+      {
+        "source": "/tools/jpg-to-png/",
+        "destination": "/tools/image-converter/",
+        "type": 301
+      },
+      {
+        "source": "/tools/tool.js",
+        "destination": "/",
+        "type": 301
+      }
     ]
   }
 }
