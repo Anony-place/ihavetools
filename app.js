@@ -7,33 +7,31 @@ const tools = [
   {name:'Age Calculator',category:'Calculators',icon:'⌛',description:'Calculate your age from your date of birth.',path:'tools/age-calculator/'},
   {name:'Discount Calculator',category:'Calculators',icon:'%',description:'Calculate sale price, savings and final price.',path:'tools/discount-calculator/'},
   {name:'EMI Calculator',category:'Calculators',icon:'₹',description:'Calculate monthly EMI, total interest and repayment.',path:'tools/emi-calculator/'},
-  {name:'Date Difference',category:'Date & Time',icon:'◷',description:'Calculate the number of days between two dates.',path:'#'},
-  {name:'JPG to PNG',category:'Image',icon:'JPG',description:'Convert JPG images to PNG in your browser.',path:'#'},
-  {name:'Image Resizer',category:'Image',icon:'↗',description:'Resize an image to exact pixel dimensions.',path:'#'},
-  {name:'PDF Merge',category:'PDF & Documents',icon:'PDF',description:'Combine PDF files in your browser.',path:'#'},
-  {name:'PDF Split',category:'PDF & Documents',icon:'✂',description:'Split or extract selected PDF pages.',path:'#'},
-  {name:'PDF Compressor',category:'PDF & Documents',icon:'▤',description:'Reduce PDF file size.',path:'#'},
-  {name:'Character Counter',category:'Text',icon:'123',description:'Count characters with or without spaces.',path:'#'},
-  {name:'Case Converter',category:'Text',icon:'Tt',description:'Convert text between lower, upper, title and sentence case.',path:'#'},
-  {name:'Remove Duplicate Lines',category:'Text',icon:'≡',description:'Remove repeated lines from text.',path:'#'},
   {name:'Base64 Encoder & Decoder',category:'Developer',icon:'64',description:'Encode and decode Base64 text locally.',path:'tools/base64/',featured:true},
   {name:'URL Encoder & Decoder',category:'Developer',icon:'URL',description:'Encode and decode URL components locally.',path:'tools/url-encoder/'},
   {name:'UUID Generator',category:'Developer',icon:'ID',description:'Generate random UUIDs in your browser.',path:'tools/uuid-generator/'},
-  {name:'Timestamp Converter',category:'Developer',icon:'TS',description:'Convert Unix timestamps to readable dates.',path:'#'},
-  {name:'QR Code Generator',category:'Miscellaneous',icon:'QR',description:'Create QR codes from text and links.',path:'#'},
-  {name:'Password Generator',category:'Security',icon:'••',description:'Generate strong random passwords locally.',path:'#'},
-  {name:'HEX RGB Converter',category:'Color',icon:'#',description:'Convert colors between common formats.',path:'#'},
-  {name:'CSV to JSON',category:'Data',icon:'CSV',description:'Convert CSV rows into JSON.',path:'#'},
-  {name:'JSON to CSV',category:'Data',icon:'↳',description:'Convert JSON arrays into CSV.',path:'#'},
-  {name:'Markdown Preview',category:'Text',icon:'MD',description:'Preview Markdown with readable formatting.',path:'#'}
+  {name:'Timestamp Converter',category:'Developer',icon:'TS',description:'Convert Unix timestamps to readable dates.',path:'tools/timestamp-converter/'},
+  {name:'Password Generator',category:'Security',icon:'••',description:'Generate cryptographically strong passwords locally.',path:'tools/password-generator/'},
+  {name:'Date Difference',category:'Date & Time',icon:'◷',description:'Calculate the number of days between two dates.',path:'tools/date-difference/'},
+  {name:'JPG to PNG',category:'Image',icon:'JPG',description:'Convert JPG images to PNG in your browser.',path:'tools/jpg-to-png/'},
+  {name:'Image Resizer',category:'Image',icon:'↗',description:'Resize an image to exact pixel dimensions.',path:'tools/image-resizer/'},
+  {name:'PDF Merge',category:'PDF & Documents',icon:'PDF',description:'Combine PDF files in your browser.',path:'#'},
+  {name:'PDF Split',category:'PDF & Documents',icon:'✂',description:'Split or extract selected PDF pages.',path:'#'},
+  {name:'Character Counter',category:'Text',icon:'123',description:'Count characters with or without spaces.',path:'tools/character-counter/'},
+  {name:'Case Converter',category:'Text',icon:'Tt',description:'Convert text between lower, upper, title and sentence case.',path:'tools/case-converter/'},
+  {name:'Remove Duplicate Lines',category:'Text',icon:'≡',description:'Remove repeated lines from text.',path:'tools/remove-duplicate-lines/'},
+  {name:'CSV to JSON',category:'Data',icon:'CSV',description:'Convert CSV rows into JSON.',path:'tools/csv-to-json/'},
+  {name:'JSON to CSV',category:'Data',icon:'↳',description:'Convert JSON arrays into CSV.',path:'tools/json-to-csv/'},
+  {name:'Markdown Preview',category:'Text',icon:'MD',description:'Preview Markdown with readable formatting.',path:'#'},
+  {name:'HEX RGB Converter',category:'Color',icon:'#',description:'Convert HEX, RGB and HSL color values.',path:'tools/hex-rgb-converter/'}
 ];
 
 const categories = [
-  ['PDF & Documents','📄','3 live tools'],['Image','🖼️','1 live tool'],['Video','🎬','Planned'],['Audio','🎵','Planned'],
-  ['Text','📝','1 live tool'],['Calculators','🔢','4 live tools'],['Converters','🔄','Planned'],['Developer','💻','4 live tools'],
-  ['Security','🔐','Planned'],['Web & SEO','🌐','Planned'],['Color','🎨','Planned'],['Data','📊','Planned'],
-  ['Math','∑','Planned'],['Date & Time','🕐','Planned'],['Student','📚','Planned'],['Miscellaneous','🧰','Planned']
-];
+  ['PDF & Documents','📄','2 available • more planned'],['Image','🖼️','3 available'],['Video','🎬','Planned'],['Audio','🎵','Planned'],
+  ['Text','📝','4 available'],['Calculators','🔢','4 available'],['Converters','🔄','Available in Image/Data/Dev'],['Developer','💻','5 available'],
+  ['Security','🔐','1 available'],['Web & SEO','🌐','Planned'],['Color','🎨','1 available'],['Data','📊','2 available'],
+  ['Math','∑','Planned'],['Date & Time','🕐','2 available'],['Student','📚','Planned'],['Miscellaneous','🧰','Planned']
+]
 
 const $ = (selector) => document.querySelector(selector);
 function card(tool){
