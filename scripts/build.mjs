@@ -15,6 +15,7 @@ import { icon } from '../assets/js/icons.js';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const URL_BASE = site.url.replace(/\/$/, '');
 const today = new Date().toISOString().slice(0, 10);
+let ROOT_PREFIX = '';
 
 /* ---------- helpers ---------- */
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -65,10 +66,10 @@ function layout({ bodyClass, title, description, canonical, jsonLd = [], content
 <link rel="canonical" href="${esc(canonical)}">
 <meta name="theme-color" content="${site.themeColor}" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="${site.themeColorDark}" media="(prefers-color-scheme: dark)">
-<link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/assets/icons/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="${ROOT_PREFIX}assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="${ROOT_PREFIX}assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="${ROOT_PREFIX}assets/icons/icon-192.png">
+<link rel="manifest" href="${ROOT_PREFIX}manifest.webmanifest">
 <meta property="og:site_name" content="${site.name}">
 <meta property="og:type" content="${ogType}">
 <meta property="og:title" content="${esc(title)}">
@@ -82,14 +83,14 @@ function layout({ bodyClass, title, description, canonical, jsonLd = [], content
 <meta name="twitter:description" content="${esc(description)}">
 <meta name="twitter:image" content="${pageUrl('/assets/icons/og-image.png')}">
 ${THEME_INIT}
-<link rel="stylesheet" href="/assets/css/styles.css">
+<link rel="stylesheet" href="${ROOT_PREFIX}assets/css/styles.css">
 ${ld}
 </head>
 <body class="${bodyClass}">
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="site-header">
   <div class="container header-inner">
-    <a class="brand" href="/"><span class="brand-mark"></span>iHaveTools</a>
+    <a class="brand" href="${ROOT_PREFIX}"><span class="brand-mark"></span>iHaveTools</a>
     <nav class="main-nav" aria-label="Primary"></nav>
     <div class="header-actions"></div>
   </div>
@@ -102,12 +103,12 @@ ${content}
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a class="brand" href="/"><span class="brand-mark"></span>iHaveTools</a>
+        <a class="brand" href="${ROOT_PREFIX}"><span class="brand-mark"></span>iHaveTools</a>
         <p>${esc(site.tagline)} ${tools.length} tools. No sign-up. Your data stays in your browser.</p>
       </div>
-      <div><h3>Popular tools</h3><ul>${tools.slice().sort((a, b) => b.popularity - a.popularity).slice(0, 6).map((t) => `<li><a href="/tools/${t.id}/">${esc(t.name)}</a></li>`).join('')}</ul></div>
-      <div><h3>Top categories</h3><ul>${categories.slice(0, 6).map((c) => `<li><a href="/categories/${c.id}/">${esc(c.name)}</a></li>`).join('')}</ul></div>
-      <div><h3>More categories</h3><ul>${categories.slice(6).map((c) => `<li><a href="/categories/${c.id}/">${esc(c.name)}</a></li>`).join('')}</ul></div>
+      <div><h3>Popular tools</h3><ul>${tools.slice().sort((a, b) => b.popularity - a.popularity).slice(0, 6).map((t) => `<li><a href="${ROOT_PREFIX}tools/${t.id}/">${esc(t.name)}</a></li>`).join('')}</ul></div>
+      <div><h3>Top categories</h3><ul>${categories.slice(0, 6).map((c) => `<li><a href="${ROOT_PREFIX}categories/${c.id}/">${esc(c.name)}</a></li>`).join('')}</ul></div>
+      <div><h3>More categories</h3><ul>${categories.slice(6).map((c) => `<li><a href="${ROOT_PREFIX}categories/${c.id}/">${esc(c.name)}</a></li>`).join('')}</ul></div>
     </div>
     <div class="footer-bottom">
       <span>© <span id="footer-year">2026</span> iHaveTools. All tools are free and run client-side.</span>
@@ -115,7 +116,7 @@ ${content}
     </div>
   </div>
 </footer>
-<script type="module" src="/assets/js/site.js"></script>
+<script type="module" src="${ROOT_PREFIX}assets/js/site.js"></script>
 ${moduleEntry ? `<script type="module">import { mount } from '${moduleEntry.module}'; mount('${moduleEntry.id}');</script>` : ''}
 </body>
 </html>
@@ -125,7 +126,7 @@ ${moduleEntry ? `<script type="module">import { mount } from '${moduleEntry.modu
 /* ---------- components ---------- */
 function toolCard(t) {
   const cat = categoryById.get(t.categories[0]);
-  return `<a class="tool-card" href="/tools/${t.id}/">
+  return `<a class="tool-card" href="${ROOT_PREFIX}tools/${t.id}/">
   <span class="tool-icon">${icon(t.icon)}</span>
   <h3>${esc(t.name)}</h3>
   <p>${esc(t.blurb)}</p>
@@ -134,7 +135,7 @@ function toolCard(t) {
 }
 function categoryCard(c) {
   const count = toolsByCategory(c.id).length;
-  return `<a class="category-card" href="/categories/${c.id}/">
+  return `<a class="category-card" href="${ROOT_PREFIX}categories/${c.id}/">
   <span class="tool-icon">${icon(c.icon)}</span>
   <h3>${esc(c.name)}</h3>
   <p>${esc(c.description)}</p>
@@ -142,11 +143,12 @@ function categoryCard(c) {
 </a>`;
 }
 const breadcrumb = (items) => `<nav class="breadcrumb container" aria-label="Breadcrumb"><ol>
-<li><a href="/">Home</a></li>${items.map(([label, href]) => `<li>${href ? `<a href="${href}">${esc(label)}</a>` : `<span aria-current="page">${esc(label)}</span>`}</li>`).join('')}
+<li><a href="${ROOT_PREFIX}">Home</a></li>${items.map(([label, href]) => `<li>${href ? `<a href="${href}">${esc(label)}</a>` : `<span aria-current="page">${esc(label)}</span>`}</li>`).join('')}
 </ol></nav>`;
 
 /* ---------- homepage ---------- */
 function buildHome() {
+  ROOT_PREFIX = '';
   const featured = tools.filter((t) => t.featured).sort((a, b) => b.popularity - a.popularity);
   const popular = tools.slice().sort((a, b) => b.popularity - a.popularity).slice(0, 12);
   const recent = tools.slice().sort((a, b) => (a.added < b.added ? 1 : -1)).slice(0, 6);
@@ -216,7 +218,7 @@ function buildHome() {
       <span class="section-sub">${tools.length} tools</span>
     </div>
     <ul class="atoz">
-      ${atoz.map((t) => `<li><a href="/tools/${t.id}/">${icon(t.icon)}<span>${esc(t.name)}</span><span class="cat-tag">${esc(categoryById.get(t.categories[0])?.name || '')}</span></a></li>`).join('')}
+      ${atoz.map((t) => `<li><a href="${ROOT_PREFIX}tools/${t.id}/">${icon(t.icon)}<span>${esc(t.name)}</span><span class="cat-tag">${esc(categoryById.get(t.categories[0])?.name || '')}</span></a></li>`).join('')}
     </ul>
   </div>
 </section>
@@ -247,6 +249,7 @@ function buildHome() {
 
 /* ---------- category pages ---------- */
 function buildCategory(c) {
+  ROOT_PREFIX = '../../';
   const list = toolsByCategory(c.id);
   const others = categories.filter((x) => x.id !== c.id).slice(0, 8);
   const content = `
@@ -265,7 +268,7 @@ ${breadcrumb([[c.name]])}
 </section>
 <section class="section tint">
   <div class="container">
-    <div class="section-head"><div><h2>Other categories</h2></div><a class="section-link" href="/#all-tools">All tools A–Z →</a></div>
+    <div class="section-head"><div><h2>Other categories</h2></div><a class="section-link" href="${ROOT_PREFIX}#all-tools">All tools A–Z →</a></div>
     <div class="card-grid cols-3">${others.map(categoryCard).join('')}</div>
   </div>
 </section>`;
@@ -287,6 +290,7 @@ ${breadcrumb([[c.name]])}
 
 /* ---------- tool pages ---------- */
 function buildTool(t) {
+  ROOT_PREFIX = '../../';
   const cat = categoryById.get(t.categories[0]);
   const related = tools
     .filter((x) => x.id !== t.id && x.categories.some((c) => t.categories.includes(c)))
@@ -336,12 +340,13 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
       ] },
     ],
     content,
-    moduleEntry: { module: `/assets/js/tools/${groupName}.js`, id: t.id },
+    moduleEntry: { module: `${ROOT_PREFIX}assets/js/tools/${groupName}.js`, id: t.id },
   }));
 }
 
 /* ---------- 404 ---------- */
 function build404() {
+  ROOT_PREFIX = '';
   write('404.html', layout({
     noindex: true,
     bodyClass: 'page-404',
@@ -358,7 +363,7 @@ function build404() {
     <input id="global-search" type="search" placeholder="Search tools…">
     <ul class="search-results" hidden></ul>
   </div>
-  <p style="margin-top:22px"><a class="btn btn-primary" href="/">Browse all tools</a></p>
+  <p style="margin-top:22px"><a class="btn btn-primary" href="${ROOT_PREFIX}">Browse all tools</a></p>
 </div>`,
   }));
 }
@@ -372,18 +377,18 @@ function buildMeta() {
     name: site.name,
     short_name: site.name,
     description: site.description,
-    start_url: '/',
-    scope: '/',
+    start_url: `${ROOT_PREFIX}`,
+    scope: `${ROOT_PREFIX}`,
     display: 'standalone',
     background_color: '#fafafa',
     theme_color: site.themeColor,
     icons: [
-      { src: '/assets/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { src: '/assets/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
-      { src: '/assets/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-      { src: '/assets/icons/favicon.svg', sizes: 'any', type: 'image/svg+xml' },
+      { src: `${ROOT_PREFIX}assets/icons/icon-192.png`, sizes: '192x192', type: 'image/png' },
+      { src: `${ROOT_PREFIX}assets/icons/icon-512.png`, sizes: '512x512', type: 'image/png' },
+      { src: `${ROOT_PREFIX}assets/icons/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      { src: `${ROOT_PREFIX}assets/icons/favicon.svg`, sizes: 'any', type: 'image/svg+xml' },
     ],
-    shortcuts: tools.filter((t) => t.featured).slice(0, 4).map((t) => ({ name: t.name, url: `/tools/${t.id}/`, icons: [{ src: '/assets/icons/icon-192.png', sizes: '192x192' }] })),
+    shortcuts: tools.filter((t) => t.featured).slice(0, 4).map((t) => ({ name: t.name, url: `${ROOT_PREFIX}tools/${t.id}/`, icons: [{ src: `${ROOT_PREFIX}assets/icons/icon-192.png`, sizes: '192x192' }] })),
   }, null, 2) + '\n');
 }
 
