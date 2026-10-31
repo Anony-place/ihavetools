@@ -38,17 +38,27 @@ Static-first and dependency-free at **runtime**:
 ```
 assets/js/
   registry.js      ← single source of truth: every tool, category, blurb, SEO text
+                     (build-time only — browsers never download it)
+  search-index.js  ← GENERATED slim index for search, loaded lazily (16 KB vs 71 KB)
   ui.js            ← shared UI primitives (inputs, dropzone, results, tables)
-  icons.js         ← hand-drawn inline SVG icon set (no icon font, no requests)
-  site.js          ← chrome: theme, nav, global search, service-worker
+  icons.js         ← hand-drawn SVG icon set; static pages reference a cached
+                     sprite (/assets/icons/sprite.svg) generated from it
+  site.js          ← behaviour only: theme, nav toggles, search, service-worker
+                     (header/footer HTML itself is rendered at build time)
   tools/*.js       ← engines grouped by domain (developer.js, image.js, audio.js, …)
+sw.js              ← service worker at the domain root (whole-site scope)
 scripts/
-  build.mjs        ← generates every HTML page from registry.js (content + SEO)
+  build.mjs        ← generates every HTML page (home, categories, tools,
+                     about/privacy/terms, 404), sitemap, llms.txt, sprite,
+                     search index — all from registry.js
   test-tools.mjs   ← 148 engine tests (pure logic, run in Node)
   test-dom.mjs     ← 44 DOM tests: loads built pages into jsdom and drives real UIs
   test-chrome.mjs  ← 8 chrome tests: homepage, search, categories, theme, nav
-  link-check.mjs   ← 15 integrity checks: dead links, sitemap↔files, SEO meta
+  link-check.mjs   ← 19 integrity checks: dead links, sitemap↔files, SEO meta,
+                     performance & trust invariants (no registry in browser…)
 ```
+
+See **PLAN.md** for the SEO/speed roadmap (what is done, what is next).
 
 - Pages are **pre-rendered at build time** (`node scripts/build.mjs`) with full
   per-page SEO: unique title/description, canonical URL, Open Graph/Twitter

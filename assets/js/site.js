@@ -1,13 +1,22 @@
 // =============================================================================
-// iHaveTools — shared page behavior: theme, mobile navigation, global search.
-// Loaded by every page. Homepage additionally gets the live search dropdown.
+// iHaveTools — shared page behaviour: theme, mobile navigation, dropdowns,
+// footer year, service worker and (where a search box exists) tool search.
+//
+// Performance note: this module intentionally does NOT import the full tool
+// registry any more. The header/footer are static HTML (built by
+// scripts/build.mjs), and search runs on a slim generated index
+// (search-index.js) that is loaded lazily — on first search interaction or
+// when the browser is idle. Tool pages therefore ship ~80 KB less JS.
 // =============================================================================
 import { icon, brandMark } from './icons.js';
-import { searchTools, categories, categoryById, toolsByCategory, popularTools } from './registry.js';
-import { debounce } from './ui.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
 
 /* ---------- Theme ---------- */
 function applyTheme(theme) {
@@ -51,50 +60,56 @@ export function initDropdowns() {
   });
 }
 
-/* ---------- Build header navigation (injected to keep pages in sync) ---------- */
-export function buildChrome({ home = false } = {}) {
-  const nav = $('.main-nav');
-  if (nav && !nav.dataset.built) {
-    nav.dataset.built = '1';
-    const drop = h('details', { class: 'nav-drop' },
-      h('summary', {}, 'Categories ', h('span', { html: icon('arrow-down'), style: 'display:inline-flex;width:14px' })),
-      h('div', { class: 'dropdown-panel' },
-        categories.map((c) => h('a', { href: `/categories/${c.id}/` },
-          h('span', { html: icon(c.icon), style: 'display:inline-flex' }),
-          c.name,
-          h('span', { class: 'dd-count', text: String(toolsByCategory(c.id).length) })))));
-    nav.append(drop);
-    nav.append(h('a', { href: '/#all-tools', text: 'All tools' }));
-    nav.append(h('a', { href: '/#about', text: 'About' }));
-  }
-  const actions = $('.header-actions');
-  if (actions && !actions.dataset.built) {
-    actions.dataset.built = '1';
-    actions.append(h('button', { class: 'icon-btn theme-toggle', type: 'button' }));
-    if (!home) {
-      const jump = h('a', { class: 'btn btn-secondary btn-sm hide-sm', href: '/', 'aria-label': 'Search all tools', style: 'gap:7px' },
-        h('span', { html: icon('search'), style: 'display:inline-flex' }), 'Search');
-      actions.append(jump);
-    }
-    const mt = h('button', { class: 'nav-toggle', type: 'button', 'aria-expanded': 'false', 'aria-label': 'Open menu', html: icon('menu') });
-    actions.append(mt);
-  }
-  const mobile = $('.mobile-nav');
-  if (mobile && !mobile.dataset.built) {
-    mobile.dataset.built = '1';
-    mobile.append(h('h3', { text: 'Popular tools' }));
-    mobile.append(h('ul', {}, popularTools(6).map((t) => h('li', {}, h('a', { href: `/tools/${t.id}/` },
-      h('span', { html: icon(t.icon), style: 'display:inline-flex' }), t.name)))));
-    mobile.append(h('h3', { text: 'Categories' }));
-    mobile.append(h('ul', {}, categories.map((c) => h('li', {}, h('a', { href: `/categories/${c.id}/` },
-      h('span', { html: icon(c.icon), style: 'display:inline-flex' }), c.name)))));
-  }
-  // replace static brand svg if present
+/* ---------- Header chrome ----------
+   The header, nav, toggles and mobile menu are now static HTML from the
+   build (crawlable, zero layout shift). This stays as a safety net for any
+   legacy page whose brand mark is still an empty placeholder span. */
+export function buildChrome() {
   const mark = $('.brand-mark');
-  if (mark && !mark.dataset.built) { mark.dataset.built = '1'; mark.outerHTML = brandMark('brand-mark'); }
+  if (mark && mark.tagName === 'SPAN' && !mark.dataset.built) {
+    mark.dataset.built = '1';
+    mark.outerHTML = brandMark('brand-mark');
+  }
 }
 
-/* ---------- Global search (homepage dropdown) ---------- */
+/* ---------- Tool search (homepage + 404) — lazy slim index ---------- */
+let indexPromise = null;
+function loadSearchIndex() {
+  if (!indexPromise) {
+    indexPromise = import('./search-index.js')
+      .then((m) => m.SEARCH_INDEX || [])
+      .catch(() => { indexPromise = null; return []; });
+  }
+  return indexPromise;
+}
+
+function scoreEntry(entry, terms) {
+  const name = entry.name.toLowerCase();
+  const hay = `${name} ${entry.k.toLowerCase()} ${entry.c.toLowerCase()}`;
+  let score = 0;
+  for (const term of terms) {
+    let t = 0;
+    if (name === term) t = 220;
+    else if (name.startsWith(term)) t = 150;
+    else if (name.includes(term)) t = 110;
+    else if (hay.includes(term)) t = 60;
+    if (t === 0) return 0; // every term must match somewhere
+    score = Math.max(score, t) + t * 0.1;
+  }
+  return score + entry.p * 0.05;
+}
+
+function searchIndex(index, query, limit = 8) {
+  const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [];
+  return index
+    .map((e) => [scoreEntry(e, terms), e])
+    .filter(([s]) => s > 0)
+    .sort((a, b) => b[0] - a[0])
+    .slice(0, limit)
+    .map(([, e]) => e);
+}
+
 function setupSearch() {
   const box = $('.search-box');
   if (!box) return;
@@ -115,8 +130,8 @@ function setupSearch() {
           onmouseenter: () => setActive(i),
         },
           h('span', { html: icon(t.icon), style: 'display:inline-flex;color:var(--text-3)' }),
-          h('span', {}, h('strong', { text: t.name }), h('div', { class: 'sr-cat-inline', style: 'font-size:.76rem;color:var(--text-3)', text: categoryById.get(t.categories[0])?.name || '' })),
-          h('span', { class: 'sr-cat', text: categoryById.get(t.categories[0])?.name || '' }))))
+          h('span', {}, h('strong', { text: t.name }), h('div', { class: 'sr-cat-inline', style: 'font-size:.76rem;color:var(--text-3)', text: t.c })),
+          h('span', { class: 'sr-cat', text: t.c }))))
       : [h('li', { class: 'no-results', text: `No tools match “${q}”. Try “json”, “image” or “password”.` })]));
     list.hidden = false;
     input.setAttribute('aria-expanded', 'true');
@@ -125,12 +140,13 @@ function setupSearch() {
     active = i;
     $$('a', list).forEach((a) => a.classList.toggle('active', Number(a.dataset.i) === i));
   };
-  const run = debounce(() => render(searchTools(input.value, 8), input.value), 90);
+  const runSearch = () => loadSearchIndex().then((index) => render(searchIndex(index, input.value, 8), input.value));
+  const run = debounce(runSearch, 90);
 
   input.addEventListener('input', run);
-  input.addEventListener('focus', () => { if (input.value.trim()) render(searchTools(input.value, 8), input.value); });
+  input.addEventListener('focus', () => { loadSearchIndex(); if (input.value.trim()) runSearch(); });
   input.addEventListener('keydown', (e) => {
-    if (list.hidden && ['ArrowDown', 'ArrowUp'].includes(e.key) && input.value.trim()) { render(searchTools(input.value, 8), input.value); return; }
+    if (list.hidden && ['ArrowDown', 'ArrowUp'].includes(e.key) && input.value.trim()) { runSearch(); return; }
     if (e.key === 'ArrowDown') { e.preventDefault(); setActive(Math.min(active + 1, results.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(Math.max(active - 1, 0)); }
     else if (e.key === 'Enter') {
@@ -147,7 +163,8 @@ function setupSearch() {
     }
   });
   const q = new URLSearchParams(location.search).get('q');
-  if (q) { input.value = q; render(searchTools(q, 8), q); }
+  if (q) { input.value = q; runSearch(); }
+  else if ('requestIdleCallback' in window) requestIdleCallback(() => loadSearchIndex(), { timeout: 2500 });
 }
 
 /* ---------- Footer year ---------- */
@@ -156,10 +173,15 @@ function initFooter() {
   if (y) y.textContent = String(new Date().getFullYear());
 }
 
-/* ---------- Service worker (production hosts only) ---------- */
+/* ---------- Service worker ----------
+   Registered from the domain root (/sw.js) on real HTTPS hosts — a worker
+   under /assets/ could only control /assets/ pages, which is useless.
+   Localhost and ephemeral preview hosts are skipped so development and
+   previews never serve stale files. */
 function initSW() {
-  if (!location.hostname.endsWith('.web.app') && !location.hostname.endsWith('.firebaseapp.com')) return;
   if (!('serviceWorker' in navigator)) return;
+  if (location.protocol !== 'https:') return;
+  if (/^(localhost|127\.)/.test(location.hostname) || location.hostname.endsWith('.e2b.app')) return;
   addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }
 
@@ -179,12 +201,11 @@ function h(tag, attrs = {}, ...children) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const home = document.body.classList.contains('page-home');
-  buildChrome({ home });
+  buildChrome();
   initTheme();
   initMobileNav();
   initDropdowns();
   initFooter();
   initSW();
-  if (home) setupSearch();
+  setupSearch();
 });

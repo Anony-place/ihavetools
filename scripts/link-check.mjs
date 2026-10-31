@@ -63,10 +63,10 @@ test('no javascript: or suspicious hrefs', () => {
 });
 
 console.log('\n── Sitemap ↔ reality ──');
-test('sitemap contains exactly home + categories + tools, all resolvable', () => {
+test('sitemap contains exactly home + categories + tools + trust pages, all resolvable', () => {
   const xml = readFileSync(join(ROOT, 'sitemap.xml'), 'utf8');
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-  const expected = [`${site.url}/`, ...categories.map((c) => `${site.url}/categories/${c.id}/`), ...tools.map((t) => `${site.url}/tools/${t.id}/`)].sort();
+  const expected = [`${site.url}/`, ...categories.map((c) => `${site.url}/categories/${c.id}/`), ...tools.map((t) => `${site.url}/tools/${t.id}/`), ...['about', 'privacy-policy', 'terms'].map((id) => `${site.url}/${id}/`)].sort();
   assert.deepEqual(locs.sort(), expected, 'sitemap URLs diverge from the registry/files');
   for (const loc of locs) {
     const path = loc.replace(site.url, '');
@@ -143,7 +143,12 @@ test('no "coming soon", placeholder buttons or fake outputs anywhere', () => {
   for (const file of htmlFiles) {
     const html = readFileSync(file, 'utf8');
     assert.ok(!/coming soon/i.test(html), `${rel(file)} contains "coming soon"`);
-    assert.ok(!/placeholder tool|dummy|lorem placeholder-button/i.test(html), `${rel(file)} contains mock markers`);
+    // The Lorem Ipsum tool's whole job is generating "dummy text", so the
+    // word is legitimate there; everywhere else it signals fake content.
+    const mockMarkers = rel(file).includes('lorem-ipsum-generator')
+      ? /placeholder tool|lorem placeholder-button/i
+      : /placeholder tool|dummy|lorem placeholder-button/i;
+    assert.ok(!mockMarkers.test(html), `${rel(file)} contains mock markers`);
   }
   for (const jsFile of walk(join(ROOT, 'assets', 'js'), '.js')) {
     const src = readFileSync(jsFile, 'utf8');
@@ -171,7 +176,7 @@ test('manifest is valid JSON with icons and required fields', () => {
   for (const icon of manifest.icons) assert.ok(existsSync(join(ROOT, icon.src.replace(/^\//, ''))), `icon missing: ${icon.src}`);
 });
 test('static assets referenced by pages exist (css, js, icons, vendor)', () => {
-  for (const f of ['assets/css/styles.css', 'assets/js/site.js', 'assets/js/registry.js', 'assets/js/ui.js', 'assets/js/icons.js', 'assets/vendor/pdf-lib.min.js', 'assets/icons/favicon.svg', 'assets/icons/favicon-32.png', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/og-image.png', 'assets/sw.js']) {
+  for (const f of ['assets/css/styles.css', 'assets/js/site.js', 'assets/js/registry.js', 'assets/js/ui.js', 'assets/js/icons.js', 'assets/js/search-index.js', 'assets/vendor/pdf-lib.min.js', 'assets/icons/favicon.svg', 'assets/icons/favicon-32.png', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/og-image.png', 'assets/icons/sprite.svg', 'sw.js', 'llms.txt']) {
     assert.ok(existsSync(join(ROOT, f)), `missing asset ${f}`);
   }
 });
@@ -180,6 +185,34 @@ test('each tool page loads exactly one tool module entry', () => {
     const html = readFileSync(join(ROOT, 'tools', t.id, 'index.html'), 'utf8');
     assert.match(html, new RegExp(`import \\{ mount \\} from '/assets/js/tools/[a-z]+\\.js'; mount\\('${t.id}'\\);`), `${t.id} module entry malformed`);
   }
+});
+console.log('\n── Performance & trust invariants ──');
+test('pages do not ship the full registry to the browser (slim search only)', () => {
+  const siteJs = readFileSync(join(ROOT, 'assets/js/site.js'), 'utf8');
+  assert.ok(!/from '\.\/registry\.js'/.test(siteJs), 'site.js must not import registry.js');
+  assert.match(siteJs, /search-index\.js/, 'site.js must use the slim search index');
+  for (const file of htmlFiles) {
+    assert.ok(!/assets\/js\/registry\.js/.test(readFileSync(file, 'utf8')), `${rel(file)} loads registry.js`);
+  }
+});
+test('service worker lives at root scope and is registered from /sw.js', () => {
+  assert.ok(existsSync(join(ROOT, 'sw.js')), 'root sw.js missing');
+  const siteJs = readFileSync(join(ROOT, 'assets/js/site.js'), 'utf8');
+  assert.match(siteJs, /register\('\/sw\.js'\)/);
+});
+test('header navigation is static HTML (crawlable without JS)', () => {
+  const home = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  assert.match(home, /href="\/categories\/pdf\/"/, 'category links must be in static HTML');
+  assert.match(home, /href="\/about\/"/, 'about link must be in static HTML');
+  assert.match(home, /class="mobile-nav"[^>]*><h3>Popular tools<\/h3>/, 'mobile nav must be pre-rendered');
+});
+test('trust pages exist and are linked from the footer', () => {
+  for (const id of ['about', 'privacy-policy', 'terms']) {
+    assert.ok(existsSync(join(ROOT, id, 'index.html')), `missing /${id}/`);
+  }
+  const home = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  assert.match(home, /href="\/privacy-policy\/"/);
+  assert.match(home, /href="\/terms\/"/);
 });
 test('sitemap/robots/manifest not blocked by noindex; 404 is noindex', () => {
   const nf = readFileSync(join(ROOT, '404.html'), 'utf8');
