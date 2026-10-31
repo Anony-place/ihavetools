@@ -508,6 +508,29 @@ await test('FD quarterly compounding', () => {
   assert.ok(r.effectiveYield > 6 && r.effectiveYield < 6.2, `yield ${r.effectiveYield}`);
   assert.throws(() => calc.fdCalc({ principal: 0, annualRatePct: 6, years: 1 }), /greater than zero/);
 });
+await test('income tax FY25-26: ₹12.75L salary pays zero under new regime', () => {
+  const r = calc.incomeTaxIndia({ grossSalary: 1275000 });
+  assert.equal(r.newRegime.taxable, 1200000);
+  assert.equal(r.newRegime.total, 0); // slab tax 60000 fully rebated u/s 87A
+  assert.ok(r.oldRegime.total > 0);
+  assert.equal(r.better, 'new');
+});
+await test('income tax FY25-26: ₹15L taxable under new regime', () => {
+  const r = calc.incomeTaxIndia({ grossSalary: 1575000 }); // taxable 15,00,000 after ₹75k std deduction
+  // slabs: 4–8L@5%=20000, 8–12L@10%=40000, 12–15L@15%=45000 → 105000 + 4% cess
+  assert.ok(Math.abs(r.newRegime.total - 109200) < 0.01, `got ${r.newRegime.total}`);
+});
+await test('income tax: marginal relief just above ₹12L (new regime)', () => {
+  const r = calc.incomeTaxIndia({ grossSalary: 1285000 }); // taxable 12,10,000
+  // slab tax would be 61500; capped at excess over ₹12L = 10000, +4% cess
+  assert.ok(Math.abs(r.newRegime.total - 10400) < 0.01, `got ${r.newRegime.total}`);
+});
+await test('income tax: old regime ₹10L taxable, below-60', () => {
+  const r = calc.incomeTaxIndia({ grossSalary: 1050000, deductionsOld: 0 }); // taxable 10,00,000 after ₹50k std
+  // 2.5–5L@5%=12500, 5–10L@20%=100000 → 112500 + 4% cess = 117000
+  assert.ok(Math.abs(r.oldRegime.total - 117000) < 0.01, `got ${r.oldRegime.total}`);
+  assert.throws(() => calc.incomeTaxIndia({}), /Enter your salary/);
+});
 await test('tip with rounding and split', () => {
   const r = calc.tipCalc(84.5, 15, 3);
   assert.ok(Math.abs(r.tip - 12.675) < 1e-9);
@@ -660,6 +683,17 @@ await test('URL parsing full anatomy', () => {
 await test('URL parser handles bare domains and junk', () => {
   assert.equal(seo.parseUrlParts('example.com/x').protocol, 'https');
   assert.throws(() => seo.parseUrlParts('ht!tp://nope'), /not a valid URL/);
+});
+await test('youtube id extraction (watch, youtu.be, shorts, raw id)', () => {
+  const id = 'dQw4w9WgXcQ';
+  assert.equal(seo.extractYouTubeId(`https://www.youtube.com/watch?v=${id}&t=42s`), id);
+  assert.equal(seo.extractYouTubeId(`https://youtu.be/${id}?si=xyz`), id);
+  assert.equal(seo.extractYouTubeId(`https://www.youtube.com/shorts/${id}`), id);
+  assert.equal(seo.extractYouTubeId(`youtube.com/embed/${id}`), id);
+  assert.equal(seo.extractYouTubeId(id), id);
+  assert.equal(seo.youtubeThumbUrl(id, 'hqdefault'), `https://i.ytimg.com/vi/${id}/hqdefault.jpg`);
+  assert.throws(() => seo.extractYouTubeId('https://example.com/watch?v=123'), /No video ID/);
+  assert.throws(() => seo.extractYouTubeId(''), /Paste a YouTube/);
 });
 await test('keyword density math', () => {
   const r = seo.keywordDensity('tool tools tools more words here and more words', { phraseLength: 1, filterStop: false });

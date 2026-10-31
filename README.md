@@ -1,6 +1,6 @@
 # iHaveTools
 
-**84 free online tools. No sign-up, no uploads, no limits.** Every tool runs
+**90 free online tools. No sign-up, no uploads, no limits.** Every tool runs
 entirely in your browser — your files and text never leave your device.
 
 **Live site:** https://ihavetools.web.app/ (primary) ·

@@ -6,64 +6,167 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
       ]
     },
     {
       "source": "/sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
       ]
     },
     {
       "source": "/assets/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
       ]
     },
     {
       "source": "/assets/icons/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=2592000, stale-while-revalidate=604800" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000, stale-while-revalidate=604800"
+        }
       ]
     },
     {
       "source": "/manifest.webmanifest",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
       ]
     }
   ],
   "redirects": [
-    { "source": "/tools/base64", "destination": "/tools/base64-encoder/", "permanent": true },
-    { "source": "/tools/base64/", "destination": "/tools/base64-encoder/", "permanent": true },
-    { "source": "/tools/jpg-to-png", "destination": "/tools/image-converter/", "permanent": true },
-    { "source": "/tools/jpg-to-png/", "destination": "/tools/image-converter/", "permanent": true },
-    { "source": "/tools/merge-pdf", "destination": "/tools/pdf-merge/", "permanent": true },
-    { "source": "/tools/merge-pdf/", "destination": "/tools/pdf-merge/", "permanent": true },
-    { "source": "/tools/split-pdf", "destination": "/tools/pdf-split/", "permanent": true },
-    { "source": "/tools/split-pdf/", "destination": "/tools/pdf-split/", "permanent": true },
-    { "source": "/tools/rotate-pdf", "destination": "/tools/pdf-rotate/", "permanent": true },
-    { "source": "/tools/rotate-pdf/", "destination": "/tools/pdf-rotate/", "permanent": true },
-    { "source": "/tools/png-to-jpg", "destination": "/tools/image-converter/", "permanent": true },
-    { "source": "/tools/png-to-jpg/", "destination": "/tools/image-converter/", "permanent": true },
-    { "source": "/tools/webp-to-png", "destination": "/tools/image-converter/", "permanent": true },
-    { "source": "/tools/webp-to-png/", "destination": "/tools/image-converter/", "permanent": true },
-    { "source": "/tools/compress-image", "destination": "/tools/image-compressor/", "permanent": true },
-    { "source": "/tools/compress-image/", "destination": "/tools/image-compressor/", "permanent": true },
-    { "source": "/tools/resize-image", "destination": "/tools/image-resizer/", "permanent": true },
-    { "source": "/tools/resize-image/", "destination": "/tools/image-resizer/", "permanent": true },
-    { "source": "/tools/json-beautifier", "destination": "/tools/json-formatter/", "permanent": true },
-    { "source": "/tools/json-beautifier/", "destination": "/tools/json-formatter/", "permanent": true },
-    { "source": "/tools/word-count", "destination": "/tools/word-counter/", "permanent": true },
-    { "source": "/tools/word-count/", "destination": "/tools/word-counter/", "permanent": true },
-    { "source": "/tools/uuid", "destination": "/tools/uuid-generator/", "permanent": true },
-    { "source": "/tools/uuid/", "destination": "/tools/uuid-generator/", "permanent": true },
-    { "source": "/tools/bmi", "destination": "/tools/bmi-calculator/", "permanent": true },
-    { "source": "/tools/bmi/", "destination": "/tools/bmi-calculator/", "permanent": true },
-    { "source": "/tools/emi", "destination": "/tools/emi-calculator/", "permanent": true },
-    { "source": "/tools/emi/", "destination": "/tools/emi-calculator/", "permanent": true }
+    {
+      "source": "/tools/base64",
+      "destination": "/tools/base64-encoder/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/base64/",
+      "destination": "/tools/base64-encoder/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/merge-pdf",
+      "destination": "/tools/pdf-merge/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/merge-pdf/",
+      "destination": "/tools/pdf-merge/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/split-pdf",
+      "destination": "/tools/pdf-split/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/split-pdf/",
+      "destination": "/tools/pdf-split/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/rotate-pdf",
+      "destination": "/tools/pdf-rotate/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/rotate-pdf/",
+      "destination": "/tools/pdf-rotate/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/compress-image",
+      "destination": "/tools/image-compressor/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/compress-image/",
+      "destination": "/tools/image-compressor/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/resize-image",
+      "destination": "/tools/image-resizer/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/resize-image/",
+      "destination": "/tools/image-resizer/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/json-beautifier",
+      "destination": "/tools/json-formatter/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/json-beautifier/",
+      "destination": "/tools/json-formatter/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/word-count",
+      "destination": "/tools/word-counter/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/word-count/",
+      "destination": "/tools/word-counter/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/uuid",
+      "destination": "/tools/uuid-generator/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/uuid/",
+      "destination": "/tools/uuid-generator/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/bmi",
+      "destination": "/tools/bmi-calculator/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/bmi/",
+      "destination": "/tools/bmi-calculator/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/emi",
+      "destination": "/tools/emi-calculator/",
+      "permanent": true
+    },
+    {
+      "source": "/tools/emi/",
+      "destination": "/tools/emi-calculator/",
+      "permanent": true
+    }
   ]
 }

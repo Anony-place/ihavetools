@@ -82,16 +82,16 @@ custom domain aate hi ek baar me switch hoga.
 | **PPF Calculator** | ✅ live (2026-10-31) |
 | **FD Calculator** | ✅ live (2026-10-31) |
 | **Image to PDF** | ✅ live (2026-10-31) |
-| **Income Tax Calculator (India FY 2025-26)** | ⏳ next (slabs + 87A rebate) |
-| **JPG↔PNG / WebP converter preset pages** (programmatic SEO) | ⏳ next |
+| **Income Tax Calculator (India FY 2025-26)** | ✅ live — old vs new regime, 87A, marginal relief (2026-10-31) |
+| **JPG→PNG / PNG→JPG / WebP→PNG / JPG→WebP preset pages** | ✅ live (2026-10-31) |
 | **QR Code Generator** | ⏳ next (encoder likhna hai) |
-| **YouTube Thumbnail Downloader** | ⏳ next |
+| **YouTube Thumbnail Downloader** | ✅ live (2026-10-31) |
 
 Saath me:
-- [ ] Per-category OG images (1200×630) — social CTR.
+- [x] Per-category OG images (1200×630) — `scripts/og.mjs`, tool pages use their category image. ✅
 - [ ] Top-15 popular tools ke liye hand-written deep content
       (examples, formulas — jaise BMI formula table, JSON errors guide).
-- [ ] Cmd-K / global search har page par (header search box).
+- [x] Cmd-K / global search har page ke header me (Ctrl/⌘+K, lazy index). ✅
 - [ ] ⭐ Favorites + "Recently used" (localStorage) — retention.
 - [ ] Tool pages par share/copy-link, result share (calculators me `?amount=` params).
 

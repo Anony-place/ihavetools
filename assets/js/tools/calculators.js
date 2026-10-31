@@ -171,6 +171,72 @@ export function fdCalc({ principal, annualRatePct, years, perYear = 4 }) {
   return { maturity, interest: maturity - principal, effectiveYield };
 }
 
+function slabTax(income, slabs) {
+  // slabs: [[upperLimit, rate], ...] with last limit Infinity
+  let tax = 0, prev = 0;
+  const rows = [];
+  for (const [limit, rate] of slabs) {
+    if (income <= prev) break;
+    const inSlab = Math.min(income, limit) - prev;
+    if (inSlab > 0 && rate > 0) rows.push({ from: prev, to: Math.min(income, limit), rate: rate * 100, tax: inSlab * rate });
+    tax += inSlab * rate;
+    prev = limit;
+  }
+  return { tax, rows };
+}
+function surchargeRate(taxable, regime) {
+  if (taxable > 50000000) return regime === 'old' ? 0.37 : 0.25;
+  if (taxable > 20000000) return 0.25;
+  if (taxable > 10000000) return 0.15;
+  if (taxable > 5000000) return 0.10;
+  return 0;
+}
+/** India income tax, FY 2025-26 (AY 2026-27), both regimes. Estimates only. */
+export function incomeTaxIndia({ grossSalary = 0, otherIncome = 0, deductionsOld = 0, ageGroup = 'below60' } = {}) {
+  if (!(grossSalary >= 0) || !(otherIncome >= 0) || !(deductionsOld >= 0)) throw new Error('Income and deductions cannot be negative.');
+  const gross = grossSalary + otherIncome;
+  if (!(gross > 0)) throw new Error('Enter your salary or other income first.');
+
+  // ── New regime (Section 115BAC, FY 2025-26 slabs) ──
+  const stdNew = grossSalary > 0 ? 75000 : 0;
+  const taxableNew = Math.max(0, gross - stdNew);
+  const newSlabs = [[400000, 0], [800000, 0.05], [1200000, 0.10], [1600000, 0.15], [2000000, 0.20], [2400000, 0.25], [Infinity, 0.30]];
+  const n = slabTax(taxableNew, newSlabs);
+  let taxNew = n.tax;
+  const rebateNew = taxableNew <= 1200000 ? Math.min(taxNew, 60000) : 0;
+  taxNew -= rebateNew;
+  // Marginal relief: just above ₹12L, tax cannot exceed the income above ₹12L.
+  if (taxableNew > 1200000) taxNew = Math.min(taxNew, taxableNew - 1200000);
+  const surNew = taxNew * surchargeRate(taxableNew, 'new');
+  const cessNew = (taxNew + surNew) * 0.04;
+  const totalNew = taxNew + surNew + cessNew;
+
+  // ── Old regime ──
+  const stdOld = grossSalary > 0 ? 50000 : 0;
+  const taxableOld = Math.max(0, gross - stdOld - deductionsOld);
+  const exempt = ageGroup === '80plus' ? 500000 : ageGroup === '60to79' ? 300000 : 250000;
+  const oldSlabs = [[exempt, 0], [500000, 0.05], [1000000, 0.20], [Infinity, 0.30]].filter((s, i, a) => i === 0 || s[0] > a[i - 1][0]);
+  const o = slabTax(taxableOld, oldSlabs);
+  let taxOld = o.tax;
+  const rebateOld = taxableOld <= 500000 ? Math.min(taxOld, 12500) : 0;
+  taxOld -= rebateOld;
+  const surOld = taxOld * surchargeRate(taxableOld, 'old');
+  const cessOld = (taxOld + surOld) * 0.04;
+  const totalOld = taxOld + surOld + cessOld;
+
+  const pack = (taxable, rows, slab, rebate, surcharge, cess, total) => ({
+    taxable, rows, slabTax: slab, rebate, surcharge, cess, total,
+    effectiveRate: gross > 0 ? (total / gross) * 100 : 0,
+  });
+  return {
+    gross,
+    newRegime: pack(taxableNew, n.rows, n.tax, rebateNew, surNew, cessNew, totalNew),
+    oldRegime: pack(taxableOld, o.rows, o.tax, rebateOld, surOld, cessOld, totalOld),
+    better: totalNew <= totalOld ? 'new' : 'old',
+    saving: Math.abs(totalNew - totalOld),
+  };
+}
+
 export function simpleInterest({ principal, annualRatePct, time, unit = 'years' }) {
   if (!(principal > 0)) throw new Error('Principal must be greater than zero.');
   const years = unit === 'years' ? time : unit === 'months' ? time / 12 : time / 365;
@@ -602,7 +668,56 @@ const defs = {
         field({ label: 'Compounding', control: freq })),
       actionsRow(btn({ label: 'Calculate FD', icon: 'coins', onClick: run })), grid, status);
   },
+
+  'income-tax-calculator'(root) {
+    const salary = input({ type: 'number', step: 'any', placeholder: 'e.g. 1500000', value: '1500000' });
+    const other = input({ type: 'number', step: 'any', placeholder: 'e.g. 50000', value: '0' });
+    const deductions = input({ type: 'number', step: 'any', placeholder: 'e.g. 150000', value: '150000' });
+    const age = select({ options: [{ v: 'below60', t: 'Below 60 years' }, { v: '60to79', t: '60–79 years (senior)' }, { v: '80plus', t: '80+ years (super senior)' }], value: 'below60' });
+    const inr = (v) => `₹${money(v)}`;
+    const grid = statsGrid();
+    const status = statusLine('');
+    const detailWrap = h('div', {});
+    const breakdown = (title, r, stdNote) => h('div', {},
+      h('h3', { text: title, style: 'margin:20px 0 10px' }),
+      table({
+        headers: ['Step', 'Amount'],
+        rows: [
+          ['Taxable income', inr(r.taxable)],
+          ...r.rows.map((s) => [`${inr(s.from)} – ${s.to === Infinity ? 'above' : inr(s.to)} @ ${s.rate}%`, inr(s.tax)]),
+          ...(r.rebate > 0 ? [['Less: rebate u/s 87A', `− ${inr(r.rebate)}`]] : []),
+          ...(r.surcharge > 0 ? [['Add: surcharge', inr(r.surcharge)]] : []),
+          ['Add: health & education cess (4%)', inr(r.cess)],
+          ['Total tax payable', inr(r.total)],
+        ],
+      }),
+      h('p', { class: 'hint', text: stdNote }));
+    const run = () => {
+      try {
+        const r = incomeTaxIndia({ grossSalary: num(salary), otherIncome: num(other), deductionsOld: num(deductions), ageGroup: age.value });
+        grid.set([
+          { label: 'New regime tax', value: inr(r.newRegime.total), kind: r.better === 'new' ? 'good' : undefined },
+          { label: 'Old regime tax', value: inr(r.oldRegime.total), kind: r.better === 'old' ? 'good' : undefined },
+          { label: 'You save with', value: `${r.better === 'new' ? 'New' : 'Old'} regime` },
+          { label: 'Saving', value: inr(r.saving), kind: 'good' },
+        ]);
+        detailWrap.replaceChildren(
+          breakdown('New regime — FY 2025-26 slabs', r.newRegime, 'Includes ₹75,000 standard deduction (salary), 87A rebate up to ₹60,000 (taxable income up to ₹12 lakh) and marginal relief.'),
+          breakdown('Old regime', r.oldRegime, `Includes ₹50,000 standard deduction (salary) plus your deductions of ${inr(num(deductions))}, and 87A rebate up to ₹12,500 (taxable income up to ₹5 lakh).`));
+        status.set(r.saving < 0.5
+          ? 'Both regimes give almost the same tax for these inputs.'
+          : `The ${r.better} regime is cheaper by ${inr(r.saving)} for FY 2025-26. This is an estimate — special-rate incomes (capital gains etc.) are taxed separately.`, 'success');
+      } catch (e) { grid.replaceChildren(); detailWrap.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Gross salary (yearly)', control: salary }),
+        field({ label: 'Other income (yearly)', control: other, hint: 'Interest, rent, freelance…' }),
+        field({ label: 'Deductions (old regime)', control: deductions, hint: '80C + 80D + HRA + home-loan interest…' }),
+        field({ label: 'Age', control: age })),
+      actionsRow(btn({ label: 'Calculate tax (FY 2025-26)', icon: 'receipt', onClick: run })), grid, detailWrap, status);
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc };
+export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc, incomeTaxIndia };

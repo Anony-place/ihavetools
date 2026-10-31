@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 84 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 90 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
 
 ## Categories
 - [PDF & Documents tools](https://ihavetools.web.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -105,6 +105,12 @@
 - [PPF Calculator](https://ihavetools.web.app/tools/ppf-calculator/): PPF maturity, interest and year-by-year balance at the current 7.1% rate.
 - [FD Calculator](https://ihavetools.web.app/tools/fd-calculator/): Fixed deposit maturity and interest with quarterly compounding.
 - [Image to PDF](https://ihavetools.web.app/tools/image-to-pdf/): Turn JPG, PNG or WebP images into one PDF — in your browser.
+- [Income Tax Calculator](https://ihavetools.web.app/tools/income-tax-calculator/): India income tax for FY 2025-26 — old vs new regime compared instantly.
+- [JPG to PNG Converter](https://ihavetools.web.app/tools/jpg-to-png/): Convert JPG/JPEG images to PNG losslessly, right in your browser.
+- [PNG to JPG Converter](https://ihavetools.web.app/tools/png-to-jpg/): Convert PNG images to smaller JPGs, with a background colour for transparency.
+- [WebP to PNG Converter](https://ihavetools.web.app/tools/webp-to-png/): Convert WebP images to widely-compatible PNGs, locally and free.
+- [JPG to WebP Converter](https://ihavetools.web.app/tools/jpg-to-webp/): Convert JPG photos to modern, smaller WebP files for the web.
+- [YouTube Thumbnail Downloader](https://ihavetools.web.app/tools/youtube-thumbnail-downloader/): Download any YouTube video thumbnail in HD, SD and more sizes.
 
 ## About this site
 - [About](https://ihavetools.web.app/about/)

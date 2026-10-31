@@ -208,6 +208,13 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
 .search-results a:hover, .search-results a.active { background: var(--primary-soft); text-decoration: none; }
 .search-results .sr-cat { margin-left: auto; color: var(--text-3); font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
 .search-results .no-results { padding: 14px; color: var(--text-2); font-size: 0.92rem; text-align: center; }
+/* Compact search in the site header (all non-home pages, Ctrl/⌘+K) */
+.header-search { max-width: none; width: 236px; margin: 0; }
+.header-search input { height: 38px; font-size: 0.9rem; border-radius: 10px; padding: 0 12px 0 38px; box-shadow: none; }
+.header-search .search-glyph { left: 11px; display: inline-flex; }
+.header-search .search-glyph svg { width: 17px; height: 17px; }
+.header-search .search-results { left: auto; min-width: 320px; }
+@media (max-width: 900px) { .header-search { display: none; } }
 
 /* ---------- Sections & cards ---------- */
 .section { padding: clamp(34px, 6vw, 58px) 0; }

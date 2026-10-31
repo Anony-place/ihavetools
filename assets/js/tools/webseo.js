@@ -2,9 +2,38 @@
 // iHaveTools — Web & SEO tools: meta-tag-generator, robots-txt-generator,
 // sitemap-generator, open-graph-preview, url-parser, keyword-density-checker
 // =============================================================================
-import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, downloadText, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, downloadText, downloadBlob, privacyNote, mountTool } from '../ui.js';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/* ═══════════════════════════ YouTube thumbnails ═══════════════════════════ */
+export function extractYouTubeId(raw) {
+  const s = String(raw || '').trim();
+  if (!s) throw new Error('Paste a YouTube video URL or ID first.');
+  if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
+  let u;
+  try { u = new URL(/^https?:\/\//i.test(s) ? s : `https://${s}`); }
+  catch { throw new Error('That does not look like a valid URL.'); }
+  const host = u.hostname.replace(/^www\.|^m\./, '');
+  const isId = (v) => /^[a-zA-Z0-9_-]{11}$/.test(v || '');
+  if (host === 'youtu.be') {
+    const id = u.pathname.split('/').filter(Boolean)[0];
+    if (isId(id)) return id;
+  } else if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+    if (isId(u.searchParams.get('v'))) return u.searchParams.get('v');
+    const m = /^\/(?:shorts|embed|live|v)\/([a-zA-Z0-9_-]{11})/.exec(u.pathname);
+    if (m) return m[1];
+  }
+  throw new Error('No video ID found. Use a youtube.com/watch, youtu.be, Shorts or embed link — or paste the 11-character video ID.');
+}
+export const YT_THUMB_SIZES = [
+  { key: 'maxresdefault', label: 'Maximum (1280 × 720)', w: 1280 },
+  { key: 'sddefault', label: 'SD (640 × 480)', w: 640 },
+  { key: 'hqdefault', label: 'HQ (480 × 360)', w: 480 },
+  { key: 'mqdefault', label: 'MQ (320 × 180)', w: 320 },
+  { key: 'default', label: 'Default (120 × 90)', w: 120 },
+];
+export const youtubeThumbUrl = (id, key) => `https://i.ytimg.com/vi/${id}/${key}.jpg`;
 
 /* ═══════════════════════════ URL parsing (shared with url-parser) ═══════════════════════════ */
 export function parseUrlParts(raw) {
@@ -290,7 +319,53 @@ const defs = {
       h('div', { class: 'field-row', style: 'align-items:end' }, field({ label: 'Phrase length', control: len }), field({ label: 'Options', control: stop })),
       actionsRow(btn({ label: 'Analyse', icon: 'chart', onClick: run })), grid, out, status);
   },
+
+  'youtube-thumbnail-downloader'(root) {
+    const inp = input({ type: 'text', class: 'input mono', placeholder: 'https://www.youtube.com/watch?v=… or a video ID' });
+    const status = statusLine('Paste any YouTube link — watch, youtu.be, Shorts or embed.');
+    const out = h('div', {});
+    const download = async (url, filename) => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('fetch failed');
+        const blob = await res.blob();
+        downloadBlob(blob, filename);
+        toast('Download started', 'success');
+      } catch { window.open(url, '_blank', 'noopener'); }
+    };
+    const run = () => {
+      out.replaceChildren();
+      let id;
+      try { id = extractYouTubeId(inp.value); }
+      catch (e) { status.set(e.message, 'error'); return; }
+      let shown = 0;
+      for (const s of YT_THUMB_SIZES) {
+        const url = youtubeThumbUrl(id, s.key);
+        const card = h('div', { style: 'margin-top:18px' },
+          h('h3', { text: s.label, style: 'margin:0 0 8px' }),
+          h('img', {
+            class: 'img-preview', src: url, alt: `YouTube thumbnail ${s.label}`, loading: 'lazy',
+            onload: (e) => {
+              // YouTube serves a 120×90 placeholder when a size doesn't exist.
+              if (s.w > 120 && e.target.naturalWidth <= 120) { card.remove(); return; }
+              shown += 1;
+              status.set(`Video ID ${id} — ${shown} thumbnail size${shown === 1 ? '' : 's'} available ✓`, 'success');
+            },
+            onerror: () => card.remove(),
+          }),
+          h('div', { style: 'margin-top:8px;display:flex;gap:8px;flex-wrap:wrap' },
+            h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => download(url, `youtube-${id}-${s.key}.jpg`) }, 'Download JPG'),
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => copyText(url).then(() => toast('Thumbnail URL copied', 'success')) }, 'Copy URL')));
+        out.append(card);
+      }
+      status.set(`Loading thumbnails for video ${id}…`, 'info');
+    };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
+    root.append(field({ label: 'YouTube video URL or ID', control: inp }),
+      actionsRow(btn({ label: 'Get thumbnails', icon: 'film', onClick: run })), status, out,
+      privacyNote('Thumbnails load straight from YouTube’s public image CDN (i.ytimg.com) to your browser — nothing is uploaded or stored by iHaveTools. Respect the creator’s copyright when re-using a thumbnail.'));
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { parseUrlParts, keywordDensity, buildRobots, buildSitemapXml };
+export const __test = { parseUrlParts, keywordDensity, buildRobots, buildSitemapXml, extractYouTubeId, youtubeThumbUrl, YT_THUMB_SIZES };

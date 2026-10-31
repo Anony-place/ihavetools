@@ -156,10 +156,11 @@ function setupSearch() {
   });
   document.addEventListener('click', (e) => { if (!box.contains(e.target)) close(); });
 
-  // "/" focuses search; prefill from ?q=
+  // "/" or Ctrl/⌘+K focuses search; prefill from ?q=
   document.addEventListener('keydown', (e) => {
-    if (e.key === '/' && document.activeElement !== input && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
-      e.preventDefault(); input.focus();
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) {
+      if (document.activeElement !== input) { e.preventDefault(); input.focus(); input.select(); }
     }
   });
   const q = new URLSearchParams(location.search).get('q');
