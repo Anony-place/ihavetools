@@ -60,16 +60,21 @@
     <h1>PDF Rotate</h1>
     <p class="lede">Rotate pages of a PDF in your browser — all pages at once or selected ranges, in 90° steps. Page content and quality are untouched.</p>
     <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> Your file is processed locally in your browser and is not uploaded.</span>
+    <div class="page-head-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="pdf-rotate" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy link</span></button>
+    </div>
   </header>
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
-    <div id="tool-app"></div>
+    <div id="tool-app" data-tool-id="pdf-rotate"></div>
   </div>
 </div>
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use PDF Rotate</h2><ol class="howto"><li>Drop or choose a PDF file.</li><li>Pick the rotation angle and whether to rotate all pages or a range.</li><li>Click Rotate PDF, then download the result.</li></ol></section>
+    
     <section><h2>Why use the iHaveTools PDF Rotate?</h2>
       <ul>
         <li><strong>Private by design</strong> — Your file is processed locally in your browser and is not uploaded.</li>
@@ -79,22 +84,22 @@
       <p>People also search for this tool as “rotate pdf”, “turn pdf pages”, “pdf rotation” — it is the same free online tool. PDF Rotate is part of our <a href="/categories/pdf/">PDF &amp; Documents tools</a> collection.</p>
     </section>
     <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>Is PDF Rotate free to use?</summary><p class="faq-a">Yes — it is completely free, with no sign-up, no watermarks and no usage limits.</p></details><details><summary>Does my data leave my device?</summary><p class="faq-a">No — your file is processed locally in your browser and is not uploaded.</p></details><details><summary>What is PDF Rotate used for?</summary><p class="faq-a">Rotate pages of a PDF in your browser — all pages at once or selected ranges, in 90° steps. Page content and quality are untouched.</p></details><details><summary>Is “rotate pdf” the same as PDF Rotate?</summary><p class="faq-a">Yes — “rotate pdf” is another name people use for this tool. This page is the free online PDF Rotate: open it and use it right away, with nothing to download or sign up for.</p></details><details><summary>Do I need to install anything to use PDF Rotate?</summary><p class="faq-a">No. PDF Rotate runs in any modern web browser — on a phone, tablet or computer — as soon as the page opens.</p></details></div></section>
-    <section><h2>Related tools</h2><div class="card-grid cols-3"><a class="tool-card" href="/tools/image-to-pdf/">
+    <section><h2>Related tools</h2><div class="card-grid cols-3"><div class="tool-card-shell"><a class="tool-card" href="/tools/image-to-pdf/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>Image to PDF</h3>
   <p>Turn JPG, PNG or WebP images into one PDF — in your browser.</p>
   <span class="card-meta"><span>PDF &amp; Documents</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/pdf-merge/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="image-to-pdf" aria-pressed="false" aria-label="Save Image to PDF to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/pdf-merge/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-layers"/></svg></span>
   <h3>PDF Merge</h3>
   <p>Combine PDFs in order — processed entirely in your browser.</p>
   <span class="card-meta"><span>PDF &amp; Documents</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/pdf-split/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="pdf-merge" aria-pressed="false" aria-label="Save PDF Merge to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/pdf-split/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-scissors"/></svg></span>
   <h3>PDF Split</h3>
   <p>Extract page ranges or split a PDF into separate files.</p>
   <span class="card-meta"><span>PDF &amp; Documents</span><span class="go">Open →</span></span>
-</a></div><p style="margin-top:16px"><a class="section-link" href="/categories/pdf/">Browse all 4 PDF &amp; Documents tools →</a></p></section>
+</a><button type="button" class="fav-toggle" data-fav-toggle="pdf-split" aria-pressed="false" aria-label="Save PDF Split to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div><p style="margin-top:16px"><a class="section-link" href="/categories/pdf/">Browse all 4 PDF &amp; Documents tools →</a></p></section>
   </div>
 </section>
 </main>

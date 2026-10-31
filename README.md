@@ -1,6 +1,6 @@
 # iHaveTools
 
-**90 free online tools. No sign-up, no uploads, no limits.** Every tool runs
+**91 free online tools. No sign-up, no uploads, no limits.** Every tool runs
 entirely in your browser — your files and text never leave your device.
 
 **Live site:** https://i-have-tools.vercel.app/ (Vercel, auto-deployed from `main` on every merge)
@@ -30,6 +30,13 @@ suite enforces this.
 - **Security tools** — password generator & strength checker, hashes and
   randomness built on the browser's cryptographic APIs (`crypto.getRandomValues`,
   `crypto.subtle`).
+- **Personal without accounts** — star any tool to pin it under "Your
+  favourites", and the homepage remembers your recently used tools. Both live
+  in `localStorage` on your device only; nothing is tracked server-side.
+- **Deep guides on top tools** — the most-used tools carry hand-written
+  guides (formulas, worked examples, tables) rendered as static HTML, e.g.
+  the SIP/EMI worked examples, FY 2025-26 tax slab tables and the JSON
+  error-fix table.
 
 ## Architecture
 

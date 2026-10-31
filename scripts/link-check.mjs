@@ -215,6 +215,18 @@ test('trust pages exist and are linked from the footer', () => {
   assert.match(home, /href="\/privacy-policy\/"/);
   assert.match(home, /href="\/terms\/"/);
 });
+test('homepage has favourites/recent shells, tool pages have star + share, guides render as static HTML', () => {
+  const home = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  assert.match(home, /id="favourites-section"[^>]*hidden/, 'homepage must include the (hidden) favourites section shell');
+  assert.match(home, /id="recent-section"[^>]*hidden/, 'homepage must include the (hidden) recently-used section shell');
+  assert.match(home, /data-fav-toggle="json-formatter"/, 'cards must carry a favourite star toggle');
+  const sip = readFileSync(join(ROOT, 'tools', 'sip-calculator', 'index.html'), 'utf8');
+  assert.match(sip, /data-tool-id="sip-calculator"/, 'tool pages must expose their id for recently-used tracking');
+  assert.match(sip, /data-fav-toggle="sip-calculator"/, 'tool pages must carry a favourite button');
+  assert.match(sip, /data-copy-link/, 'tool pages must carry a copy-link button');
+  assert.match(sip, /SIP Calculator guide<\/h2>/, 'deep-content guide must be static HTML');
+  assert.match(sip, /₹11,61,695/, 'worked examples must be present in the HTML for crawlers');
+});
 test('sitemap/robots/manifest not blocked by noindex; 404 is noindex', () => {
   const nf = readFileSync(join(ROOT, '404.html'), 'utf8');
   assert.match(nf, /noindex/);

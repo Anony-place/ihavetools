@@ -65,53 +65,71 @@
   </div>
 </section>
 
+<section class="section" id="recent-section" hidden>
+  <div class="container">
+    <div class="section-head">
+      <div><h2>Recently used</h2><p class="section-sub">Pick up where you left off — remembered only in this browser.</p></div>
+    </div>
+    <div class="card-grid" id="recent-grid"></div>
+  </div>
+</section>
+
+<section class="section tint" id="favourites-section" hidden>
+  <div class="container">
+    <div class="section-head">
+      <div><h2>Your favourites</h2><p class="section-sub">Star any tool to pin it here. Saved on this device only — no account needed.</p></div>
+    </div>
+    <div class="card-grid" id="favourites-grid"></div>
+  </div>
+</section>
+
 <section class="section">
   <div class="container">
     <div class="section-head">
       <div><h2>Popular tools</h2><p class="section-sub">The tools people reach for most.</p></div>
       <a class="section-link" href="#all-tools">All 91 tools ↓</a>
     </div>
-    <div class="card-grid"><a class="tool-card" href="/tools/json-formatter/">
+    <div class="card-grid"><div class="tool-card-shell"><a class="tool-card" href="/tools/json-formatter/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-braces"/></svg></span>
   <h3>JSON Formatter</h3>
   <p>Format, validate and minify JSON with precise error messages.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/password-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="json-formatter" aria-pressed="false" aria-label="Save JSON Formatter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/password-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-lock"/></svg></span>
   <h3>Password Generator</h3>
   <p>Strong random passwords with entropy readout — all local.</p>
   <span class="card-meta"><span>Security</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/word-counter/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="password-generator" aria-pressed="false" aria-label="Save Password Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/word-counter/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-type"/></svg></span>
   <h3>Word Counter</h3>
   <p>Live word, character, sentence and reading-time counts.</p>
   <span class="card-meta"><span>Text</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/sip-calculator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="word-counter" aria-pressed="false" aria-label="Save Word Counter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/sip-calculator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-trending"/></svg></span>
   <h3>SIP Calculator</h3>
   <p>Estimate mutual fund SIP returns with a year-by-year growth table.</p>
   <span class="card-meta"><span>Calculators</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/percentage-calculator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="sip-calculator" aria-pressed="false" aria-label="Save SIP Calculator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/percentage-calculator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-percent"/></svg></span>
   <h3>Percentage Calculator</h3>
   <p>Three percentage calculations in one tool, with worked formulas.</p>
   <span class="card-meta"><span>Calculators</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/image-to-pdf/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="percentage-calculator" aria-pressed="false" aria-label="Save Percentage Calculator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/image-to-pdf/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>Image to PDF</h3>
   <p>Turn JPG, PNG or WebP images into one PDF — in your browser.</p>
   <span class="card-meta"><span>PDF &amp; Documents</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/qr-code-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="image-to-pdf" aria-pressed="false" aria-label="Save Image to PDF to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/qr-code-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-qr"/></svg></span>
   <h3>QR Code Generator</h3>
   <p>Create QR codes for links, text and Wi-Fi — download as PNG or SVG.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/image-compressor/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="qr-code-generator" aria-pressed="false" aria-label="Save QR Code Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/image-compressor/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>Image Compressor</h3>
   <p>Shrink JPG, PNG and WebP in your browser — no uploads.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a></div>
+</a><button type="button" class="fav-toggle" data-fav-toggle="image-compressor" aria-pressed="false" aria-label="Save Image Compressor to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div>
   </div>
 </section>
 
@@ -209,47 +227,47 @@
     <div class="section-head">
       <div><h2>Featured tools</h2><p class="section-sub">Hand-picked starting points.</p></div>
     </div>
-    <div class="card-grid"><a class="tool-card" href="/tools/income-tax-calculator/">
+    <div class="card-grid"><div class="tool-card-shell"><a class="tool-card" href="/tools/income-tax-calculator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-receipt"/></svg></span>
   <h3>Income Tax Calculator</h3>
   <p>India income tax for FY 2025-26 — old vs new regime compared instantly.</p>
   <span class="card-meta"><span>Calculators</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/jpg-to-png/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="income-tax-calculator" aria-pressed="false" aria-label="Save Income Tax Calculator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/jpg-to-png/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>JPG to PNG Converter</h3>
   <p>Convert JPG/JPEG images to PNG losslessly, right in your browser.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/base64-encoder/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="jpg-to-png" aria-pressed="false" aria-label="Save JPG to PNG Converter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/base64-encoder/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-binary"/></svg></span>
   <h3>Base64 Encoder &amp; Decoder</h3>
   <p>Unicode-safe Base64 encoding and decoding, with URL-safe output.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/youtube-thumbnail-downloader/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="base64-encoder" aria-pressed="false" aria-label="Save Base64 Encoder &amp; Decoder to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/youtube-thumbnail-downloader/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-film"/></svg></span>
   <h3>YouTube Thumbnail Downloader</h3>
   <p>Download any YouTube video thumbnail in HD, SD and more sizes.</p>
   <span class="card-meta"><span>Video</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/uuid-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="youtube-thumbnail-downloader" aria-pressed="false" aria-label="Save YouTube Thumbnail Downloader to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/uuid-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-fingerprint"/></svg></span>
   <h3>UUID Generator</h3>
   <p>Bulk-generate RFC 4122 v4 UUIDs with cryptographic randomness.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/pdf-merge/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="uuid-generator" aria-pressed="false" aria-label="Save UUID Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/pdf-merge/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-layers"/></svg></span>
   <h3>PDF Merge</h3>
   <p>Combine PDFs in order — processed entirely in your browser.</p>
   <span class="card-meta"><span>PDF &amp; Documents</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/hash-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="pdf-merge" aria-pressed="false" aria-label="Save PDF Merge to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/hash-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-hash"/></svg></span>
   <h3>Hash Generator</h3>
   <p>SHA-1, SHA-256, SHA-384 and SHA-512 hashes via Web Crypto.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/regex-tester/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="hash-generator" aria-pressed="false" aria-label="Save Hash Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/regex-tester/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-search-code"/></svg></span>
   <h3>Regex Tester</h3>
   <p>Test regular expressions live with match highlighting and groups.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a></div>
+</a><button type="button" class="fav-toggle" data-fav-toggle="regex-tester" aria-pressed="false" aria-label="Save Regex Tester to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div>
   </div>
 </section>
 
@@ -258,37 +276,37 @@
     <div class="section-head">
       <div><h2>Recently added</h2><p class="section-sub">Fresh tools, same quality bar.</p></div>
     </div>
-    <div class="card-grid"><a class="tool-card" href="/tools/qr-code-generator/">
+    <div class="card-grid"><div class="tool-card-shell"><a class="tool-card" href="/tools/qr-code-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-qr"/></svg></span>
   <h3>QR Code Generator</h3>
   <p>Create QR codes for links, text and Wi-Fi — download as PNG or SVG.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/youtube-thumbnail-downloader/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="qr-code-generator" aria-pressed="false" aria-label="Save QR Code Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/youtube-thumbnail-downloader/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-film"/></svg></span>
   <h3>YouTube Thumbnail Downloader</h3>
   <p>Download any YouTube video thumbnail in HD, SD and more sizes.</p>
   <span class="card-meta"><span>Video</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/jpg-to-webp/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="youtube-thumbnail-downloader" aria-pressed="false" aria-label="Save YouTube Thumbnail Downloader to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/jpg-to-webp/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>JPG to WebP Converter</h3>
   <p>Convert JPG photos to modern, smaller WebP files for the web.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/webp-to-png/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="jpg-to-webp" aria-pressed="false" aria-label="Save JPG to WebP Converter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/webp-to-png/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>WebP to PNG Converter</h3>
   <p>Convert WebP images to widely-compatible PNGs, locally and free.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/png-to-jpg/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="webp-to-png" aria-pressed="false" aria-label="Save WebP to PNG Converter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/png-to-jpg/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>PNG to JPG Converter</h3>
   <p>Convert PNG images to smaller JPGs, with a background colour for transparency.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/jpg-to-png/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="png-to-jpg" aria-pressed="false" aria-label="Save PNG to JPG Converter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/jpg-to-png/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>JPG to PNG Converter</h3>
   <p>Convert JPG/JPEG images to PNG losslessly, right in your browser.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a></div>
+</a><button type="button" class="fav-toggle" data-fav-toggle="jpg-to-png" aria-pressed="false" aria-label="Save JPG to PNG Converter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div>
   </div>
 </section>
 

@@ -60,16 +60,21 @@
     <h1>JSON Formatter</h1>
     <p class="lede">Paste JSON to pretty-print it, minify it, or find out exactly where it breaks. Errors include the line and column of the problem.</p>
     <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> This tool runs entirely in your browser. Your data is never uploaded or stored.</span>
+    <div class="page-head-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="json-formatter" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy link</span></button>
+    </div>
   </header>
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
-    <div id="tool-app"></div>
+    <div id="tool-app" data-tool-id="json-formatter"></div>
   </div>
 </div>
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use JSON Formatter</h2><ol class="howto"><li>Paste your JSON into the input box.</li><li>Choose Format (pretty-print) or Minify, and an indent size.</li><li>Fix any reported error, then copy or download the result.</li></ol></section>
+    <section><h2>JSON Formatter guide</h2><h3>The 5 JSON errors everyone hits — and the fix for each</h3><p>JSON is stricter than JavaScript object syntax, and almost every “invalid JSON” error comes from one of these five causes. This tool tells you the exact line and column of the first problem; match it against the table:</p><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">What you probably typed</th><th scope="col">Why JSON rejects it</th><th scope="col">Fix</th></tr></thead><tbody><tr><td>{&quot;a&quot;: 1,}</td><td>Trailing comma before } or ]</td><td>Remove the last comma</td></tr><tr><td>{'a': 1}</td><td>Single quotes</td><td>Use double quotes: {&quot;a&quot;: 1}</td></tr><tr><td>{a: 1}</td><td>Unquoted key</td><td>Quote every key: {&quot;a&quot;: 1}</td></tr><tr><td>{&quot;a&quot;: 1} // comment</td><td>JSON has no comments</td><td>Delete the comment (or use JSONC/JSON5 in tools that support it)</td></tr><tr><td>{&quot;a&quot;: undefined} or NaN</td><td>Not valid JSON values</td><td>Use null, a number, or a quoted string</td></tr></tbody></table></div><h3>Format or minify — which one do you need?</h3><ul><li>Format (pretty-print) when a human will read it: debugging API responses, reviewing config files, diffing in Git. 2-space indent is the near-universal convention.</li><li>Minify when a machine will read it: sending payloads over the network, embedding in HTML, or storing compactly. Whitespace can be 20–40% of a pretty-printed file.</li><li>Neither changes your data — key order, values and types stay exactly the same; only whitespace differs.</li></ul><h3>Fix errors top-down</h3><p>A parser stops at the first thing it cannot understand, and one early mistake (like a missing quote) can make everything after it look broken. Fix the reported line first, re-run, and repeat — most files that “have a hundred errors” really have one or two.</p></section>
     <section><h2>Why use the iHaveTools JSON Formatter?</h2>
       <ul>
         <li><strong>Private by design</strong> — This tool runs entirely in your browser. Your data is never uploaded or stored.</li>
@@ -79,37 +84,37 @@
       <p>People also search for this tool as “json beautifier”, “json pretty print”, “json prettifier” — it is the same free online tool. JSON Formatter is part of our <a href="/categories/developer/">Developer tools</a> collection.</p>
     </section>
     <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>Is my JSON sent to a server?</summary><p class="faq-a">No. Parsing and formatting happen entirely in your browser with JavaScript. The content never leaves your device.</p></details><details><summary>How do I find where my JSON is broken?</summary><p class="faq-a">Run the formatter with invalid JSON — the tool reports the exact line and column of the first syntax error, plus the reason the parser gave.</p></details><details><summary>Does the formatter sort keys or change values?</summary><p class="faq-a">No. Key order and values are preserved exactly; only whitespace changes between Format and Minify.</p></details><details><summary>What is JSON Formatter used for?</summary><p class="faq-a">Paste JSON to pretty-print it, minify it, or find out exactly where it breaks. Errors include the line and column of the problem.</p></details><details><summary>Is “json beautifier” the same as JSON Formatter?</summary><p class="faq-a">Yes — “json beautifier” is another name people use for this tool. This page is the free online JSON Formatter: open it and use it right away, with nothing to download or sign up for.</p></details><details><summary>Do I need to install anything to use JSON Formatter?</summary><p class="faq-a">No. JSON Formatter runs in any modern web browser — on a phone, tablet or computer — as soon as the page opens.</p></details></div></section>
-    <section><h2>Related tools</h2><div class="card-grid cols-3"><a class="tool-card" href="/tools/json-validator/">
+    <section><h2>Related tools</h2><div class="card-grid cols-3"><div class="tool-card-shell"><a class="tool-card" href="/tools/json-validator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-check-circle"/></svg></span>
   <h3>JSON Validator</h3>
   <p>Check JSON syntax and get the exact line and column of errors.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/json-minifier/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="json-validator" aria-pressed="false" aria-label="Save JSON Validator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/json-minifier/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-minimize"/></svg></span>
   <h3>JSON Minifier</h3>
   <p>Strip whitespace from JSON and see how many bytes you saved.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/csv-to-json/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="json-minifier" aria-pressed="false" aria-label="Save JSON Minifier to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/csv-to-json/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-table"/></svg></span>
   <h3>CSV to JSON</h3>
   <p>RFC 4180-correct CSV conversion, with header row support.</p>
   <span class="card-meta"><span>Data</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/json-to-csv/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="csv-to-json" aria-pressed="false" aria-label="Save CSV to JSON to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/json-to-csv/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-table"/></svg></span>
   <h3>JSON to CSV</h3>
   <p>JSON arrays to properly escaped CSV, with column selection.</p>
   <span class="card-meta"><span>Data</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/json-lines-converter/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="json-to-csv" aria-pressed="false" aria-label="Save JSON to CSV to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/json-lines-converter/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-brackets"/></svg></span>
   <h3>JSON Lines Converter</h3>
   <p>Convert JSON ⇄ JSON Lines (NDJSON) with per-line validation.</p>
   <span class="card-meta"><span>Data</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/base64-encoder/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="json-lines-converter" aria-pressed="false" aria-label="Save JSON Lines Converter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/base64-encoder/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-binary"/></svg></span>
   <h3>Base64 Encoder &amp; Decoder</h3>
   <p>Unicode-safe Base64 encoding and decoding, with URL-safe output.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a></div><p style="margin-top:16px"><a class="section-link" href="/categories/developer/">Browse all 19 Developer tools →</a></p></section>
+</a><button type="button" class="fav-toggle" data-fav-toggle="base64-encoder" aria-pressed="false" aria-label="Save Base64 Encoder &amp; Decoder to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div><p style="margin-top:16px"><a class="section-link" href="/categories/developer/">Browse all 19 Developer tools →</a></p></section>
   </div>
 </section>
 </main>
