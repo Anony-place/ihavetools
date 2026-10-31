@@ -73,8 +73,10 @@
 **Status (2026-10-31):** SIP ✅, PPF ✅, FD ✅, Image to PDF ✅ — live.
 Site ab **Vercel par bhi live hai: https://i-have-tools.vercel.app**
 (`vercel.json` — outputDirectory `.`, headers/redirects Firebase ke mirror).
-Canonical primary abhi `ihavetools.web.app` hi hai taaki ranking split na ho;
-custom domain aate hi ek baar me switch hoga.
+⚠️ Correction (baad me pata chala): `ihavetools.web.app` par Firebase deploy
+hua hi kabhi nahi tha ("Site Not Found") — isliye canonical primary ab
+`https://i-have-tools.vercel.app` hai (registry.js me `site.url`).
+Repo ab PUBLIC hai, to GitHub Actions bhi free chalta hai.
 
 | Tool | Status |
 |------|--------|
@@ -97,7 +99,7 @@ Saath me:
 
 ## 4. Phase 3 — Off-code ranking kaam (bhai, ye tumhe karna hoga — code se nahi hota)
 
-1. **Custom domain** ⭐ Sabse bada factor. `ihavetools.web.app` ki jageh apna
+1. **Custom domain** ⭐ Sabse bada factor (jab budget ho). Vercel subdomain ki jageh apna
    domain (e.g. `ihavetools.com`) Firebase par connect karo → phir
    `assets/js/registry.js` me `site.url` badal kar rebuild. Subdomain par
    rank karna mushkil hota hai (domain authority tumhari nahi banti).

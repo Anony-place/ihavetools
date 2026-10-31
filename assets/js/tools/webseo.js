@@ -6,6 +6,59 @@ import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultP
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/* ═══════════════════════════ QR codes (vendored MIT engine, lazy) ═══════════════════════════
+   The encoder is qrcode-generator by Kazuhiko Arase (MIT), vendored at
+   /assets/vendor/qrcode-generator.js and loaded only on the QR page —
+   the same pattern as pdf-lib. Round-trip verified in tests with jsQR. */
+let qrLibPromise = null;
+export function loadQrLib() {
+  if (window.qrcode) return Promise.resolve(window.qrcode);
+  if (qrLibPromise) return qrLibPromise;
+  qrLibPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/assets/vendor/qrcode-generator.js';
+    s.onload = () => window.qrcode ? resolve(window.qrcode) : reject(new Error('The QR engine loaded but did not initialise.'));
+    s.onerror = () => { qrLibPromise = null; reject(new Error('Could not load the QR engine. Check your connection and try again.')); };
+    document.head.append(s);
+  });
+  return qrLibPromise;
+}
+
+/** Build a QR module matrix. lib = the vendored qrcode() factory. */
+export function makeQrModules(lib, text, ecl = 'M') {
+  const s = String(text || '').trim();
+  if (!s) throw new Error('Enter some text or a URL first.');
+  if (!lib) throw new Error('The QR engine is not loaded yet.');
+  if (!['L', 'M', 'Q', 'H'].includes(ecl)) throw new Error('Unsupported error-correction level.');
+  let qr;
+  try {
+    qr = lib(0, ecl); // typeNumber 0 = smallest version that fits
+    qr.addData(s);
+    qr.make();
+  } catch {
+    throw new Error('That text is too long for a single QR code at this error-correction level — shorten it or choose level L.');
+  }
+  const size = qr.getModuleCount();
+  const modules = [];
+  for (let r = 0; r < size; r++) {
+    const row = [];
+    for (let c = 0; c < size; c++) row.push(!!qr.isDark(r, c));
+    modules.push(row);
+  }
+  return { size, modules, version: (size - 17) / 4 };
+}
+
+/** Render a module matrix as a standalone SVG string (quiet zone included). */
+export function qrSvgString(modules, { fg = '#000000', bg = '#ffffff', margin = 4 } = {}) {
+  const size = modules.length;
+  const total = size + margin * 2;
+  let d = '';
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
+    if (modules[r][c]) d += `M${c + margin},${r + margin}h1v1h-1z`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" width="512" height="512"><rect width="${total}" height="${total}" fill="${bg}"/><path d="${d}" fill="${fg}"/></svg>\n`;
+}
+
 /* ═══════════════════════════ YouTube thumbnails ═══════════════════════════ */
 export function extractYouTubeId(raw) {
   const s = String(raw || '').trim();
@@ -365,7 +418,69 @@ const defs = {
       actionsRow(btn({ label: 'Get thumbnails', icon: 'film', onClick: run })), status, out,
       privacyNote('Thumbnails load straight from YouTube’s public image CDN (i.ytimg.com) to your browser — nothing is uploaded or stored by iHaveTools. Respect the creator’s copyright when re-using a thumbnail.'));
   },
+
+  'qr-code-generator'(root) {
+    const inp = textarea({ rows: 3, mono: false, placeholder: 'Text, a URL, or Wi-Fi like: WIFI:S:MyNetwork;T:WPA;P:mypassword;;' });
+    const ecl = select({ options: [{ v: 'L', t: 'L — smallest code (~7% recovery)' }, { v: 'M', t: 'M — balanced (~15%)' }, { v: 'Q', t: 'Q — sturdy (~25%)' }, { v: 'H', t: 'H — toughest (~30%)' }], value: 'M' });
+    const sizeSel = select({ options: [{ v: '512', t: '512 px' }, { v: '1024', t: '1024 px' }, { v: '2048', t: '2048 px' }], value: '1024' });
+    const fg = input({ type: 'color', value: '#000000' });
+    const bg = input({ type: 'color', value: '#ffffff' });
+    const grid = statsGrid();
+    const status = statusLine('Type something, then generate. Test-scan the result before printing it anywhere important.');
+    const out = h('div', {});
+    let last = null; // {modules, size, version}
+    const draw = (px) => {
+      const { modules, size } = last;
+      const cell = Math.max(1, Math.floor(px / (size + 8)));
+      const dim = cell * (size + 8);
+      const canvas = document.createElement('canvas');
+      canvas.width = dim; canvas.height = dim;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = bg.value; ctx.fillRect(0, 0, dim, dim);
+      ctx.fillStyle = fg.value;
+      for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
+        if (modules[r][c]) ctx.fillRect((c + 4) * cell, (r + 4) * cell, cell, cell);
+      }
+      return canvas;
+    };
+    const run = async () => {
+      const text = inp.value.trim();
+      if (!text) { status.set('Enter some text or a URL first.', 'warning'); out.replaceChildren(); grid.replaceChildren(); return; }
+      status.set('Loading the QR engine…', 'info');
+      try {
+        const lib = await loadQrLib();
+        last = makeQrModules(lib, text, ecl.value);
+        const preview = draw(512);
+        preview.setAttribute('class', 'img-preview');
+        preview.setAttribute('style', 'margin-top:14px;max-width:320px;width:100%');
+        out.replaceChildren(preview,
+          h('div', { style: 'margin-top:10px;display:flex;gap:8px;flex-wrap:wrap' },
+            h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => {
+              draw(Number(sizeSel.value)).toBlob((blob) => { if (blob) { downloadBlob(blob, 'qr-code.png'); toast('PNG download started', 'success'); } }, 'image/png');
+            } }, 'Download PNG'),
+            h('button', { type: 'button', class: 'btn btn-secondary btn-sm', onclick: () => {
+              downloadText(qrSvgString(last.modules, { fg: fg.value, bg: bg.value }), 'qr-code.svg', 'image/svg+xml;charset=utf-8');
+              toast('SVG download started', 'success');
+            } }, 'Download SVG')));
+        grid.set([
+          { label: 'QR version', value: `v${last.version}` },
+          { label: 'Modules', value: `${last.size} × ${last.size}` },
+          { label: 'Error correction', value: ecl.value },
+          { label: 'Characters', value: `${[...text].length}` },
+        ]);
+        status.set('QR code ready ✓ — scan it with your phone camera to verify before using it.', 'success');
+      } catch (e) { out.replaceChildren(); grid.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(field({ label: 'Text or URL to encode', control: inp, hint: 'Wi-Fi format: WIFI:S:NetworkName;T:WPA;P:password;;' }),
+      h('div', { class: 'field-row', style: 'align-items:end' },
+        field({ label: 'Error correction', control: ecl }),
+        field({ label: 'PNG size', control: sizeSel }),
+        field({ label: 'Code colour', control: fg }),
+        field({ label: 'Background', control: bg })),
+      actionsRow(btn({ label: 'Generate QR code', icon: 'qr', onClick: run })), grid, status, out,
+      privacyNote('The QR code is generated locally in your browser (MIT-licensed qrcode-generator library, loaded from this site). Your text is never uploaded.'));
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { parseUrlParts, keywordDensity, buildRobots, buildSitemapXml, extractYouTubeId, youtubeThumbUrl, YT_THUMB_SIZES };
+export const __test = { parseUrlParts, keywordDensity, buildRobots, buildSitemapXml, extractYouTubeId, youtubeThumbUrl, YT_THUMB_SIZES, makeQrModules, qrSvgString };

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ihavetools.web.app/sitemap.xml
+Sitemap: https://i-have-tools.vercel.app/sitemap.xml

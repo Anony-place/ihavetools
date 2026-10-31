@@ -91,6 +91,7 @@ export const icons = {
   plus: `<path d="M12 5v14M5 12h14"/>`,
   folder: `<path d="M3 7a2 2 0 0 1 2-2h4l2.3 2.5H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`,
   settings: `<circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.15-1.4l2-1.55-2-3.46-2.35.95a7 7 0 0 0-2.4-1.4L13.7 2.5h-3.4l-.4 2.64a7 7 0 0 0-2.4 1.4l-2.35-.95-2 3.46 2 1.55A7 7 0 0 0 5 12"/>`,
+  qr: `<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01"/><path d="M14 14h3v3h-3zM21 14v3M14 21h3M20 20h.01M17.5 17.5H21V21h-3.5z"/>`,
 };
 
 /** Return a standalone <svg> string for an icon name (aria-hidden by default). */

@@ -1,443 +1,447 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://ihavetools.web.app/</loc>
+    <loc>https://i-have-tools.vercel.app/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/pdf/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/pdf/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/image/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/image/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/video/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/video/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/audio/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/audio/</loc>
     <lastmod>2026-09-19</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/text/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/text/</loc>
     <lastmod>2026-09-14</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/calculators/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/calculators/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/converters/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/converters/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/developer/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/developer/</loc>
     <lastmod>2026-09-15</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/security/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/security/</loc>
     <lastmod>2026-09-15</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/web-seo/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/web-seo/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/color/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/color/</loc>
     <lastmod>2026-06-10</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/data/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/data/</loc>
     <lastmod>2026-09-14</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/math/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/math/</loc>
     <lastmod>2026-06-13</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/datetime/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/datetime/</loc>
     <lastmod>2026-09-14</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/student/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/student/</loc>
     <lastmod>2026-06-13</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/categories/misc/</loc>
+    <loc>https://i-have-tools.vercel.app/categories/misc/</loc>
     <lastmod>2026-09-19</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/json-formatter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/json-formatter/</loc>
     <lastmod>2026-06-02</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/json-validator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/json-validator/</loc>
     <lastmod>2026-06-02</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/json-minifier/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/json-minifier/</loc>
     <lastmod>2026-06-02</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/base64-encoder/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/base64-encoder/</loc>
     <lastmod>2026-06-02</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/url-encoder/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/url-encoder/</loc>
     <lastmod>2026-06-02</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/uuid-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/uuid-generator/</loc>
     <lastmod>2026-06-02</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/timestamp-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/timestamp-converter/</loc>
     <lastmod>2026-06-02</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/hash-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/hash-generator/</loc>
     <lastmod>2026-06-03</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/regex-tester/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/regex-tester/</loc>
     <lastmod>2026-06-03</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/jwt-decoder/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/jwt-decoder/</loc>
     <lastmod>2026-06-03</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/html-formatter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/html-formatter/</loc>
     <lastmod>2026-06-05</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/css-formatter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/css-formatter/</loc>
     <lastmod>2026-06-05</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/js-formatter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/js-formatter/</loc>
     <lastmod>2026-06-05</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/extract-audio/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/extract-audio/</loc>
     <lastmod>2026-09-19</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/mp4-inspector/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/mp4-inspector/</loc>
     <lastmod>2026-09-19</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/tone-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/tone-generator/</loc>
     <lastmod>2026-09-19</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/audio-trimmer/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/audio-trimmer/</loc>
     <lastmod>2026-09-19</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/audio-speed-changer/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/audio-speed-changer/</loc>
     <lastmod>2026-09-19</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/word-counter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/word-counter/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/character-counter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/character-counter/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/line-counter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/line-counter/</loc>
     <lastmod>2026-09-14</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/case-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/case-converter/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/remove-duplicate-lines/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/remove-duplicate-lines/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/text-sorter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/text-sorter/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/text-diff/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/text-diff/</loc>
     <lastmod>2026-06-08</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/slug-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/slug-generator/</loc>
     <lastmod>2026-06-08</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/lorem-ipsum-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/lorem-ipsum-generator/</loc>
     <lastmod>2026-09-14</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/percentage-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/percentage-calculator/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/percentage-change/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/percentage-change/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/discount-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/discount-calculator/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/age-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/age-calculator/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/bmi-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/bmi-calculator/</loc>
     <lastmod>2026-06-06</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/gst-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/gst-calculator/</loc>
     <lastmod>2026-06-06</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/emi-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/emi-calculator/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/tip-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/tip-calculator/</loc>
     <lastmod>2026-06-06</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/compound-interest-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/compound-interest-calculator/</loc>
     <lastmod>2026-06-07</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/simple-interest-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/simple-interest-calculator/</loc>
     <lastmod>2026-06-07</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/length-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/length-converter/</loc>
     <lastmod>2026-06-09</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/weight-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/weight-converter/</loc>
     <lastmod>2026-06-09</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/temperature-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/temperature-converter/</loc>
     <lastmod>2026-06-09</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/time-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/time-converter/</loc>
     <lastmod>2026-06-09</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/speed-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/speed-converter/</loc>
     <lastmod>2026-06-09</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/data-storage-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/data-storage-converter/</loc>
     <lastmod>2026-06-09</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/area-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/area-converter/</loc>
     <lastmod>2026-06-09</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/volume-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/volume-converter/</loc>
     <lastmod>2026-06-09</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/password-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/password-generator/</loc>
     <lastmod>2026-06-02</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/password-strength-checker/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/password-strength-checker/</loc>
     <lastmod>2026-09-15</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/random-string-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/random-string-generator/</loc>
     <lastmod>2026-09-15</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/image-compressor/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/image-compressor/</loc>
     <lastmod>2026-06-04</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/image-resizer/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/image-resizer/</loc>
     <lastmod>2026-06-04</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/image-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/image-converter/</loc>
     <lastmod>2026-09-16</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/image-cropper/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/image-cropper/</loc>
     <lastmod>2026-09-16</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/image-metadata-viewer/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/image-metadata-viewer/</loc>
     <lastmod>2026-09-17</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/color-picker/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/color-picker/</loc>
     <lastmod>2026-06-10</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/hex-rgb-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/hex-rgb-converter/</loc>
     <lastmod>2026-06-10</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/color-contrast-checker/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/color-contrast-checker/</loc>
     <lastmod>2026-06-10</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/palette-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/palette-generator/</loc>
     <lastmod>2026-06-10</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/meta-tag-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/meta-tag-generator/</loc>
     <lastmod>2026-06-11</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/robots-txt-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/robots-txt-generator/</loc>
     <lastmod>2026-06-11</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/sitemap-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/sitemap-generator/</loc>
     <lastmod>2026-06-11</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/open-graph-preview/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/open-graph-preview/</loc>
     <lastmod>2026-06-11</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/url-parser/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/url-parser/</loc>
     <lastmod>2026-06-11</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/keyword-density-checker/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/keyword-density-checker/</loc>
     <lastmod>2026-09-14</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/scientific-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/scientific-calculator/</loc>
     <lastmod>2026-06-12</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/fraction-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/fraction-calculator/</loc>
     <lastmod>2026-06-12</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/time-duration-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/time-duration-calculator/</loc>
     <lastmod>2026-06-12</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/average-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/average-calculator/</loc>
     <lastmod>2026-06-13</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/ratio-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/ratio-calculator/</loc>
     <lastmod>2026-06-13</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/gcd-lcm-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/gcd-lcm-calculator/</loc>
     <lastmod>2026-06-13</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/date-difference/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/date-difference/</loc>
     <lastmod>2026-06-01</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/date-add-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/date-add-calculator/</loc>
     <lastmod>2026-09-14</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/time-zone-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/time-zone-converter/</loc>
     <lastmod>2026-09-14</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/csv-to-json/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/csv-to-json/</loc>
     <lastmod>2026-06-16</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/json-to-csv/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/json-to-csv/</loc>
     <lastmod>2026-06-16</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/json-lines-converter/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/json-lines-converter/</loc>
     <lastmod>2026-09-14</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/random-number-generator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/random-number-generator/</loc>
     <lastmod>2026-06-17</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/dice-roller/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/dice-roller/</loc>
     <lastmod>2026-09-19</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/pdf-merge/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/pdf-merge/</loc>
     <lastmod>2026-09-18</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/pdf-rotate/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/pdf-rotate/</loc>
     <lastmod>2026-09-18</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/pdf-split/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/pdf-split/</loc>
     <lastmod>2026-09-18</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/sip-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/sip-calculator/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/ppf-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/ppf-calculator/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/fd-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/fd-calculator/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/image-to-pdf/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/image-to-pdf/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/income-tax-calculator/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/income-tax-calculator/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/jpg-to-png/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/jpg-to-png/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/png-to-jpg/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/png-to-jpg/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/webp-to-png/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/webp-to-png/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/jpg-to-webp/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/jpg-to-webp/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/tools/youtube-thumbnail-downloader/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/youtube-thumbnail-downloader/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/about/</loc>
+    <loc>https://i-have-tools.vercel.app/tools/qr-code-generator/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/privacy-policy/</loc>
+    <loc>https://i-have-tools.vercel.app/about/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
-    <loc>https://ihavetools.web.app/terms/</loc>
+    <loc>https://i-have-tools.vercel.app/privacy-policy/</loc>
+    <lastmod>2026-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/terms/</loc>
     <lastmod>2026-10-31</lastmod>
   </url>
 </urlset>
