@@ -1,14 +1,17 @@
 // iHaveTools service worker — static asset caching only.
-// Registered ONLY on production hosts (see site.js). Keeps repeat visits fast;
-// HTML is always network-first so pages are never stale.
-const VERSION = 'iht-v1';
+// Lives at the domain root so its scope covers the whole site (a worker
+// under /assets/ could only control /assets/*). Registered ONLY on real
+// HTTPS hosts (see site.js). Bump VERSION on every deploy that changes
+// CSS/JS so clients drop old caches.
+const VERSION = 'iht-v2';
 const CORE = [
   '/assets/css/styles.css',
   '/assets/js/icons.js',
   '/assets/js/ui.js',
-  '/assets/js/registry.js',
   '/assets/js/site.js',
+  '/assets/js/search-index.js',
   '/assets/icons/favicon.svg',
+  '/assets/icons/sprite.svg',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
   '/manifest.webmanifest',
@@ -32,17 +35,21 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
 
   if (url.pathname.startsWith('/assets/')) {
-    // static assets: cache-first (versioned by SW VERSION on deploy)
+    // Static assets: stale-while-revalidate — serve the cached copy
+    // instantly, refresh it in the background for the next visit.
     event.respondWith(
-      caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(VERSION).then((c) => c.put(req, copy));
-        return res;
+      caches.open(VERSION).then((cache) => cache.match(req).then((hit) => {
+        const network = fetch(req).then((res) => {
+          if (res && res.ok) cache.put(req, res.clone());
+          return res;
+        }).catch(() => hit);
+        return hit || network;
       })),
     );
     return;
   }
-  // navigations & everything else: network-first, cache fallback (offline)
+  // Navigations & everything else: network-first so HTML is never stale,
+  // cache fallback keeps visited pages (and the homepage) working offline.
   event.respondWith(
     fetch(req)
       .then((res) => {

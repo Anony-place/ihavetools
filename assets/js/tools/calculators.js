@@ -126,6 +126,51 @@ export function compoundInterest({ principal, annualRatePct, years, perYear = 12
   }
   return { finalBalance: balance, totalContributed: contributed, totalInterest: balance - contributed, schedule };
 }
+export function sipCalc({ monthly, annualRatePct, years }) {
+  if (!(monthly > 0)) throw new Error('Monthly investment must be greater than zero.');
+  if (!(years > 0)) throw new Error('Duration must be greater than zero.');
+  if (!(annualRatePct >= 0)) throw new Error('Expected return cannot be negative.');
+  const i = annualRatePct / 12 / 100;
+  const n = Math.round(years * 12);
+  let balance = 0;
+  const schedule = [];
+  for (let m = 1; m <= n; m++) {
+    balance = (balance + monthly) * (1 + i); // deposit at the start of each month (annuity due)
+    if (m % 12 === 0 || m === n) {
+      schedule.push({ year: Math.ceil(m / 12), invested: monthly * m, balance, gain: balance - monthly * m });
+    }
+  }
+  const invested = monthly * n;
+  return { invested, maturity: balance, gain: balance - invested, months: n, schedule };
+}
+
+export function ppfCalc({ yearlyDeposit, annualRatePct = 7.1, years = 15 }) {
+  if (!(yearlyDeposit > 0)) throw new Error('Yearly deposit must be greater than zero.');
+  if (!(years >= 1)) throw new Error('Duration must be at least 1 year.');
+  if (!(annualRatePct >= 0)) throw new Error('Interest rate cannot be negative.');
+  const r = annualRatePct / 100;
+  let balance = 0;
+  const schedule = [];
+  for (let y = 1; y <= years; y++) {
+    const opening = balance + yearlyDeposit; // deposit at the start of the year
+    const interest = opening * r;
+    balance = opening + interest;
+    schedule.push({ year: y, deposit: yearlyDeposit, interest, balance });
+  }
+  const invested = yearlyDeposit * years;
+  return { invested, maturity: balance, totalInterest: balance - invested, schedule, overLimit: yearlyDeposit > 150000 };
+}
+
+export function fdCalc({ principal, annualRatePct, years, perYear = 4 }) {
+  if (!(principal > 0)) throw new Error('Deposit amount must be greater than zero.');
+  if (!(years > 0)) throw new Error('Tenure must be greater than zero.');
+  if (!(annualRatePct >= 0)) throw new Error('Interest rate cannot be negative.');
+  if (![1, 2, 4, 12].includes(perYear)) throw new Error('Unsupported compounding frequency.');
+  const maturity = principal * Math.pow(1 + annualRatePct / 100 / perYear, perYear * years);
+  const effectiveYield = years > 0 ? (Math.pow(maturity / principal, 1 / years) - 1) * 100 : 0;
+  return { maturity, interest: maturity - principal, effectiveYield };
+}
+
 export function simpleInterest({ principal, annualRatePct, time, unit = 'years' }) {
   if (!(principal > 0)) throw new Error('Principal must be greater than zero.');
   const years = unit === 'years' ? time : unit === 'months' ? time / 12 : time / 365;
@@ -468,7 +513,96 @@ const defs = {
         field({ label: 'Unit', control: unit })),
       actionsRow(btn({ label: 'Calculate interest', icon: 'trending', onClick: run })), grid, status);
   },
+
+  'sip-calculator'(root) {
+    const monthly = input({ type: 'number', step: 'any', placeholder: 'e.g. 10000', value: '10000' });
+    const rate = input({ type: 'number', step: 'any', placeholder: 'e.g. 12', value: '12' });
+    const years = input({ type: 'number', step: 'any', placeholder: 'e.g. 15', value: '15' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const scheduleWrap = h('div', {});
+    const run = () => {
+      try {
+        const r = sipCalc({ monthly: num(monthly), annualRatePct: num(rate), years: num(years) });
+        grid.set([
+          { label: 'Invested amount', value: money(r.invested) },
+          { label: 'Est. gains', value: money(r.gain), kind: 'warn' },
+          { label: 'Maturity value', value: money(r.maturity), kind: 'good' },
+          { label: 'Months', value: `${r.months}` },
+        ]);
+        scheduleWrap.replaceChildren(
+          h('h3', { text: 'Year-by-year growth', style: 'margin:20px 0 10px' }),
+          table({ headers: ['Year', 'Invested', 'Est. gains', 'Value'], rows: r.schedule.map((y) => [`Y${y.year}`, money(y.invested), money(y.gain), money(y.balance)]) }));
+        status.set(`Investing ${money(num(monthly))} a month for ${fmtNumber(num(years))} years at ${fmtNumber(num(rate))}% expected return. Estimates only — mutual fund returns are not guaranteed.`, 'success');
+      } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Monthly investment', control: monthly }),
+        field({ label: 'Expected return % (p.a.)', control: rate }),
+        field({ label: 'Duration (years)', control: years })),
+      actionsRow(btn({ label: 'Calculate SIP', icon: 'trending', onClick: run })), grid, scheduleWrap, status);
+  },
+
+  'ppf-calculator'(root) {
+    const yearly = input({ type: 'number', step: 'any', placeholder: 'e.g. 150000', value: '150000' });
+    const rate = input({ type: 'number', step: 'any', placeholder: 'e.g. 7.1', value: '7.1' });
+    const years = input({ type: 'number', step: 'any', placeholder: 'e.g. 15', value: '15' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const scheduleWrap = h('div', {});
+    const run = () => {
+      try {
+        const r = ppfCalc({ yearlyDeposit: num(yearly), annualRatePct: num(rate), years: num(years) });
+        grid.set([
+          { label: 'Total deposited', value: money(r.invested) },
+          { label: 'Total interest', value: money(r.totalInterest), kind: 'warn' },
+          { label: 'Maturity value', value: money(r.maturity), kind: 'good' },
+        ]);
+        scheduleWrap.replaceChildren(
+          h('h3', { text: 'Year-by-year balance', style: 'margin:20px 0 10px' }),
+          table({ headers: ['Year', 'Deposit', 'Interest', 'Balance'], rows: r.schedule.map((y) => [`Y${y.year}`, money(y.deposit), money(y.interest), money(y.balance)]) }));
+        status.set(r.overLimit
+          ? 'Note: PPF rules allow at most ₹1,50,000 per financial year — amounts above that are shown for illustration only.'
+          : `Depositing ${money(num(yearly))} a year at ${fmtNumber(num(rate))}% for ${fmtNumber(num(years))} years. The PPF rate is set by the Government of India and can change every quarter.`, r.overLimit ? 'warning' : 'success');
+      } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Yearly deposit', control: yearly, hint: 'PPF limit: ₹1,50,000 per year' }),
+        field({ label: 'Interest rate % (p.a.)', control: rate }),
+        field({ label: 'Duration (years)', control: years, hint: 'PPF matures in 15 years, extendable by 5' })),
+      actionsRow(btn({ label: 'Calculate PPF', icon: 'bank', onClick: run })), grid, scheduleWrap, status);
+  },
+
+  'fd-calculator'(root) {
+    const principal = input({ type: 'number', step: 'any', placeholder: 'e.g. 100000', value: '100000' });
+    const rate = input({ type: 'number', step: 'any', placeholder: 'e.g. 6.5', value: '6.5' });
+    const years = input({ type: 'number', step: 'any', placeholder: 'e.g. 5', value: '5' });
+    const freq = select({ options: [{ v: '4', t: 'Quarterly' }, { v: '2', t: 'Half-yearly' }, { v: '1', t: 'Yearly' }, { v: '12', t: 'Monthly' }], value: '4' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const run = () => {
+      try {
+        const r = fdCalc({ principal: num(principal), annualRatePct: num(rate), years: num(years), perYear: Number(freq.value) });
+        grid.set([
+          { label: 'Deposit amount', value: money(num(principal)) },
+          { label: 'Interest earned', value: money(r.interest), kind: 'warn' },
+          { label: 'Maturity value', value: money(r.maturity), kind: 'good' },
+          { label: 'Effective yield', value: `${fmtNumber(r.effectiveYield, 2)}% p.a.` },
+        ]);
+        status.set(`Maturity after ${fmtNumber(num(years))} years with ${freq.options[freq.selectedIndex].text.toLowerCase()} compounding. Tax (TDS) is not included.`, 'success');
+      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Deposit amount', control: principal }),
+        field({ label: 'Interest rate % (p.a.)', control: rate }),
+        field({ label: 'Tenure (years)', control: years }),
+        field({ label: 'Compounding', control: freq })),
+      actionsRow(btn({ label: 'Calculate FD', icon: 'coins', onClick: run })), grid, status);
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest };
+export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc };

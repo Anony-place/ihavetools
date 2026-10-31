@@ -156,6 +156,9 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
   transition: border-color var(--dur), color var(--dur), background var(--dur);
 }
 .icon-btn:hover { color: var(--text); border-color: var(--border-strong); }
+.theme-toggle { flex: none; }
+/* Sprite-referenced icons in static HTML (see icons.js iconRef). */
+.ic { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .nav-toggle { display: none; }
 .mobile-nav { display: none; }
 
@@ -221,6 +224,8 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
   border-radius: var(--radius-lg); padding: 18px;
   color: var(--text); box-shadow: var(--shadow-sm);
   transition: border-color var(--dur), box-shadow var(--dur), translate var(--dur);
+  /* Defer off-screen card rendering (homepage lists 100+ cards). */
+  content-visibility: auto; contain-intrinsic-size: auto 190px;
 }
 .tool-card:hover {
   text-decoration: none; border-color: var(--border-strong);
@@ -241,6 +246,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg); padding: 18px; color: var(--text);
   transition: border-color var(--dur), box-shadow var(--dur), translate var(--dur);
+  content-visibility: auto; contain-intrinsic-size: auto 170px;
 }
 .category-card:hover { text-decoration: none; border-color: var(--border-strong); box-shadow: var(--shadow-md); translate: 0 -2px; }
 .category-card h3 { margin: 0; font-size: 0.98rem; }
@@ -301,6 +307,15 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
 }
 .tool-docs { display: grid; gap: 26px; }
 .tool-docs h2 { font-size: 1.25rem; margin-bottom: 12px; }
+.tool-docs section p { color: var(--text-2); font-size: 0.95rem; margin: 0 0 12px; }
+.tool-docs section ul { color: var(--text-2); font-size: 0.95rem; margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; }
+.tool-docs section li strong { color: var(--text); }
+/* Static prose pages (about / privacy / terms) share the docs typography */
+.page-static .section section { margin-bottom: 26px; }
+.page-static .section h2 { font-size: 1.25rem; margin-bottom: 12px; }
+.page-static .section p { color: var(--text-2); font-size: 0.97rem; margin: 0 0 12px; }
+.page-static .section ul { color: var(--text-2); font-size: 0.97rem; margin: 0 0 12px; padding-left: 20px; display: grid; gap: 6px; }
+.page-static .section li strong { color: var(--text); }
 .howto { margin: 0; padding: 0 0 0 0; list-style: none; counter-reset: step; display: grid; gap: 12px; }
 .howto li { counter-increment: step; display: flex; gap: 13px; color: var(--text-2); font-size: 0.95rem; }
 .howto li::before {
@@ -545,6 +560,8 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
   border-top: 1px solid var(--border); padding: 16px 0 22px;
   color: var(--text-3); font-size: 0.82rem;
 }
+.footer-bottom a { color: var(--text-2); font-weight: 600; }
+.footer-bottom a:hover { color: var(--text); }
 
 /* 404 */
 .notfound { text-align: center; padding: 90px 20px; }

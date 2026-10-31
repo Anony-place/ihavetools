@@ -480,6 +480,34 @@ await test('EMI standard formula', () => {
   const zero = calc.emiCalc(1200, 0, 12);
   assert.ok(Math.abs(zero.emi - 100) < 1e-9);
 });
+await test('SIP future value (annuity due)', () => {
+  const r = calc.sipCalc({ monthly: 1000, annualRatePct: 12, years: 1 });
+  // FV = P × [((1+i)^n − 1)/i] × (1+i), i = 0.01, n = 12
+  const expected = 1000 * ((Math.pow(1.01, 12) - 1) / 0.01) * 1.01;
+  assert.ok(Math.abs(r.maturity - expected) < 1e-6, `${r.maturity} vs ${expected}`);
+  assert.equal(r.invested, 12000);
+  assert.equal(r.schedule.length, 1);
+  const zero = calc.sipCalc({ monthly: 500, annualRatePct: 0, years: 2 });
+  assert.equal(zero.maturity, 12000);
+  assert.throws(() => calc.sipCalc({ monthly: 0, annualRatePct: 12, years: 5 }), /greater than zero/);
+});
+await test('PPF annual compounding', () => {
+  const r = calc.ppfCalc({ yearlyDeposit: 150000, annualRatePct: 7.1, years: 15 });
+  // F = P × [((1+i)^n − 1)/i] × (1+i) with deposit at start of each year
+  const expected = 150000 * ((Math.pow(1.071, 15) - 1) / 0.071) * 1.071;
+  assert.ok(Math.abs(r.maturity - expected) < 0.01, `${r.maturity} vs ${expected}`);
+  assert.equal(r.invested, 2250000);
+  assert.equal(r.schedule.length, 15);
+  assert.equal(r.overLimit, false);
+  assert.equal(calc.ppfCalc({ yearlyDeposit: 200000 }).overLimit, true);
+});
+await test('FD quarterly compounding', () => {
+  const r = calc.fdCalc({ principal: 100000, annualRatePct: 6, years: 5, perYear: 4 });
+  const expected = 100000 * Math.pow(1 + 0.06 / 4, 20);
+  assert.ok(Math.abs(r.maturity - expected) < 1e-6);
+  assert.ok(r.effectiveYield > 6 && r.effectiveYield < 6.2, `yield ${r.effectiveYield}`);
+  assert.throws(() => calc.fdCalc({ principal: 0, annualRatePct: 6, years: 1 }), /greater than zero/);
+});
 await test('tip with rounding and split', () => {
   const r = calc.tipCalc(84.5, 15, 3);
   assert.ok(Math.abs(r.tip - 12.675) < 1e-9);
@@ -1013,6 +1041,14 @@ await test('range parsing: singles, ranges, mixed, unsorted, reversed', () => {
   assert.throws(() => pdf.parseRanges('25', 20), /does not exist/);
   assert.throws(() => pdf.parseRanges('abc', 20), /not a page/);
   assert.throws(() => pdf.parseRanges('', 20), /Enter the pages/);
+  // fitRect: A4 page 595.28×841.89, 36pt margin, wide image letterboxed & centered
+  const r1 = pdf.fitRect(1000, 500, 595.28, 841.89, 36);
+  assert.ok(Math.abs(r1.width - (595.28 - 72)) < 1e-9);
+  assert.ok(Math.abs(r1.height - r1.width / 2) < 1e-9);
+  assert.ok(Math.abs(r1.x - 36) < 1e-9 && r1.y > 36);
+  const r2 = pdf.fitRect(500, 1000, 595.28, 841.89, 36);
+  assert.ok(Math.abs(r2.height - (841.89 - 72)) < 1e-9);
+  assert.throws(() => pdf.fitRect(0, 100, 100, 100), /no dimensions/);
 });
 
 console.log('\n── pdf-lib end-to-end (real library, real bytes) ──');
