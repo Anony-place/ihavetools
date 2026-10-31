@@ -230,6 +230,24 @@ await domTest('qr-code-generator: mounts and validates empty input', async () =>
   click(btnByLabel(app, 'Generate QR code'));
   assert.match(statusText(document), /Enter some text or a URL first/);
 });
+await domTest('tool page: records recently used and the favourite star persists', async () => {
+  localStorage.removeItem('iht-favourites');
+  localStorage.removeItem('iht-recent');
+  await loadToolPage('word-counter', 'text');
+  const site = await import(`../assets/js/site.js?t=${Math.random().toString(36).slice(2)}`);
+  site.initRecents();
+  site.initFavourites();
+  assert.deepEqual(JSON.parse(localStorage.getItem('iht-recent')), ['word-counter'], 'visiting a tool must record it as recently used');
+  const star = document.querySelector('.page-head [data-fav-toggle="word-counter"]');
+  assert.ok(star, 'tool page must have a favourite button in the page head');
+  click(star);
+  assert.deepEqual(JSON.parse(localStorage.getItem('iht-favourites')), ['word-counter'], 'star click must save the tool to favourites');
+  assert.equal(star.getAttribute('aria-pressed'), 'true');
+  assert.match(star.textContent, /Remove from favourites/);
+  click(star);
+  assert.deepEqual(JSON.parse(localStorage.getItem('iht-favourites')), [], 'second click must remove the favourite');
+  assert.equal(star.getAttribute('aria-pressed'), 'false');
+});
 await domTest('income-tax-calculator: compares both regimes', async () => {
   const app = await loadToolPage('income-tax-calculator', 'calculators');
   const nums = app.querySelectorAll('input[type=number]');

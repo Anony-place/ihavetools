@@ -168,6 +168,113 @@ function setupSearch() {
   else if ('requestIdleCallback' in window) requestIdleCallback(() => loadSearchIndex(), { timeout: 2500 });
 }
 
+/* ---------- Favourites & recently used (localStorage, this device only) ----------
+   Starred tools and the last-used list live in THIS browser only — no
+   account, no server, nothing tracked. The homepage renders two personal
+   sections from them; every card and tool page carries a star toggle. */
+const FAV_KEY = 'iht-favourites';
+const RECENT_KEY = 'iht-recent';
+const RECENT_CAP = 12;
+
+/** Pure: add id (front) or remove it. Exported for tests. */
+export function toggleId(list, id) {
+  return list.includes(id) ? list.filter((x) => x !== id) : [id, ...list];
+}
+/** Pure: most-recent-first, de-duplicated, capped. Exported for tests. */
+export function pushRecentId(list, id, cap = RECENT_CAP) {
+  return [id, ...list.filter((x) => x !== id)].slice(0, cap);
+}
+function readStoredList(key) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(raw) ? raw.filter((x) => typeof x === 'string') : [];
+  } catch { return []; }
+}
+function writeStoredList(key, list) {
+  try { localStorage.setItem(key, JSON.stringify(list)); } catch { /* private mode */ }
+}
+
+function syncFavButtons(favs) {
+  $$('[data-fav-toggle]').forEach((btn) => {
+    const on = favs.includes(btn.dataset.favToggle);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.title = on ? 'Remove from favourites' : 'Save to favourites';
+    const label = btn.querySelector('[data-fav-label]');
+    if (label) label.textContent = on ? 'Remove from favourites' : 'Add to favourites';
+  });
+}
+
+function personalCard(entry) {
+  return h('div', { class: 'tool-card-shell' },
+    h('a', { class: 'tool-card', href: `/tools/${entry.id}/` },
+      h('span', { class: 'tool-icon', html: icon(entry.icon) }),
+      h('h3', { text: entry.name }),
+      h('span', { class: 'card-meta' }, h('span', { text: entry.c }), h('span', { class: 'go', text: 'Open →' }))),
+    h('button', { type: 'button', class: 'fav-toggle', dataset: { favToggle: entry.id }, 'aria-pressed': 'false', 'aria-label': `Save ${entry.name} to favourites`, html: icon('star') }));
+}
+
+async function renderPersonalSections() {
+  const favSection = $('#favourites-section');
+  const recentSection = $('#recent-section');
+  if (!favSection && !recentSection) return;
+  const favs = readStoredList(FAV_KEY);
+  const recent = readStoredList(RECENT_KEY);
+  if (!favs.length && !recent.length) {
+    if (favSection) favSection.hidden = true;
+    if (recentSection) recentSection.hidden = true;
+    return;
+  }
+  const byId = new Map((await loadSearchIndex()).map((e) => [e.id, e]));
+  const fill = (section, gridSel, ids) => {
+    if (!section) return;
+    const grid = $(gridSel, section);
+    if (!grid) return;
+    const entries = ids.map((id) => byId.get(id)).filter(Boolean);
+    grid.replaceChildren(...entries.map(personalCard));
+    section.hidden = entries.length === 0;
+  };
+  fill(favSection, '#favourites-grid', favs);
+  fill(recentSection, '#recent-grid', recent);
+  syncFavButtons(favs);
+}
+
+export function initFavourites() {
+  syncFavButtons(readStoredList(FAV_KEY));
+  document.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest ? e.target.closest('[data-fav-toggle]') : null;
+    if (!btn || !btn.dataset.favToggle) return;
+    e.preventDefault();
+    const next = toggleId(readStoredList(FAV_KEY), btn.dataset.favToggle);
+    writeStoredList(FAV_KEY, next);
+    syncFavButtons(next);
+    renderPersonalSections();
+  });
+  renderPersonalSections();
+}
+
+export function initRecents() {
+  const app = $('#tool-app[data-tool-id]');
+  if (!app || !app.dataset.toolId) return;
+  writeStoredList(RECENT_KEY, pushRecentId(readStoredList(RECENT_KEY), app.dataset.toolId));
+}
+
+/* ---------- Share: copy a link to this page ---------- */
+export function initShare() {
+  $$('[data-copy-link]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const label = btn.querySelector('[data-copy-label]') || btn;
+      const original = label.textContent;
+      try {
+        await navigator.clipboard.writeText(location.href);
+        label.textContent = 'Link copied ✓';
+      } catch {
+        label.textContent = 'Copy failed — use the address bar';
+      }
+      setTimeout(() => { label.textContent = original; }, 2200);
+    });
+  });
+}
+
 /* ---------- Footer year ---------- */
 function initFooter() {
   const y = $('#footer-year');
@@ -201,12 +308,19 @@ function h(tag, attrs = {}, ...children) {
   return node;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  buildChrome();
-  initTheme();
-  initMobileNav();
-  initDropdowns();
-  initFooter();
-  initSW();
-  setupSearch();
-});
+// Guarded so the module's pure helpers can be imported and unit-tested in
+// Node (where there is no document). In the browser this always runs.
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    buildChrome();
+    initTheme();
+    initMobileNav();
+    initDropdowns();
+    initFooter();
+    initSW();
+    setupSearch();
+    initFavourites();
+    initRecents();
+    initShare();
+  });
+}

@@ -60,16 +60,21 @@
     <h1>Dice Roller</h1>
     <p class="lede">Roll virtual dice for board games and tabletop RPGs: up to 12 dice, 2–100 sides each (d6, d20, custom), with per-die results, total and roll history.</p>
     <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> This tool runs entirely in your browser. Your data is never uploaded or stored.</span>
+    <div class="page-head-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="dice-roller" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy link</span></button>
+    </div>
   </header>
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
-    <div id="tool-app"></div>
+    <div id="tool-app" data-tool-id="dice-roller"></div>
   </div>
 </div>
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use Dice Roller</h2><ol class="howto"><li>Choose how many dice and how many sides (presets for d6 and d20).</li><li>Click Roll.</li><li>Read each die, the total, and recent roll history.</li></ol></section>
+    
     <section><h2>Why use the iHaveTools Dice Roller?</h2>
       <ul>
         <li><strong>Private by design</strong> — This tool runs entirely in your browser. Your data is never uploaded or stored.</li>
@@ -79,12 +84,12 @@
       <p>People also search for this tool as “d20”, “roll dice”, “dice roll” — it is the same free online tool. Dice Roller is part of our <a href="/categories/misc/">Miscellaneous tools</a> collection.</p>
     </section>
     <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>Is Dice Roller free to use?</summary><p class="faq-a">Yes — it is completely free, with no sign-up, no watermarks and no usage limits.</p></details><details><summary>Does my data leave my device?</summary><p class="faq-a">No — this tool runs entirely in your browser. Your data is never uploaded or stored.</p></details><details><summary>What is Dice Roller used for?</summary><p class="faq-a">Roll virtual dice for board games and tabletop RPGs: up to 12 dice, 2–100 sides each (d6, d20, custom), with per-die results, total and roll history.</p></details><details><summary>Is “d20” the same as Dice Roller?</summary><p class="faq-a">Yes — “d20” is another name people use for this tool. This page is the free online Dice Roller: open it and use it right away, with nothing to download or sign up for.</p></details><details><summary>Do I need to install anything to use Dice Roller?</summary><p class="faq-a">No. Dice Roller runs in any modern web browser — on a phone, tablet or computer — as soon as the page opens.</p></details></div></section>
-    <section><h2>Related tools</h2><div class="card-grid cols-3"><a class="tool-card" href="/tools/random-number-generator/">
+    <section><h2>Related tools</h2><div class="card-grid cols-3"><div class="tool-card-shell"><a class="tool-card" href="/tools/random-number-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shuffle"/></svg></span>
   <h3>Random Number Generator</h3>
   <p>Truly random numbers in any range — lottery-grade fairness.</p>
   <span class="card-meta"><span>Miscellaneous</span><span class="go">Open →</span></span>
-</a></div><p style="margin-top:16px"><a class="section-link" href="/categories/misc/">Browse all 2 Miscellaneous tools →</a></p></section>
+</a><button type="button" class="fav-toggle" data-fav-toggle="random-number-generator" aria-pressed="false" aria-label="Save Random Number Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div><p style="margin-top:16px"><a class="section-link" href="/categories/misc/">Browse all 2 Miscellaneous tools →</a></p></section>
   </div>
 </section>
 </main>

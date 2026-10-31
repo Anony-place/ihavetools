@@ -727,6 +727,34 @@ await test('QR codes round-trip through a real decoder (jsQR)', async () => {
   assert.throws(() => seo.makeQrModules(ctx.qrcode, ''), /Enter some text/);
   assert.throws(() => seo.makeQrModules(ctx.qrcode, 'x'.repeat(5000), 'H'), /too long/);
 });
+await test('site.js favourite/recent list helpers (pure)', async () => {
+  const site = await import('../assets/js/site.js');
+  assert.deepEqual(site.toggleId([], 'a'), ['a']);
+  assert.deepEqual(site.toggleId(['a', 'b'], 'a'), ['b']);
+  assert.deepEqual(site.toggleId(['b'], 'a'), ['a', 'b'], 'new favourite goes first');
+  assert.deepEqual(site.pushRecentId(['b', 'a'], 'a'), ['a', 'b'], 're-used tool moves to front without duplicating');
+  assert.deepEqual(site.pushRecentId([], 'x'), ['x']);
+  assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
+});
+await test('registry guides are well-formed and cover the top tools', () => {
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator'];
+  const byId = new Map(registry.tools.map((t) => [t.id, t]));
+  for (const id of expected) {
+    assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
+  }
+  for (const t of registry.tools) {
+    if (!t.guide) continue;
+    assert.ok(Array.isArray(t.guide) && t.guide.length > 0, `${t.id} guide must be a non-empty array`);
+    for (const b of t.guide) {
+      assert.ok(typeof b.h === 'string' && b.h.length > 3, `${t.id} guide block needs a heading`);
+      assert.ok(b.p || (b.list && b.list.length) || b.table, `${t.id} guide block "${b.h}" needs p, list or table`);
+      if (b.table) {
+        assert.ok(b.table.head.length > 0 && b.table.rows.length > 0, `${t.id} guide table needs head + rows`);
+        for (const row of b.table.rows) assert.equal(row.length, b.table.head.length, `${t.id} guide table row width must match head`);
+      }
+    }
+  }
+});
 await test('keyword density math', () => {
   const r = seo.keywordDensity('tool tools tools more words here and more words', { phraseLength: 1, filterStop: false });
   assert.equal(r.total, 9);

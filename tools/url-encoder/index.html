@@ -60,16 +60,21 @@
     <h1>URL Encoder &amp; Decoder</h1>
     <p class="lede">Encode or decode URLs and URL components. Component mode escapes every reserved character; full-URL mode keeps separators like / and ? intact.</p>
     <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> Everything is generated or computed locally in your browser with its cryptographic APIs. Nothing is sent anywhere.</span>
+    <div class="page-head-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="url-encoder" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy link</span></button>
+    </div>
   </header>
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
-    <div id="tool-app"></div>
+    <div id="tool-app" data-tool-id="url-encoder"></div>
   </div>
 </div>
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use URL Encoder &amp; Decoder</h2><ol class="howto"><li>Paste text or an encoded URL.</li><li>Choose Component (values) or Full URL, and Encode or Decode.</li><li>Copy the result. Invalid sequences are reported clearly.</li></ol></section>
+    
     <section><h2>Why use the iHaveTools URL Encoder &amp; Decoder?</h2>
       <ul>
         <li><strong>Private by design</strong> — Everything is generated or computed locally in your browser with its cryptographic APIs. Nothing is sent anywhere.</li>
@@ -79,37 +84,37 @@
       <p>People also search for this tool as “urlencode”, “url escape”, “percent encoding” — it is the same free online tool. URL Encoder &amp; Decoder is part of our <a href="/categories/developer/">Developer tools</a> collection.</p>
     </section>
     <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>Is URL Encoder &amp; Decoder free to use?</summary><p class="faq-a">Yes — it is completely free, with no sign-up, no watermarks and no usage limits.</p></details><details><summary>Does my data leave my device?</summary><p class="faq-a">No — everything is generated or computed locally in your browser with its cryptographic APIs. Nothing is sent anywhere.</p></details><details><summary>What is URL Encoder &amp; Decoder used for?</summary><p class="faq-a">Encode or decode URLs and URL components. Component mode escapes every reserved character; full-URL mode keeps separators like / and ? intact.</p></details><details><summary>Is “urlencode” the same as URL Encoder &amp; Decoder?</summary><p class="faq-a">Yes — “urlencode” is another name people use for this tool. This page is the free online URL Encoder &amp; Decoder: open it and use it right away, with nothing to download or sign up for.</p></details><details><summary>Do I need to install anything to use URL Encoder &amp; Decoder?</summary><p class="faq-a">No. URL Encoder &amp; Decoder runs in any modern web browser — on a phone, tablet or computer — as soon as the page opens.</p></details></div></section>
-    <section><h2>Related tools</h2><div class="card-grid cols-3"><a class="tool-card" href="/tools/uuid-generator/">
+    <section><h2>Related tools</h2><div class="card-grid cols-3"><div class="tool-card-shell"><a class="tool-card" href="/tools/uuid-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-fingerprint"/></svg></span>
   <h3>UUID Generator</h3>
   <p>Bulk-generate RFC 4122 v4 UUIDs with cryptographic randomness.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/hash-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="uuid-generator" aria-pressed="false" aria-label="Save UUID Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/hash-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-hash"/></svg></span>
   <h3>Hash Generator</h3>
   <p>SHA-1, SHA-256, SHA-384 and SHA-512 hashes via Web Crypto.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/jwt-decoder/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="hash-generator" aria-pressed="false" aria-label="Save Hash Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/jwt-decoder/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-key"/></svg></span>
   <h3>JWT Decoder</h3>
   <p>Decode JWT headers and payloads and inspect expiry times.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/random-string-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="jwt-decoder" aria-pressed="false" aria-label="Save JWT Decoder to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/random-string-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shuffle"/></svg></span>
   <h3>Random String Generator</h3>
   <p>Bulk random strings and keys from your browser’s CSPRNG.</p>
   <span class="card-meta"><span>Security</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/json-formatter/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="random-string-generator" aria-pressed="false" aria-label="Save Random String Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/json-formatter/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-braces"/></svg></span>
   <h3>JSON Formatter</h3>
   <p>Format, validate and minify JSON with precise error messages.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/password-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="json-formatter" aria-pressed="false" aria-label="Save JSON Formatter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/password-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-lock"/></svg></span>
   <h3>Password Generator</h3>
   <p>Strong random passwords with entropy readout — all local.</p>
   <span class="card-meta"><span>Security</span><span class="go">Open →</span></span>
-</a></div><p style="margin-top:16px"><a class="section-link" href="/categories/developer/">Browse all 19 Developer tools →</a></p></section>
+</a><button type="button" class="fav-toggle" data-fav-toggle="password-generator" aria-pressed="false" aria-label="Save Password Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div><p style="margin-top:16px"><a class="section-link" href="/categories/developer/">Browse all 19 Developer tools →</a></p></section>
   </div>
 </section>
 </main>

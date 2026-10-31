@@ -60,16 +60,21 @@
     <h1>Color Contrast Checker</h1>
     <p class="lede">Check the contrast ratio between text and background colors against WCAG 2.1 AA and AAA thresholds for normal and large text, with live sample rendering.</p>
     <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> This tool runs entirely in your browser. Your data is never uploaded or stored.</span>
+    <div class="page-head-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="color-contrast-checker" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy link</span></button>
+    </div>
   </header>
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
-    <div id="tool-app"></div>
+    <div id="tool-app" data-tool-id="color-contrast-checker"></div>
   </div>
 </div>
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use Color Contrast Checker</h2><ol class="howto"><li>Set the text and background colors (or use the swap button).</li><li>Read the contrast ratio and WCAG pass/fail for each text size.</li><li>Adjust colors until the levels you need pass.</li></ol></section>
+    
     <section><h2>Why use the iHaveTools Color Contrast Checker?</h2>
       <ul>
         <li><strong>Private by design</strong> — This tool runs entirely in your browser. Your data is never uploaded or stored.</li>
@@ -79,22 +84,22 @@
       <p>People also search for this tool as “wcag contrast”, “accessibility checker”, “contrast ratio” — it is the same free online tool. Color Contrast Checker is part of our <a href="/categories/color/">Color tools</a> collection.</p>
     </section>
     <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>Is Color Contrast Checker free to use?</summary><p class="faq-a">Yes — it is completely free, with no sign-up, no watermarks and no usage limits.</p></details><details><summary>Does my data leave my device?</summary><p class="faq-a">No — this tool runs entirely in your browser. Your data is never uploaded or stored.</p></details><details><summary>What is Color Contrast Checker used for?</summary><p class="faq-a">Check the contrast ratio between text and background colors against WCAG 2.1 AA and AAA thresholds for normal and large text, with live sample rendering.</p></details><details><summary>Is “wcag contrast” the same as Color Contrast Checker?</summary><p class="faq-a">Yes — “wcag contrast” is another name people use for this tool. This page is the free online Color Contrast Checker: open it and use it right away, with nothing to download or sign up for.</p></details><details><summary>Do I need to install anything to use Color Contrast Checker?</summary><p class="faq-a">No. Color Contrast Checker runs in any modern web browser — on a phone, tablet or computer — as soon as the page opens.</p></details></div></section>
-    <section><h2>Related tools</h2><div class="card-grid cols-3"><a class="tool-card" href="/tools/hex-rgb-converter/">
+    <section><h2>Related tools</h2><div class="card-grid cols-3"><div class="tool-card-shell"><a class="tool-card" href="/tools/hex-rgb-converter/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-swap"/></svg></span>
   <h3>HEX / RGB / HSL Converter</h3>
   <p>Convert colors between HEX, RGB and HSL — both ways.</p>
   <span class="card-meta"><span>Color</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/color-picker/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="hex-rgb-converter" aria-pressed="false" aria-label="Save HEX / RGB / HSL Converter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/color-picker/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-droplet"/></svg></span>
   <h3>Color Picker</h3>
   <p>Pick colors, get every format, plus tints and shades.</p>
   <span class="card-meta"><span>Color</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/palette-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="color-picker" aria-pressed="false" aria-label="Save Color Picker to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/palette-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-palette"/></svg></span>
   <h3>Palette Generator</h3>
   <p>Build color harmonies from one base color.</p>
   <span class="card-meta"><span>Color</span><span class="go">Open →</span></span>
-</a></div><p style="margin-top:16px"><a class="section-link" href="/categories/color/">Browse all 4 Color tools →</a></p></section>
+</a><button type="button" class="fav-toggle" data-fav-toggle="palette-generator" aria-pressed="false" aria-label="Save Palette Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div><p style="margin-top:16px"><a class="section-link" href="/categories/color/">Browse all 4 Color tools →</a></p></section>
   </div>
 </section>
 </main>

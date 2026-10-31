@@ -60,16 +60,21 @@
     <h1>Image to PDF</h1>
     <p class="lede">Convert one or more images (JPG, PNG, WebP, GIF and more) into a single PDF document, one image per page, in your chosen order. Choose A4, Letter or original image size for the pages. Conversion happens locally — images are never uploaded.</p>
     <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> Your file is processed locally in your browser and is not uploaded.</span>
+    <div class="page-head-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="image-to-pdf" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy link</span></button>
+    </div>
   </header>
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
-    <div id="tool-app"></div>
+    <div id="tool-app" data-tool-id="image-to-pdf"></div>
   </div>
 </div>
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use Image to PDF</h2><ol class="howto"><li>Drop in one or more images (JPG, PNG, WebP…).</li><li>Reorder them with the ↑/↓ buttons — each image becomes one page.</li><li>Choose A4, Letter or image-size pages, click Convert to PDF and download.</li></ol></section>
+    <section><h2>Image to PDF guide</h2><h3>When turning images into one PDF is the right move</h3><ul><li>Exams, admissions and job portals that say “upload a single PDF” for marksheets, ID proofs or certificates.</li><li>Combining photographed assignment pages or a multi-page handwritten answer into one ordered document.</li><li>Sending a set of photos (receipts, site pictures, documents) as one tidy file instead of ten loose attachments.</li><li>Printing several images predictably — a PDF page has fixed size and margins, a loose image does not.</li></ul><h3>Get a cleaner, smaller result</h3><ul><li>Photograph documents in even light, filling the frame, with no shadow of your phone or hand across the page.</li><li>Order pages with the ↑/↓ buttons before converting — page order mistakes are the most common complaint from whoever receives the file.</li><li>Choose A4 pages for anything that will be printed or uploaded to a form; choose image-size pages only when the exact photo proportions matter.</li><li>Too big to upload? Most portals cap file sizes — run large photos through the Image Compressor first (JPEG, quality ~80, max width ~1600 px) and the PDF usually shrinks 5–10×.</li></ul><h3>Will the text in my PDF be searchable?</h3><p>No. Each page of the PDF is your image placed on a page — there is no OCR (text recognition) step, so words in the picture can’t be searched, selected or copied. That’s perfect for forms, certificates and photos. If you need copyable text, the document has to be created (or OCR-processed) as real text instead.</p></section>
     <section><h2>Why use the iHaveTools Image to PDF?</h2>
       <ul>
         <li><strong>Private by design</strong> — Your file is processed locally in your browser and is not uploaded.</li>
@@ -79,37 +84,37 @@
       <p>People also search for this tool as “jpg to pdf”, “png to pdf”, “photo to pdf” — it is the same free online tool. Image to PDF is part of our <a href="/categories/pdf/">PDF &amp; Documents tools</a> collection.</p>
     </section>
     <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>Are my images uploaded to a server?</summary><p class="faq-a">No. The PDF is built entirely in your browser with the pdf-lib library. Your images never leave your device, which also means there is no size queue or waiting.</p></details><details><summary>Which image formats are supported?</summary><p class="faq-a">JPG and PNG are embedded at full original quality. Other formats your browser can display (WebP, GIF, BMP, AVIF in supporting browsers) are converted through the canvas at high quality.</p></details><details><summary>Can I put several images into one PDF?</summary><p class="faq-a">Yes — add as many images as you like and order them with the arrow buttons. Each image becomes one page, automatically using a landscape page when the image is wider than it is tall (in A4/Letter modes).</p></details><details><summary>What is Image to PDF used for?</summary><p class="faq-a">Convert one or more images (JPG, PNG, WebP, GIF and more) into a single PDF document, one image per page, in your chosen order. Choose A4, Letter or original image size for the pages. Conversion happens locally — images are never uploaded.</p></details><details><summary>Is “jpg to pdf” the same as Image to PDF?</summary><p class="faq-a">Yes — “jpg to pdf” is another name people use for this tool. This page is the free online Image to PDF: open it and use it right away, with nothing to download or sign up for.</p></details><details><summary>Do I need to install anything to use Image to PDF?</summary><p class="faq-a">No. Image to PDF runs in any modern web browser — on a phone, tablet or computer — as soon as the page opens.</p></details></div></section>
-    <section><h2>Related tools</h2><div class="card-grid cols-3"><a class="tool-card" href="/tools/qr-code-generator/">
+    <section><h2>Related tools</h2><div class="card-grid cols-3"><div class="tool-card-shell"><a class="tool-card" href="/tools/qr-code-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-qr"/></svg></span>
   <h3>QR Code Generator</h3>
   <p>Create QR codes for links, text and Wi-Fi — download as PNG or SVG.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/image-compressor/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="qr-code-generator" aria-pressed="false" aria-label="Save QR Code Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/image-compressor/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>Image Compressor</h3>
   <p>Shrink JPG, PNG and WebP in your browser — no uploads.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/jpg-to-png/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="image-compressor" aria-pressed="false" aria-label="Save Image Compressor to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/jpg-to-png/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>JPG to PNG Converter</h3>
   <p>Convert JPG/JPEG images to PNG losslessly, right in your browser.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/png-to-jpg/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="jpg-to-png" aria-pressed="false" aria-label="Save JPG to PNG Converter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/png-to-jpg/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-image"/></svg></span>
   <h3>PNG to JPG Converter</h3>
   <p>Convert PNG images to smaller JPGs, with a background colour for transparency.</p>
   <span class="card-meta"><span>Image</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/youtube-thumbnail-downloader/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="png-to-jpg" aria-pressed="false" aria-label="Save PNG to JPG Converter to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/youtube-thumbnail-downloader/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-film"/></svg></span>
   <h3>YouTube Thumbnail Downloader</h3>
   <p>Download any YouTube video thumbnail in HD, SD and more sizes.</p>
   <span class="card-meta"><span>Video</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/pdf-merge/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="youtube-thumbnail-downloader" aria-pressed="false" aria-label="Save YouTube Thumbnail Downloader to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/pdf-merge/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-layers"/></svg></span>
   <h3>PDF Merge</h3>
   <p>Combine PDFs in order — processed entirely in your browser.</p>
   <span class="card-meta"><span>PDF &amp; Documents</span><span class="go">Open →</span></span>
-</a></div><p style="margin-top:16px"><a class="section-link" href="/categories/pdf/">Browse all 4 PDF &amp; Documents tools →</a></p></section>
+</a><button type="button" class="fav-toggle" data-fav-toggle="pdf-merge" aria-pressed="false" aria-label="Save PDF Merge to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div><p style="margin-top:16px"><a class="section-link" href="/categories/pdf/">Browse all 4 PDF &amp; Documents tools →</a></p></section>
   </div>
 </section>
 </main>

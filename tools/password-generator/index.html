@@ -60,16 +60,21 @@
     <h1>Password Generator</h1>
     <p class="lede">Create strong passwords of any length with the character sets you choose. Uses crypto.getRandomValues with unbiased selection, and shows real entropy.</p>
     <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> Everything is generated or computed locally in your browser with its cryptographic APIs. Nothing is sent anywhere.</span>
+    <div class="page-head-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="password-generator" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy link</span></button>
+    </div>
   </header>
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
-    <div id="tool-app"></div>
+    <div id="tool-app" data-tool-id="password-generator"></div>
   </div>
 </div>
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use Password Generator</h2><ol class="howto"><li>Set the length and toggle character sets (upper, lower, digits, symbols).</li><li>Optionally exclude look-alike characters.</li><li>Click Generate, then copy. Every password is created locally.</li></ol></section>
+    <section><h2>Password Generator guide</h2><h3>Entropy: the one number that measures password strength</h3><p>Entropy (in bits) = password length × log₂(characters to choose from). It counts how many guesses an attacker must try. This only holds for truly random passwords — like the ones this tool makes with your browser’s cryptographic random generator. Human-invented passwords (“Dragon@2024”) have far less real entropy than they appear to, because attackers try patterns, names and substitutions first.</p><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">Characters allowed</th><th scope="col">8 characters</th><th scope="col">12 characters</th><th scope="col">16 characters</th></tr></thead><tbody><tr><td>Lowercase only (26)</td><td>37.6 bits</td><td>56.4 bits</td><td>75.2 bits</td></tr><tr><td>Letters + digits (62)</td><td>47.6 bits</td><td>71.5 bits</td><td>95.3 bits</td></tr><tr><td>All printable (94)</td><td>52.4 bits</td><td>78.7 bits</td><td>104.9 bits</td></tr></tbody></table></div><h3>How to read the table</h3><ul><li>Under ~50 bits: crackable offline in hours-to-days if a site’s password database leaks. Fine only for throwaway accounts.</li><li>65–80 bits: strong for everyday accounts — a 12-character password using all character sets (78.7 bits) is a good default.</li><li>90+ bits: use for your email, banking and password-manager master password. Notice length beats complexity: 16 lowercase-only characters (75.2 bits) beat 8 “complex” ones (52.4 bits).</li></ul><h3>Rules that matter more than any single password</h3><ul><li>Never reuse a password across sites — one leaked site unlocks everything else. This causes more account takeovers than weak passwords do.</li><li>Store generated passwords in a password manager; you only memorise one strong master password.</li><li>Turn on two-factor authentication (2FA) wherever it exists — a stolen password alone then isn’t enough.</li><li>Clever substitutions (P@ssw0rd!) add almost nothing; attackers’ dictionaries already include them. Random and long wins.</li></ul></section>
     <section><h2>Why use the iHaveTools Password Generator?</h2>
       <ul>
         <li><strong>Private by design</strong> — Everything is generated or computed locally in your browser with its cryptographic APIs. Nothing is sent anywhere.</li>
@@ -79,37 +84,37 @@
       <p>People also search for this tool as “random password”, “strong password generator”, “password maker” — it is the same free online tool. Password Generator is part of our <a href="/categories/security/">Security tools</a> collection.</p>
     </section>
     <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>Are the passwords sent anywhere?</summary><p class="faq-a">No. Passwords are generated in your browser with the Web Crypto API and never leave your device. There is no server component.</p></details><details><summary>What makes these passwords strong?</summary><p class="faq-a">Length and true randomness. The tool uses unbiased selection from your chosen character sets and reports the entropy in bits — aim for 75+ bits.</p></details><details><summary>What is Password Generator used for?</summary><p class="faq-a">Create strong passwords of any length with the character sets you choose. Uses crypto.getRandomValues with unbiased selection, and shows real entropy.</p></details><details><summary>Is “random password” the same as Password Generator?</summary><p class="faq-a">Yes — “random password” is another name people use for this tool. This page is the free online Password Generator: open it and use it right away, with nothing to download or sign up for.</p></details><details><summary>Do I need to install anything to use Password Generator?</summary><p class="faq-a">No. Password Generator runs in any modern web browser — on a phone, tablet or computer — as soon as the page opens.</p></details></div></section>
-    <section><h2>Related tools</h2><div class="card-grid cols-3"><a class="tool-card" href="/tools/uuid-generator/">
+    <section><h2>Related tools</h2><div class="card-grid cols-3"><div class="tool-card-shell"><a class="tool-card" href="/tools/uuid-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-fingerprint"/></svg></span>
   <h3>UUID Generator</h3>
   <p>Bulk-generate RFC 4122 v4 UUIDs with cryptographic randomness.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/url-encoder/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="uuid-generator" aria-pressed="false" aria-label="Save UUID Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/url-encoder/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span>
   <h3>URL Encoder &amp; Decoder</h3>
   <p>Percent-encode or decode text and whole URLs, correctly.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/hash-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="url-encoder" aria-pressed="false" aria-label="Save URL Encoder &amp; Decoder to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/hash-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-hash"/></svg></span>
   <h3>Hash Generator</h3>
   <p>SHA-1, SHA-256, SHA-384 and SHA-512 hashes via Web Crypto.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/password-strength-checker/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="hash-generator" aria-pressed="false" aria-label="Save Hash Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/password-strength-checker/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield"/></svg></span>
   <h3>Password Strength Checker</h3>
   <p>Entropy, crack-time estimates and weakness checks — locally.</p>
   <span class="card-meta"><span>Security</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/jwt-decoder/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="password-strength-checker" aria-pressed="false" aria-label="Save Password Strength Checker to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/jwt-decoder/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-key"/></svg></span>
   <h3>JWT Decoder</h3>
   <p>Decode JWT headers and payloads and inspect expiry times.</p>
   <span class="card-meta"><span>Developer</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/random-string-generator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="jwt-decoder" aria-pressed="false" aria-label="Save JWT Decoder to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/random-string-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shuffle"/></svg></span>
   <h3>Random String Generator</h3>
   <p>Bulk random strings and keys from your browser’s CSPRNG.</p>
   <span class="card-meta"><span>Security</span><span class="go">Open →</span></span>
-</a></div><p style="margin-top:16px"><a class="section-link" href="/categories/security/">Browse all 7 Security tools →</a></p></section>
+</a><button type="button" class="fav-toggle" data-fav-toggle="random-string-generator" aria-pressed="false" aria-label="Save Random String Generator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div><p style="margin-top:16px"><a class="section-link" href="/categories/security/">Browse all 7 Security tools →</a></p></section>
   </div>
 </section>
 </main>

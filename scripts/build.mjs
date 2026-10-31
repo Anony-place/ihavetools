@@ -63,6 +63,29 @@ function faqsFor(tool) {
   return faqs.slice(0, 6);
 }
 
+/* Optional hand-written deep content per tool (registry `guide` field):
+   [{ h, p: string|string[], list: string[], table: {head, rows} }].
+   Rendered as static HTML so crawlers and no-JS readers get the full text —
+   this is what turns a thin tool page into a rankable, genuinely useful one. */
+function guideHtml(tool) {
+  if (!Array.isArray(tool.guide) || !tool.guide.length) return '';
+  const blocks = tool.guide.map((b) => {
+    const parts = [`<h3>${esc(b.h)}</h3>`];
+    const paras = b.p ? (Array.isArray(b.p) ? b.p : [b.p]) : [];
+    for (const p of paras) parts.push(`<p>${esc(p)}</p>`);
+    if (Array.isArray(b.list) && b.list.length) {
+      parts.push(`<ul>${b.list.map((li) => `<li>${esc(li)}</li>`).join('')}</ul>`);
+    }
+    if (b.table && Array.isArray(b.table.head) && Array.isArray(b.table.rows)) {
+      const head = b.table.head.map((c) => `<th scope="col">${esc(c)}</th>`).join('');
+      const rows = b.table.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('');
+      parts.push(`<div class="table-wrap"><table class="data-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`);
+    }
+    return parts.join('');
+  }).join('');
+  return `<section><h2>${esc(tool.name)} guide</h2>${blocks}</section>`;
+}
+
 /** Trim a meta description to the ~155 chars search engines display. */
 function metaDesc(text) {
   const s = String(text).replace(/\s+/g, ' ').trim();
@@ -166,12 +189,12 @@ ${moduleEntry ? `<script type="module">import { mount } from '${moduleEntry.modu
 /* ---------- components ---------- */
 function toolCard(t) {
   const cat = categoryById.get(t.categories[0]);
-  return `<a class="tool-card" href="${ROOT_PREFIX}tools/${t.id}/">
+  return `<div class="tool-card-shell"><a class="tool-card" href="${ROOT_PREFIX}tools/${t.id}/">
   <span class="tool-icon">${icon(t.icon)}</span>
   <h3>${esc(t.name)}</h3>
   <p>${esc(t.blurb)}</p>
   <span class="card-meta"><span>${esc(cat?.name || '')}</span><span class="go">Open →</span></span>
-</a>`;
+</a><button type="button" class="fav-toggle" data-fav-toggle="${t.id}" aria-pressed="false" aria-label="Save ${esc(t.name)} to favourites" title="Save to favourites">${icon('star')}</button></div>`;
 }
 function categoryCard(c) {
   const count = toolsByCategory(c.id).length;
@@ -213,6 +236,24 @@ function buildHome() {
       <kbd>/</kbd>
       <ul class="search-results" id="search-results" hidden></ul>
     </div>
+  </div>
+</section>
+
+<section class="section" id="recent-section" hidden>
+  <div class="container">
+    <div class="section-head">
+      <div><h2>Recently used</h2><p class="section-sub">Pick up where you left off — remembered only in this browser.</p></div>
+    </div>
+    <div class="card-grid" id="recent-grid"></div>
+  </div>
+</section>
+
+<section class="section tint" id="favourites-section" hidden>
+  <div class="container">
+    <div class="section-head">
+      <div><h2>Your favourites</h2><p class="section-sub">Star any tool to pin it here. Saved on this device only — no account needed.</p></div>
+    </div>
+    <div class="card-grid" id="favourites-grid"></div>
   </div>
 </section>
 
@@ -358,16 +399,21 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
     <h1>${esc(t.name)}</h1>
     <p class="lede">${esc(t.description)}</p>
     <span class="privacy-note">${icon('shield-check')} ${esc(privacy)}</span>
+    <div class="page-head-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="${t.id}" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex">${icon('star')}</span> <span data-fav-label>Add to favourites</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex">${icon('link')}</span> <span data-copy-label>Copy link</span></button>
+    </div>
   </header>
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
-    <div id="tool-app"></div>
+    <div id="tool-app" data-tool-id="${t.id}"></div>
   </div>
 </div>
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use ${esc(t.name)}</h2><ol class="howto">${t.steps.split('|').map((s) => `<li>${esc(s)}</li>`).join('')}</ol></section>
+    ${guideHtml(t)}
     <section><h2>Why use the iHaveTools ${esc(t.name)}?</h2>
       <ul>
         <li><strong>Private by design</strong> — ${esc(privacy)}</li>

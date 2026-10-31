@@ -60,16 +60,21 @@
     <h1>SIP Calculator</h1>
     <p class="lede">Calculate the future value of a monthly SIP (Systematic Investment Plan) from your monthly investment, expected annual return and duration — with invested amount, estimated gains and a year-by-year growth table.</p>
     <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> This tool runs entirely in your browser. Your data is never uploaded or stored.</span>
+    <div class="page-head-actions">
+      <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="sip-calculator" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy link</span></button>
+    </div>
   </header>
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
-    <div id="tool-app"></div>
+    <div id="tool-app" data-tool-id="sip-calculator"></div>
   </div>
 </div>
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use SIP Calculator</h2><ol class="howto"><li>Enter your monthly investment amount.</li><li>Enter the expected annual return (long-term equity funds have historically averaged around 12%).</li><li>Choose the duration in years and read the maturity value and year-by-year growth.</li></ol></section>
+    <section><h2>SIP Calculator guide</h2><h3>The SIP formula this calculator uses</h3><p>Future value = P × [((1 + i)ⁿ − 1) ÷ i] × (1 + i), where P is your monthly investment, i is the monthly return (annual rate ÷ 12 ÷ 100) and n is the number of months. Each instalment is treated as invested at the start of the month and compounded monthly — the same convention most fund-house calculators use.</p><h3>Worked example: ₹5,000/month at 12% expected return</h3><p>Time in the market does the heavy lifting — compare what the same ₹5,000 a month becomes purely by staying invested longer:</p><div class="table-wrap"><table class="data-table"><thead><tr><th scope="col">Duration</th><th scope="col">You invest</th><th scope="col">Estimated value</th><th scope="col">Estimated gain</th></tr></thead><tbody><tr><td>10 years</td><td>₹6,00,000</td><td>₹11,61,695</td><td>₹5,61,695</td></tr><tr><td>15 years</td><td>₹9,00,000</td><td>₹25,22,880</td><td>₹16,22,880</td></tr><tr><td>20 years</td><td>₹12,00,000</td><td>₹49,95,740</td><td>₹37,95,740</td></tr></tbody></table></div><h3>Read this before trusting any SIP projection</h3><ul><li>Returns are assumed, not guaranteed. Real markets don’t grow a smooth 12% a year — they zig-zag, and your actual result depends on the path.</li><li>The estimate ignores expense ratios, exit loads and taxes (equity LTCG is taxed above the exempt limit), so the real maturity value will be somewhat lower.</li><li>Increasing your SIP every year (a “step-up SIP”) as your salary grows changes the outcome far more than chasing a higher assumed return.</li><li>Use the output for goal planning (“roughly how much must I invest monthly?”), not as a promise from any fund.</li></ul></section>
     <section><h2>Why use the iHaveTools SIP Calculator?</h2>
       <ul>
         <li><strong>Private by design</strong> — This tool runs entirely in your browser. Your data is never uploaded or stored.</li>
@@ -79,37 +84,37 @@
       <p>People also search for this tool as “sip return calculator”, “mutual fund calculator”, “sip planner” — it is the same free online tool. SIP Calculator is part of our <a href="/categories/calculators/">Calculators tools</a> collection.</p>
     </section>
     <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>How is SIP return calculated?</summary><p class="faq-a">Each monthly installment is treated as invested at the start of the month and compounded monthly at one-twelfth of the expected annual return. The maturity value is the sum of all installments plus their compounded growth.</p></details><details><summary>What return should I assume for equity mutual funds?</summary><p class="faq-a">Many planners use 12% per year as a long-term planning assumption for diversified equity funds, but actual market returns vary year to year and are never guaranteed. Try 10% and 14% as well to see a range.</p></details><details><summary>Is SIP better than a lump sum investment?</summary><p class="faq-a">A SIP spreads purchases across market ups and downs (rupee-cost averaging) and suits money you earn monthly. A lump sum invested early often ends higher in rising markets but carries timing risk. The two can also be combined.</p></details><details><summary>What is SIP Calculator used for?</summary><p class="faq-a">Calculate the future value of a monthly SIP (Systematic Investment Plan) from your monthly investment, expected annual return and duration — with invested amount, estimated gains and a year-by-year growth table.</p></details><details><summary>Is “sip return calculator” the same as SIP Calculator?</summary><p class="faq-a">Yes — “sip return calculator” is another name people use for this tool. This page is the free online SIP Calculator: open it and use it right away, with nothing to download or sign up for.</p></details><details><summary>Do I need to install anything to use SIP Calculator?</summary><p class="faq-a">No. SIP Calculator runs in any modern web browser — on a phone, tablet or computer — as soon as the page opens.</p></details></div></section>
-    <section><h2>Related tools</h2><div class="card-grid cols-3"><a class="tool-card" href="/tools/percentage-calculator/">
+    <section><h2>Related tools</h2><div class="card-grid cols-3"><div class="tool-card-shell"><a class="tool-card" href="/tools/percentage-calculator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-percent"/></svg></span>
   <h3>Percentage Calculator</h3>
   <p>Three percentage calculations in one tool, with worked formulas.</p>
   <span class="card-meta"><span>Calculators</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/income-tax-calculator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="percentage-calculator" aria-pressed="false" aria-label="Save Percentage Calculator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/income-tax-calculator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-receipt"/></svg></span>
   <h3>Income Tax Calculator</h3>
   <p>India income tax for FY 2025-26 — old vs new regime compared instantly.</p>
   <span class="card-meta"><span>Calculators</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/ppf-calculator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="income-tax-calculator" aria-pressed="false" aria-label="Save Income Tax Calculator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/ppf-calculator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-bank"/></svg></span>
   <h3>PPF Calculator</h3>
   <p>PPF maturity, interest and year-by-year balance at the current 7.1% rate.</p>
   <span class="card-meta"><span>Calculators</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/fd-calculator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="ppf-calculator" aria-pressed="false" aria-label="Save PPF Calculator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/fd-calculator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-coins"/></svg></span>
   <h3>FD Calculator</h3>
   <p>Fixed deposit maturity and interest with quarterly compounding.</p>
   <span class="card-meta"><span>Calculators</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/age-calculator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="fd-calculator" aria-pressed="false" aria-label="Save FD Calculator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/age-calculator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-cake"/></svg></span>
   <h3>Age Calculator</h3>
   <p>Exact age in years, months and days — plus the next birthday.</p>
   <span class="card-meta"><span>Calculators</span><span class="go">Open →</span></span>
-</a><a class="tool-card" href="/tools/bmi-calculator/">
+</a><button type="button" class="fav-toggle" data-fav-toggle="age-calculator" aria-pressed="false" aria-label="Save Age Calculator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div><div class="tool-card-shell"><a class="tool-card" href="/tools/bmi-calculator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-activity"/></svg></span>
   <h3>BMI Calculator</h3>
   <p>Body Mass Index in metric or imperial, with WHO categories.</p>
   <span class="card-meta"><span>Calculators</span><span class="go">Open →</span></span>
-</a></div><p style="margin-top:16px"><a class="section-link" href="/categories/calculators/">Browse all 14 Calculators tools →</a></p></section>
+</a><button type="button" class="fav-toggle" data-fav-toggle="bmi-calculator" aria-pressed="false" aria-label="Save BMI Calculator to favourites" title="Save to favourites"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></button></div></div><p style="margin-top:16px"><a class="section-link" href="/categories/calculators/">Browse all 14 Calculators tools →</a></p></section>
   </div>
 </section>
 </main>

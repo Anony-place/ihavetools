@@ -248,6 +248,23 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
 .card-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 0.78rem; color: var(--text-3); font-weight: 600; }
 .card-meta .go { margin-left: auto; color: var(--primary); }
 
+/* Favourite (star) toggle overlaid on every tool card */
+.tool-card-shell { position: relative; }
+.tool-card-shell .tool-card { height: 100%; }
+.fav-toggle {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  width: 32px; height: 32px; display: grid; place-items: center;
+  border-radius: 9px; border: 1px solid transparent; background: transparent;
+  color: var(--text-3); cursor: pointer; padding: 0;
+  transition: color var(--dur), background var(--dur), border-color var(--dur);
+}
+.fav-toggle svg { width: 18px; height: 18px; }
+.fav-toggle:hover, .fav-toggle:focus-visible { color: #d97706; background: var(--surface-2); border-color: var(--border); }
+[data-fav-toggle][aria-pressed="true"] { color: #d97706; }
+[data-fav-toggle][aria-pressed="true"] svg { fill: currentColor; }
+.page-head-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.tool-docs .table-wrap { margin: 12px 0 18px; }
+
 .category-card {
   display: flex; flex-direction: column; gap: 8px;
   background: var(--surface); border: 1px solid var(--border);

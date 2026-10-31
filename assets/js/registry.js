@@ -40,8 +40,10 @@ export const categories = [
 // fields: id (slug), name, icon, categories (first = primary), blurb (cards),
 // description (page lede), keywords, aliases, popularity 0-100, featured,
 // added (ISO date), steps "a|b|c", faqs optional [{q,a}], privacyOverride,
-// engine (which grouped module implements it), related (optional override)
-const T = (t) => ({ popularity: 50, featured: false, faqs: null, aliases: [], related: null, privacyOverride: null, ...t });
+// engine (which grouped module implements it), related (optional override),
+// guide optional [{h, p|list|table:{head,rows}}] — hand-written deep content
+// rendered as static HTML on the tool page (top tools first; see PLAN.md).
+const T = (t) => ({ popularity: 50, featured: false, faqs: null, guide: null, aliases: [], related: null, privacyOverride: null, ...t });
 
 export const tools = [
   // ── Developer ──────────────────────────────────────────────────────────────
@@ -52,6 +54,24 @@ export const tools = [
     aliases: ['json beautifier', 'json pretty print', 'json prettifier', 'json parser'],
     popularity: 98, featured: true, added: '2026-06-02',
     steps: 'Paste your JSON into the input box.|Choose Format (pretty-print) or Minify, and an indent size.|Fix any reported error, then copy or download the result.',
+    guide: [
+      { h: 'The 5 JSON errors everyone hits — and the fix for each',
+        p: 'JSON is stricter than JavaScript object syntax, and almost every “invalid JSON” error comes from one of these five causes. This tool tells you the exact line and column of the first problem; match it against the table:',
+        table: { head: ['What you probably typed', 'Why JSON rejects it', 'Fix'], rows: [
+          ['{"a": 1,}', 'Trailing comma before } or ]', 'Remove the last comma'],
+          ["{'a': 1}", 'Single quotes', 'Use double quotes: {"a": 1}'],
+          ['{a: 1}', 'Unquoted key', 'Quote every key: {"a": 1}'],
+          ['{"a": 1} // comment', 'JSON has no comments', 'Delete the comment (or use JSONC/JSON5 in tools that support it)'],
+          ['{"a": undefined} or NaN', 'Not valid JSON values', 'Use null, a number, or a quoted string'],
+        ] } },
+      { h: 'Format or minify — which one do you need?', list: [
+        'Format (pretty-print) when a human will read it: debugging API responses, reviewing config files, diffing in Git. 2-space indent is the near-universal convention.',
+        'Minify when a machine will read it: sending payloads over the network, embedding in HTML, or storing compactly. Whitespace can be 20–40% of a pretty-printed file.',
+        'Neither changes your data — key order, values and types stay exactly the same; only whitespace differs.',
+      ] },
+      { h: 'Fix errors top-down',
+        p: 'A parser stops at the first thing it cannot understand, and one early mistake (like a missing quote) can make everything after it look broken. Fix the reported line first, re-run, and repeat — most files that “have a hundred errors” really have one or two.' },
+    ],
     faqs: [
       { q: 'Is my JSON sent to a server?', a: 'No. Parsing and formatting happen entirely in your browser with JavaScript. The content never leaves your device.' },
       { q: 'How do I find where my JSON is broken?', a: 'Run the formatter with invalid JSON — the tool reports the exact line and column of the first syntax error, plus the reason the parser gave.' },
@@ -204,6 +224,21 @@ export const tools = [
     aliases: ['word count', 'count words', 'essay counter'],
     popularity: 95, featured: true, added: '2026-06-01',
     steps: 'Type or paste text into the box.|Statistics update live as you type.|Use Clear to start over.',
+    guide: [
+      { h: 'How reading time is calculated',
+        p: 'The average adult reads silently at roughly 200 words per minute, so this tool divides your word count by 200. Reading aloud is slower — about 130–150 words per minute — which is the number to use when timing a speech, presentation or video script. A 5-minute talk is therefore roughly 650–750 words, not 1,000.' },
+      { h: 'Typical lengths people aim for',
+        table: { head: ['What you’re writing', 'Typical length'], rows: [
+          ['X (Twitter) post', '280 characters'],
+          ['Meta description (SEO)', '~155 characters'],
+          ['School/college essay', '300–500 words (short), 1,000+ (long)'],
+          ['Blog post', '1,500–2,500 words'],
+          ['10-minute speech', '~1,300–1,500 words'],
+          ['Novel chapter', '2,000–4,000 words'],
+        ] } },
+      { h: 'Word count or character count?',
+        p: 'Essays, articles and assignments are almost always limited by words. Social posts, SMS, form fields and SEO titles are limited by characters — sometimes counting spaces, sometimes not. This tool shows both (characters with and without spaces); for platform-by-platform limits, use the Character Counter instead.' },
+    ],
     faqs: [
       { q: 'How is reading time calculated?', a: 'Words are divided by 200 — the average adult silent reading speed — and rounded up to the nearest 5 seconds.' },
       { q: 'What counts as a sentence?', a: 'Text separated by sentence-ending punctuation (. ! ? …). Abbreviations without punctuation are not split.' },
@@ -272,7 +307,28 @@ export const tools = [
     keywords: ['percentage', 'percent of', 'percent change', 'percent calculator', 'discount math'],
     aliases: ['percent calculator', 'calculate percentage'],
     popularity: 93, featured: true, added: '2026-06-01',
-    steps: 'Pick the calculation type: percent of, what percent, or change.|Enter your numbers.|Read the result with the exact formula used.' }),
+    steps: 'Pick the calculation type: percent of, what percent, or change.|Enter your numbers.|Read the result with the exact formula used.',
+    faqs: [
+      { q: 'How do I calculate my marks percentage?', a: 'Divide the marks you scored by the total marks and multiply by 100. Example: 432 out of 500 = (432 ÷ 500) × 100 = 86.4%. Use the “what percent” mode above.' },
+      { q: 'What is the difference between percentage change and percentage points?', a: 'Percentage change is relative to the starting value; percentage points is the plain difference between two percentages. If an interest rate rises from 4% to 5%, that is +1 percentage point — but a +25% increase relative to the old rate.' },
+      { q: 'Can a percentage be more than 100%?', a: 'Yes. Whenever the part is bigger than the base you compare against — for example ₹300 profit on a ₹200 cost is 150% of the cost. Percentages over 100 simply mean “more than the whole reference value”.' },
+    ],
+    guide: [
+      { h: 'The three percentage formulas (with examples)',
+        table: { head: ['Question', 'Formula', 'Example'], rows: [
+          ['What is X% of Y?', '(X ÷ 100) × Y', '15% of 240 = 36'],
+          ['X is what % of Y?', '(X ÷ Y) × 100', '36 is 15% of 240'],
+          ['% change from X to Y', '((Y − X) ÷ X) × 100', '240 → 300 is +25%'],
+        ] } },
+      { h: 'Percentage points vs percent — the mix-up to avoid',
+        p: 'When a rate moves from 4% to 5%, headlines sometimes say “up 1%”. That’s wrong: it rose by 1 percentage point, which is a 25% increase relative to the original 4%. Percentage points subtract; percent divides. Whenever both numbers are themselves percentages, say “percentage points” for the difference.' },
+      { h: 'Mental-math shortcuts worth memorising', list: [
+        '10% of anything: move the decimal one place left (10% of 465 = 46.5).',
+        '5% = half of 10%; 1% = divide by 100. Build others from these: 15% = 10% + 5%.',
+        'X% of Y equals Y% of X — so 8% of 50 is just 50% of 8 = 4. Pick whichever side is easier.',
+        'For tips and discounts, anchor on 10%: 18% tip on ₹950 ≈ 95 + 76 (8%) ≈ ₹171.',
+      ] },
+    ] }),
   T({ id: 'percentage-change', name: 'Percentage Change', icon: 'trending', engine: 'calculators', categories: ['calculators', 'math'],
     blurb: 'Percentage increase or decrease between two values.',
     description: 'Measure percentage increase or decrease from an old value to a new one, including the absolute difference. Zero-start cases are handled honestly.',
@@ -293,14 +349,53 @@ export const tools = [
     keywords: ['age', 'date of birth', 'birthday', 'how old am i', 'age calculator'],
     aliases: ['how old am i', 'birthday calculator', 'dob calculator'],
     popularity: 88, added: '2026-06-01',
-    steps: 'Pick your date of birth.|Optionally set an “age at date” other than today.|Read your exact age, total days and next-birthday countdown.' }),
+    steps: 'Pick your date of birth.|Optionally set an “age at date” other than today.|Read your exact age, total days and next-birthday countdown.',
+    faqs: [
+      { q: 'Can I calculate age on a specific date, not just today?', a: 'Yes — set the optional “age at date” field. This is what exam and job forms mean by “age as on 1 January”: your completed years/months/days on that exact date, which can decide eligibility.' },
+      { q: 'Why does my exact age in months/days sometimes look one day off?', a: 'Because months have different lengths. Exact age counts completed years, then completed months, then the leftover days — borrowing days from the previous month when needed. Leap years (an extra day every 4 years) are counted in your total days.' },
+      { q: 'I was born on 29 February. When do I officially get older?', a: 'It depends on the form and country — many treat 1 March as the birthday in non-leap years, others use 28 February. For eligibility forms, use whichever date the form’s rules specify; your total completed years still increase once every year.' },
+    ],
+    guide: [
+      { h: 'How exact age is calculated',
+        p: 'Your age is counted in completed units: full years first, then full months since your last birthday-month, then the remaining days. When the current day-of-month is smaller than your birth day, days are “borrowed” from the previous month — which is why the result depends on whether that month had 28, 30 or 31 days. This tool also adds everything up into total days, weeks and hours, and counts down to your next birthday.' },
+      { h: 'Where exact age actually matters', list: [
+        'School admissions: many boards require a child to be a certain age “as on” a cut-off date (often 31 December or 31 March) — a few days can shift the admission year.',
+        'Government exams and jobs: eligibility is checked against a fixed “age as on” date printed in the notification, not the day you fill the form.',
+        'Retirement and service records: pension and gratuity calculations run on exact years/months/days of age and service.',
+        'Forms that ask for age in years-months-days rather than just a date of birth — copy the breakdown straight from the result above.',
+      ] },
+      { h: 'Leap years and your total days',
+        p: 'Every February 29 you have lived through adds an extra day to your total. Someone born on 29 February 2000, for example, has lived 9,741 days by 31 October 2026 (26 years, 8 months, 2 days) — including 6 leap days since their birth. It’s also why two people with the same age in years can differ by a day in total days lived.' },
+    ] }),
   T({ id: 'bmi-calculator', name: 'BMI Calculator', icon: 'activity', engine: 'calculators', categories: ['calculators'],
     blurb: 'Body Mass Index in metric or imperial, with WHO categories.',
     description: 'Calculate Body Mass Index from height and weight in metric or imperial units, with the WHO weight category and the healthy BMI range for your height.',
     keywords: ['bmi', 'body mass index', 'weight', 'height', 'healthy weight', 'obesity'],
     aliases: ['body mass index', 'bmi'],
     popularity: 86, added: '2026-06-06',
-    steps: 'Choose metric (cm/kg) or imperial (ft+in/lb).|Enter your height and weight.|Read your BMI, category and healthy weight range.' }),
+    steps: 'Choose metric (cm/kg) or imperial (ft+in/lb).|Enter your height and weight.|Read your BMI, category and healthy weight range.',
+    faqs: [
+      { q: 'What is a healthy BMI?', a: 'For most adults, 18.5–24.9 is the healthy range. Below 18.5 is underweight, 25–29.9 is overweight and 30 or above is classed as obesity. The healthy weight range shown by this tool is simply those BMI bounds converted back to kilograms for your height.' },
+      { q: 'Is BMI accurate for athletes and bodybuilders?', a: 'Not really. BMI can’t tell muscle from fat, so muscular people often land in “overweight” despite low body fat — and people with little muscle can score “healthy” while carrying excess fat. Treat BMI as a rough screening number, not a diagnosis.' },
+      { q: 'Does BMI work for children?', a: 'Children and teenagers use BMI-for-age percentile charts instead, because healthy body composition changes as they grow. The adult cut-offs in this calculator (18.5 / 25 / 30) should not be applied to under-18s.' },
+    ],
+    guide: [
+      { h: 'The BMI formula — and a worked example',
+        p: 'BMI = weight in kilograms ÷ (height in metres)². Example: at 170 cm and 70 kg, BMI = 70 ÷ 1.70² = 24.2 — just inside the healthy range. For that height, the healthy weight band works out to roughly 53.5–72 kg, which is the range this calculator shows you.' },
+      { h: 'BMI categories for adults (WHO)',
+        table: { head: ['BMI', 'Category'], rows: [
+          ['Below 18.5', 'Underweight'],
+          ['18.5 – 24.9', 'Healthy weight'],
+          ['25.0 – 29.9', 'Overweight'],
+          ['30.0 and above', 'Obesity'],
+        ] } },
+      { h: 'What BMI doesn’t tell you', list: [
+        'Muscle vs fat: athletes routinely score “overweight” with very low body fat, because muscle is dense.',
+        'Where fat sits: abdominal (visceral) fat carries more health risk than the same weight spread elsewhere — waist size adds context BMI lacks.',
+        'Build and ancestry: several Asian health guidelines suggest extra caution from a BMI of 23 upward, because metabolic risk rises earlier at the same BMI.',
+        'Age: older adults naturally lose muscle, so a “healthy” BMI can hide low muscle mass. Use BMI as one signal among several — and see a doctor for medical conclusions.',
+      ] },
+    ] }),
   T({ id: 'gst-calculator', name: 'GST Calculator', icon: 'receipt', engine: 'calculators', categories: ['calculators'],
     blurb: 'Add or remove GST at any rate, with CGST/SGST split.',
     description: 'Add GST to a base price or extract it from a GST-inclusive price, at any rate. Shows the tax amount and the intra-state CGST/SGST split.',
@@ -314,7 +409,28 @@ export const tools = [
     keywords: ['emi', 'loan', 'mortgage', 'instalment', 'interest', 'repayment', 'amortization'],
     aliases: ['loan emi', 'installment calculator', 'loan calculator'],
     popularity: 82, added: '2026-06-01',
-    steps: 'Enter the loan amount, annual interest rate and tenure in years (or months).|Click Calculate EMI.|Review the monthly EMI, totals and the amortization summary.' }),
+    steps: 'Enter the loan amount, annual interest rate and tenure in years (or months).|Click Calculate EMI.|Review the monthly EMI, totals and the amortization summary.',
+    faqs: [
+      { q: 'What does EMI stand for?', a: 'Equated Monthly Instalment — the fixed amount you pay the lender every month. Each EMI contains both interest and principal; early instalments are mostly interest, later ones mostly principal.' },
+      { q: 'Does a longer tenure save money?', a: 'No. A longer tenure lowers your monthly EMI but increases the total interest paid — sometimes by a lot. Compare the “total interest” figure for two tenures above before deciding what you can afford.' },
+      { q: 'Can my EMI change after the loan starts?', a: 'On fixed-rate loans, no. On floating-rate loans (most home loans), the rate moves with the lender’s benchmark, and the bank either changes your EMI or extends/shortens your tenure. This calculator assumes one constant rate for the whole tenure.' },
+    ],
+    guide: [
+      { h: 'The EMI formula',
+        p: 'EMI = P × r × (1 + r)ⁿ ÷ ((1 + r)ⁿ − 1), where P is the loan amount, r is the monthly interest rate (annual rate ÷ 12 ÷ 100) and n is the number of monthly payments. This is the standard reducing-balance method banks use: interest each month is charged only on what you still owe, which is why the interest share of your EMI shrinks month after month (visible in the amortization summary above).' },
+      { h: 'Worked example: ₹10,00,000 at 9% for 5 years',
+        table: { head: ['Item', 'Amount'], rows: [
+          ['Monthly EMI', '₹20,758'],
+          ['Total interest over 5 years', '₹2,45,501'],
+          ['Total you pay back', '₹12,45,501'],
+        ] },
+        p: 'Stretch the same loan to a longer tenure and the EMI falls — but since the balance stays high for longer, the total interest climbs sharply. Always compare total interest, not just the monthly EMI, when two offers differ in tenure.' },
+      { h: 'Three honest ways to pay less interest', list: [
+        'Shorter tenure: the biggest lever. Pick the shortest tenure whose EMI you can pay comfortably even in a bad month.',
+        'Prepay principal early: a lump sum paid in the first third of the loan kills far more future interest than the same amount paid near the end — check your lender’s prepayment charges first.',
+        'Compare the full cost, not the rate alone: processing fees, bundled insurance and “flat rate” quotes (which are not reducing-balance) can make a lower-rate loan more expensive.',
+      ] },
+    ] }),
   T({ id: 'tip-calculator', name: 'Tip Calculator', icon: 'coins', engine: 'calculators', categories: ['calculators'],
     blurb: 'Tip amount, total and fair per-person split in seconds.',
     description: 'Calculate a tip from a bill with quick presets, round options, and an even per-person split for groups.',
@@ -403,6 +519,26 @@ export const tools = [
     aliases: ['random password', 'strong password generator', 'password maker'],
     popularity: 96, featured: true, added: '2026-06-02',
     steps: 'Set the length and toggle character sets (upper, lower, digits, symbols).|Optionally exclude look-alike characters.|Click Generate, then copy. Every password is created locally.',
+    guide: [
+      { h: 'Entropy: the one number that measures password strength',
+        p: 'Entropy (in bits) = password length × log₂(characters to choose from). It counts how many guesses an attacker must try. This only holds for truly random passwords — like the ones this tool makes with your browser’s cryptographic random generator. Human-invented passwords (“Dragon@2024”) have far less real entropy than they appear to, because attackers try patterns, names and substitutions first.',
+        table: { head: ['Characters allowed', '8 characters', '12 characters', '16 characters'], rows: [
+          ['Lowercase only (26)', '37.6 bits', '56.4 bits', '75.2 bits'],
+          ['Letters + digits (62)', '47.6 bits', '71.5 bits', '95.3 bits'],
+          ['All printable (94)', '52.4 bits', '78.7 bits', '104.9 bits'],
+        ] } },
+      { h: 'How to read the table', list: [
+        'Under ~50 bits: crackable offline in hours-to-days if a site’s password database leaks. Fine only for throwaway accounts.',
+        '65–80 bits: strong for everyday accounts — a 12-character password using all character sets (78.7 bits) is a good default.',
+        '90+ bits: use for your email, banking and password-manager master password. Notice length beats complexity: 16 lowercase-only characters (75.2 bits) beat 8 “complex” ones (52.4 bits).',
+      ] },
+      { h: 'Rules that matter more than any single password', list: [
+        'Never reuse a password across sites — one leaked site unlocks everything else. This causes more account takeovers than weak passwords do.',
+        'Store generated passwords in a password manager; you only memorise one strong master password.',
+        'Turn on two-factor authentication (2FA) wherever it exists — a stolen password alone then isn’t enough.',
+        'Clever substitutions (P@ssw0rd!) add almost nothing; attackers’ dictionaries already include them. Random and long wins.',
+      ] },
+    ],
     faqs: [
       { q: 'Are the passwords sent anywhere?', a: 'No. Passwords are generated in your browser with the Web Crypto API and never leave your device. There is no server component.' },
       { q: 'What makes these passwords strong?', a: 'Length and true randomness. The tool uses unbiased selection from your chosen character sets and reports the entropy in bits — aim for 75+ bits.' },
@@ -430,6 +566,20 @@ export const tools = [
     aliases: ['compress jpeg', 'compress png', 'reduce image size', 'image optimizer'],
     popularity: 92, featured: true, added: '2026-06-04',
     steps: 'Drop or choose an image (JPG, PNG or WebP).|Set quality and an optional maximum width or height.|Click Compress, compare sizes, then download.',
+    guide: [
+      { h: 'Lossy vs lossless, in one minute',
+        p: 'Lossy compression (JPEG, WebP at a quality setting) permanently discards fine detail your eyes barely notice — that’s how a 5 MB photo becomes 300 KB. Lossless (PNG) keeps every pixel exact, so files stay large but text, logos and screenshots remain perfectly sharp. Photos → lossy. Graphics with crisp edges or transparency → lossless.' },
+      { h: 'Which format and quality should you pick?',
+        table: { head: ['Your image', 'Format here', 'Quality to start at'], rows: [
+          ['Photo for a website / blog', 'WebP (usually smallest) or JPEG', '75–85'],
+          ['Photo to share or print', 'JPEG', '85–92'],
+          ['Screenshot or UI capture', 'PNG — text stays razor sharp', '— (lossless)'],
+          ['Logo / graphic with transparency', 'PNG or WebP', '— / 90+'],
+        ] },
+        p: 'A practical method: lower the quality slider until you just start seeing artifacts at 100% zoom, then nudge it back up about 5 points. For most photos that lands near 80 — which is why it’s this tool’s default.' },
+      { h: 'Shrink dimensions before quality',
+        p: 'A 4000-pixel-wide phone photo displayed at 800 pixels carries 25× the pixels anyone sees — 96% of the file is invisible weight. Setting a sensible max width in this tool (1600 px is plenty for full-screen web display, 800 px for in-article images) usually saves far more than aggressive quality cuts, with zero visible difference.' },
+    ],
     faqs: [
       { q: 'Are my images uploaded to a server?', a: 'No. Compression uses your browser’s canvas engine entirely on your device. The file never leaves your computer.' },
       { q: 'Why did a PNG get bigger?', a: 'PNG is lossless. Compressing to JPEG or WebP (lossy formats) usually shrinks photos dramatically; converting PNG to PNG mostly helps screenshots with many colors.' },
@@ -682,6 +832,23 @@ export const tools = [
     aliases: ['sip return calculator', 'mutual fund calculator', 'sip planner', 'monthly investment calculator'],
     popularity: 94, featured: true, added: '2026-10-31',
     steps: 'Enter your monthly investment amount.|Enter the expected annual return (long-term equity funds have historically averaged around 12%).|Choose the duration in years and read the maturity value and year-by-year growth.',
+    guide: [
+      { h: 'The SIP formula this calculator uses',
+        p: 'Future value = P × [((1 + i)ⁿ − 1) ÷ i] × (1 + i), where P is your monthly investment, i is the monthly return (annual rate ÷ 12 ÷ 100) and n is the number of months. Each instalment is treated as invested at the start of the month and compounded monthly — the same convention most fund-house calculators use.' },
+      { h: 'Worked example: ₹5,000/month at 12% expected return',
+        p: 'Time in the market does the heavy lifting — compare what the same ₹5,000 a month becomes purely by staying invested longer:',
+        table: { head: ['Duration', 'You invest', 'Estimated value', 'Estimated gain'], rows: [
+          ['10 years', '₹6,00,000', '₹11,61,695', '₹5,61,695'],
+          ['15 years', '₹9,00,000', '₹25,22,880', '₹16,22,880'],
+          ['20 years', '₹12,00,000', '₹49,95,740', '₹37,95,740'],
+        ] } },
+      { h: 'Read this before trusting any SIP projection', list: [
+        'Returns are assumed, not guaranteed. Real markets don’t grow a smooth 12% a year — they zig-zag, and your actual result depends on the path.',
+        'The estimate ignores expense ratios, exit loads and taxes (equity LTCG is taxed above the exempt limit), so the real maturity value will be somewhat lower.',
+        'Increasing your SIP every year (a “step-up SIP”) as your salary grows changes the outcome far more than chasing a higher assumed return.',
+        'Use the output for goal planning (“roughly how much must I invest monthly?”), not as a promise from any fund.',
+      ] },
+    ],
     faqs: [
       { q: 'How is SIP return calculated?', a: 'Each monthly installment is treated as invested at the start of the month and compounded monthly at one-twelfth of the expected annual return. The maturity value is the sum of all installments plus their compounded growth.' },
       { q: 'What return should I assume for equity mutual funds?', a: 'Many planners use 12% per year as a long-term planning assumption for diversified equity funds, but actual market returns vary year to year and are never guaranteed. Try 10% and 14% as well to see a range.' },
@@ -718,6 +885,22 @@ export const tools = [
     aliases: ['jpg to pdf', 'png to pdf', 'photo to pdf', 'jpeg to pdf', 'picture to pdf'],
     popularity: 93, featured: true, added: '2026-10-31',
     steps: 'Drop in one or more images (JPG, PNG, WebP…).|Reorder them with the ↑/↓ buttons — each image becomes one page.|Choose A4, Letter or image-size pages, click Convert to PDF and download.',
+    guide: [
+      { h: 'When turning images into one PDF is the right move', list: [
+        'Exams, admissions and job portals that say “upload a single PDF” for marksheets, ID proofs or certificates.',
+        'Combining photographed assignment pages or a multi-page handwritten answer into one ordered document.',
+        'Sending a set of photos (receipts, site pictures, documents) as one tidy file instead of ten loose attachments.',
+        'Printing several images predictably — a PDF page has fixed size and margins, a loose image does not.',
+      ] },
+      { h: 'Get a cleaner, smaller result', list: [
+        'Photograph documents in even light, filling the frame, with no shadow of your phone or hand across the page.',
+        'Order pages with the ↑/↓ buttons before converting — page order mistakes are the most common complaint from whoever receives the file.',
+        'Choose A4 pages for anything that will be printed or uploaded to a form; choose image-size pages only when the exact photo proportions matter.',
+        'Too big to upload? Most portals cap file sizes — run large photos through the Image Compressor first (JPEG, quality ~80, max width ~1600 px) and the PDF usually shrinks 5–10×.',
+      ] },
+      { h: 'Will the text in my PDF be searchable?',
+        p: 'No. Each page of the PDF is your image placed on a page — there is no OCR (text recognition) step, so words in the picture can’t be searched, selected or copied. That’s perfect for forms, certificates and photos. If you need copyable text, the document has to be created (or OCR-processed) as real text instead.' },
+    ],
     faqs: [
       { q: 'Are my images uploaded to a server?', a: 'No. The PDF is built entirely in your browser with the pdf-lib library. Your images never leave your device, which also means there is no size queue or waiting.' },
       { q: 'Which image formats are supported?', a: 'JPG and PNG are embedded at full original quality. Other formats your browser can display (WebP, GIF, BMP, AVIF in supporting browsers) are converted through the canvas at high quality.' },
@@ -732,6 +915,29 @@ export const tools = [
     aliases: ['tax calculator india', 'income tax slab calculator', 'old vs new regime calculator', 'salary tax calculator india'],
     popularity: 92, featured: true, added: '2026-10-31',
     steps: 'Enter your yearly gross salary and any other income.|Enter your total deductions (80C, 80D, HRA, home-loan interest) — used only by the old regime.|Compare both regimes slab by slab and see which one is cheaper for you.',
+    guide: [
+      { h: 'New regime slabs — FY 2025-26 (Section 115BAC)',
+        table: { head: ['Taxable income', 'Rate'], rows: [
+          ['Up to ₹4,00,000', 'Nil'],
+          ['₹4–8 lakh', '5%'],
+          ['₹8–12 lakh', '10%'],
+          ['₹12–16 lakh', '15%'],
+          ['₹16–20 lakh', '20%'],
+          ['₹20–24 lakh', '25%'],
+          ['Above ₹24 lakh', '30%'],
+        ] },
+        p: 'On top of the slabs: a ₹75,000 standard deduction for salary income, and the Section 87A rebate wipes out tax up to ₹60,000 when taxable income is ₹12 lakh or less — so a salary up to about ₹12.75 lakh can end up tax-free. Just above ₹12 lakh, marginal relief caps the tax at the amount your income exceeds ₹12 lakh by.' },
+      { h: 'Old regime slabs (age below 60)',
+        table: { head: ['Taxable income', 'Rate'], rows: [
+          ['Up to ₹2,50,000', 'Nil'],
+          ['₹2.5–5 lakh', '5%'],
+          ['₹5–10 lakh', '20%'],
+          ['Above ₹10 lakh', '30%'],
+        ] },
+        p: 'The basic exemption rises to ₹3 lakh at age 60–79 and ₹5 lakh at 80+. The old regime also has a ₹50,000 standard deduction and an 87A rebate of ₹12,500 up to ₹5 lakh taxable income — but its real value is deductions: 80C (₹1.5 lakh), 80D, HRA and home-loan interest, none of which the new regime allows. A 4% health & education cess applies on the tax in both regimes, plus surcharge at higher incomes.' },
+      { h: 'Worked example: ₹15 lakh salary, ₹1.5 lakh of deductions',
+        p: 'With a ₹15,00,000 gross salary and ₹1,50,000 claimed under deductions like 80C, this calculator gives: new regime ₹97,500 vs old regime ₹2,10,600 (both including cess) — the new regime saves ₹1,13,100 here. The old regime only starts winning when deductions (especially large HRA or home-loan interest) are big enough to offset its harsher slabs — which is exactly the break-even this comparison shows for your numbers.' },
+    ],
     faqs: [
       { q: 'How much salary is tax-free in FY 2025-26?', a: 'Under the new regime, taxable income up to ₹12 lakh pays zero tax thanks to the Section 87A rebate of up to ₹60,000. With the ₹75,000 standard deduction, a salaried person earning up to ₹12,75,000 pays no income tax (before cess nuances on other income types).' },
       { q: 'Which is better: old or new regime?', a: 'The new regime wins for most people with modest deductions. The old regime can win when your deductions (80C, HRA, home-loan interest, 80D…) are large — this calculator compares both on your numbers so you do not have to guess.' },
@@ -800,6 +1006,27 @@ export const tools = [
     aliases: ['qr maker', 'qr creator', 'generate qr code', 'wifi qr generator'],
     popularity: 93, featured: true, added: '2026-10-31',
     steps: 'Type or paste the text, URL, or Wi-Fi string to encode.|Pick an error-correction level and colours (keep strong contrast for reliable scanning).|Click Generate, test-scan it with your phone, then download the PNG or SVG.',
+    guide: [
+      { h: 'One QR code, many payload types',
+        p: 'A QR code is just text in a machine-readable pattern — phone cameras recognise certain text formats and act on them. Type any of these into the box above:',
+        table: { head: ['You want to open…', 'Type exactly this format'], rows: [
+          ['A website', 'https://example.com/page'],
+          ['A Wi-Fi network (auto-join)', 'WIFI:S:NetworkName;T:WPA;P:password;;'],
+          ['An email draft', 'mailto:you@example.com'],
+          ['The phone dialer', 'tel:+919876543210'],
+          ['An SMS draft', 'SMSTO:+919876543210:Your message'],
+          ['A map location', 'geo:28.6139,77.2090'],
+        ] } },
+      { h: 'Error correction: L, M, Q or H?',
+        p: 'Error correction is spare capacity that lets a code scan even when part of it is damaged, dirty or covered: L recovers ~7% of the pattern, M ~15%, Q ~25% and H ~30%. M is the right default for screens and clean prints. Choose Q or H if the code will be printed small, placed outdoors, or have a logo sitting on top of it — just know the pattern gets denser, so print it a little bigger.' },
+      { h: 'Printing QR codes that actually scan', list: [
+        'Size: minimum ~2 × 2 cm for close-up scanning. Rule of thumb — scanning distance is about 10× the printed width, so a poster read from 2 metres needs a ~20 cm code.',
+        'Keep the white border (the “quiet zone”). Cropping it off is the #1 reason printed codes fail.',
+        'Contrast: dark modules on a light background. Inverted (white-on-black) codes fail on many scanners.',
+        'Use a matte finish where possible — glare from glossy lamination defeats phone cameras.',
+        'Test the final print with 2–3 different phones before printing in bulk.',
+      ] },
+    ],
     faqs: [
       { q: 'Do these QR codes expire?', a: 'No. The code contains your text/URL itself (a “static” QR code), with no redirect through any server — it keeps working forever, as long as the destination does.' },
       { q: 'How do I make a Wi-Fi QR code?', a: 'Use this exact format as the text: WIFI:S:YourNetworkName;T:WPA;P:yourpassword;; — phones will offer to join the network when scanned. For open networks use T:nopass and leave P empty.' },
