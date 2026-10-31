@@ -1,118 +1,119 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 90 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 91 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
 
 ## Categories
-- [PDF & Documents tools](https://ihavetools.web.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
-- [Image tools](https://ihavetools.web.app/categories/image/): Compress, resize, convert and crop images locally. No uploads, no quality surprises, no waiting.
-- [Video tools](https://ihavetools.web.app/categories/video/): Inspect video files and pull out their audio track — processed locally in your browser.
-- [Audio tools](https://ihavetools.web.app/categories/audio/): Generate, trim and re-speed audio without uploading a thing. Decoded and rendered in your browser.
-- [Text tools](https://ihavetools.web.app/categories/text/): Counters, case converters, sorters and diff tools for working with text quickly.
-- [Calculators tools](https://ihavetools.web.app/categories/calculators/): Everyday calculators for percentages, loans, discounts, health and money decisions.
-- [Converters tools](https://ihavetools.web.app/categories/converters/): Convert between units of length, weight, temperature, data and more with exact factors.
-- [Developer tools](https://ihavetools.web.app/categories/developer/): Formatters, encoders, decoders and generators for daily development work.
-- [Security tools](https://ihavetools.web.app/categories/security/): Password, hash and randomness tools built on your browser’s cryptographic APIs.
-- [Web & SEO tools](https://ihavetools.web.app/categories/web-seo/): Meta tags, robots.txt, sitemaps and URL utilities for site owners and marketers.
-- [Color tools](https://ihavetools.web.app/categories/color/): Pick, convert and compare colors — HEX, RGB, HSL, contrast ratios and palettes.
-- [Data tools](https://ihavetools.web.app/categories/data/): Convert between CSV, JSON and JSON Lines with correct quoting and escaping.
-- [Math tools](https://ihavetools.web.app/categories/math/): Averages, ratios, GCD/LCM and other small math utilities with clear results.
-- [Date & Time tools](https://ihavetools.web.app/categories/datetime/): Date differences, date arithmetic and time zone conversion without the mental math.
-- [Student tools](https://ihavetools.web.app/categories/student/): Scientific, fraction and duration calculators for homework and study.
-- [Miscellaneous tools](https://ihavetools.web.app/categories/misc/): Useful tools that do not fit a neat box — starting with cryptographically random numbers.
+- [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
+- [Image tools](https://i-have-tools.vercel.app/categories/image/): Compress, resize, convert and crop images locally. No uploads, no quality surprises, no waiting.
+- [Video tools](https://i-have-tools.vercel.app/categories/video/): Inspect video files and pull out their audio track — processed locally in your browser.
+- [Audio tools](https://i-have-tools.vercel.app/categories/audio/): Generate, trim and re-speed audio without uploading a thing. Decoded and rendered in your browser.
+- [Text tools](https://i-have-tools.vercel.app/categories/text/): Counters, case converters, sorters and diff tools for working with text quickly.
+- [Calculators tools](https://i-have-tools.vercel.app/categories/calculators/): Everyday calculators for percentages, loans, discounts, health and money decisions.
+- [Converters tools](https://i-have-tools.vercel.app/categories/converters/): Convert between units of length, weight, temperature, data and more with exact factors.
+- [Developer tools](https://i-have-tools.vercel.app/categories/developer/): Formatters, encoders, decoders and generators for daily development work.
+- [Security tools](https://i-have-tools.vercel.app/categories/security/): Password, hash and randomness tools built on your browser’s cryptographic APIs.
+- [Web & SEO tools](https://i-have-tools.vercel.app/categories/web-seo/): Meta tags, robots.txt, sitemaps and URL utilities for site owners and marketers.
+- [Color tools](https://i-have-tools.vercel.app/categories/color/): Pick, convert and compare colors — HEX, RGB, HSL, contrast ratios and palettes.
+- [Data tools](https://i-have-tools.vercel.app/categories/data/): Convert between CSV, JSON and JSON Lines with correct quoting and escaping.
+- [Math tools](https://i-have-tools.vercel.app/categories/math/): Averages, ratios, GCD/LCM and other small math utilities with clear results.
+- [Date & Time tools](https://i-have-tools.vercel.app/categories/datetime/): Date differences, date arithmetic and time zone conversion without the mental math.
+- [Student tools](https://i-have-tools.vercel.app/categories/student/): Scientific, fraction and duration calculators for homework and study.
+- [Miscellaneous tools](https://i-have-tools.vercel.app/categories/misc/): Useful tools that do not fit a neat box — starting with cryptographically random numbers.
 
 ## Tools
-- [JSON Formatter](https://ihavetools.web.app/tools/json-formatter/): Format, validate and minify JSON with precise error messages.
-- [JSON Validator](https://ihavetools.web.app/tools/json-validator/): Check JSON syntax and get the exact line and column of errors.
-- [JSON Minifier](https://ihavetools.web.app/tools/json-minifier/): Strip whitespace from JSON and see how many bytes you saved.
-- [Base64 Encoder & Decoder](https://ihavetools.web.app/tools/base64-encoder/): Unicode-safe Base64 encoding and decoding, with URL-safe output.
-- [URL Encoder & Decoder](https://ihavetools.web.app/tools/url-encoder/): Percent-encode or decode text and whole URLs, correctly.
-- [UUID Generator](https://ihavetools.web.app/tools/uuid-generator/): Bulk-generate RFC 4122 v4 UUIDs with cryptographic randomness.
-- [Timestamp Converter](https://ihavetools.web.app/tools/timestamp-converter/): Convert Unix timestamps to dates and back, in UTC and local time.
-- [Hash Generator](https://ihavetools.web.app/tools/hash-generator/): SHA-1, SHA-256, SHA-384 and SHA-512 hashes via Web Crypto.
-- [Regex Tester](https://ihavetools.web.app/tools/regex-tester/): Test regular expressions live with match highlighting and groups.
-- [JWT Decoder](https://ihavetools.web.app/tools/jwt-decoder/): Decode JWT headers and payloads and inspect expiry times.
-- [HTML Formatter](https://ihavetools.web.app/tools/html-formatter/): Indent messy HTML into clean, readable markup.
-- [CSS Formatter](https://ihavetools.web.app/tools/css-formatter/): Beautify or minify CSS with a real tokenizer.
-- [JavaScript Formatter](https://ihavetools.web.app/tools/js-formatter/): Re-indent JavaScript with a string- and template-aware tokenizer.
-- [Extract Audio from Video](https://ihavetools.web.app/tools/extract-audio/): Pull the sound out of any video and save it as a WAV file.
-- [MP4 Inspector](https://ihavetools.web.app/tools/mp4-inspector/): Read duration, resolution, codecs and bitrate straight from MP4 bytes.
-- [Tone Generator](https://ihavetools.web.app/tools/tone-generator/): Play or download pure tones — sine, square, sawtooth, triangle.
-- [Audio Trimmer](https://ihavetools.web.app/tools/audio-trimmer/): Cut audio files precisely and export the selection as WAV.
-- [Audio Speed Changer](https://ihavetools.web.app/tools/audio-speed-changer/): Speed audio up to 4× or slow it to 0.25×, with volume boost.
-- [Word Counter](https://ihavetools.web.app/tools/word-counter/): Live word, character, sentence and reading-time counts.
-- [Character Counter](https://ihavetools.web.app/tools/character-counter/): Count characters and check limits for tweets, SMS and meta tags.
-- [Line Counter](https://ihavetools.web.app/tools/line-counter/): Count total, empty and non-empty lines, and the longest line.
-- [Case Converter](https://ihavetools.web.app/tools/case-converter/): UPPER, lower, Title, Sentence, camelCase, snake_case and more.
-- [Remove Duplicate Lines](https://ihavetools.web.app/tools/remove-duplicate-lines/): Delete repeated lines — case-sensitive or not — keeping order.
-- [Text Sorter](https://ihavetools.web.app/tools/text-sorter/): Sort lines A–Z, numerically, by length or naturally.
-- [Text Diff](https://ihavetools.web.app/tools/text-diff/): Compare two texts line by line and see what changed.
-- [Slug Generator](https://ihavetools.web.app/tools/slug-generator/): Turn any title into a clean, SEO-friendly URL slug.
-- [Lorem Ipsum Generator](https://ihavetools.web.app/tools/lorem-ipsum-generator/): Generate placeholder paragraphs, sentences or words on demand.
-- [Percentage Calculator](https://ihavetools.web.app/tools/percentage-calculator/): Three percentage calculations in one tool, with worked formulas.
-- [Percentage Change](https://ihavetools.web.app/tools/percentage-change/): Percentage increase or decrease between two values.
-- [Discount Calculator](https://ihavetools.web.app/tools/discount-calculator/): Sale price and savings from a price and percent off.
-- [Age Calculator](https://ihavetools.web.app/tools/age-calculator/): Exact age in years, months and days — plus the next birthday.
-- [BMI Calculator](https://ihavetools.web.app/tools/bmi-calculator/): Body Mass Index in metric or imperial, with WHO categories.
-- [GST Calculator](https://ihavetools.web.app/tools/gst-calculator/): Add or remove GST at any rate, with CGST/SGST split.
-- [EMI Calculator](https://ihavetools.web.app/tools/emi-calculator/): Monthly EMI, total interest and repayment for any loan.
-- [Tip Calculator](https://ihavetools.web.app/tools/tip-calculator/): Tip amount, total and fair per-person split in seconds.
-- [Compound Interest Calculator](https://ihavetools.web.app/tools/compound-interest-calculator/): Growth of savings with compounding, contributions and a schedule.
-- [Simple Interest Calculator](https://ihavetools.web.app/tools/simple-interest-calculator/): Straightforward interest: principal × rate × time.
-- [Length Converter](https://ihavetools.web.app/tools/length-converter/): Metres, feet, inches, miles, km, cm and more.
-- [Weight Converter](https://ihavetools.web.app/tools/weight-converter/): Kilograms, pounds, ounces, stone, tonnes and more.
-- [Temperature Converter](https://ihavetools.web.app/tools/temperature-converter/): Celsius, Fahrenheit, Kelvin and Rankine.
-- [Time Unit Converter](https://ihavetools.web.app/tools/time-converter/): Seconds, minutes, hours, days, weeks, months and years.
-- [Speed Converter](https://ihavetools.web.app/tools/speed-converter/): km/h, mph, m/s, knots and more.
-- [Data Storage Converter](https://ihavetools.web.app/tools/data-storage-converter/): Bytes, KB, MB, GB, TB — decimal and binary (KiB, MiB, GiB).
-- [Area Converter](https://ihavetools.web.app/tools/area-converter/): Square metres, feet, acres, hectares and more.
-- [Volume Converter](https://ihavetools.web.app/tools/volume-converter/): Litres, millilitres, gallons, cups, tablespoons and more.
-- [Password Generator](https://ihavetools.web.app/tools/password-generator/): Strong random passwords with entropy readout — all local.
-- [Password Strength Checker](https://ihavetools.web.app/tools/password-strength-checker/): Entropy, crack-time estimates and weakness checks — locally.
-- [Random String Generator](https://ihavetools.web.app/tools/random-string-generator/): Bulk random strings and keys from your browser’s CSPRNG.
-- [Image Compressor](https://ihavetools.web.app/tools/image-compressor/): Shrink JPG, PNG and WebP in your browser — no uploads.
-- [Image Resizer](https://ihavetools.web.app/tools/image-resizer/): Resize images to exact pixels, keeping the aspect ratio.
-- [Image Converter](https://ihavetools.web.app/tools/image-converter/): Convert between PNG, JPG and WebP — transparent → white.
-- [Image Cropper](https://ihavetools.web.app/tools/image-cropper/): Crop images with drag selection and aspect presets.
-- [Image Metadata Viewer](https://ihavetools.web.app/tools/image-metadata-viewer/): Inspect EXIF data and PNG chunks — fully offline.
-- [Color Picker](https://ihavetools.web.app/tools/color-picker/): Pick colors, get every format, plus tints and shades.
-- [HEX / RGB / HSL Converter](https://ihavetools.web.app/tools/hex-rgb-converter/): Convert colors between HEX, RGB and HSL — both ways.
-- [Color Contrast Checker](https://ihavetools.web.app/tools/color-contrast-checker/): WCAG AA/AAA contrast ratios with pass/fail verdicts.
-- [Palette Generator](https://ihavetools.web.app/tools/palette-generator/): Build color harmonies from one base color.
-- [Meta Tag Generator](https://ihavetools.web.app/tools/meta-tag-generator/): Generate SEO, Open Graph and Twitter meta tags in one go.
-- [Robots.txt Generator](https://ihavetools.web.app/tools/robots-txt-generator/): Build a valid robots.txt with rules, presets and sitemap.
-- [Sitemap Generator](https://ihavetools.web.app/tools/sitemap-generator/): Paste URLs, get a valid sitemap.xml to download.
-- [Open Graph Preview](https://ihavetools.web.app/tools/open-graph-preview/): Preview how a link looks when shared on social platforms.
-- [URL Parser](https://ihavetools.web.app/tools/url-parser/): Break any URL into protocol, host, path and query params.
-- [Keyword Density Checker](https://ihavetools.web.app/tools/keyword-density-checker/): Top words and phrases with density percentages.
-- [Scientific Calculator](https://ihavetools.web.app/tools/scientific-calculator/): Full expression calculator with functions, history and keyboard support.
-- [Fraction Calculator](https://ihavetools.web.app/tools/fraction-calculator/): Add, subtract, multiply and divide fractions — simplified.
-- [Time Duration Calculator](https://ihavetools.web.app/tools/time-duration-calculator/): Add or subtract durations like 2h 45m + 30m.
-- [Average Calculator](https://ihavetools.web.app/tools/average-calculator/): Mean, median, mode, range and more from a list of numbers.
-- [Ratio Calculator](https://ihavetools.web.app/tools/ratio-calculator/): Simplify ratios and solve for the missing value.
-- [GCD & LCM Calculator](https://ihavetools.web.app/tools/gcd-lcm-calculator/): Greatest common divisor and least common multiple, with steps.
-- [Date Difference](https://ihavetools.web.app/tools/date-difference/): Days, weeks, months and weekdays between two dates.
-- [Date Add / Subtract](https://ihavetools.web.app/tools/date-add-calculator/): Add or subtract days, weeks, months or years from a date.
-- [Time Zone Converter](https://ihavetools.web.app/tools/time-zone-converter/): Convert a time between any two IANA time zones.
-- [CSV to JSON](https://ihavetools.web.app/tools/csv-to-json/): RFC 4180-correct CSV conversion, with header row support.
-- [JSON to CSV](https://ihavetools.web.app/tools/json-to-csv/): JSON arrays to properly escaped CSV, with column selection.
-- [JSON Lines Converter](https://ihavetools.web.app/tools/json-lines-converter/): Convert JSON ⇄ JSON Lines (NDJSON) with per-line validation.
-- [Random Number Generator](https://ihavetools.web.app/tools/random-number-generator/): Truly random numbers in any range — lottery-grade fairness.
-- [Dice Roller](https://ihavetools.web.app/tools/dice-roller/): Roll up to 12 dice with any number of sides — crypto-random.
-- [PDF Merge](https://ihavetools.web.app/tools/pdf-merge/): Combine PDFs in order — processed entirely in your browser.
-- [PDF Rotate](https://ihavetools.web.app/tools/pdf-rotate/): Rotate every page or just some pages by 90°, 180° or 270°.
-- [PDF Split](https://ihavetools.web.app/tools/pdf-split/): Extract page ranges or split a PDF into separate files.
-- [SIP Calculator](https://ihavetools.web.app/tools/sip-calculator/): Estimate mutual fund SIP returns with a year-by-year growth table.
-- [PPF Calculator](https://ihavetools.web.app/tools/ppf-calculator/): PPF maturity, interest and year-by-year balance at the current 7.1% rate.
-- [FD Calculator](https://ihavetools.web.app/tools/fd-calculator/): Fixed deposit maturity and interest with quarterly compounding.
-- [Image to PDF](https://ihavetools.web.app/tools/image-to-pdf/): Turn JPG, PNG or WebP images into one PDF — in your browser.
-- [Income Tax Calculator](https://ihavetools.web.app/tools/income-tax-calculator/): India income tax for FY 2025-26 — old vs new regime compared instantly.
-- [JPG to PNG Converter](https://ihavetools.web.app/tools/jpg-to-png/): Convert JPG/JPEG images to PNG losslessly, right in your browser.
-- [PNG to JPG Converter](https://ihavetools.web.app/tools/png-to-jpg/): Convert PNG images to smaller JPGs, with a background colour for transparency.
-- [WebP to PNG Converter](https://ihavetools.web.app/tools/webp-to-png/): Convert WebP images to widely-compatible PNGs, locally and free.
-- [JPG to WebP Converter](https://ihavetools.web.app/tools/jpg-to-webp/): Convert JPG photos to modern, smaller WebP files for the web.
-- [YouTube Thumbnail Downloader](https://ihavetools.web.app/tools/youtube-thumbnail-downloader/): Download any YouTube video thumbnail in HD, SD and more sizes.
+- [JSON Formatter](https://i-have-tools.vercel.app/tools/json-formatter/): Format, validate and minify JSON with precise error messages.
+- [JSON Validator](https://i-have-tools.vercel.app/tools/json-validator/): Check JSON syntax and get the exact line and column of errors.
+- [JSON Minifier](https://i-have-tools.vercel.app/tools/json-minifier/): Strip whitespace from JSON and see how many bytes you saved.
+- [Base64 Encoder & Decoder](https://i-have-tools.vercel.app/tools/base64-encoder/): Unicode-safe Base64 encoding and decoding, with URL-safe output.
+- [URL Encoder & Decoder](https://i-have-tools.vercel.app/tools/url-encoder/): Percent-encode or decode text and whole URLs, correctly.
+- [UUID Generator](https://i-have-tools.vercel.app/tools/uuid-generator/): Bulk-generate RFC 4122 v4 UUIDs with cryptographic randomness.
+- [Timestamp Converter](https://i-have-tools.vercel.app/tools/timestamp-converter/): Convert Unix timestamps to dates and back, in UTC and local time.
+- [Hash Generator](https://i-have-tools.vercel.app/tools/hash-generator/): SHA-1, SHA-256, SHA-384 and SHA-512 hashes via Web Crypto.
+- [Regex Tester](https://i-have-tools.vercel.app/tools/regex-tester/): Test regular expressions live with match highlighting and groups.
+- [JWT Decoder](https://i-have-tools.vercel.app/tools/jwt-decoder/): Decode JWT headers and payloads and inspect expiry times.
+- [HTML Formatter](https://i-have-tools.vercel.app/tools/html-formatter/): Indent messy HTML into clean, readable markup.
+- [CSS Formatter](https://i-have-tools.vercel.app/tools/css-formatter/): Beautify or minify CSS with a real tokenizer.
+- [JavaScript Formatter](https://i-have-tools.vercel.app/tools/js-formatter/): Re-indent JavaScript with a string- and template-aware tokenizer.
+- [Extract Audio from Video](https://i-have-tools.vercel.app/tools/extract-audio/): Pull the sound out of any video and save it as a WAV file.
+- [MP4 Inspector](https://i-have-tools.vercel.app/tools/mp4-inspector/): Read duration, resolution, codecs and bitrate straight from MP4 bytes.
+- [Tone Generator](https://i-have-tools.vercel.app/tools/tone-generator/): Play or download pure tones — sine, square, sawtooth, triangle.
+- [Audio Trimmer](https://i-have-tools.vercel.app/tools/audio-trimmer/): Cut audio files precisely and export the selection as WAV.
+- [Audio Speed Changer](https://i-have-tools.vercel.app/tools/audio-speed-changer/): Speed audio up to 4× or slow it to 0.25×, with volume boost.
+- [Word Counter](https://i-have-tools.vercel.app/tools/word-counter/): Live word, character, sentence and reading-time counts.
+- [Character Counter](https://i-have-tools.vercel.app/tools/character-counter/): Count characters and check limits for tweets, SMS and meta tags.
+- [Line Counter](https://i-have-tools.vercel.app/tools/line-counter/): Count total, empty and non-empty lines, and the longest line.
+- [Case Converter](https://i-have-tools.vercel.app/tools/case-converter/): UPPER, lower, Title, Sentence, camelCase, snake_case and more.
+- [Remove Duplicate Lines](https://i-have-tools.vercel.app/tools/remove-duplicate-lines/): Delete repeated lines — case-sensitive or not — keeping order.
+- [Text Sorter](https://i-have-tools.vercel.app/tools/text-sorter/): Sort lines A–Z, numerically, by length or naturally.
+- [Text Diff](https://i-have-tools.vercel.app/tools/text-diff/): Compare two texts line by line and see what changed.
+- [Slug Generator](https://i-have-tools.vercel.app/tools/slug-generator/): Turn any title into a clean, SEO-friendly URL slug.
+- [Lorem Ipsum Generator](https://i-have-tools.vercel.app/tools/lorem-ipsum-generator/): Generate placeholder paragraphs, sentences or words on demand.
+- [Percentage Calculator](https://i-have-tools.vercel.app/tools/percentage-calculator/): Three percentage calculations in one tool, with worked formulas.
+- [Percentage Change](https://i-have-tools.vercel.app/tools/percentage-change/): Percentage increase or decrease between two values.
+- [Discount Calculator](https://i-have-tools.vercel.app/tools/discount-calculator/): Sale price and savings from a price and percent off.
+- [Age Calculator](https://i-have-tools.vercel.app/tools/age-calculator/): Exact age in years, months and days — plus the next birthday.
+- [BMI Calculator](https://i-have-tools.vercel.app/tools/bmi-calculator/): Body Mass Index in metric or imperial, with WHO categories.
+- [GST Calculator](https://i-have-tools.vercel.app/tools/gst-calculator/): Add or remove GST at any rate, with CGST/SGST split.
+- [EMI Calculator](https://i-have-tools.vercel.app/tools/emi-calculator/): Monthly EMI, total interest and repayment for any loan.
+- [Tip Calculator](https://i-have-tools.vercel.app/tools/tip-calculator/): Tip amount, total and fair per-person split in seconds.
+- [Compound Interest Calculator](https://i-have-tools.vercel.app/tools/compound-interest-calculator/): Growth of savings with compounding, contributions and a schedule.
+- [Simple Interest Calculator](https://i-have-tools.vercel.app/tools/simple-interest-calculator/): Straightforward interest: principal × rate × time.
+- [Length Converter](https://i-have-tools.vercel.app/tools/length-converter/): Metres, feet, inches, miles, km, cm and more.
+- [Weight Converter](https://i-have-tools.vercel.app/tools/weight-converter/): Kilograms, pounds, ounces, stone, tonnes and more.
+- [Temperature Converter](https://i-have-tools.vercel.app/tools/temperature-converter/): Celsius, Fahrenheit, Kelvin and Rankine.
+- [Time Unit Converter](https://i-have-tools.vercel.app/tools/time-converter/): Seconds, minutes, hours, days, weeks, months and years.
+- [Speed Converter](https://i-have-tools.vercel.app/tools/speed-converter/): km/h, mph, m/s, knots and more.
+- [Data Storage Converter](https://i-have-tools.vercel.app/tools/data-storage-converter/): Bytes, KB, MB, GB, TB — decimal and binary (KiB, MiB, GiB).
+- [Area Converter](https://i-have-tools.vercel.app/tools/area-converter/): Square metres, feet, acres, hectares and more.
+- [Volume Converter](https://i-have-tools.vercel.app/tools/volume-converter/): Litres, millilitres, gallons, cups, tablespoons and more.
+- [Password Generator](https://i-have-tools.vercel.app/tools/password-generator/): Strong random passwords with entropy readout — all local.
+- [Password Strength Checker](https://i-have-tools.vercel.app/tools/password-strength-checker/): Entropy, crack-time estimates and weakness checks — locally.
+- [Random String Generator](https://i-have-tools.vercel.app/tools/random-string-generator/): Bulk random strings and keys from your browser’s CSPRNG.
+- [Image Compressor](https://i-have-tools.vercel.app/tools/image-compressor/): Shrink JPG, PNG and WebP in your browser — no uploads.
+- [Image Resizer](https://i-have-tools.vercel.app/tools/image-resizer/): Resize images to exact pixels, keeping the aspect ratio.
+- [Image Converter](https://i-have-tools.vercel.app/tools/image-converter/): Convert between PNG, JPG and WebP — transparent → white.
+- [Image Cropper](https://i-have-tools.vercel.app/tools/image-cropper/): Crop images with drag selection and aspect presets.
+- [Image Metadata Viewer](https://i-have-tools.vercel.app/tools/image-metadata-viewer/): Inspect EXIF data and PNG chunks — fully offline.
+- [Color Picker](https://i-have-tools.vercel.app/tools/color-picker/): Pick colors, get every format, plus tints and shades.
+- [HEX / RGB / HSL Converter](https://i-have-tools.vercel.app/tools/hex-rgb-converter/): Convert colors between HEX, RGB and HSL — both ways.
+- [Color Contrast Checker](https://i-have-tools.vercel.app/tools/color-contrast-checker/): WCAG AA/AAA contrast ratios with pass/fail verdicts.
+- [Palette Generator](https://i-have-tools.vercel.app/tools/palette-generator/): Build color harmonies from one base color.
+- [Meta Tag Generator](https://i-have-tools.vercel.app/tools/meta-tag-generator/): Generate SEO, Open Graph and Twitter meta tags in one go.
+- [Robots.txt Generator](https://i-have-tools.vercel.app/tools/robots-txt-generator/): Build a valid robots.txt with rules, presets and sitemap.
+- [Sitemap Generator](https://i-have-tools.vercel.app/tools/sitemap-generator/): Paste URLs, get a valid sitemap.xml to download.
+- [Open Graph Preview](https://i-have-tools.vercel.app/tools/open-graph-preview/): Preview how a link looks when shared on social platforms.
+- [URL Parser](https://i-have-tools.vercel.app/tools/url-parser/): Break any URL into protocol, host, path and query params.
+- [Keyword Density Checker](https://i-have-tools.vercel.app/tools/keyword-density-checker/): Top words and phrases with density percentages.
+- [Scientific Calculator](https://i-have-tools.vercel.app/tools/scientific-calculator/): Full expression calculator with functions, history and keyboard support.
+- [Fraction Calculator](https://i-have-tools.vercel.app/tools/fraction-calculator/): Add, subtract, multiply and divide fractions — simplified.
+- [Time Duration Calculator](https://i-have-tools.vercel.app/tools/time-duration-calculator/): Add or subtract durations like 2h 45m + 30m.
+- [Average Calculator](https://i-have-tools.vercel.app/tools/average-calculator/): Mean, median, mode, range and more from a list of numbers.
+- [Ratio Calculator](https://i-have-tools.vercel.app/tools/ratio-calculator/): Simplify ratios and solve for the missing value.
+- [GCD & LCM Calculator](https://i-have-tools.vercel.app/tools/gcd-lcm-calculator/): Greatest common divisor and least common multiple, with steps.
+- [Date Difference](https://i-have-tools.vercel.app/tools/date-difference/): Days, weeks, months and weekdays between two dates.
+- [Date Add / Subtract](https://i-have-tools.vercel.app/tools/date-add-calculator/): Add or subtract days, weeks, months or years from a date.
+- [Time Zone Converter](https://i-have-tools.vercel.app/tools/time-zone-converter/): Convert a time between any two IANA time zones.
+- [CSV to JSON](https://i-have-tools.vercel.app/tools/csv-to-json/): RFC 4180-correct CSV conversion, with header row support.
+- [JSON to CSV](https://i-have-tools.vercel.app/tools/json-to-csv/): JSON arrays to properly escaped CSV, with column selection.
+- [JSON Lines Converter](https://i-have-tools.vercel.app/tools/json-lines-converter/): Convert JSON ⇄ JSON Lines (NDJSON) with per-line validation.
+- [Random Number Generator](https://i-have-tools.vercel.app/tools/random-number-generator/): Truly random numbers in any range — lottery-grade fairness.
+- [Dice Roller](https://i-have-tools.vercel.app/tools/dice-roller/): Roll up to 12 dice with any number of sides — crypto-random.
+- [PDF Merge](https://i-have-tools.vercel.app/tools/pdf-merge/): Combine PDFs in order — processed entirely in your browser.
+- [PDF Rotate](https://i-have-tools.vercel.app/tools/pdf-rotate/): Rotate every page or just some pages by 90°, 180° or 270°.
+- [PDF Split](https://i-have-tools.vercel.app/tools/pdf-split/): Extract page ranges or split a PDF into separate files.
+- [SIP Calculator](https://i-have-tools.vercel.app/tools/sip-calculator/): Estimate mutual fund SIP returns with a year-by-year growth table.
+- [PPF Calculator](https://i-have-tools.vercel.app/tools/ppf-calculator/): PPF maturity, interest and year-by-year balance at the current 7.1% rate.
+- [FD Calculator](https://i-have-tools.vercel.app/tools/fd-calculator/): Fixed deposit maturity and interest with quarterly compounding.
+- [Image to PDF](https://i-have-tools.vercel.app/tools/image-to-pdf/): Turn JPG, PNG or WebP images into one PDF — in your browser.
+- [Income Tax Calculator](https://i-have-tools.vercel.app/tools/income-tax-calculator/): India income tax for FY 2025-26 — old vs new regime compared instantly.
+- [JPG to PNG Converter](https://i-have-tools.vercel.app/tools/jpg-to-png/): Convert JPG/JPEG images to PNG losslessly, right in your browser.
+- [PNG to JPG Converter](https://i-have-tools.vercel.app/tools/png-to-jpg/): Convert PNG images to smaller JPGs, with a background colour for transparency.
+- [WebP to PNG Converter](https://i-have-tools.vercel.app/tools/webp-to-png/): Convert WebP images to widely-compatible PNGs, locally and free.
+- [JPG to WebP Converter](https://i-have-tools.vercel.app/tools/jpg-to-webp/): Convert JPG photos to modern, smaller WebP files for the web.
+- [YouTube Thumbnail Downloader](https://i-have-tools.vercel.app/tools/youtube-thumbnail-downloader/): Download any YouTube video thumbnail in HD, SD and more sizes.
+- [QR Code Generator](https://i-have-tools.vercel.app/tools/qr-code-generator/): Create QR codes for links, text and Wi-Fi — download as PNG or SVG.
 
 ## About this site
-- [About](https://ihavetools.web.app/about/)
-- [Privacy Policy](https://ihavetools.web.app/privacy-policy/)
-- [Terms of Use](https://ihavetools.web.app/terms/)
+- [About](https://i-have-tools.vercel.app/about/)
+- [Privacy Policy](https://i-have-tools.vercel.app/privacy-policy/)
+- [Terms of Use](https://i-have-tools.vercel.app/terms/)

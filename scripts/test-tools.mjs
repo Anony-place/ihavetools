@@ -695,6 +695,38 @@ await test('youtube id extraction (watch, youtu.be, shorts, raw id)', () => {
   assert.throws(() => seo.extractYouTubeId('https://example.com/watch?v=123'), /No video ID/);
   assert.throws(() => seo.extractYouTubeId(''), /Paste a YouTube/);
 });
+await test('QR codes round-trip through a real decoder (jsQR)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const vm = await import('node:vm');
+  const { default: jsQR } = await import('jsqr');
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(readFileSync(new URL('../assets/vendor/qrcode-generator.js', import.meta.url), 'utf8'), ctx);
+  assert.equal(typeof ctx.qrcode, 'function', 'vendored QR lib did not initialise');
+  const decode = (modules) => {
+    const size = modules.length, scale = 8, quiet = 4;
+    const dim = (size + quiet * 2) * scale;
+    const data = new Uint8ClampedArray(dim * dim * 4).fill(255);
+    for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
+      if (!modules[r][c]) continue;
+      for (let y = 0; y < scale; y++) for (let x = 0; x < scale; x++) {
+        const px = ((r + quiet) * scale + y) * dim + (c + quiet) * scale + x;
+        data[px * 4] = 0; data[px * 4 + 1] = 0; data[px * 4 + 2] = 0;
+      }
+    }
+    const out = jsQR(data, dim, dim);
+    return out ? out.data : null;
+  };
+  for (const payload of ['https://i-have-tools.vercel.app/tools/qr-code-generator/', 'Hello QR — ₹100 ✓', 'WIFI:S:HomeWifi;T:WPA;P:secret123;;']) {
+    const { modules, version } = seo.makeQrModules(ctx.qrcode, payload, 'M');
+    assert.ok(version >= 1 && version <= 40);
+    assert.equal(decode(modules), payload, `round-trip failed for: ${payload}`);
+  }
+  const svg = seo.qrSvgString(seo.makeQrModules(ctx.qrcode, 'test', 'L').modules);
+  assert.match(svg, /<svg[^>]+viewBox="0 0 29 29"/);
+  assert.throws(() => seo.makeQrModules(ctx.qrcode, ''), /Enter some text/);
+  assert.throws(() => seo.makeQrModules(ctx.qrcode, 'x'.repeat(5000), 'H'), /too long/);
+});
 await test('keyword density math', () => {
   const r = seo.keywordDensity('tool tools tools more words here and more words', { phraseLength: 1, filterStop: false });
   assert.equal(r.total, 9);

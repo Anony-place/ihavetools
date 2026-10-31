@@ -27,7 +27,7 @@ async function domTest(name, fn) {
 /* Browser-like globals for the tool modules (they use plain `document`). */
 function makeBrowserGlobals() {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
-    url: 'https://ihavetools.web.app/',
+    url: 'https://i-have-tools.vercel.app/',
     runScripts: 'outside-only',
     pretendToBeVisual: true,
     virtualConsole,
@@ -222,6 +222,13 @@ await domTest('sip-calculator: shows maturity and growth table', async () => {
   assert.match(app.textContent, /Maturity value/);
   assert.match(app.textContent, /Year-by-year growth/);
   assert.match(app.textContent, /not guaranteed/);
+});
+await domTest('qr-code-generator: mounts and validates empty input', async () => {
+  const app = await loadToolPage('qr-code-generator', 'webseo');
+  assert.match(app.textContent, /Text or URL to encode/);
+  assert.match(app.textContent, /Error correction/);
+  click(btnByLabel(app, 'Generate QR code'));
+  assert.match(statusText(document), /Enter some text or a URL first/);
 });
 await domTest('income-tax-calculator: compares both regimes', async () => {
   const app = await loadToolPage('income-tax-calculator', 'calculators');

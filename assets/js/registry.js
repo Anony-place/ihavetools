@@ -10,7 +10,10 @@ export const site = {
   tagline: 'Free, fast, useful online tools.',
   description:
     'Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser.',
-  url: 'https://ihavetools.web.app',
+  // Primary canonical host. NOTE: ihavetools.web.app was never actually
+  // deployed on Firebase ("Site Not Found") — the live, auto-deployed home
+  // is Vercel. Point this at a custom domain here when one is bought.
+  url: 'https://i-have-tools.vercel.app',
   themeColor: '#4f46e5',
   themeColorDark: '#0b0f1a',
 };
@@ -789,6 +792,18 @@ export const tools = [
       { q: 'Which thumbnail sizes can I download?', a: 'Up to five: Maximum 1280×720 (maxresdefault), SD 640×480, HQ 480×360, MQ 320×180 and Default 120×90. Not every video has the largest size — unavailable sizes are hidden automatically.' },
       { q: 'Is it legal to re-use a YouTube thumbnail?', a: 'Thumbnails are usually the creator’s copyrighted work. Downloading for reference or inspiration is common; re-publishing someone else’s thumbnail as your own can infringe copyright and mislead viewers. When in doubt, make your own.' },
       { q: 'Does this work for Shorts and private videos?', a: 'Shorts links work (the thumbnail may be a vertical crop). Private or deleted videos have no public thumbnail, so nothing will load for them.' },
+    ] }),
+  T({ id: 'qr-code-generator', name: 'QR Code Generator', icon: 'qr', engine: 'webseo', categories: ['image', 'web-seo'],
+    blurb: 'Create QR codes for links, text and Wi-Fi — download as PNG or SVG.',
+    description: 'Generate a QR code for any text, URL or Wi-Fi network and download it as a high-resolution PNG (up to 2048 px) or a crisp SVG. Choose colours and error-correction level. Codes are created locally in your browser and never expire.',
+    keywords: ['qr code generator', 'qr generator', 'create qr code', 'qr code maker', 'wifi qr code', 'free qr code'],
+    aliases: ['qr maker', 'qr creator', 'generate qr code', 'wifi qr generator'],
+    popularity: 93, featured: true, added: '2026-10-31',
+    steps: 'Type or paste the text, URL, or Wi-Fi string to encode.|Pick an error-correction level and colours (keep strong contrast for reliable scanning).|Click Generate, test-scan it with your phone, then download the PNG or SVG.',
+    faqs: [
+      { q: 'Do these QR codes expire?', a: 'No. The code contains your text/URL itself (a “static” QR code), with no redirect through any server — it keeps working forever, as long as the destination does.' },
+      { q: 'How do I make a Wi-Fi QR code?', a: 'Use this exact format as the text: WIFI:S:YourNetworkName;T:WPA;P:yourpassword;; — phones will offer to join the network when scanned. For open networks use T:nopass and leave P empty.' },
+      { q: 'Which error-correction level should I choose?', a: 'M suits most uses. Higher levels (Q/H) survive more damage, dirt or a logo placed over the code, but make the pattern denser. If you customise colours, keep the code much darker than the background and always test-scan before printing.' },
     ] }),
 ];
 

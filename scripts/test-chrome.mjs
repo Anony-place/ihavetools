@@ -28,7 +28,7 @@ function fire(el, type) { el.dispatchEvent(new window.Event(type, { bubbles: tru
 async function loadPage(urlPath) {
   const file = urlPath === '/' ? 'index.html' : urlPath.endsWith('.html') ? urlPath : `${urlPath}index.html`;
   const html = readFileSync(join(ROOT, file), 'utf8');
-  const dom = new JSDOM(html, { url: `https://ihavetools.web.app${urlPath === '/404.html' ? '/missing-page' : urlPath}`, runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole });
+  const dom = new JSDOM(html, { url: `https://i-have-tools.vercel.app${urlPath === '/404.html' ? '/missing-page' : urlPath}`, runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole });
   global.window = dom.window;
   global.document = dom.window.document;
   Object.defineProperty(global, 'navigator', { value: dom.window.navigator, configurable: true, writable: true });
