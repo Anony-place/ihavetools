@@ -179,6 +179,7 @@ test('static assets referenced by pages exist (css, js, icons, vendor)', () => {
   for (const f of ['assets/css/styles.css', 'assets/js/site.js', 'assets/js/registry.js', 'assets/js/ui.js', 'assets/js/icons.js', 'assets/js/search-index.js', 'assets/vendor/pdf-lib.min.js', 'assets/icons/favicon.svg', 'assets/icons/favicon-32.png', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/icons/og-image.png', 'assets/icons/sprite.svg', 'sw.js', 'llms.txt']) {
     assert.ok(existsSync(join(ROOT, f)), `missing asset ${f}`);
   }
+  for (const c of categories) assert.ok(existsSync(join(ROOT, `assets/og/category-${c.id}.png`)), `missing OG image for category ${c.id} — run node scripts/og.mjs`);
 });
 test('each tool page loads exactly one tool module entry', () => {
   for (const t of tools) {

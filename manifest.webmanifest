@@ -62,8 +62,8 @@
       ]
     },
     {
-      "name": "Word Counter",
-      "url": "/tools/word-counter/",
+      "name": "Hash Generator",
+      "url": "/tools/hash-generator/",
       "icons": [
         {
           "src": "/assets/icons/icon-192.png",

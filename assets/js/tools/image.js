@@ -300,12 +300,13 @@ const defs = {
       privacyNote('Resizing happens in your browser — the image is not uploaded.'));
   },
 
-  'image-converter'(root) {
+  'image-converter'(root, preset = null) {
     const zone = dropzone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'JPG, PNG, WebP, GIF, BMP — converted locally' });
     const fmtSel = select({ options: [{ v: 'png', t: 'PNG' }, { v: 'jpeg', t: 'JPEG' }, { v: 'webp', t: 'WebP' }], value: 'png' });
+    if (preset) fmtSel.value = preset;
     const bgPicker = input({ type: 'color', value: '#ffffff' });
     const bgRow = field({ label: 'Background (for transparent → JPEG)', control: h('div', { style: 'display:flex;gap:8px;align-items:center' }, bgPicker) });
-    bgRow.hidden = true;
+    bgRow.hidden = fmtSel.value !== 'jpeg';
     fmtSel.addEventListener('change', () => { bgRow.hidden = fmtSel.value !== 'jpeg'; });
     const status = statusLine('Choose an image to begin.');
     const info = h('p', { class: 'hint' });
@@ -320,7 +321,7 @@ const defs = {
       try {
         const t = await checkDecodable(file);
         info.textContent = `Detected format: ${t.toUpperCase()}.`;
-        status.set(`Loaded ${f.name}. Choose the output format.`, 'info');
+        status.set(preset ? `Loaded ${f.name}. Click Convert to ${EXT_BY_FMT[preset].toUpperCase()}.` : `Loaded ${f.name}. Choose the output format.`, 'info');
       } catch (err) { file = null; status.set(err.message, 'error'); }
     });
     const run = async () => {
@@ -344,12 +345,18 @@ const defs = {
     };
     root.append(zone, info,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
-        field({ label: 'Convert to', control: fmtSel }),
+        preset ? field({ label: 'Output format', control: h('p', { class: 'hint', text: `${EXT_BY_FMT[preset].toUpperCase()} — fixed on this page. Need another format? Use the Image Converter tool.`, style: 'margin:8px 0' }) }) : field({ label: 'Convert to', control: fmtSel }),
         bgRow),
-      actionsRow(btn({ label: 'Convert', icon: 'swap', onClick: run })),
+      actionsRow(btn({ label: preset ? `Convert to ${EXT_BY_FMT[preset].toUpperCase()}` : 'Convert', icon: 'swap', onClick: run })),
       status, preview,
       privacyNote('Conversion happens in your browser — the file is not uploaded.'));
   },
+
+  // Preset landing pages — same converter, output format locked.
+  'jpg-to-png'(root) { defs['image-converter'](root, 'png'); },
+  'png-to-jpg'(root) { defs['image-converter'](root, 'jpeg'); },
+  'webp-to-png'(root) { defs['image-converter'](root, 'png'); },
+  'jpg-to-webp'(root) { defs['image-converter'](root, 'webp'); },
 
   'image-cropper'(root) {
     const zone = dropzone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'Cropped locally — never uploaded' });

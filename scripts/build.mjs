@@ -75,7 +75,8 @@ const THEME_INIT = `<script>(function(){try{var t=localStorage.getItem('iht-them
 /* Static header chrome — rendered at build time so navigation links are in
    the HTML for crawlers and paint without JS (no layout shift). site.js only
    adds behaviour (theme values, toggles) to these elements. */
-function headerHtml(home) {
+function headerHtml(home, withSearch = false) {
+  const searchHtml = withSearch ? `<div class="search-box header-search"><span class="search-glyph">${icon('search')}</span><label class="sr-only" for="global-search">Search tools</label><input id="global-search" type="search" placeholder="Search ${tools.length} tools… (Ctrl K)" autocomplete="off" aria-expanded="false" aria-controls="search-results"><ul class="search-results" id="search-results" hidden></ul></div>` : (home ? '' : `<a class="btn btn-secondary btn-sm hide-sm" href="${ROOT_PREFIX}" aria-label="Search all tools" style="gap:7px"><span style="display:inline-flex">${icon('search')}</span>Search</a>`);
   const drop = `<details class="nav-drop"><summary>Categories <span style="display:inline-flex;width:14px">${icon('arrow-down')}</span></summary><div class="dropdown-panel">${categories.map((c) => `<a href="${ROOT_PREFIX}categories/${c.id}/"><span style="display:inline-flex">${icon(c.icon)}</span>${esc(c.name)}<span class="dd-count">${toolsByCategory(c.id).length}</span></a>`).join('')}</div></details>`;
   const popular6 = tools.slice().sort((a, b) => b.popularity - a.popularity).slice(0, 6);
   // Mobile menu links are text-only: 22 fewer icon references per page.
@@ -84,13 +85,13 @@ function headerHtml(home) {
   <div class="container header-inner">
     <a class="brand" href="${ROOT_PREFIX}">${brandMark('brand-mark')}iHaveTools</a>
     <nav class="main-nav" aria-label="Primary">${drop}<a href="${ROOT_PREFIX}#all-tools">All tools</a><a href="${ROOT_PREFIX}about/">About</a></nav>
-    <div class="header-actions"><button class="icon-btn theme-toggle" type="button" aria-label="Switch to dark theme">${icon('moon')}</button>${home ? '' : `<a class="btn btn-secondary btn-sm hide-sm" href="${ROOT_PREFIX}" aria-label="Search all tools" style="gap:7px"><span style="display:inline-flex">${icon('search')}</span>Search</a>`}<button class="nav-toggle" type="button" aria-expanded="false" aria-label="Open menu">${icon('menu')}</button></div>
+    <div class="header-actions">${searchHtml}<button class="icon-btn theme-toggle" type="button" aria-label="Switch to dark theme">${icon('moon')}</button><button class="nav-toggle" type="button" aria-expanded="false" aria-label="Open menu">${icon('menu')}</button></div>
   </div>
   <nav class="mobile-nav" aria-label="Mobile menu"><h3>Popular tools</h3>${mobileList(popular6, (t) => `${ROOT_PREFIX}tools/${t.id}/`)}<h3>Categories</h3>${mobileList(categories, (c) => `${ROOT_PREFIX}categories/${c.id}/`)}</nav>
 </header>`;
 }
 
-function layout({ bodyClass, title, description, canonical, jsonLd = [], content, moduleEntry = null, modulePreloads = [], ogType = 'website', noindex = false }) {
+function layout({ bodyClass, title, description, canonical, jsonLd = [], content, moduleEntry = null, modulePreloads = [], ogType = 'website', ogImage = '/assets/icons/og-image.png', noindex = false }) {
   const ld = jsonLd.map((o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`).join('\n');
   const preloads = [...new Set([`${ROOT_PREFIX}assets/js/site.js`, `${ROOT_PREFIX}assets/js/icons.js`, ...modulePreloads])]
     .map((href) => `<link rel="modulepreload" href="${href}">`).join('\n');
@@ -115,14 +116,14 @@ function layout({ bodyClass, title, description, canonical, jsonLd = [], content
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${esc(canonical)}">
-<meta property="og:image" content="${pageUrl('/assets/icons/og-image.png')}">
+<meta property="og:image" content="${pageUrl(ogImage)}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="${site.name} — free online tools">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(description)}">
-<meta name="twitter:image" content="${pageUrl('/assets/icons/og-image.png')}">
+<meta name="twitter:image" content="${pageUrl(ogImage)}">
 ${THEME_INIT}
 <link rel="stylesheet" href="${ROOT_PREFIX}assets/css/styles.css">
 ${preloads}
@@ -130,7 +131,7 @@ ${ld}
 </head>
 <body class="${bodyClass}">
 <a class="skip-link" href="#main">Skip to content</a>
-${headerHtml(bodyClass === 'page-home')}
+${headerHtml(bodyClass === 'page-home', bodyClass !== 'page-home' && bodyClass !== 'page-404')}
 <main id="main">
 ${content}
 </main>
@@ -327,6 +328,7 @@ ${breadcrumb([[c.name]])}
     title: `${c.name} Tools — Free Online, No Sign-Up | ${site.name}`,
     description: metaDesc(`Free ${c.name.toLowerCase()} tools online (${list.length}) — ${c.description} No sign-up; everything runs in your browser.`),
     canonical: pageUrl(`/categories/${c.id}/`),
+    ogImage: `/assets/og/category-${c.id}.png`,
     jsonLd: [
       { '@context': 'https://schema.org', '@type': 'CollectionPage', name: `${c.name} Tools`, description: c.description, url: pageUrl(`/categories/${c.id}/`), inLanguage: 'en', isPartOf: { '@id': `${pageUrl('/')}#site` } },
       { '@context': 'https://schema.org', '@type': 'ItemList', name: `${c.name} tools`, itemListElement: list.map((t, i) => ({ '@type': 'ListItem', position: i + 1, name: t.name, url: pageUrl(`/tools/${t.id}/`) })) },
@@ -382,6 +384,7 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
     title: `${t.name} — Free & Online | ${site.name}`,
     description: metaDesc(`${t.name} online — ${t.description} Free, no sign-up; runs in your browser.`),
     canonical: pageUrl(`/tools/${t.id}/`),
+    ogImage: `/assets/og/category-${cat.id}.png`,
     ogType: 'website',
     jsonLd: [
       {

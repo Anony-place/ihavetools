@@ -223,6 +223,15 @@ await domTest('sip-calculator: shows maturity and growth table', async () => {
   assert.match(app.textContent, /Year-by-year growth/);
   assert.match(app.textContent, /not guaranteed/);
 });
+await domTest('income-tax-calculator: compares both regimes', async () => {
+  const app = await loadToolPage('income-tax-calculator', 'calculators');
+  const nums = app.querySelectorAll('input[type=number]');
+  nums[0].value = '1275000'; nums[1].value = '0'; nums[2].value = '150000';
+  click(btnByLabel(app, 'Calculate tax'));
+  assert.match(app.textContent, /New regime tax/);
+  assert.match(app.textContent, /rebate u\/s 87A/);
+  assert.match(app.textContent, /regime/);
+});
 await domTest('bmi-calculator: metric healthy category', async () => {
   const app = await loadToolPage('bmi-calculator', 'calculators');
   const nums = app.querySelectorAll('input[type=number]');
