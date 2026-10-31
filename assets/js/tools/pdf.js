@@ -48,6 +48,16 @@ export function parseRanges(text, pageCount) {
 }
 export function describeBytes(n) { return fmtBytes(n); }
 
+/** Fit an image inside a page rect, preserving aspect ratio (PDF points). */
+export function fitRect(imgW, imgH, pageW, pageH, margin = 0) {
+  if (!(imgW > 0 && imgH > 0)) throw new Error('Image has no dimensions.');
+  const availW = pageW - margin * 2, availH = pageH - margin * 2;
+  if (availW <= 0 || availH <= 0) throw new Error('Margin is larger than the page.');
+  const scale = Math.min(availW / imgW, availH / imgH);
+  const w = imgW * scale, h = imgH * scale;
+  return { x: (pageW - w) / 2, y: (pageH - h) / 2, width: w, height: h };
+}
+
 /* ── shared UI bits ── */
 function makeZone(multiple, onFiles, label) {
   const zone = dropzone({ accept: 'application/pdf,.pdf', multiple, title: label || 'Choose a PDF or drop it here', sub: 'Processed locally with pdf-lib — never uploaded' });
@@ -277,7 +287,85 @@ const defs = {
       grid, status,
       privacyNote('Your PDF is processed locally in your browser with pdf-lib and is not uploaded.'));
   },
+
+  'image-to-pdf'(root) {
+    const listWrap = h('div', { class: 'file-list' });
+    const status = statusLine('Add one or more images — each becomes a page. Use ↑/↓ to reorder.');
+    const grid = statsGrid();
+    const pageSize = segControl({ options: [{ v: 'a4', t: 'A4 (fit)' }, { v: 'letter', t: 'Letter (fit)' }, { v: 'original', t: 'Image size' }], value: 'a4', ariaLabel: 'Page size' });
+    let files = [];
+    const zone = dropzone({
+      accept: 'image/*', multiple: true, title: 'Choose images or drop them here',
+      sub: 'JPG, PNG, WebP, GIF… — converted locally, never uploaded',
+      onFiles: (incoming) => {
+        for (const f of incoming) {
+          if (!f.type.startsWith('image/')) { status.set(`“${f.name}” is not an image file.`, 'error'); continue; }
+          files.push(f);
+          listWrap.append(pdfFilesRow(f));
+        }
+        updateGrid();
+        if (files.length) status.set(`${files.length} image${files.length === 1 ? '' : 's'} ready. Reorder if needed, then Convert.`, 'info');
+      },
+    });
+    const updateGrid = () => grid.set([
+      { label: 'Images', value: String(listWrap.children.length) },
+      { label: 'Total size', value: fmtBytes(files.reduce((s, f) => s + f.size, 0)) },
+    ]);
+    async function embedImage(pdf, file) {
+      const buf = await readFile(file, 'buffer');
+      const isJpg = /jpe?g/i.test(file.type) || /\.jpe?g$/i.test(file.name);
+      const isPng = /png/i.test(file.type) || /\.png$/i.test(file.name);
+      if (isJpg) { try { return await pdf.embedJpg(buf); } catch { /* fall through to canvas */ } }
+      if (isPng) { try { return await pdf.embedPng(buf); } catch { /* fall through to canvas */ } }
+      const bmp = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      canvas.width = bmp.width; canvas.height = bmp.height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bmp, 0, 0);
+      const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
+      if (!blob) throw new Error(`“${file.name}” could not be decoded by this browser.`);
+      return pdf.embedJpg(await blob.arrayBuffer());
+    }
+    const PAGE = { a4: [595.28, 841.89], letter: [612, 792] };
+    const run = async () => {
+      const ordered = [...listWrap.querySelectorAll('.file-row')].map((r) => files.find((f) => f.name === r.dataset.name)).filter(Boolean);
+      if (!ordered.length) { status.set('Add at least one image first.', 'warning'); return; }
+      status.set(`Loading the PDF engine, then converting ${ordered.length} image${ordered.length === 1 ? '' : 's'}…`, 'info');
+      try {
+        const PDFLib = await loadPdfLib();
+        const pdf = await PDFLib.PDFDocument.create();
+        for (const f of ordered) {
+          const img = await embedImage(pdf, f);
+          let page, rect;
+          if (pageSize.getValue() === 'original') {
+            page = pdf.addPage([img.width, img.height]);
+            rect = { x: 0, y: 0, width: img.width, height: img.height };
+          } else {
+            let [pw, ph] = PAGE[pageSize.getValue()];
+            if (img.width > img.height && pw < ph) [pw, ph] = [ph, pw]; // landscape image → landscape page
+            page = pdf.addPage([pw, ph]);
+            rect = fitRect(img.width, img.height, pw, ph, 36);
+          }
+          page.drawImage(img, rect);
+        }
+        const outBytes = await pdf.save();
+        const blob = new Blob([outBytes], { type: 'application/pdf' });
+        downloadBlob(blob, ordered.length === 1 ? `${ordered[0].name.replace(/\.[^.]+$/, '')}.pdf` : 'images.pdf');
+        grid.set([{ label: 'Pages created', value: String(ordered.length), kind: 'good' }, { label: 'PDF size', value: fmtBytes(blob.size) }]);
+        status.set(`Converted ${ordered.length} image${ordered.length === 1 ? '' : 's'} into a PDF — download started ✓`, 'success');
+      } catch (e) { status.set(e.message, 'error'); }
+    };
+    root.append(zone, listWrap,
+      h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
+        field({ label: 'Page size', control: pageSize })),
+      actionsRow(
+        btn({ label: 'Convert to PDF', icon: 'file-text', onClick: run }),
+        btn({ label: 'Clear list', variant: 'ghost', icon: 'x', onClick: () => { listWrap.replaceChildren(); files = []; updateGrid(); status.set('Cleared.'); } })),
+      grid, status,
+      privacyNote('Images are converted locally in your browser with pdf-lib — they are never uploaded.'));
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { parseRanges };
+export const __test = { parseRanges, fitRect };

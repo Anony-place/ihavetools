@@ -2,15 +2,15 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://ihavetools.web.app/</loc>
-    <lastmod>2026-09-19</lastmod>
+    <lastmod>2026-10-31</lastmod>
   </url>
   <url>
     <loc>https://ihavetools.web.app/categories/pdf/</loc>
-    <lastmod>2026-09-18</lastmod>
+    <lastmod>2026-10-31</lastmod>
   </url>
   <url>
     <loc>https://ihavetools.web.app/categories/image/</loc>
-    <lastmod>2026-09-17</lastmod>
+    <lastmod>2026-10-31</lastmod>
   </url>
   <url>
     <loc>https://ihavetools.web.app/categories/video/</loc>
@@ -26,7 +26,7 @@
   </url>
   <url>
     <loc>https://ihavetools.web.app/categories/calculators/</loc>
-    <lastmod>2026-06-07</lastmod>
+    <lastmod>2026-10-31</lastmod>
   </url>
   <url>
     <loc>https://ihavetools.web.app/categories/converters/</loc>
@@ -387,6 +387,22 @@
   <url>
     <loc>https://ihavetools.web.app/tools/pdf-split/</loc>
     <lastmod>2026-09-18</lastmod>
+  </url>
+  <url>
+    <loc>https://ihavetools.web.app/tools/sip-calculator/</loc>
+    <lastmod>2026-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://ihavetools.web.app/tools/ppf-calculator/</loc>
+    <lastmod>2026-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://ihavetools.web.app/tools/fd-calculator/</loc>
+    <lastmod>2026-10-31</lastmod>
+  </url>
+  <url>
+    <loc>https://ihavetools.web.app/tools/image-to-pdf/</loc>
+    <lastmod>2026-10-31</lastmod>
   </url>
   <url>
     <loc>https://ihavetools.web.app/about/</loc>

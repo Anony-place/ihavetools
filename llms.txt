@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 80 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 84 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
 
 ## Categories
 - [PDF & Documents tools](https://ihavetools.web.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -101,6 +101,10 @@
 - [PDF Merge](https://ihavetools.web.app/tools/pdf-merge/): Combine PDFs in order — processed entirely in your browser.
 - [PDF Rotate](https://ihavetools.web.app/tools/pdf-rotate/): Rotate every page or just some pages by 90°, 180° or 270°.
 - [PDF Split](https://ihavetools.web.app/tools/pdf-split/): Extract page ranges or split a PDF into separate files.
+- [SIP Calculator](https://ihavetools.web.app/tools/sip-calculator/): Estimate mutual fund SIP returns with a year-by-year growth table.
+- [PPF Calculator](https://ihavetools.web.app/tools/ppf-calculator/): PPF maturity, interest and year-by-year balance at the current 7.1% rate.
+- [FD Calculator](https://ihavetools.web.app/tools/fd-calculator/): Fixed deposit maturity and interest with quarterly compounding.
+- [Image to PDF](https://ihavetools.web.app/tools/image-to-pdf/): Turn JPG, PNG or WebP images into one PDF — in your browser.
 
 ## About this site
 - [About](https://ihavetools.web.app/about/)

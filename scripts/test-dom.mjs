@@ -214,6 +214,15 @@ await domTest('emi-calculator: shows EMI and schedule', async () => {
   assert.match(app.textContent, /Monthly EMI/);
   assert.match(app.textContent, /Year-by-year balance/);
 });
+await domTest('sip-calculator: shows maturity and growth table', async () => {
+  const app = await loadToolPage('sip-calculator', 'calculators');
+  const nums = app.querySelectorAll('input[type=number]');
+  nums[0].value = '10000'; nums[1].value = '12'; nums[2].value = '15';
+  click(btnByLabel(app, 'Calculate SIP'));
+  assert.match(app.textContent, /Maturity value/);
+  assert.match(app.textContent, /Year-by-year growth/);
+  assert.match(app.textContent, /not guaranteed/);
+});
 await domTest('bmi-calculator: metric healthy category', async () => {
   const app = await loadToolPage('bmi-calculator', 'calculators');
   const nums = app.querySelectorAll('input[type=number]');

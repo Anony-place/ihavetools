@@ -68,20 +68,24 @@
 
 ---
 
-## 3. Phase 2 — Growth: naye high-traffic tools (agle turn/session me)
+## 3. Phase 2 — Growth: naye high-traffic tools
 
-India + global search volume dekh kar, existing engines reuse karke:
+**Status (2026-10-31):** SIP ✅, PPF ✅, FD ✅, Image to PDF ✅ — live.
+Site ab **Vercel par bhi live hai: https://i-have-tools.vercel.app**
+(`vercel.json` — outputDirectory `.`, headers/redirects Firebase ke mirror).
+Canonical primary abhi `ihavetools.web.app` hi hai taaki ranking split na ho;
+custom domain aate hi ek baar me switch hoga.
 
-| Tool | Kyun | Effort |
-|------|------|--------|
-| **SIP Calculator** | India me crores searches/month | calculators engine, chhota |
-| **PPF Calculator** | India high volume, kam competition quality me | chhota |
-| **Income Tax Calculator (India FY 2025-26)** | seasonal mega-traffic | medium (slabs) |
-| **Image to PDF** | global high volume | pdf-lib ready hai |
-| **JPG↔PNG / WebP converter pages** (programmatic) | existing image-converter ke preset pages = naye landing pages lagbhag muft me | chhota |
-| **QR Code Generator** | evergreen high volume | QR encoder likhna padega (medium) |
-| **YouTube Thumbnail Downloader** | high volume, sirf URL parse | chhota |
-| **Love/Percentage… nahi** — quality bar maintain karna hai | — | — |
+| Tool | Status |
+|------|--------|
+| **SIP Calculator** | ✅ live (2026-10-31) |
+| **PPF Calculator** | ✅ live (2026-10-31) |
+| **FD Calculator** | ✅ live (2026-10-31) |
+| **Image to PDF** | ✅ live (2026-10-31) |
+| **Income Tax Calculator (India FY 2025-26)** | ⏳ next (slabs + 87A rebate) |
+| **JPG↔PNG / WebP converter preset pages** (programmatic SEO) | ⏳ next |
+| **QR Code Generator** | ⏳ next (encoder likhna hai) |
+| **YouTube Thumbnail Downloader** | ⏳ next |
 
 Saath me:
 - [ ] Per-category OG images (1200×630) — social CTR.

@@ -1,9 +1,10 @@
 # iHaveTools
 
-**80 free online tools. No sign-up, no uploads, no limits.** Every tool runs
+**84 free online tools. No sign-up, no uploads, no limits.** Every tool runs
 entirely in your browser — your files and text never leave your device.
 
-**Live site:** https://ihavetools.web.app/
+**Live site:** https://ihavetools.web.app/ (primary) ·
+https://i-have-tools.vercel.app/ (Vercel mirror, auto-deployed from `main`)
 
 ## Categories (16)
 
