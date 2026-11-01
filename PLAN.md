@@ -2,7 +2,7 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-01 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 91 → is batch me 94
+> `main` par merge = auto-deploy) · **Tools:** 98 (Batch-1: 94, Batch-2: 98)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
@@ -79,24 +79,36 @@ naye pages + ek shareable link live-verify.
 
 ---
 
-## 📋 BATCH-2 — "Content depth + naye tools" (agli branch, Continue par)
+## ✅ BATCH-2 — "Content depth + naye tools" — DONE (2026-11-01)
 
-- **Guides Batch-3:** bache hue high-popularity tools — UUID, Base64,
-  JPG→PNG / PNG→JPG landing pages, PDF Merge, YouTube Thumbnail,
-  Character Counter, Timestamp Converter. (Jo page GSC me pehle
-  impressions laye, usey priority.)
-- **Naye tools batch (pure-logic, high demand):** Number Base Converter
-  (binary/decimal/hex), Roman Numeral Converter, Morse Code Translator,
-  Lumpsum Calculator (agar Compound Interest se alag value de to).
-- **Per-tool OG images** — sirf top-20 tools ke liye (poori 90+ images =
-  repo bloat; baaki category OG chalega).
-- GSC me jo pages index ho gaye hain unke title/description CTR tuning
-  (real query data dekh kar, guesswork nahi).
+Ek hi branch/PR me shipped (tools 94 → **98**, guides 21 → **33**):
 
-## 📋 BATCH-3 — "Data-driven growth" (uske baad)
+1. **4 naye tools:** Number Base Converter (BigInt-exact binary/octal/
+   decimal/hex), Roman Numeral Converter (strict 1–3999 rules), Morse
+   Code Translator (sound playback ke saath), Lumpsum Calculator
+   (shareable links + Lumpsum-vs-SIP comparison guide). ✅
+2. **Guides Batch-3 (8):** UUID, Base64, JPG→PNG, PNG→JPG, PDF Merge,
+   YouTube Thumbnail, Character Counter, Timestamp — har fact engine
+   se verify karke (Base64 3-byte table, UUID collision math, YT size
+   table, SMS 160→70 rule, 2038 overflow...). Char Counter + Timestamp
+   ko pehli baar custom FAQs bhi mile. ✅
+3. **Per-tool OG images:** top-20 popularity tools ko apni khud ki
+   1200×630 OG image (`scripts/og.mjs` generate karta hai;
+   `build.mjs` exist kare to use karta hai, warna category OG).
+   Test suite me iski guarantee added. ✅
+4. **Tests:** base/roman/morse engine test + 4 naye tools ka DOM
+   mount-compute test + top-20 OG link assertions. Suite **240/240**. ✅
+5. **GSC CTR tuning — Batch-3 me deferred:** abhi real query data
+   available nahi (site nayi hai); guesswork se titles nahi badlenge.
+   Tum GSC me Performance → Queries ka screenshot/data jab aaye to
+   share karna, Batch-3 usi par banega.
 
-- Search Console ke real data par kaam: jo queries page-2 par atki hain
-  un pages ka content aur deep; "indexed nahi hue" pages ki wajah fix.
+## 📋 BATCH-3 — "Data-driven growth" (agli branch, Continue par)
+
+- **GSC CTR tuning:** indexed pages ke real queries par title/description
+  tuning (jo Batch-2 se yahan shift hua — data aane par). Jo queries
+  page-2 par atki hain un pages ka content aur deep; "indexed nahi
+  hue" pages ki wajah fix.
 - Full performance + accessibility audit pass (Lighthouse sab templates par).
 - PWA install prompt ("Add to home screen") — SW pehle se ready hai.
 - Agar tab tak revenue/budget aaya → **custom domain** (neeche dekho).

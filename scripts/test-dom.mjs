@@ -269,6 +269,27 @@ await domTest('sip-calculator: a shared link pre-fills inputs, auto-runs, and UR
   await new Promise((r) => setTimeout(r, 20));
   assert.match(document.defaultView.location.search, /monthly=7000/, 'recalculating must sync the URL so Copy link shares the latest result');
 });
+await domTest('batch-2 tools (base, roman, morse, lumpsum) mount and compute', async () => {
+  let app = await loadToolPage('number-base-converter', 'developer');
+  app.querySelector('input').value = 'FF';
+  app.querySelector('select').value = '16';
+  click(btnByLabel(app, 'Convert'));
+  assert.match(app.textContent, /1111 1111/, 'FF hex should render as grouped binary 1111 1111');
+  assert.match(app.textContent, /255/, 'FF hex = 255 decimal');
+  app = await loadToolPage('roman-numeral-converter', 'converters');
+  app.querySelector('input').value = '1994';
+  click(btnByLabel(app, 'Convert'));
+  assert.match(app.textContent, /MCMXCIV/, '1994 should convert to MCMXCIV');
+  app = await loadToolPage('morse-code-translator', 'text');
+  app.querySelector('textarea').value = 'SOS';
+  click(btnByLabel(app, 'Translate'));
+  assert.match(app.textContent, /\.\.\. --- \.\.\./, 'SOS should encode to ... --- ...');
+  app = await loadToolPage('lumpsum-calculator', 'calculators');
+  const inputs = app.querySelectorAll('input');
+  inputs[0].value = '100000'; inputs[1].value = '12'; inputs[2].value = '10';
+  click(btnByLabel(app, 'Calculate lumpsum'));
+  assert.match(app.textContent, /310,584/, '₹1L lumpsum @12% for 10y = ₹3,10,585');
+});
 await domTest('rd, cagr and gratuity calculators mount and compute correct values', async () => {
   let app = await loadToolPage('rd-calculator', 'calculators');
   let inputs = app.querySelectorAll('input');

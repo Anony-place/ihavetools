@@ -6,7 +6,7 @@
 //   sitemap.xml, robots.txt, manifest.webmanifest, 404.html
 // Run `node scripts/build.mjs` after any registry change, and commit the output.
 // =============================================================================
-import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdirSync, rmSync } from 'node:fs'; // existsSync is imported with readdirSync near the sprite step below
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { site, categories, tools, toolsByCategory, categoryById, relatedTools } from '../assets/js/registry.js';
@@ -431,7 +431,8 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
     title: `${t.name} — Free & Online | ${site.name}`,
     description: metaDesc(`${t.name} online — ${t.description} Free, no sign-up; runs in your browser.`),
     canonical: pageUrl(`/tools/${t.id}/`),
-    ogImage: `/assets/og/category-${cat.id}.png`,
+    // Top tools carry their own OG image (scripts/og.mjs); the rest share their category's.
+    ogImage: existsSync(join(ROOT, 'assets/og', `tool-${t.id}.png`)) ? `/assets/og/tool-${t.id}.png` : `/assets/og/category-${cat.id}.png`,
     ogType: 'website',
     jsonLd: [
       {

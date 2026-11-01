@@ -180,6 +180,14 @@ test('static assets referenced by pages exist (css, js, icons, vendor)', () => {
     assert.ok(existsSync(join(ROOT, f)), `missing asset ${f}`);
   }
   for (const c of categories) assert.ok(existsSync(join(ROOT, `assets/og/category-${c.id}.png`)), `missing OG image for category ${c.id} — run node scripts/og.mjs`);
+  // The 20 most popular tools (same popularity-sort rule as scripts/og.mjs)
+  // carry their own OG image, and their pages must reference it.
+  const top20 = [...tools].sort((a, b) => b.popularity - a.popularity || a.id.localeCompare(b.id)).slice(0, 20);
+  for (const t of top20) {
+    assert.ok(existsSync(join(ROOT, `assets/og/tool-${t.id}.png`)), `missing OG image for top tool ${t.id} — run node scripts/og.mjs`);
+    const html = readFileSync(join(ROOT, 'tools', t.id, 'index.html'), 'utf8');
+    assert.match(html, new RegExp(`og/tool-${t.id}\\.png`), `${t.id} page must reference its own OG image`);
+  }
 });
 test('each tool page loads exactly one tool module entry', () => {
   for (const t of tools) {

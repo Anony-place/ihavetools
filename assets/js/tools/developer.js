@@ -190,6 +190,41 @@ export function uuidv4(rng) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/* ═══════════════════════════ Number bases ═══════════════════════════
+   BigInt throughout, so values far beyond Number.MAX_SAFE_INTEGER
+   (64-bit hashes, memory addresses) convert exactly. */
+const BASE_DIGITS = '0123456789abcdefghijklmnopqrstuvwxyz';
+export function convertBase(value, fromBase, toBase) {
+  for (const b of [fromBase, toBase]) {
+    if (!Number.isInteger(b) || b < 2 || b > 36) throw new Error('Bases must be whole numbers between 2 and 36.');
+  }
+  const s = String(value).trim().toLowerCase().replace(/[\s_]/g, '');
+  if (!s) throw new Error('Enter a number to convert.');
+  const neg = s.startsWith('-');
+  const digits = neg ? s.slice(1) : s;
+  if (!digits) throw new Error('Enter a number to convert.');
+  let n = 0n;
+  const fb = BigInt(fromBase);
+  for (const ch of digits) {
+    const d = BASE_DIGITS.indexOf(ch);
+    if (d === -1 || d >= fromBase) throw new Error(`“${ch}” is not a valid base-${fromBase} digit.`);
+    n = n * fb + BigInt(d);
+  }
+  if (n === 0n) return '0';
+  const tb = BigInt(toBase);
+  let out = '';
+  while (n > 0n) { out = BASE_DIGITS[Number(n % tb)] + out; n /= tb; }
+  return (neg ? '-' : '') + out;
+}
+/** Group digits for readability: groupDigits('11111111', 4) → '1111 1111'. */
+export function groupDigits(str, size = 4) {
+  const neg = str.startsWith('-');
+  const d = neg ? str.slice(1) : str;
+  const parts = [];
+  for (let i = d.length; i > 0; i -= size) parts.unshift(d.slice(Math.max(0, i - size), i));
+  return (neg ? '-' : '') + parts.join(' ');
+}
+
 /* ═══════════════════════════ Timestamps ═══════════════════════════ */
 export function parseTimestamp(raw) {
   const s = String(raw).trim();
@@ -983,6 +1018,37 @@ const defs = {
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel);
   },
+
+  'number-base-converter'(root) {
+    const val = input({ type: 'text', placeholder: 'e.g. 255, FF or 11111111', value: '255' });
+    const from = select({ options: [{ v: '2', t: 'Binary (base 2)' }, { v: '8', t: 'Octal (base 8)' }, { v: '10', t: 'Decimal (base 10)' }, { v: '16', t: 'Hexadecimal (base 16)' }], value: '10' });
+    const status = statusLine('');
+    const outWrap = h('div', {});
+    const run = () => {
+      const fb = Number(from.value);
+      try {
+        const bin = convertBase(val.value, fb, 2);
+        const rows = [
+          ['Binary (2)', groupDigits(bin, 4)],
+          ['Octal (8)', convertBase(val.value, fb, 8)],
+          ['Decimal (10)', convertBase(val.value, fb, 10)],
+          ['Hexadecimal (16)', convertBase(val.value, fb, 16).toUpperCase()],
+        ];
+        outWrap.replaceChildren(table({ headers: ['Base', 'Value'], rows }));
+        const bits = bin.replace('-', '').replace(/^0+/, '').length || 1;
+        status.set(`Converted ✓ — needs ${bits} bit${bits === 1 ? '' : 's'} in binary. Exact big-integer math, no precision loss.`, 'success');
+      } catch (e) { outWrap.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    val.addEventListener('input', run);
+    from.addEventListener('change', run);
+    root.append(
+      h('div', { class: 'field-row', style: 'align-items:end' },
+        field({ label: 'Number', control: val, hint: 'Spaces and underscores are ignored; leading − allowed' }),
+        field({ label: 'From base', control: from })),
+      actionsRow(btn({ label: 'Convert', icon: 'binary', onClick: run })),
+      status, outWrap);
+    run();
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
@@ -990,5 +1056,5 @@ export function mount(id) { mountTool(id, defs); }
 export const __test = {
   validateJson, jsonFormat, jsonMinify, b64encode, b64decode, urlEncode, urlDecode, uuidv4,
   parseTimestamp, dateToParts, digest, toHex, toB64, findMatches, decodeJwt,
-  formatHtml, minifyHtml, formatCss, minifyCss, formatJs,
+  formatHtml, minifyHtml, formatCss, minifyCss, formatJs, convertBase, groupDigits,
 };

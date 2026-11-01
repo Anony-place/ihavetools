@@ -2,7 +2,7 @@
 // iHaveTools — Unit converters (one engine, eight tools)
 // length, weight, temperature, time, speed, data-storage, area, volume
 // =============================================================================
-import { h, field, input, select, btn, actionsRow, resultPanel, statusLine, table, fmtNumber, mountTool } from '../ui.js';
+import { h, field, input, select, segControl, btn, actionsRow, resultPanel, statusLine, table, fmtNumber, mountTool } from '../ui.js';
 
 /* Engine: convert(value, from, to) via base-unit factors; temperature is special. */
 export const UNIT_SETS = {
@@ -79,6 +79,29 @@ export function convert(value, from, to, set = 'length') {
   return (value * s.units[from]) / s.units[to];
 }
 
+/* ═══════════════════ Roman numerals (1–3999, strict standard form) ═══════════════════ */
+const ROMAN_TABLE = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+export function toRoman(n) {
+  if (!Number.isInteger(n) || n < 1 || n > 3999) throw new Error('Enter a whole number between 1 and 3999 — the standard Roman system has no zero, and numbers beyond 3999 need overline (vinculum) notation.');
+  let out = '';
+  let rest = n;
+  for (const [v, sym] of ROMAN_TABLE) { while (rest >= v) { out += sym; rest -= v; } }
+  return out;
+}
+const ROMAN_RE = /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
+export function fromRoman(str) {
+  const s = String(str).trim().toUpperCase();
+  if (!s || !ROMAN_RE.test(s)) throw new Error('That is not a standard Roman numeral — watch for repeats like IIII or invalid subtractions like IC (99 is XCIX, 49 is XLIX).');
+  const val = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+  let total = 0;
+  for (let i = 0; i < s.length; i++) {
+    const cur = val[s[i]];
+    const next = val[s[i + 1]] || 0;
+    total += cur < next ? -cur : cur;
+  }
+  return total;
+}
+
 /* UI: one generic builder used by all eight converter pages */
 function converterUI(root, setId, defaults) {
   const s = UNIT_SETS[setId];
@@ -132,7 +155,37 @@ const defs = {
   'data-storage-converter': (root) => converterUI(root, 'data', { value: '1', from: 'gigabyte (GB)', to: 'megabyte (MB)' }),
   'area-converter': (root) => converterUI(root, 'area', { value: '1', from: 'hectare', to: 'acre' }),
   'volume-converter': (root) => converterUI(root, 'volume', { value: '1', from: 'US gallon', to: 'litre' }),
+  'roman-numeral-converter'(root) {
+    const mode = segControl({ options: [{ v: 'to-roman', t: 'Number → Roman' }, { v: 'to-number', t: 'Roman → Number' }], value: 'to-roman', ariaLabel: 'Direction' });
+    const val = input({ type: 'text', placeholder: 'e.g. 2026', value: '2026' });
+    const status = statusLine('');
+    const out = resultPanel({ label: 'Result', copy: false, placeholder: 'Enter a value to convert.' });
+    const run = () => {
+      try {
+        if (mode.getValue() === 'to-roman') {
+          const n = Number(val.value);
+          const r = toRoman(n);
+          out.set(h('p', { style: 'font-size:1.6rem;font-weight:750;letter-spacing:0.04em;margin:0', text: r }));
+          status.set(`${n} in Roman numerals ✓`, 'success');
+        } else {
+          const n = fromRoman(val.value);
+          out.set(h('p', { style: 'font-size:1.6rem;font-weight:750;letter-spacing:-0.02em;margin:0;font-variant-numeric:tabular-nums', text: String(n) }));
+          status.set(`${val.value.trim().toUpperCase()} = ${n} ✓`, 'success');
+        }
+      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+    };
+    val.addEventListener('input', run);
+    mode.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setTimeout(() => {
+      val.placeholder = mode.getValue() === 'to-roman' ? 'e.g. 2026' : 'e.g. MMXXVI';
+      run();
+    }, 0)));
+    root.append(field({ label: 'Direction', control: mode }),
+      field({ label: 'Value', control: val, hint: 'Numbers 1–3999; Roman input is case-insensitive' }),
+      actionsRow(btn({ label: 'Convert', icon: 'type', onClick: run })),
+      status, h('br'), out.panel);
+    run();
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { UNIT_SETS, convert };
+export const __test = { UNIT_SETS, convert, toRoman, fromRoman };
