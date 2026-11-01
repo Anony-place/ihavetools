@@ -1,139 +1,138 @@
-# iHaveTools — Best Tool Site Banane Ka Plan (SEO + Speed Roadmap)
+# iHaveTools — Pura Plan (Complete Roadmap)
 
-> **Goal:** Site ko Google par fast rank karana + har page lightning-fast banana,
-> taaki iHaveTools ek best-in-class free tools site bane.
-> **Date:** 2026-10-31 · **Current state:** 80 tools, 16 categories, static site
-> (Firebase Hosting), har tool browser me chalta hai (no upload) — base solid hai.
-
----
-
-## 1. Audit me kya mila (sacchi report)
-
-### ✅ Pehle se achha hai
-- Har page ka unique title/description, canonical, Open Graph, JSON-LD schema,
-  sitemap.xml, robots.txt, breadcrumbs, FAQ sections.
-- 100% static + no framework + system fonts → inherently fast.
-- PDF library (525 KB) already lazy-load hoti hai, sirf PDF tools par.
-- Test suite strong hai (engine + DOM + chrome + link-check).
-
-### 🔴 Critical problems (rank/speed rokne wale)
-
-| # | Problem | Asar |
-|---|---------|------|
-| 1 | **Service Worker dead hai** — code `/sw.js` register karta hai, file `/assets/sw.js` par hai. PWA/offline/cache kaam hi nahi kar raha. | Repeat visits slow, PWA fail |
-| 2 | **Har page 71 KB ki registry.js load karta hai** (saare 80 tools ka saara data) — sirf header/search ke liye. | Har tool page par extra JS parse time, slow INP/LCP |
-| 3 | **Homepage ka 58% HTML (37.8 KB/65 KB) repeated SVG icons hai** — har icon har card me dobara paste. | Homepage heavy, slow first paint |
-| 4 | **Header nav JS se banta hai** — category links HTML me hi nahi hain. | SEO internal-linking kamzor, layout shift (CLS) |
-| 5 | **Build reproducible nahi hai** — `build.mjs` relative paths (`../../`) banata hai, live site absolute (`/assets/`) hai. Next build sab tod dega. | Khamosh bomb 💣 |
-| 6 | **72/80 tools par sirf 2 generic FAQ** ("Is it free?") — thin/duplicate content. | Google ko rank karne ko content hi nahi |
-| 7 | **About / Privacy Policy / Terms pages nahi hain.** | E-E-A-T/trust fail, AdSense approval mushkil |
-| 8 | **firebase.json me cache/security headers nahi hain.** | Repeat load slow, Lighthouse best-practices down |
-| 9 | **Sitemap me `lastmod` har build par "aaj" ho jata hai** (jhoothi freshness). | Google lastmod ko ignore kar deta hai |
-| 10 | Homepage H1 *"Every tool you need"* — target keyword **"free online tools"** H1 me nahi. | Home ka main keyword weak |
+> **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
+> **Updated:** 2026-11-01 · **Live:** https://i-have-tools.vercel.app (Vercel,
+> `main` par merge = auto-deploy) · **Tools:** 91 → is batch me 94
+>
+> **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
+> baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
+> BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
+> PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
 
 ---
 
-## 2. Phase 1 — Technical SEO + Speed (✅ IS TURN ME HO RAHA HAI)
+## ✅ Jo ho chuka hai (history, short me)
 
-### Speed (Core Web Vitals)
-- [x] Service Worker fix: `/sw.js` root par, stale-while-revalidate caching,
-      har HTTPS host par register (sirf localhost/preview par nahi).
-- [x] **Slim search index**: full 71 KB registry ki jageh ~15 KB ka
-      `search-index.js`, woh bhi **lazy** — sirf search use hone/idle par load.
-      Tool pages par registry load hona band.
-- [x] **SVG sprite**: har page par icon paths ek hi baar, cards sirf `<use>`
-      reference karenge → homepage HTML ~65 KB → ~35 KB expected.
-- [x] **Static header/footer HTML** (build-time): nav, category dropdown,
-      mobile menu, theme button — bina JS ke render. No CLS, crawlable links.
-- [x] `modulepreload` tool engine + UI ke liye → tool turant interactive.
-- [x] **Speculation Rules** (prefetch on hover) → next page lagbhag instant.
-- [x] Firebase cache headers: assets 1 din + stale-while-revalidate,
-      icons/images 30 din, HTML no-cache, `sw.js` no-cache + security headers.
-- [x] `content-visibility` cards par → homepage ke 118 cards ka render sasta.
-- [x] Build fix: `ROOT_PREFIX = '/'` lock — build ab live site jaisa hi output dega.
+**Base + Speed/SEO foundation (PR #1–#2):** service-worker fix (`/sw.js`),
+slim lazy search index (71 KB registry har page se hata), external SVG sprite,
+static crawlable header/nav (no CLS), modulepreload, speculation rules,
+honest sitemap `lastmod`, rich schema (`WebApplication`/`HowTo`/`FAQPage`/
+breadcrumbs), About/Privacy/Terms pages, `llms.txt`, CTR-style meta
+descriptions, reproducible build (`ROOT_PREFIX='/'` lock).
 
-### SEO
-- [x] Homepage H1 keyword-first: **"Free Online Tools for Everyday Work"**.
-- [x] Tool pages par rich content: *"What is X?"* section + 4 FAQs
-      (har tool ke apne description/aliases se bane — duplicate nahi).
-- [x] Related tools 4 → 6, `related` override respect, category browse link.
-- [x] Structured data upgrade: Organization + WebSite `@graph`,
-      `WebApplication` (price 0, dates, publisher), `HowTo` steps,
-      category `ItemList`.
-- [x] **About / Privacy Policy / Terms** pages + footer links + sitemap.
-- [x] Sitemap honest `lastmod` (tool ki `added` date), faltu tags hatae.
-- [x] `llms.txt` — AI search (ChatGPT/Perplexity/Gemini) ke liye tool list.
-- [x] Meta descriptions CTR-style: *"X online — … Free, no sign-up…"* (~155 chars).
-- [x] High-value alias redirects (`/tools/merge-pdf/` → `/tools/pdf-merge/` etc.)
+**Naye tools (80 → 91):** SIP, PPF, FD, Image to PDF, Income Tax (FY 2025-26,
+old-vs-new), JPG↔PNG/WebP landing pages (4), YouTube Thumbnail Downloader,
+QR Code Generator (vendored MIT encoder, jsQR se decode-verify karke).
 
----
+**UX/SEO extras:** per-category OG images (16), header search + Ctrl/⌘K,
+⭐ Favourites + Recently Used (localStorage), Copy-Link share button,
+12 top tools par hand-written **deep guides** (engine-verified numbers).
 
-## 3. Phase 2 — Growth: naye high-traffic tools
+**⚠️ Zaroori corrections jo ho chuki:**
+- `ihavetools.web.app` (Firebase) kabhi deploy hua hi nahi tha ("Site Not
+  Found") — canonical primary ab `https://i-have-tools.vercel.app` hai
+  (registry.js → `site.url`). Domain mile to yahi ek line badlegi.
+- Repo **PUBLIC** hai → GitHub Actions free chalta hai (billing tension khatm).
+- Vercel `outputDirectory="."` hi sahi hai (`STATIC_BUILD_NO_OUT_DIR` fix).
 
-**Status (2026-10-31):** SIP ✅, PPF ✅, FD ✅, Image to PDF ✅ — live.
-Site ab **Vercel par bhi live hai: https://i-have-tools.vercel.app**
-(`vercel.json` — outputDirectory `.`, headers/redirects Firebase ke mirror).
-⚠️ Correction (baad me pata chala): `ihavetools.web.app` par Firebase deploy
-hua hi kabhi nahi tha ("Site Not Found") — isliye canonical primary ab
-`https://i-have-tools.vercel.app` hai (registry.js me `site.url`).
-Repo ab PUBLIC hai, to GitHub Actions bhi free chalta hai.
+**Search engines (2026-10-31 ✅):** Google Search Console property verified
+(meta tag site me), `sitemap.xml` submit, Bing Webmaster import done.
+Indexing 1–4 hafte me gradually hoti hai; shuruaat me "Discovered –
+currently not indexed" **normal** hai. Har hafte GSC → Pages report check.
 
-| Tool | Status |
-|------|--------|
-| **SIP Calculator** | ✅ live (2026-10-31) |
-| **PPF Calculator** | ✅ live (2026-10-31) |
-| **FD Calculator** | ✅ live (2026-10-31) |
-| **Image to PDF** | ✅ live (2026-10-31) |
-| **Income Tax Calculator (India FY 2025-26)** | ✅ live — old vs new regime, 87A, marginal relief (2026-10-31) |
-| **JPG→PNG / PNG→JPG / WebP→PNG / JPG→WebP preset pages** | ✅ live (2026-10-31) |
-| **QR Code Generator** | ✅ live (2026-10-31) — vendored MIT encoder, jsQR decode-verified |
-| **YouTube Thumbnail Downloader** | ✅ live (2026-10-31) |
-
-Saath me:
-- [x] Per-category OG images (1200×630) — `scripts/og.mjs`, tool pages use their category image. ✅
-- [x] Top tools ke liye hand-written deep content — 12 guides live
-      (JSON errors table, password entropy table, SIP/EMI worked examples,
-      FY 2025-26 tax slabs, BMI/QR/percentage/age/word-counter/
-      image-compressor/image-to-pdf). Registry `guide` field → static HTML.
-      Baaki tools par dheere-dheere (GST, compound interest, discount next).
-- [x] Cmd-K / global search har page ke header me (Ctrl/⌘+K, lazy index). ✅
-- [x] ⭐ Favorites + "Recently used" (localStorage) — star har card + tool
-      page par, homepage par personal sections. ✅
-- [x] Tool pages par share/copy-link button. ✅
-- [ ] Result share: calculators me `?amount=` style params (link khulte hi
-      values pre-filled) — next batch.
-- [x] **Search Console + Bing submission DONE** (2026-10-31) — property
-      verified, sitemap submit, Bing import. Ab indexing ka wait +
-      Pages/Coverage report monitoring. Note: indexing 1–4 hafte me
-      gradually hota hai; "Discovered, not indexed" shuruaat me normal hai.
-
-## 4. Phase 3 — Off-code ranking kaam (bhai, ye tumhe karna hoga — code se nahi hota)
-
-1. **Custom domain** ⭐ Sabse bada factor (jab budget ho). Vercel subdomain ki jageh apna
-   domain (e.g. `ihavetools.com`) Firebase par connect karo → phir
-   `assets/js/registry.js` me `site.url` badal kar rebuild. Subdomain par
-   rank karna mushkil hota hai (domain authority tumhari nahi banti).
-2. **Google Search Console**: property add karo, `sitemap.xml` submit karo,
-   top-20 tool pages ki "Request Indexing". Coverage report hafte me dekho.
-3. **Bing Webmaster Tools** + IndexNow (Bing/Yandex fast index) — 10 minute ka kaam.
-4. **Backlinks**: Product Hunt launch, Reddit (r/InternetIsBeautiful,
-   r/webdev — spammy nahi, genuine), dev.to/Hashnode article
-   *"80 tools jo browser me chalte hain, bina upload ke"*, tool directories
-   (AlternativeTo, SaaSHub, Toolify), GitHub awesome-lists me PR.
-5. **Analytics**: privacy-friendly (Plausible/GoatCounter — free tier) lagao
-   taaki pata chale kaunse tools chal hain. Privacy Policy usi hisaab se update.
-6. Hafte me 2–3 naye tools ya ek tool ka content deep-karo — consistency hi
-   tool-sites ko rank karati hai. Rankings **2–6 mahine** me aati hain;
-   isiliye Phase-2 wale high-volume tools pehle.
-
-## 5. Phase 4 — Monetization ready (traffic aane ke baad)
-- AdSense (Privacy/Terms/About ab ready hain), ads ko tool-panel ke bahar —
-  UX/speed kharab nahi karni, warna ranking girti hai.
-- PWA install prompt (SW ab thik hai), browser extension (search palette).
+**Quality bar (non-negotiable):** no placeholders/adhure tools; jo number
+guide/FAQ me likha hai wo pehle engine se calculate karke verify hota hai;
+test suite last check par **235/235 green** (engine+DOM+Chrome+link).
 
 ---
 
-## Kaam kaise verify hoga
-Har change ke baad: `npm run check` (build + 148 engine + 44 DOM + 8 chrome
-+ link-check). Ek bhi tool toota to change reject. Speed ka pehle/baad ka
-size comparison PR description me milega.
+## 🔨 BATCH-1 — "Finance + Sharing" (✅ DONE — 2026-11-01)
+
+Ek hi PR me ye sab:
+
+1. **Ye pura plan document** (roadmap fix, taaki aage sochna na pade). ✅
+2. **Shareable result links — SAARE calculators par** ✅
+   har calculator apni values URL me likhta hai (`?monthly=5000&rate=12&years=10`)
+   aur aisa link khulte hi values pre-filled + result ready milta hai.
+   Copy-Link button ab result bhi saath le jata hai. (`ui.js` → `shareState()`)
+   Tools: Percentage, Percentage Change, Discount, Age, BMI, GST, EMI, Tip,
+   Compound Interest, Simple Interest, SIP, PPF, FD, Income Tax, RD, CAGR,
+   Gratuity — kul 17.
+3. **3 naye high-search finance tools** (pure tested logic ke saath): ✅
+   - **RD Calculator** — monthly deposit, quarterly compounding
+     (standard closed-form: A = P×[((1+i)ⁿ−1)/(1−(1+i)^(−1/3))], i=R/400).
+   - **CAGR Calculator** — (End÷Start)^(1/years) − 1.
+   - **Gratuity Calculator** — (15/26) × (basic+DA) × service years
+     (Payment of Gratuity Act wala formula, 6-maheene-se-upar = pura saal).
+4. **Deep guides — Batch-2:** GST, Compound Interest, Simple Interest,
+   Discount, FD, PPF + teeno naye tools (RD/CAGR/Gratuity). ✅
+   (Total guides ab 21 tools par; saare worked examples engine-verified.)
+5. **Tests:** teeno naye calculators ke engine tests (haath se verify kiye
+   numbers), share-link pre-fill/auto-run/URL-sync ka DOM test,
+   guide-structure test 21 tools tak. Suite: **238/238 green.** ✅
+6. **Housekeeping:** OG images regenerate (calculators 14→17, saath me
+   image/web-seo ke QR-se-badle counts bhi fresh), README 91 → 94. ✅
+
+**Batch-1 ki definition of done:** upar ke 6 point complete, `npm run check`
+full green, generated pages committed, PR merged, Vercel production par
+naye pages + ek shareable link live-verify.
+
+---
+
+## 📋 BATCH-2 — "Content depth + naye tools" (agli branch, Continue par)
+
+- **Guides Batch-3:** bache hue high-popularity tools — UUID, Base64,
+  JPG→PNG / PNG→JPG landing pages, PDF Merge, YouTube Thumbnail,
+  Character Counter, Timestamp Converter. (Jo page GSC me pehle
+  impressions laye, usey priority.)
+- **Naye tools batch (pure-logic, high demand):** Number Base Converter
+  (binary/decimal/hex), Roman Numeral Converter, Morse Code Translator,
+  Lumpsum Calculator (agar Compound Interest se alag value de to).
+- **Per-tool OG images** — sirf top-20 tools ke liye (poori 90+ images =
+  repo bloat; baaki category OG chalega).
+- GSC me jo pages index ho gaye hain unke title/description CTR tuning
+  (real query data dekh kar, guesswork nahi).
+
+## 📋 BATCH-3 — "Data-driven growth" (uske baad)
+
+- Search Console ke real data par kaam: jo queries page-2 par atki hain
+  un pages ka content aur deep; "indexed nahi hue" pages ki wajah fix.
+- Full performance + accessibility audit pass (Lighthouse sab templates par).
+- PWA install prompt ("Add to home screen") — SW pehle se ready hai.
+- Agar tab tak revenue/budget aaya → **custom domain** (neeche dekho).
+
+---
+
+## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
+
+1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha
+   hai ya nahi. Kuch ajeeb dikhe → mujhe batao, mai fix karunga.
+2. **Backlinks/launch (sabse bada ranking lever code ke bahar):**
+   Product Hunt launch, Reddit par genuine posts (spam nahi), ek dev.to/
+   Hashnode article ("tools jo bina upload ke browser me chalte hain"),
+   tool directories (AlternativeTo, SaaSHub), GitHub awesome-lists me PR,
+   aur seedha-saada doston/WhatsApp par share. Jitna genuine, utna achha.
+3. **Analytics (free):** GoatCounter/Plausible jaisa privacy-friendly free
+   option — taaki pata chale kaunse tools asal me use ho rahe hain. Lagane
+   se pehle mujhe bolo, Privacy Policy mai saath update kar dunga.
+4. **Custom domain — JAB budget ho (abhi bilkul pressure nahi):**
+   `ihavetools.com` jaisa domain (~₹800–1,500/saal class ka kharcha) Vercel
+   par connect → mai `site.url` badal kar rebuild kar dunga (15 min ka kaam).
+   Tab tak Vercel subdomain hi primary hai — koi sketchy free TLD nahi lenge.
+
+## 💰 Monetization (traffic aane ke baad hi)
+
+- AdSense (About/Privacy/Terms ready hain) — ads tool-panel ke **bahar**,
+  speed/UX kharab ki to ranking giregi.
+- Browser extension (search palette) — power users ke liye.
+
+---
+
+## Honest ranking sach
+
+Technical SEO + achhe tools zaroori hain lekin akele kaafi nahi: nayi site
+ko rank hone me aam taur par **2–6 mahine** lagte hain. Tez karne wali
+cheezein, order me: (1) indexing complete hona, (2) backlinks/launch,
+(3) lagataar naye tools + deep content, (4) custom domain (jab ho sake).
+Plan isi order me bana hai — code wala hissa mai sambhal raha hu,
+bahar wala tumhare haath me hai. 🤝

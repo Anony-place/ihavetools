@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://i-have-tools.vercel.app/</loc>
-    <lastmod>2026-10-31</lastmod>
+    <lastmod>2026-11-01</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/pdf/</loc>
@@ -26,7 +26,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/calculators/</loc>
-    <lastmod>2026-10-31</lastmod>
+    <lastmod>2026-11-01</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/converters/</loc>
@@ -433,15 +433,27 @@
     <lastmod>2026-10-31</lastmod>
   </url>
   <url>
+    <loc>https://i-have-tools.vercel.app/tools/rd-calculator/</loc>
+    <lastmod>2026-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/cagr-calculator/</loc>
+    <lastmod>2026-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/gratuity-calculator/</loc>
+    <lastmod>2026-11-01</lastmod>
+  </url>
+  <url>
     <loc>https://i-have-tools.vercel.app/about/</loc>
-    <lastmod>2026-10-31</lastmod>
+    <lastmod>2026-11-01</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/privacy-policy/</loc>
-    <lastmod>2026-10-31</lastmod>
+    <lastmod>2026-11-01</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/terms/</loc>
-    <lastmod>2026-10-31</lastmod>
+    <lastmod>2026-11-01</lastmod>
   </url>
 </urlset>

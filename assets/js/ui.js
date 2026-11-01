@@ -310,6 +310,63 @@ export function privacyText(kind) {
 }
 
 /* ---------- Tool mounting ---------- */
+/* ── Shareable state via URL query params ──────────────────────────────────
+   Calculators declare `[key, target]` pairs once (target = input/select
+   element, or {get, set} for segmented controls & switches) and get:
+   1) inputs pre-filled when a shared link like ?monthly=5000&rate=12 opens,
+   2) the URL kept in sync after every calculation, so the page's existing
+      "Copy link" button shares the *result*, not just the page.
+   Everything is try/catch-guarded: history/location may be unavailable in
+   tests or odd embedding contexts, and sharing must never break a tool. */
+export function urlParams() {
+  try { return new URLSearchParams(location.search); } catch { return new URLSearchParams(); }
+}
+function pairGet(target) {
+  if (typeof target === 'function') return target();
+  if (target && typeof target.get === 'function') return target.get();
+  return target?.value;
+}
+function pairSet(target, v) {
+  if (typeof target === 'function') target(v);
+  else if (target && typeof target.set === 'function') target.set(v);
+  else if (target) target.value = v;
+}
+/** Fill controls from the current query string. Returns true if anything applied. */
+export function prefillFromUrl(pairs) {
+  const q = urlParams();
+  let any = false;
+  for (const [key, target] of pairs) {
+    const v = q.get(key);
+    if (v == null || v === '') continue;
+    pairSet(target, v);
+    any = true;
+  }
+  return any;
+}
+/** Write current control values into the URL (no reload, no history spam). */
+export function syncUrlParams(pairs) {
+  try {
+    const q = new URLSearchParams();
+    for (const [key, target] of pairs) {
+      const v = pairGet(target);
+      if (v !== '' && v != null) q.set(key, String(v));
+    }
+    const s = q.toString();
+    history.replaceState(null, '', s ? `?${s}` : location.pathname);
+  } catch { /* sharing is best-effort */ }
+}
+/** One-liner for tool defs: prefill + auto-run shared links, sync after clicks. */
+export function shareState(root, pairs, run) {
+  const applied = prefillFromUrl(pairs);
+  root.addEventListener('click', (e) => {
+    if (e.target?.closest?.('button')) setTimeout(() => syncUrlParams(pairs), 0);
+  });
+  if (applied && typeof run === 'function') {
+    setTimeout(() => { try { run(); } catch { /* invalid shared values: tool shows its own warning */ } }, 0);
+  }
+  return applied;
+}
+
 export function mountTool(id, defs) {
   const root = document.getElementById('tool-app');
   if (!root) return;

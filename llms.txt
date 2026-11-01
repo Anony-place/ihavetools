@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 91 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 94 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -112,6 +112,9 @@
 - [JPG to WebP Converter](https://i-have-tools.vercel.app/tools/jpg-to-webp/): Convert JPG photos to modern, smaller WebP files for the web.
 - [YouTube Thumbnail Downloader](https://i-have-tools.vercel.app/tools/youtube-thumbnail-downloader/): Download any YouTube video thumbnail in HD, SD and more sizes.
 - [QR Code Generator](https://i-have-tools.vercel.app/tools/qr-code-generator/): Create QR codes for links, text and Wi-Fi — download as PNG or SVG.
+- [RD Calculator](https://i-have-tools.vercel.app/tools/rd-calculator/): Recurring deposit maturity with quarterly compounding and a yearly table.
+- [CAGR Calculator](https://i-have-tools.vercel.app/tools/cagr-calculator/): Compound annual growth rate from start value, end value and years.
+- [Gratuity Calculator](https://i-have-tools.vercel.app/tools/gratuity-calculator/): Estimate gratuity with the statutory (15/26) × salary × years formula.
 
 ## About this site
 - [About](https://i-have-tools.vercel.app/about/)
