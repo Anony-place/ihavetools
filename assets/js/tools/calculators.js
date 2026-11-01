@@ -2,9 +2,12 @@
 // iHaveTools — Calculators engine + UIs
 // percentage-calculator, percentage-change, discount-calculator, age-calculator,
 // bmi-calculator, gst-calculator, emi-calculator, tip-calculator,
-// compound-interest-calculator, simple-interest-calculator
+// compound-interest-calculator, simple-interest-calculator, sip-calculator,
+// ppf-calculator, fd-calculator, income-tax-calculator, rd-calculator,
+// cagr-calculator, gratuity-calculator
+// Every def ends with shareState(...) so results are shareable as URL links.
 // =============================================================================
-import { h, field, input, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool } from '../ui.js';
+import { h, field, input, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool, shareState } from '../ui.js';
 
 const num = (el) => { const v = parseFloat(String(el.value).replace(/,/g, '')); return v; };
 const money = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -171,6 +174,48 @@ export function fdCalc({ principal, annualRatePct, years, perYear = 4 }) {
   return { maturity, interest: maturity - principal, effectiveYield };
 }
 
+export function rdCalc({ monthly, annualRatePct, months }) {
+  if (!(monthly > 0)) throw new Error('Monthly deposit must be greater than zero.');
+  if (!(annualRatePct >= 0)) throw new Error('Interest rate cannot be negative.');
+  if (!(months >= 3) || months % 3 !== 0) throw new Error('RD tenure must be in whole quarters (3, 6, 9… months) — interest compounds quarterly.');
+  // Standard RD closed form with quarterly compounding (deposit at the
+  // start of each month): A = P × [((1+i)^n − 1) / (1 − (1+i)^(−1/3))],
+  // where i = R/400 is the quarterly rate and n = number of quarters.
+  const i = annualRatePct / 400;
+  const valueAt = (m) => (i === 0 ? monthly * m : monthly * ((Math.pow(1 + i, m / 3) - 1) / (1 - Math.pow(1 + i, -1 / 3))));
+  const maturity = valueAt(months);
+  const deposited = monthly * months;
+  const schedule = [];
+  for (let m = 12; m <= months; m += 12) {
+    const value = valueAt(m);
+    schedule.push({ months: m, deposited: monthly * m, value, interest: value - monthly * m });
+  }
+  if (months % 12 !== 0) schedule.push({ months, deposited, value: maturity, interest: maturity - deposited });
+  return { deposited, maturity, interest: maturity - deposited, months, schedule };
+}
+
+export function cagrCalc({ startValue, endValue, years }) {
+  if (!(startValue > 0)) throw new Error('The starting value must be greater than zero.');
+  if (!(endValue >= 0)) throw new Error('The ending value cannot be negative.');
+  if (!(years > 0)) throw new Error('The time period must be greater than zero.');
+  const growthMultiple = endValue / startValue;
+  const cagrPct = endValue === 0 ? -100 : (Math.pow(growthMultiple, 1 / years) - 1) * 100;
+  return { cagrPct, growthMultiple, absoluteReturnPct: (growthMultiple - 1) * 100, gain: endValue - startValue };
+}
+
+export function gratuityCalc({ monthlySalary, years, months = 0 }) {
+  if (!(monthlySalary > 0)) throw new Error('Enter the last drawn monthly salary (basic + DA).');
+  if (!(years >= 0) || !(months >= 0 && months <= 11)) throw new Error('Enter service as whole years plus 0–11 months.');
+  if (years === 0 && months === 0) throw new Error('Service duration must be greater than zero.');
+  // Payment of Gratuity Act, 1972: gratuity = (15/26) × last drawn monthly
+  // salary (basic + DA) × years of service; a final-year fraction *over*
+  // six months counts as a full year, six months or less does not.
+  const roundedYears = years + (months > 6 ? 1 : 0);
+  const amount = (15 / 26) * monthlySalary * roundedYears;
+  const totalYears = years + months / 12;
+  return { amount, roundedYears, totalYears, eligible: totalYears >= 5 };
+}
+
 function slabTax(income, slabs) {
   // slabs: [[upperLimit, rate], ...] with last limit Infinity
   let tax = 0, prev = 0;
@@ -300,6 +345,7 @@ const defs = {
     if (labels[0]) { const dyn = labelA; labels[0].replaceWith(dyn); }
     if (labels[1]) { const dyn = labelB; labels[1].replaceWith(dyn); }
     applyMode();
+    shareState(root, [['mode', { get: () => mode.getValue(), set: (v) => { mode.setValue(v); applyMode(); } }], ['x', a], ['y', b]], run);
   },
 
   'percentage-change'(root) {
@@ -322,6 +368,7 @@ const defs = {
     };
     root.append(h('div', { class: 'field-row' }, field({ label: 'Starting value', control: from }), field({ label: 'New value', control: to })),
       actionsRow(btn({ label: 'Calculate change', icon: 'trending', onClick: run })), grid, status);
+    shareState(root, [['from', from], ['to', to]], run);
   },
 
   'discount-calculator'(root) {
@@ -352,6 +399,7 @@ const defs = {
     root.append(field({ label: 'Original price', control: price }),
       h('div', { class: 'field-row' }, field({ label: 'Discount %', control: d1 }), field({ label: 'Extra discount %', control: d2, hint: 'Applied after the first' }), field({ label: 'Tax %', control: tax, hint: 'On the discounted price' })),
       actionsRow(btn({ label: 'Calculate', icon: 'tag', onClick: run })), grid, steps, status);
+    shareState(root, [['price', price], ['off', d1], ['extra', d2], ['tax', tax]], run);
   },
 
   'age-calculator'(root) {
@@ -379,6 +427,7 @@ const defs = {
         field({ label: 'Date of birth', control: dob }),
         field({ label: 'Age at date', control: at, hint: 'Defaults to today' })),
       actionsRow(btn({ label: 'Calculate age', icon: 'cake', onClick: run })), grid, status);
+    shareState(root, [['dob', dob], ['at', at]], run);
   },
 
   'bmi-calculator'(root) {
@@ -414,6 +463,7 @@ const defs = {
     };
     root.append(field({ label: 'Units', control: unit }), metricRow, imperialRow,
       actionsRow(btn({ label: 'Calculate BMI', icon: 'activity', onClick: run })), grid, status);
+    shareState(root, [['units', { get: () => unit.getValue(), set: (v) => { unit.setValue(v); applyUnits(); } }], ['cm', cm], ['kg', kg], ['ft', ft], ['in', inch], ['lb', lb]], run);
   },
 
   'gst-calculator'(root) {
@@ -444,6 +494,17 @@ const defs = {
         field({ label: 'GST rate', control: rate }),
         field({ label: 'Custom rate', control: custom })),
       actionsRow(btn({ label: 'Calculate GST', icon: 'receipt', onClick: run })), grid, status);
+    shareState(root, [
+      ['mode', { get: () => mode.getValue(), set: (v) => mode.setValue(v) }],
+      ['amount', amount],
+      ['rate', {
+        get: () => (rate.value === 'custom' ? custom.value : rate.value),
+        set: (v) => {
+          if ([...rate.options].some((o) => o.value === String(v) && o.value !== 'custom')) { rate.value = String(v); custom.hidden = true; }
+          else { rate.value = 'custom'; custom.hidden = false; custom.value = v; }
+        },
+      }],
+    ], run);
   },
 
   'emi-calculator'(root) {
@@ -479,6 +540,10 @@ const defs = {
         field({ label: 'Tenure', control: years, hint: 'Years (or months if toggled below)' })),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, monthsOnly),
       actionsRow(btn({ label: 'Calculate EMI', icon: 'bank', onClick: run })), grid, scheduleWrap, status);
+    shareState(root, [
+      ['amount', principal], ['rate', rate], ['tenure', years],
+      ['unit', { get: () => (monthsOnly.querySelector('input').checked ? 'months' : ''), set: (v) => { monthsOnly.querySelector('input').checked = v === 'months'; } }],
+    ], run);
   },
 
   'tip-calculator'(root) {
@@ -514,6 +579,13 @@ const defs = {
         ),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, roundTip, roundTotal),
       actionsRow(btn({ label: 'Calculate tip', icon: 'coins', onClick: run })), grid, status);
+    shareState(root, [
+      ['bill', bill], ['tip', pct], ['people', people],
+      ['round', {
+        get: () => [roundTip.querySelector('input').checked ? 'tip' : '', roundTotal.querySelector('input').checked ? 'total' : ''].filter(Boolean).join('-'),
+        set: (v) => { roundTip.querySelector('input').checked = v.includes('tip'); roundTotal.querySelector('input').checked = v.includes('total'); },
+      }],
+    ], run);
   },
 
   'compound-interest-calculator'(root) {
@@ -551,6 +623,7 @@ const defs = {
         field({ label: 'Compounding', control: freq })),
       field({ label: 'Additional contribution', control: contrib, hint: 'Per month, optional' }),
       actionsRow(btn({ label: 'Calculate growth', icon: 'trending', onClick: run })), grid, scheduleWrap, status);
+    shareState(root, [['principal', principal], ['rate', rate], ['years', years], ['freq', freq], ['contrib', contrib]], run);
   },
 
   'simple-interest-calculator'(root) {
@@ -578,6 +651,7 @@ const defs = {
         field({ label: 'Time', control: time }),
         field({ label: 'Unit', control: unit })),
       actionsRow(btn({ label: 'Calculate interest', icon: 'trending', onClick: run })), grid, status);
+    shareState(root, [['principal', principal], ['rate', rate], ['time', time], ['unit', unit]], run);
   },
 
   'sip-calculator'(root) {
@@ -608,6 +682,7 @@ const defs = {
         field({ label: 'Expected return % (p.a.)', control: rate }),
         field({ label: 'Duration (years)', control: years })),
       actionsRow(btn({ label: 'Calculate SIP', icon: 'trending', onClick: run })), grid, scheduleWrap, status);
+    shareState(root, [['monthly', monthly], ['rate', rate], ['years', years]], run);
   },
 
   'ppf-calculator'(root) {
@@ -639,6 +714,7 @@ const defs = {
         field({ label: 'Interest rate % (p.a.)', control: rate }),
         field({ label: 'Duration (years)', control: years, hint: 'PPF matures in 15 years, extendable by 5' })),
       actionsRow(btn({ label: 'Calculate PPF', icon: 'bank', onClick: run })), grid, scheduleWrap, status);
+    shareState(root, [['yearly', yearly], ['rate', rate], ['years', years]], run);
   },
 
   'fd-calculator'(root) {
@@ -667,6 +743,7 @@ const defs = {
         field({ label: 'Tenure (years)', control: years }),
         field({ label: 'Compounding', control: freq })),
       actionsRow(btn({ label: 'Calculate FD', icon: 'coins', onClick: run })), grid, status);
+    shareState(root, [['principal', principal], ['rate', rate], ['years', years], ['freq', freq]], run);
   },
 
   'income-tax-calculator'(root) {
@@ -716,8 +793,110 @@ const defs = {
         field({ label: 'Deductions (old regime)', control: deductions, hint: '80C + 80D + HRA + home-loan interest…' }),
         field({ label: 'Age', control: age })),
       actionsRow(btn({ label: 'Calculate tax (FY 2025-26)', icon: 'receipt', onClick: run })), grid, detailWrap, status);
+    shareState(root, [['salary', salary], ['other', other], ['deductions', deductions], ['age', age]], run);
+  },
+
+  'rd-calculator'(root) {
+    const monthly = input({ type: 'number', step: 'any', placeholder: 'e.g. 5000', value: '5000' });
+    const rate = input({ type: 'number', step: 'any', placeholder: 'e.g. 7', value: '7' });
+    const years = input({ type: 'number', step: '1', placeholder: 'e.g. 5', value: '5' });
+    const extraMonths = select({ options: [{ v: '0', t: '0 months' }, { v: '3', t: '3 months' }, { v: '6', t: '6 months' }, { v: '9', t: '9 months' }], value: '0' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const scheduleWrap = h('div', {});
+    const run = () => {
+      try {
+        const totalMonths = Math.round(num(years)) * 12 + Number(extraMonths.value);
+        const r = rdCalc({ monthly: num(monthly), annualRatePct: num(rate), months: totalMonths });
+        grid.set([
+          { label: 'Total deposited', value: money(r.deposited) },
+          { label: 'Interest earned', value: money(r.interest), kind: 'warn' },
+          { label: 'Maturity value', value: money(r.maturity), kind: 'good' },
+          { label: 'Tenure', value: `${r.months} months` },
+        ]);
+        scheduleWrap.replaceChildren(
+          h('h3', { text: 'Year-by-year growth', style: 'margin:20px 0 10px' }),
+          table({ headers: ['After', 'Deposited', 'Interest', 'Value'], rows: r.schedule.map((y) => [y.months % 12 === 0 ? `Y${y.months / 12}` : `${y.months} mo`, money(y.deposited), money(y.interest), money(y.value)]) }));
+        status.set(`Depositing ${money(num(monthly))} a month at ${fmtNumber(num(rate))}% with quarterly compounding. Interest is taxed at your slab rate; your bank's exact figure may differ slightly by deposit dates.`, 'success');
+      } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Monthly deposit', control: monthly }),
+        field({ label: 'Interest rate % (p.a.)', control: rate }),
+        field({ label: 'Tenure (years)', control: years }),
+        field({ label: 'Plus', control: extraMonths })),
+      actionsRow(btn({ label: 'Calculate RD', icon: 'bank', onClick: run })), grid, scheduleWrap, status);
+    shareState(root, [['monthly', monthly], ['rate', rate], ['years', years], ['months', extraMonths]], run);
+  },
+
+  'cagr-calculator'(root) {
+    const start = input({ type: 'number', step: 'any', placeholder: 'e.g. 100000', value: '100000' });
+    const end = input({ type: 'number', step: 'any', placeholder: 'e.g. 250000', value: '250000' });
+    const years = input({ type: 'number', step: 'any', placeholder: 'e.g. 7', value: '7' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const pathWrap = h('div', {});
+    const run = () => {
+      try {
+        const r = cagrCalc({ startValue: num(start), endValue: num(end), years: num(years) });
+        grid.set([
+          { label: 'CAGR', value: `${fmtNumber(r.cagrPct, 2)}%`, kind: r.cagrPct >= 0 ? 'good' : 'bad' },
+          { label: 'Total growth', value: `${fmtNumber(r.absoluteReturnPct, 2)}%` },
+          { label: 'Growth multiple', value: `${fmtNumber(r.growthMultiple, 3)}×` },
+          { label: r.gain >= 0 ? 'Gain' : 'Loss', value: money(Math.abs(r.gain)), kind: r.gain >= 0 ? 'good' : 'bad' },
+        ]);
+        const yrs = num(years);
+        if (Number.isInteger(yrs) && yrs >= 1 && yrs <= 40 && num(end) > 0) {
+          const g = r.cagrPct / 100;
+          const rows = [];
+          for (let y = 1; y <= yrs; y++) rows.push([`Y${y}`, money(num(start) * Math.pow(1 + g, y))]);
+          pathWrap.replaceChildren(
+            h('h3', { text: 'The smooth path CAGR implies', style: 'margin:20px 0 10px' }),
+            table({ headers: ['Year', 'Value if growth were perfectly steady'], rows }),
+            h('p', { class: 'hint', text: 'CAGR irons out all the ups and downs in between — the real path was bumpier than this.' }));
+        } else pathWrap.replaceChildren();
+        status.set(`Growing from ${money(num(start))} to ${money(num(end))} in ${fmtNumber(yrs)} years is a ${fmtNumber(r.cagrPct, 2)}% CAGR.`, 'success');
+      } catch (e) { grid.replaceChildren(); pathWrap.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Starting value', control: start }),
+        field({ label: 'Ending value', control: end }),
+        field({ label: 'Time period (years)', control: years })),
+      actionsRow(btn({ label: 'Calculate CAGR', icon: 'trending', onClick: run })), grid, pathWrap, status);
+    shareState(root, [['start', start], ['end', end], ['years', years]], run);
+  },
+
+  'gratuity-calculator'(root) {
+    const salary = input({ type: 'number', step: 'any', placeholder: 'e.g. 50000', value: '50000' });
+    const years = input({ type: 'number', step: '1', placeholder: 'e.g. 20', value: '20' });
+    const months = input({ type: 'number', step: '1', min: 0, max: 11, placeholder: '0–11', value: '0' });
+    const inr = (v) => `₹${money(v)}`;
+    const grid = statsGrid();
+    const status = statusLine('');
+    const run = () => {
+      try {
+        const r = gratuityCalc({ monthlySalary: num(salary), years: Math.floor(num(years)), months: Math.floor(num(months) || 0) });
+        grid.set([
+          { label: 'Estimated gratuity', value: inr(r.amount), kind: 'good' },
+          { label: 'Service counted', value: `${r.roundedYears} years` },
+          { label: 'Eligibility (5+ years)', value: r.eligible ? 'Eligible ✓' : 'Not yet', kind: r.eligible ? 'good' : 'warn' },
+        ]);
+        status.set(r.eligible
+          ? `Formula: (15 ÷ 26) × ${inr(num(salary))} × ${r.roundedYears} years. Salary here means last drawn basic + DA; service over 6 months in the final year is counted as a full year.`
+          : 'Note: under the Payment of Gratuity Act, gratuity is generally payable only after 5 years of continuous service (exceptions such as death or disablement apply). The amount above shows what the formula gives for the service entered.', r.eligible ? 'success' : 'warning');
+      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Last monthly salary (basic + DA)', control: salary }),
+        field({ label: 'Years of service', control: years }),
+        field({ label: 'Extra months', control: months, hint: 'Over 6 counts as a full year' })),
+      actionsRow(btn({ label: 'Calculate gratuity', icon: 'receipt', onClick: run })), grid, status);
+    shareState(root, [['salary', salary], ['years', years], ['months', months]], run);
   },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc, incomeTaxIndia };
+export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc, incomeTaxIndia, rdCalc, cagrCalc, gratuityCalc };

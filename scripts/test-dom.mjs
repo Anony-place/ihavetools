@@ -44,6 +44,7 @@ function makeBrowserGlobals() {
   global.File = window.File;
   global.localStorage = window.localStorage;
   global.location = window.location;
+  global.history = window.history; // calculators sync shareable state via history.replaceState
   window.URL.createObjectURL = window.URL.createObjectURL || (() => 'blob:fake');
   return dom;
 }
@@ -58,10 +59,17 @@ function btnByLabel(root, label) {
   return [...root.querySelectorAll('button')].find((b) => b.textContent.trim().toLowerCase().includes(label.toLowerCase()));
 }
 
-/* Load one tool page into the shared jsdom and mount its module. */
-async function loadToolPage(toolId, moduleName) {
+/* Load one tool page into the shared jsdom and mount its module.
+   `search` simulates opening a shared link (e.g. '?monthly=5000&rate=12'):
+   every load resets the URL first so calculator shareState() sees exactly
+   the query a test intends — and nothing synced by a previous test. */
+async function loadToolPage(toolId, moduleName, search = '') {
   const html = readFileSync(join(ROOT, 'tools', toolId, 'index.html'), 'utf8');
   document.open(); document.write(html); document.close();
+  try {
+    const w = document.defaultView;
+    w.history.replaceState(null, '', `${w.location.pathname}${search}`);
+  } catch { /* jsdom history quirks: shareState guards itself anyway */ }
   const mod = await import(`../assets/js/tools/${moduleName}.js?tool=${toolId}&t=${Math.random().toString(36).slice(2)}`);
   mod.mount(toolId);
   await new Promise((r) => setTimeout(r, 10));
@@ -247,6 +255,37 @@ await domTest('tool page: records recently used and the favourite star persists'
   click(star);
   assert.deepEqual(JSON.parse(localStorage.getItem('iht-favourites')), [], 'second click must remove the favourite');
   assert.equal(star.getAttribute('aria-pressed'), 'false');
+});
+await domTest('sip-calculator: a shared link pre-fills inputs, auto-runs, and URL stays in sync', async () => {
+  const app = await loadToolPage('sip-calculator', 'calculators', '?monthly=5000&rate=12&years=10');
+  const [monthly, rate, years] = app.querySelectorAll('input');
+  assert.equal(monthly.value, '5000', 'shared link must pre-fill the monthly amount');
+  assert.equal(rate.value, '12');
+  assert.equal(years.value, '10');
+  await new Promise((r) => setTimeout(r, 20)); // shareState auto-run for shared links
+  assert.match(app.textContent, /1,161,695/, 'maturity of ₹5,000/mo @12% for 10y must be computed without a click');
+  monthly.value = '7000';
+  click(btnByLabel(app, 'Calculate SIP'));
+  await new Promise((r) => setTimeout(r, 20));
+  assert.match(document.defaultView.location.search, /monthly=7000/, 'recalculating must sync the URL so Copy link shares the latest result');
+});
+await domTest('rd, cagr and gratuity calculators mount and compute correct values', async () => {
+  let app = await loadToolPage('rd-calculator', 'calculators');
+  let inputs = app.querySelectorAll('input');
+  inputs[0].value = '1000'; inputs[1].value = '7'; inputs[2].value = '1';
+  click(btnByLabel(app, 'Calculate RD'));
+  assert.match(app.textContent, /12,462/, 'RD ₹1,000/mo @7% for 1 year matures at ₹12,462');
+  app = await loadToolPage('cagr-calculator', 'calculators');
+  inputs = app.querySelectorAll('input');
+  inputs[0].value = '10000'; inputs[1].value = '20000'; inputs[2].value = '5';
+  click(btnByLabel(app, 'Calculate CAGR'));
+  assert.match(app.textContent, /14\.87%/, 'doubling in 5 years is a 14.87% CAGR');
+  app = await loadToolPage('gratuity-calculator', 'calculators');
+  inputs = app.querySelectorAll('input');
+  inputs[0].value = '50000'; inputs[1].value = '20'; inputs[2].value = '0';
+  click(btnByLabel(app, 'Calculate gratuity'));
+  assert.match(app.textContent, /576,923/, 'gratuity for ₹50,000 × 20 years is ₹5,76,923');
+  assert.match(app.textContent, /Eligible/);
 });
 await domTest('income-tax-calculator: compares both regimes', async () => {
   const app = await loadToolPage('income-tax-calculator', 'calculators');

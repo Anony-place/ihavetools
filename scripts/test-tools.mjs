@@ -727,6 +727,28 @@ await test('QR codes round-trip through a real decoder (jsQR)', async () => {
   assert.throws(() => seo.makeQrModules(ctx.qrcode, ''), /Enter some text/);
   assert.throws(() => seo.makeQrModules(ctx.qrcode, 'x'.repeat(5000), 'H'), /too long/);
 });
+await test('RD, CAGR and gratuity calculations', () => {
+  const rd = calc.rdCalc({ monthly: 1000, annualRatePct: 7, months: 12 });
+  assert.ok(Math.abs(rd.maturity - 12462.13) < 0.5, `RD maturity ${rd.maturity} (quarterly-compounding closed form)`);
+  assert.equal(rd.deposited, 12000);
+  assert.ok(Math.abs(rd.interest - (rd.maturity - rd.deposited)) < 1e-9);
+  assert.ok(Math.abs(calc.rdCalc({ monthly: 5000, annualRatePct: 7, months: 60 }).maturity - 359664) < 5, 'RD ₹5,000/mo @7% for 5y');
+  assert.equal(calc.rdCalc({ monthly: 5000, annualRatePct: 0, months: 24 }).maturity, 120000, 'zero-rate RD returns exactly the deposits');
+  assert.equal(rd.schedule.length, 1);
+  assert.equal(calc.rdCalc({ monthly: 1000, annualRatePct: 7, months: 30 }).schedule.at(-1).months, 30, 'partial-year schedule must end at the tenure');
+  assert.throws(() => calc.rdCalc({ monthly: 1000, annualRatePct: 7, months: 7 }), /quarter/);
+  const cg = calc.cagrCalc({ startValue: 10000, endValue: 20000, years: 5 });
+  assert.ok(Math.abs(cg.cagrPct - 14.869835499703509) < 1e-9, `CAGR ${cg.cagrPct}`);
+  assert.equal(cg.growthMultiple, 2);
+  assert.equal(cg.absoluteReturnPct, 100);
+  assert.equal(calc.cagrCalc({ startValue: 100, endValue: 0, years: 3 }).cagrPct, -100, 'wipe-out is −100% CAGR');
+  const gr = calc.gratuityCalc({ monthlySalary: 50000, years: 20, months: 0 });
+  assert.ok(Math.abs(gr.amount - (15 / 26) * 50000 * 20) < 1e-9, 'statutory 15/26 formula');
+  assert.equal(gr.eligible, true);
+  assert.equal(calc.gratuityCalc({ monthlySalary: 30000, years: 9, months: 7 }).roundedYears, 10, 'service over 6 months rounds up');
+  assert.equal(calc.gratuityCalc({ monthlySalary: 30000, years: 9, months: 6 }).roundedYears, 9, 'exactly 6 months does NOT round up');
+  assert.equal(calc.gratuityCalc({ monthlySalary: 30000, years: 4, months: 0 }).eligible, false, 'under 5 years is not eligible');
+});
 await test('site.js favourite/recent list helpers (pure)', async () => {
   const site = await import('../assets/js/site.js');
   assert.deepEqual(site.toggleId([], 'a'), ['a']);
@@ -737,7 +759,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
