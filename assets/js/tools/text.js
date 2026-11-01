@@ -173,6 +173,39 @@ export function lorem({ unit = 'paragraphs', count = 3, classic = true } = {}) {
   return Array.from({ length: count }, (_, k) => paragraph(k === 0)).join('\n\n');
 }
 
+/* ═══════════════════════════ Morse code (ITU) ═══════════════════════════ */
+const MORSE = {
+  A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....',
+  I: '..', J: '.---', K: '-.-', L: '.-..', M: '--', N: '-.', O: '---', P: '.--.',
+  Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-', V: '...-', W: '.--', X: '-..-',
+  Y: '-.--', Z: '--..',
+  '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-', '5': '.....',
+  '6': '-....', '7': '--...', '8': '---..', '9': '----.',
+  '.': '.-.-.-', ',': '--..--', '?': '..--..', "'": '.----.', '!': '-.-.--', '/': '-..-.',
+  '(': '-.--.', ')': '-.--.-', '&': '.-...', ':': '---...', ';': '-.-.-.', '=': '-...-',
+  '+': '.-.-.', '-': '-....-', '_': '..--.-', '"': '.-..-.', '$': '...-..-', '@': '.--.-.',
+};
+const MORSE_REV = Object.fromEntries(Object.entries(MORSE).map(([k, v]) => [v, k]));
+export function textToMorse(text) {
+  const words = String(text).toUpperCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return '';
+  return words.map((w) => [...w].map((ch) => {
+    const code = MORSE[ch];
+    if (!code) throw new Error(`No Morse code exists for “${ch}” — letters A–Z, digits and common punctuation are supported.`);
+    return code;
+  }).join(' ')).join(' / ');
+}
+export function morseToText(code) {
+  const s = String(code).trim().replace(/_/g, '-');
+  if (!s) return '';
+  // Words split on “/” or a gap of 3+ spaces; letters on single spaces.
+  return s.split(/\s*\/\s*|\s{3,}/).map((word) => word.split(/\s+/).filter(Boolean).map((tok) => {
+    const ch = MORSE_REV[tok];
+    if (!ch) throw new Error(`“${tok}” is not a Morse code group — check the dots, dashes and spacing.`);
+    return ch;
+  }).join('')).join(' ');
+}
+
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
   'word-counter'(root) {
@@ -407,10 +440,81 @@ const defs = {
       status, h('br'), out.panel);
     gen();
   },
+
+  'morse-code-translator'(root) {
+    const mode = segControl({ options: [{ v: 'encode', t: 'Text → Morse' }, { v: 'decode', t: 'Morse → Text' }], value: 'encode', ariaLabel: 'Direction' });
+    const inp = textarea({ rows: 5, mono: false, placeholder: 'Type text, e.g. SOS', value: 'SOS' });
+    const status = statusLine('Letters are separated by spaces, words by “ / ”. Press Play to hear it.');
+    const out = resultPanel({ label: 'Translation' });
+    let lastMorse = '';
+    const run = () => {
+      try {
+        if (mode.getValue() === 'encode') {
+          lastMorse = textToMorse(inp.value);
+          out.set(lastMorse || '—');
+          if (inp.value.trim()) status.set('Encoded ✓', 'success');
+        } else {
+          lastMorse = inp.value.trim();
+          out.set(morseToText(inp.value) || '—');
+          if (inp.value.trim()) status.set('Decoded ✓', 'success');
+        }
+      } catch (e) { lastMorse = ''; out.placeholder(); status.set(e.message, 'error'); }
+    };
+    let audioCtx = null;
+    let playing = false;
+    const play = () => {
+      if (!lastMorse) { status.set('Nothing to play yet — enter text or code first.', 'warning'); return; }
+      if (playing) return;
+      try {
+        const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+        if (!AC) { status.set('Audio playback is not available in this browser.', 'warning'); return; }
+        audioCtx = audioCtx || new AC();
+        audioCtx.resume();
+        playing = true;
+        const unit = 0.07; // seconds per dot
+        let t = audioCtx.currentTime + 0.05;
+        const beep = (dur) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.frequency.value = 650;
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          gain.gain.setValueAtTime(0.0001, t);
+          gain.gain.exponentialRampToValueAtTime(0.35, t + 0.008);
+          osc.start(t);
+          gain.gain.setValueAtTime(0.35, t + dur - 0.008);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          osc.stop(t + dur);
+          t += dur + unit;
+        };
+        for (const ch of lastMorse) {
+          if (ch === '.') beep(unit);
+          else if (ch === '-') beep(unit * 3);
+          else if (ch === ' ') t += unit * 2; // +1 trailing gap = 3-unit letter gap
+          else if (ch === '/') t += unit * 4; // word gap
+        }
+        status.set('Playing…', 'info');
+        setTimeout(() => { playing = false; status.set('Played ✓', 'success'); }, Math.max(50, (t - audioCtx.currentTime) * 1000));
+      } catch { playing = false; status.set('Could not play audio here.', 'warning'); }
+    };
+    inp.addEventListener('input', run);
+    mode.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setTimeout(() => {
+      inp.placeholder = mode.getValue() === 'encode' ? 'Type text, e.g. SOS' : 'Type Morse, e.g. ... --- ...';
+      run();
+    }, 0)));
+    root.append(field({ label: 'Direction', control: mode }),
+      field({ label: 'Input', control: inp }),
+      actionsRow(
+        btn({ label: 'Translate', icon: 'morse', onClick: run }),
+        btn({ label: 'Play sound', variant: 'secondary', icon: 'volume', onClick: play }),
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; lastMorse = ''; out.placeholder(); status.set('Cleared.'); } })),
+      status, h('br'), out.panel,
+      privacyNote('Translation and sound playback happen locally in your browser.'));
+    run();
+  },
 };
 
 export function mount(id) {
   import('../ui.js').then(({ mountTool }) => mountTool(id, defs));
 }
 
-export const __test = { textStats, convertCase, dedupeLines, sortLines, diffLines, diffSummary, slugify, lorem };
+export const __test = { textStats, convertCase, dedupeLines, sortLines, diffLines, diffSummary, slugify, lorem, textToMorse, morseToText };

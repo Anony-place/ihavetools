@@ -727,6 +727,33 @@ await test('QR codes round-trip through a real decoder (jsQR)', async () => {
   assert.throws(() => seo.makeQrModules(ctx.qrcode, ''), /Enter some text/);
   assert.throws(() => seo.makeQrModules(ctx.qrcode, 'x'.repeat(5000), 'H'), /too long/);
 });
+await test('number bases, roman numerals and morse code', () => {
+  assert.equal(dev.convertBase('255', 10, 2), '11111111');
+  assert.equal(dev.convertBase('255', 10, 16), 'ff');
+  assert.equal(dev.convertBase('FF', 16, 10), '255');
+  assert.equal(dev.convertBase('18446744073709551615', 10, 16), 'ffffffffffffffff', '2^64−1 converts exactly (BigInt, no float precision loss)');
+  assert.equal(dev.convertBase('ffffffffffffffff', 16, 10), '18446744073709551615');
+  assert.equal(dev.convertBase('-255', 10, 16), '-ff');
+  assert.equal(dev.convertBase('0', 10, 2), '0');
+  assert.equal(dev.convertBase('1111 1111', 2, 10), '255', 'grouping spaces are ignored');
+  assert.equal(dev.groupDigits('11111111', 4), '1111 1111');
+  assert.throws(() => dev.convertBase('102', 2, 10), /not a valid base-2 digit/);
+  assert.throws(() => dev.convertBase('10', 1, 10), /between 2 and 36/);
+  assert.equal(conv.toRoman(2026), 'MMXXVI');
+  assert.equal(conv.toRoman(1994), 'MCMXCIV');
+  assert.equal(conv.toRoman(49), 'XLIX');
+  assert.equal(conv.toRoman(3999), 'MMMCMXCIX');
+  for (let i = 1; i <= 3999; i += 137) assert.equal(conv.fromRoman(conv.toRoman(i)), i, `roman round-trip ${i}`);
+  assert.throws(() => conv.fromRoman('IIII'), /not a standard Roman numeral/);
+  assert.throws(() => conv.fromRoman('IC'), /not a standard Roman numeral/);
+  assert.throws(() => conv.toRoman(4000), /between 1 and 3999/);
+  assert.equal(text.textToMorse('SOS'), '... --- ...');
+  assert.equal(text.morseToText('... --- ...'), 'SOS');
+  assert.equal(text.morseToText(text.textToMorse('ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789')), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789', 'full alphabet+digits round-trip');
+  assert.equal(text.morseToText('... --- ...   ... --- ...'), 'SOS SOS', '3+ spaces decode as a word gap');
+  assert.throws(() => text.morseToText('......'), /not a Morse code group/);
+  assert.throws(() => text.textToMorse('héllo'), /No Morse code exists/);
+});
 await test('RD, CAGR and gratuity calculations', () => {
   const rd = calc.rdCalc({ monthly: 1000, annualRatePct: 7, months: 12 });
   assert.ok(Math.abs(rd.maturity - 12462.13) < 0.5, `RD maturity ${rd.maturity} (quarterly-compounding closed form)`);
@@ -759,7 +786,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);

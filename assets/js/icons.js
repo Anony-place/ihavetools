@@ -93,6 +93,7 @@ export const icons = {
   settings: `<circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.15-1.4l2-1.55-2-3.46-2.35.95a7 7 0 0 0-2.4-1.4L13.7 2.5h-3.4l-.4 2.64a7 7 0 0 0-2.4 1.4l-2.35-.95-2 3.46 2 1.55A7 7 0 0 0 5 12"/>`,
   qr: `<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01"/><path d="M14 14h3v3h-3zM21 14v3M14 21h3M20 20h.01M17.5 17.5H21V21h-3.5z"/>`,
   star: `<path d="M12 2.5l3.04 6.15 6.79.99-4.91 4.79 1.16 6.76L12 18.02l-6.08 3.17 1.16-6.76L2.17 9.64l6.79-.99z"/>`,
+  morse: `<path d="M3 8h.01M7.5 8h.01M12 8h.01M17 8h4M3 16h4M11 16h6M20.5 16h.01"/>`,
 };
 
 /** Return a standalone <svg> string for an icon name (aria-hidden by default). */

@@ -22,7 +22,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/text/</loc>
-    <lastmod>2026-09-14</lastmod>
+    <lastmod>2026-11-01</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/calculators/</loc>
@@ -30,11 +30,11 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/converters/</loc>
-    <lastmod>2026-10-31</lastmod>
+    <lastmod>2026-11-01</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/developer/</loc>
-    <lastmod>2026-09-15</lastmod>
+    <lastmod>2026-11-01</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/security/</loc>
@@ -442,6 +442,22 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/tools/gratuity-calculator/</loc>
+    <lastmod>2026-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/number-base-converter/</loc>
+    <lastmod>2026-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/roman-numeral-converter/</loc>
+    <lastmod>2026-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/morse-code-translator/</loc>
+    <lastmod>2026-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/lumpsum-calculator/</loc>
     <lastmod>2026-11-01</lastmod>
   </url>
   <url>

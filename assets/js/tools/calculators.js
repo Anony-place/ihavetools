@@ -4,7 +4,7 @@
 // bmi-calculator, gst-calculator, emi-calculator, tip-calculator,
 // compound-interest-calculator, simple-interest-calculator, sip-calculator,
 // ppf-calculator, fd-calculator, income-tax-calculator, rd-calculator,
-// cagr-calculator, gratuity-calculator
+// cagr-calculator, gratuity-calculator, lumpsum-calculator
 // Every def ends with shareState(...) so results are shareable as URL links.
 // =============================================================================
 import { h, field, input, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool, shareState } from '../ui.js';
@@ -895,6 +895,37 @@ const defs = {
         field({ label: 'Extra months', control: months, hint: 'Over 6 counts as a full year' })),
       actionsRow(btn({ label: 'Calculate gratuity', icon: 'receipt', onClick: run })), grid, status);
     shareState(root, [['salary', salary], ['years', years], ['months', months]], run);
+  },
+
+  'lumpsum-calculator'(root) {
+    const amount = input({ type: 'number', step: 'any', placeholder: 'e.g. 100000', value: '100000' });
+    const rate = input({ type: 'number', step: 'any', placeholder: 'e.g. 12', value: '12' });
+    const years = input({ type: 'number', step: 'any', placeholder: 'e.g. 10', value: '10' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const scheduleWrap = h('div', {});
+    const run = () => {
+      try {
+        const r = compoundInterest({ principal: num(amount) || 0, annualRatePct: num(rate), years: num(years), perYear: 1 });
+        grid.set([
+          { label: 'Invested amount', value: money(num(amount)) },
+          { label: 'Est. gains', value: money(r.totalInterest), kind: 'warn' },
+          { label: 'Maturity value', value: money(r.finalBalance), kind: 'good' },
+          { label: 'Growth multiple', value: `${fmtNumber(r.finalBalance / (num(amount) || 1), 2)}×` },
+        ]);
+        scheduleWrap.replaceChildren(
+          h('h3', { text: 'Year-by-year growth', style: 'margin:20px 0 10px' }),
+          table({ headers: ['Year', 'Invested', 'Est. gains', 'Value'], rows: r.schedule.map((y) => [`Y${y.year}`, money(y.contributed), money(y.interest), money(y.balance)]) }));
+        status.set(`A one-time ${money(num(amount))} for ${fmtNumber(num(years))} years at ${fmtNumber(num(rate))}% expected return, compounded yearly. Estimates only — market returns are not guaranteed.`, 'success');
+      } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'One-time investment', control: amount }),
+        field({ label: 'Expected return % (p.a.)', control: rate }),
+        field({ label: 'Duration (years)', control: years })),
+      actionsRow(btn({ label: 'Calculate lumpsum', icon: 'coins', onClick: run })), grid, scheduleWrap, status);
+    shareState(root, [['amount', amount], ['rate', rate], ['years', years]], run);
   },
 };
 

@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 94 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 98 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -115,6 +115,10 @@
 - [RD Calculator](https://i-have-tools.vercel.app/tools/rd-calculator/): Recurring deposit maturity with quarterly compounding and a yearly table.
 - [CAGR Calculator](https://i-have-tools.vercel.app/tools/cagr-calculator/): Compound annual growth rate from start value, end value and years.
 - [Gratuity Calculator](https://i-have-tools.vercel.app/tools/gratuity-calculator/): Estimate gratuity with the statutory (15/26) × salary × years formula.
+- [Number Base Converter](https://i-have-tools.vercel.app/tools/number-base-converter/): Convert between binary, octal, decimal and hexadecimal — exactly, at any size.
+- [Roman Numeral Converter](https://i-have-tools.vercel.app/tools/roman-numeral-converter/): Convert numbers to Roman numerals and back, with strict standard rules.
+- [Morse Code Translator](https://i-have-tools.vercel.app/tools/morse-code-translator/): Translate text to Morse code and back — with sound playback.
+- [Lumpsum Calculator](https://i-have-tools.vercel.app/tools/lumpsum-calculator/): Future value of a one-time investment, with year-by-year growth.
 
 ## About this site
 - [About](https://i-have-tools.vercel.app/about/)
