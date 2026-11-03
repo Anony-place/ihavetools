@@ -74,6 +74,15 @@ export function harmony(rgb, type) {
   });
 }
 
+export function paletteCss(name, colors = []) {
+  const slug = String(name || 'palette').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'palette';
+  return [
+    ':root {',
+    ...colors.map((color, i) => `  --${slug}-${i + 1}: ${rgbToHex(color).slice(0, 7)};`),
+    '}',
+  ].join('\n');
+}
+
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 function swatchButton(rgb, onPick) {
   const hex = rgbToHex(rgb).slice(0, 7);
@@ -218,23 +227,45 @@ const defs = {
     const base = input({ type: 'color', value: '#4f46e5' });
     const status = statusLine('Harmonies regenerate as you change the base color.');
     const out = h('div', {});
+    const copy = async (text, message) => { (await copyText(text)) ? toast(message, 'success') : toast('Copy failed', 'error'); };
     const render = () => {
       const rgb = hexToRgb(base.value);
       const TYPES = [
         ['complementary', 'Complementary'], ['analogous', 'Analogous'], ['triadic', 'Triadic'],
         ['split', 'Split-complementary'], ['tetradic', 'Tetradic'], ['mono', 'Monochromatic'],
       ];
-      out.replaceChildren(...TYPES.map(([type, label]) => h('section', { style: 'margin-bottom:20px' },
-        h('h3', { text: label, style: 'margin:0 0 8px' }),
-        h('div', { class: 'swatch-row' },
-          harmony(rgb, type).map((c) => swatchButton(c, async (hx) => { (await copyText(hx)) ? toast(`${hx} copied`, 'success') : toast('Copy failed', 'error'); }))))));
+      out.replaceChildren(...TYPES.map(([type, label]) => {
+        const colors = harmony(rgb, type);
+        return h('section', { style: 'margin-bottom:20px' },
+          h('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px' },
+            h('h3', { text: label, style: 'margin:0' }),
+            h('span', { style: 'display:inline-flex;gap:8px;flex-wrap:wrap' },
+              btn({ label: 'Copy HEX list', variant: 'ghost', icon: 'copy', onClick: () => copy(colors.map((c) => rgbToHex(c).slice(0, 7)).join(', '), `${label} HEX list copied`) }),
+              btn({ label: 'Copy CSS variables', variant: 'ghost', icon: 'code', onClick: () => copy(paletteCss(label, colors), `${label} CSS variables copied`) }))),
+          h('div', { class: 'swatch-row' },
+            colors.map((c) => swatchButton(c, (hx) => copy(hx, `${hx} copied`)))));
+      }));
+    };
+    const randomBase = () => {
+      const color = hslToRgb({
+        h: Math.floor(Math.random() * 360),
+        s: Math.round(45 + Math.random() * 45),
+        l: Math.round(35 + Math.random() * 30),
+      });
+      base.value = rgbToHex(color).slice(0, 7);
+      render();
+      status.set(`Random base color: ${base.value.toUpperCase()}`, 'success');
     };
     base.addEventListener('input', render);
-    root.append(field({ label: 'Base color', control: base }), out, status,
-      h('p', { class: 'hint', text: 'Click any swatch to copy its HEX value. Swatches also show RGB and HSL on hover of the card.' }));
+    root.append(
+      h('div', { class: 'field-row', style: 'align-items:end' },
+        field({ label: 'Base color', control: base }),
+        field({ label: 'Inspiration', control: btn({ label: 'Random color', variant: 'secondary', icon: 'shuffle', onClick: randomBase }) })),
+      out, status,
+      h('p', { class: 'hint', text: 'Click any swatch to copy one color, or copy a whole harmony as a HEX list or CSS variables.' }));
     render();
   },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { hexToRgb, rgbToHex, rgbToHsl, hslToRgb, parseColor, luminance, contrastRatio, harmony };
+export const __test = { hexToRgb, rgbToHex, rgbToHsl, hslToRgb, parseColor, luminance, contrastRatio, harmony, paletteCss };

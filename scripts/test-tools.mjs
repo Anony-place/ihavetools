@@ -70,6 +70,10 @@ await test('related tools resolve', () => {
     assert.ok(rel.length >= 1, `${t.id} has no related tools`);
     assert.ok(rel.every((r) => r.id !== t.id));
   }
+  const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
+  assert.ok(inboundCount('keyword-density-checker') >= 5, 'the Web-SEO cluster must give the keyword checker contextual internal links');
+  assert.ok(inboundCount('data-storage-converter') >= 5, 'the unit-converter cluster must link to Data Storage Converter');
+  assert.ok(registry.relatedTools(registry.getTool('robots-txt-generator'), 6).some((r) => r.id === 'sitemap-generator'));
 });
 await test('search finds json/compress/password/developer queries', () => {
   const q = (s) => registry.searchTools(s, 20).map((t) => t.id);
@@ -668,6 +672,10 @@ await test('harmonies stay in gamut and differ', () => {
   assert.equal(set.length, 3);
   for (const c of set) { assert.ok(c.r >= 0 && c.r <= 255 && c.g >= 0 && c.g <= 255 && c.b >= 0 && c.b <= 255); }
 });
+await test('palette CSS variables use stable slug names and HEX values', () => {
+  const css = color.paletteCss('Split complementary', [color.hexToRgb('#336699'), color.hexToRgb('#ffffff')]);
+  assert.match(css, /^:root \{\n  --split-complementary-1: #336699;\n  --split-complementary-2: #ffffff;\n\}$/);
+});
 
 console.log('\n── Web & SEO ──');
 await test('URL parsing full anatomy', () => {
@@ -786,7 +794,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -819,11 +827,37 @@ await test('2-word phrases counted', () => {
   const r = seo.keywordDensity('online tools are great online tools forever', { phraseLength: 2, filterStop: false });
   assert.ok(r.top.some((t) => t.phrase === 'online tools' && t.count === 2));
 });
+await test('keyword frequency target, distinct terms, minimum filter and CSV', () => {
+  const text = `${'word '.repeat(192)}${'keyword research '.repeat(4)}`;
+  const r = seo.keywordDensity(text, { phraseLength: 1, filterStop: true, target: 'Keyword Research' });
+  assert.equal(r.totalWords, 200);
+  assert.equal(r.distinct, 3, 'distinct counts word, keyword and research once each');
+  assert.deepEqual(r.target, { phrase: 'keyword research', count: 4, density: 4 });
+  const repeated = seo.keywordDensity('alpha beta alpha gamma alpha beta', { minCount: 2, filterStop: false });
+  assert.deepEqual(repeated.terms.map((t) => t.phrase), ['alpha', 'beta']);
+  assert.match(seo.keywordFrequencyCsv(repeated.terms), /^term,count,density_percent\n"alpha",3,50\.0000\n"beta",2,33\.3333\n$/);
+});
 await test('robots.txt output shape', () => {
   const out = seo.buildRobots([{ agent: '*', disallow: ['/admin/'], allow: ['/admin/public'] }, { agent: 'Googlebot', disallow: [] }], { sitemap: 'https://x.y/sitemap.xml', crawlDelay: 2 });
   assert.match(out, /^User-agent: \*\nDisallow: \/admin\/\nAllow: \/admin\/public\n/);
+  assert.match(out, /User-agent: Googlebot\nDisallow:\n/, 'an allow-everything group is written explicitly');
   assert.match(out, /Sitemap: https:\/\/x\.y\/sitemap\.xml/);
   assert.match(out, /Crawl-delay: 2/);
+});
+await test('robots crawl tester: specific group and longest pattern win', () => {
+  const rules = [
+    { agent: '*', disallow: ['/private/', '/*.pdf$'], allow: ['/private/public/'] },
+    { agent: 'Googlebot', disallow: ['/google-only/'], allow: [] },
+  ];
+  assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/private/secret').allowed, false);
+  const exception = seo.testRobotsAccess(rules, 'Bingbot', 'https://example.com/private/public/file?x=1');
+  assert.equal(exception.allowed, true);
+  assert.equal(exception.pattern, '/private/public/');
+  const google = seo.testRobotsAccess(rules, 'Googlebot', '/private/secret');
+  assert.equal(google.allowed, true, 'the Googlebot-specific group replaces the wildcard group');
+  assert.equal(google.agentGroup, 'Googlebot');
+  assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf').allowed, false, 'wildcard plus end anchor matches a PDF path');
+  assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf/extra').allowed, true, 'the $ anchor prevents matching a longer path');
 });
 await test('sitemap XML escapes and validates URLs', () => {
   const xml = seo.buildSitemapXml(['https://a.b/x?a=1&b=2'], { changefreq: 'weekly', priority: '0.7' });

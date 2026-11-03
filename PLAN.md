@@ -103,15 +103,43 @@ Ek hi branch/PR me shipped (tools 94 → **98**, guides 21 → **33**):
    Tum GSC me Performance → Queries ka screenshot/data jab aaye to
    share karna, Batch-3 usi par banega.
 
-## 📋 BATCH-3 — "Data-driven growth" (agli branch, Continue par)
+## ✅ BATCH-3 — "GSC striking-distance upgrades" (IMPLEMENTED — 2026-11-03; GSC measurement pending)
 
-- **GSC CTR tuning:** indexed pages ke real queries par title/description
-  tuning (jo Batch-2 se yahan shift hua — data aane par). Jo queries
-  page-2 par atki hain un pages ka content aur deep; "indexed nahi
-  hue" pages ki wajah fix.
-- Full performance + accessibility audit pass (Lighthouse sab templates par).
-- PWA install prompt ("Add to home screen") — SW pehle se ready hai.
-- Agar tab tak revenue/budget aaya → **custom domain** (neeche dekho).
+Pehla 7-day GSC baseline mil gaya hai. Sample abhi chhota hai (27 queries,
+sabse bade page par 29 impressions, 0 clicks), isliye koi bada title
+experiment guesswork se nahi hoga. Data ka saaf signal **CTR nahi,
+position** hai:
+
+| Page / query | Impressions | Avg. position | Decision |
+|---|---:|---:|---|
+| Percentage Change | 3 | **8.3** | Sabse pehle strengthen karo — name me “Calculator”, formula display, guide/FAQs |
+| Query: `keyword frequency counter` | 2 | **24.5** | Keyword page ko real frequency-counter banao: target phrase count, distinct terms, CSV, guide |
+| Palette Generator | 3 | 25.3 | CSS export/copy-all jaisi utility + guide |
+| Data Storage Converter | 6 | 38.8 | Decimal-vs-binary guide/FAQs + converter-cluster internal links |
+| Robots.txt Generator | 29 | 89.1 | Title pehle se exact-match hai; sirf meta badalna bekaar — URL tester, useful presets aur deep guide se product differentiate karo |
+| QR Code Generator | 4 | 81.3 | Guide pehle se strong hai; abhi monitor, blind change nahi |
+
+Is ek branch/PR me shipped:
+
+1. Upar ke 5 pages par product/content upgrades (Percentage Change,
+   Keyword Frequency/Density, Data Storage, Palette, Robots.txt). ✅
+2. Related-tool ranking ab same engine/topical cluster ko popularity se
+   pehle rakhta hai, plus Web-SEO cluster ke manual contextual links.
+   Keyword related inbound 1 → 6 aur Data Storage 0 → 8 ho gaya. ✅
+3. Deep guides 33 → **38 tools**; naye pure functions ke engine tests,
+   paanch upgraded UIs ka DOM test aur guide/related-link assertions.
+   Full suite **244/244 green** (164 engine + 52 DOM + 8 Chrome + 20 link). ✅
+4. **Measurement rule:** deploy ke baad kam se kam 14 din ka GSC trend
+   compare hoga. Impressions badhna hi success nahi; target average
+   position ka 50+ zone se 11–30 zone ki taraf aana aur phir clicks hai.
+
+**Abhi bhi pending user-side evidence:** `Indexing → Pages` ka screenshot
+nahi mila, isliye total indexed/not-indexed count aur reasons par koi
+claim/fix is batch me nahi. Wo report milte hi alag diagnosis hoga.
+
+**Batch-4 me shifted:** Full Lighthouse/accessibility pass aur PWA install
+prompt. Abhi search relevance/product depth hi bottleneck hai; performance
+foundation pehle se strong hai.
 
 ---
 
