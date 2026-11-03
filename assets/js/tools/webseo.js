@@ -1,8 +1,9 @@
 // =============================================================================
 // iHaveTools — Web & SEO tools: meta-tag-generator, robots-txt-generator,
-// sitemap-generator, open-graph-preview, url-parser, keyword-density-checker
+// sitemap-generator, open-graph-preview, url-parser, keyword-density-checker,
+// qr-code-generator, qr-code-scanner, youtube-thumbnail-downloader
 // =============================================================================
-import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, downloadText, downloadBlob, privacyNote, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, downloadText, downloadBlob, privacyNote, dropzone, mountTool } from '../ui.js';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -22,6 +23,60 @@ export function loadQrLib() {
     document.head.append(s);
   });
   return qrLibPromise;
+}
+
+let jsQrPromise = null;
+export function loadJsQrLib() {
+  if (window.jsQR) return Promise.resolve(window.jsQR);
+  if (jsQrPromise) return jsQrPromise;
+  jsQrPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/assets/vendor/jsqr.js';
+    s.onload = () => window.jsQR ? resolve(window.jsQR) : reject(new Error('The QR scanner loaded but did not initialise.'));
+    s.onerror = () => { jsQrPromise = null; reject(new Error('Could not load the QR scanner. Check your connection and try again.')); };
+    document.head.append(s);
+  });
+  return jsQrPromise;
+}
+
+export function decodeQrPixels(lib, imageData) {
+  if (!lib) throw new Error('The QR scanner is not loaded yet.');
+  if (!imageData?.data || !(imageData.width > 0) || !(imageData.height > 0)) throw new Error('No readable image pixels were provided.');
+  const code = lib(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+  return code?.data || null;
+}
+
+export function qrPayloadInfo(raw) {
+  const text = String(raw || '').trim();
+  if (!text) throw new Error('The QR code did not contain readable text.');
+  const base = { type: 'Plain text', text, href: null, actionLabel: null, summary: text, safety: 'Review the content before using it.' };
+
+  if (/^WIFI:/i.test(text)) {
+    const fieldValue = (key) => {
+      const m = new RegExp(`(?:^WIFI:|;)${key}:((?:\\\\.|[^;])*)`, 'i').exec(text);
+      return m ? m[1].replace(/\\([;,:\\"])/g, '$1') : '';
+    };
+    const ssid = fieldValue('S');
+    const security = fieldValue('T') || 'not specified';
+    return { ...base, type: 'Wi-Fi network', summary: ssid ? `Network “${ssid}” · security ${security}` : `Wi-Fi join payload · security ${security}`, safety: 'Only join networks you trust. The password is present in the raw QR text below.' };
+  }
+  if (/^BEGIN:VCARD/im.test(text)) return { ...base, type: 'Contact card (vCard)', summary: 'Contact details encoded as a vCard.' };
+  if (/^upi:\/\//i.test(text) || /^upi:/i.test(text)) {
+    let payee = '';
+    try { payee = new URL(text).searchParams.get('pn') || new URL(text).searchParams.get('pa') || ''; } catch { /* show raw text */ }
+    return { ...base, type: 'UPI payment request', summary: payee ? `Payee: ${payee}` : 'UPI payment payload', safety: 'Payment QR codes require extra care. Verify the payee name and amount inside your UPI app before approving.' };
+  }
+  if (/^mailto:/i.test(text)) return { ...base, type: 'Email address', href: text, actionLabel: 'Open email app', summary: text.slice(7).split('?')[0] || text };
+  if (/^tel:/i.test(text)) return { ...base, type: 'Phone number', href: text, actionLabel: 'Call number', summary: text.slice(4) };
+  if (/^(sms|smsto):/i.test(text)) return { ...base, type: 'SMS message', href: text.replace(/^smsto:/i, 'sms:'), actionLabel: 'Open messages', summary: text.replace(/^(sms|smsto):/i, '') };
+  if (/^geo:/i.test(text)) return { ...base, type: 'Location', href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(text.slice(4).split(';')[0])}`, actionLabel: 'Open in Google Maps', summary: text.slice(4) };
+  try {
+    const u = new URL(text);
+    if (u.protocol === 'http:' || u.protocol === 'https:') {
+      return { ...base, type: 'Website URL', href: u.href, actionLabel: 'Open website', summary: `${u.hostname}${u.pathname === '/' ? '' : u.pathname}`, safety: `Check the domain first: ${u.hostname}. A QR code can hide a look-alike or phishing address.` };
+    }
+  } catch { /* plain text */ }
+  return base;
 }
 
 /** Build a QR module matrix. lib = the vendored qrcode() factory. */
@@ -643,7 +698,141 @@ const defs = {
       actionsRow(btn({ label: 'Generate QR code', icon: 'qr', onClick: run })), grid, status, out,
       privacyNote('The QR code is generated locally in your browser (MIT-licensed qrcode-generator library, loaded from this site). Your text is never uploaded.'));
   },
+
+  'qr-code-scanner'(root) {
+    const status = statusLine('Upload a screenshot/photo or use your camera. Decoding happens locally — the image and camera frames never leave this device.');
+    const grid = statsGrid();
+    const out = resultPanel({ label: 'Decoded QR content', placeholder: 'Scan a QR code to see exactly what it contains before opening anything.' });
+    const actions = h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-top:10px' });
+    const preview = h('div', { style: 'margin-top:14px' });
+    const video = h('video', { playsinline: true, muted: true, style: 'display:none;width:min(560px,100%);border-radius:14px;margin-top:14px;background:#000' });
+    const canvas = document.createElement('canvas');
+    let stream = null;
+    let timer = null;
+    let previewUrl = '';
+
+    const stopCamera = () => {
+      if (timer) clearTimeout(timer);
+      timer = null;
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      stream = null;
+      video.srcObject = null;
+      video.style.display = 'none';
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+    const showResult = (text, source) => {
+      stopCamera();
+      const info = qrPayloadInfo(text);
+      out.set(info.text);
+      grid.set([
+        { label: 'Payload type', value: info.type, kind: 'good' },
+        { label: 'Source', value: source },
+        { label: 'Characters', value: String([...info.text].length) },
+        { label: 'Detected destination', value: info.summary.length > 80 ? `${info.summary.slice(0, 77)}…` : info.summary },
+      ]);
+      actions.replaceChildren(...(info.href ? [
+        h('a', {
+          class: 'btn btn-primary btn-sm', href: info.href,
+          ...(info.type === 'Website URL' || info.type === 'Location' ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+        }, info.actionLabel || 'Open'),
+      ] : []));
+      status.set(`QR decoded ✓ ${info.safety}`, 'success');
+    };
+    const decodeCurrentCanvas = async (source) => {
+      const lib = await loadJsQrLib();
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const text = decodeQrPixels(lib, pixels);
+      if (text) { showResult(text, source); return true; }
+      return false;
+    };
+    const drawScaled = (source, width, height, maxSide = 1800) => {
+      const scale = Math.min(1, maxSide / Math.max(width, height));
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      canvas.getContext('2d', { willReadFrequently: true }).drawImage(source, 0, 0, canvas.width, canvas.height);
+    };
+    const scanFile = async (file) => {
+      stopCamera();
+      actions.replaceChildren();
+      grid.replaceChildren();
+      out.placeholder('Looking for a QR code…');
+      status.set('Loading the local QR decoder…', 'info');
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = URL.createObjectURL(file);
+      preview.replaceChildren(h('img', { class: 'img-preview', src: previewUrl, alt: 'Uploaded image being scanned for a QR code', style: 'max-width:360px;width:100%' }));
+      try {
+        try {
+          let bitmap;
+          try { bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+          catch { bitmap = await createImageBitmap(file); }
+          drawScaled(bitmap, bitmap.width, bitmap.height);
+          bitmap.close?.();
+        } catch {
+          const img = new Image();
+          img.src = previewUrl;
+          if (img.decode) await img.decode();
+          else await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+          drawScaled(img, img.naturalWidth, img.naturalHeight);
+        }
+        if (!await decodeCurrentCanvas('Uploaded image')) {
+          status.set('No QR code found in that image. Try a closer crop with the full code, quiet white border and less glare or blur.', 'warning');
+        }
+      } catch (e) {
+        status.set(`Could not scan that image: ${e.message}`, 'error');
+      }
+    };
+    const zone = dropzone({
+      accept: 'image/*', title: 'Choose a QR image or drop it here',
+      sub: 'Screenshot, JPG, PNG or WebP — decoded locally, never uploaded',
+      onFiles: (files) => { if (files[0]) scanFile(files[0]); },
+    });
+    const scanFrame = async () => {
+      if (!stream) return;
+      try {
+        if (video.readyState >= 2 && video.videoWidth) {
+          drawScaled(video, video.videoWidth, video.videoHeight, 1280);
+          if (await decodeCurrentCanvas('Camera')) return;
+        }
+      } catch (e) { status.set(`Camera scan stopped: ${e.message}`, 'error'); stopCamera(); return; }
+      if (stream) timer = setTimeout(scanFrame, 220);
+    };
+    const startBtn = btn({ label: 'Start camera', icon: 'eye', onClick: async () => {
+      actions.replaceChildren();
+      grid.replaceChildren();
+      out.placeholder('Point the camera at a QR code…');
+      preview.replaceChildren();
+      if (!navigator.mediaDevices?.getUserMedia) {
+        status.set('This browser cannot open a camera here. Camera scanning needs a secure HTTPS page and camera permission — image upload still works.', 'error');
+        return;
+      }
+      try {
+        status.set('Requesting camera permission…', 'info');
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+        video.srcObject = stream;
+        video.style.display = 'block';
+        await video.play();
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        status.set('Camera is scanning locally. Keep the whole QR code in frame; the result will appear here before anything opens.', 'warning');
+        scanFrame();
+      } catch {
+        stopCamera();
+        status.set('Camera permission was denied or no camera is available. You can still upload a QR image above.', 'error');
+      }
+    } });
+    const stopBtn = btn({ label: 'Stop camera', variant: 'secondary', icon: 'x', onClick: () => { stopCamera(); status.set('Camera stopped.', 'info'); } });
+    stopBtn.disabled = true;
+    window.addEventListener('pagehide', stopCamera, { once: true });
+
+    root.append(
+      zone,
+      actionsRow(startBtn, stopBtn),
+      video, preview, grid, status, out.panel, actions,
+      privacyNote('Scanner uses the Apache-2.0 jsQR decoder, loaded from this site only on this page. Unknown QR links are shown first — never opened automatically.'));
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { parseUrlParts, keywordDensity, keywordFrequencyCsv, buildRobots, testRobotsAccess, buildSitemapXml, extractYouTubeId, youtubeThumbUrl, YT_THUMB_SIZES, makeQrModules, qrSvgString };
+export const __test = { parseUrlParts, keywordDensity, keywordFrequencyCsv, buildRobots, testRobotsAccess, buildSitemapXml, extractYouTubeId, youtubeThumbUrl, YT_THUMB_SIZES, makeQrModules, qrSvgString, decodeQrPixels, qrPayloadInfo };

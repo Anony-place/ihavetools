@@ -323,6 +323,50 @@ await domTest('batch-2 tools (base, roman, morse, lumpsum) mount and compute', a
   click(btnByLabel(app, 'Calculate lumpsum'));
   assert.match(app.textContent, /310,584/, '₹1L lumpsum @12% for 10y = ₹3,10,585');
 });
+await domTest('batch-4 NPS, EPF and HRA shared links auto-compute', async () => {
+  let app = await loadToolPage('nps-calculator', 'calculators', '?age=30&retire=31&monthly=1000&corpus=0&rate=0&step=0&annuity=40&annuityRate=12');
+  assert.match(app.textContent, /12,000\.00/, 'zero-return NPS corpus should equal 12 monthly contributions');
+  assert.match(app.textContent, /₹48\.00/, '40% annuity at 12% should show ₹48/month pension on a ₹12,000 corpus');
+  app = await loadToolPage('epf-calculator', 'calculators', '?basic=50000&age=30&retire=31&balance=0&growth=0&rate=0');
+  assert.match(app.textContent, /129,000\.00/, 'EPF should add ₹10,750/month after the EPS diversion');
+  assert.match(app.textContent, /15,000\.00/, 'one year of capped EPS diversion should be explicit');
+  app = await loadToolPage('hra-calculator', 'calculators', '?basic=50000&hra=20000&rent=20000&city=metro');
+  assert.match(app.textContent, /180,000\.00/, 'rent minus 10% salary should be the exempt amount');
+  assert.match(app.textContent, /60,000\.00/, 'the remaining HRA should be taxable');
+  assert.match(app.textContent, /Lowest ✓/, 'the deciding HRA limit should be marked');
+});
+await domTest('batch-4 CGPA and attendance tools compute in the UI', async () => {
+  let app = await loadToolPage('cgpa-calculator', 'student', '?mode=to-pct&value=8.5&scale=10&multiplier=9.5');
+  assert.match(app.textContent, /80\.75%/, '8.5 CGPA × 9.5 = 80.75%');
+  click(btnByLabel(app, 'Calculate SGPA'));
+  assert.match(app.textContent, /8\.89/, 'default credit-weighted SGPA example = 8.89');
+  assert.match(app.textContent, /9\s*Total credits/);
+  app = await loadToolPage('attendance-calculator', 'student', '?held=40&attended=28&target=75');
+  assert.match(app.textContent, /70\.00%/, '28/40 = 70% current attendance');
+  assert.match(app.textContent, /8\s*Attend next classes/, 'eight straight classes recover to 36/48 = 75%');
+});
+await domTest('batch-4 scanner, wheel and typing interactions work', async () => {
+  let app = await loadToolPage('qr-code-scanner', 'webseo');
+  assert.ok(app.querySelector('input[type=file][accept="image/*"]'), 'scanner must offer image upload');
+  click(btnByLabel(app, 'Start camera'));
+  assert.match(statusText(document), /image upload still works/i, 'jsdom has no camera, so the fallback explanation should show');
+
+  app = await loadToolPage('spin-wheel', 'misc');
+  assert.match(app.querySelector('[data-wheel-group]')?.textContent || '', /Aarav/, 'wheel labels should render in the SVG');
+  click(btnByLabel(app, 'Spin the wheel'));
+  assert.match(statusText(document), /spinning/i);
+  await new Promise((r) => setTimeout(r, 4450));
+  assert.match(app.textContent, /Winner\s*(Aarav|Priya|Rohan|Sneha|Kabir|Anaya)/, 'the wheel should announce one of the entries');
+  assert.match(app.textContent, /Winner history/);
+
+  app = await loadToolPage('typing-speed-test', 'misc');
+  const target = app.querySelector('[aria-label="Text to type"]').textContent;
+  const box = app.querySelector('textarea');
+  box.value = target;
+  fire(box, 'input');
+  assert.match(statusText(document), /Text complete\./, 'typing the full passage should finish and stop the timer');
+  assert.match(app.textContent, /100\.0%/, 'an exact passage should score 100% accuracy');
+});
 await domTest('rd, cagr and gratuity calculators mount and compute correct values', async () => {
   let app = await loadToolPage('rd-calculator', 'calculators');
   let inputs = app.querySelectorAll('input');

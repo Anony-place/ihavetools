@@ -4,7 +4,8 @@
 // bmi-calculator, gst-calculator, emi-calculator, tip-calculator,
 // compound-interest-calculator, simple-interest-calculator, sip-calculator,
 // ppf-calculator, fd-calculator, income-tax-calculator, rd-calculator,
-// cagr-calculator, gratuity-calculator, lumpsum-calculator
+// cagr-calculator, gratuity-calculator, lumpsum-calculator, nps-calculator,
+// epf-calculator, hra-calculator
 // Every def ends with shareState(...) so results are shareable as URL links.
 // =============================================================================
 import { h, field, input, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool, shareState } from '../ui.js';
@@ -214,6 +215,114 @@ export function gratuityCalc({ monthlySalary, years, months = 0 }) {
   const amount = (15 / 26) * monthlySalary * roundedYears;
   const totalYears = years + months / 12;
   return { amount, roundedYears, totalYears, eligible: totalYears >= 5 };
+}
+
+export function npsCalc({ currentAge, retirementAge = 60, monthlyContribution, annualReturnPct, annualStepUpPct = 0, currentCorpus = 0, annuityPct = 40, annuityRatePct = 7 } = {}) {
+  if (!Number.isInteger(currentAge) || currentAge < 18 || currentAge > 74) throw new Error('Enter your current age between 18 and 74.');
+  if (!Number.isInteger(retirementAge) || retirementAge <= currentAge || retirementAge > 75) throw new Error('Retirement age must be after your current age and no later than 75 for this projection.');
+  if (!(monthlyContribution >= 0) || !(currentCorpus >= 0) || (monthlyContribution === 0 && currentCorpus === 0)) throw new Error('Enter a monthly contribution or your current NPS corpus.');
+  if (!(annualReturnPct >= 0 && annualReturnPct <= 30)) throw new Error('Expected return must be between 0% and 30%.');
+  if (!(annualStepUpPct >= 0 && annualStepUpPct <= 50)) throw new Error('Annual contribution step-up must be between 0% and 50%.');
+  if (!(annuityPct >= 0 && annuityPct <= 100)) throw new Error('The annuity share must be between 0% and 100% of the corpus.');
+  if (!(annuityRatePct >= 0 && annuityRatePct <= 20)) throw new Error('Expected annuity rate must be between 0% and 20%.');
+
+  const years = retirementAge - currentAge;
+  const months = years * 12;
+  const i = annualReturnPct / 1200;
+  let balance = currentCorpus;
+  let newContributions = 0;
+  const schedule = [];
+  for (let m = 1; m <= months; m++) {
+    const yearIndex = Math.floor((m - 1) / 12);
+    const contribution = monthlyContribution * Math.pow(1 + annualStepUpPct / 100, yearIndex);
+    // Contribution at the start of each month, matching this site's SIP timing.
+    balance = (balance + contribution) * (1 + i);
+    newContributions += contribution;
+    if (m % 12 === 0) {
+      schedule.push({
+        age: currentAge + m / 12,
+        contributed: currentCorpus + newContributions,
+        balance,
+        gains: balance - currentCorpus - newContributions,
+      });
+    }
+  }
+  const corpus = balance;
+  const annuityCorpus = corpus * annuityPct / 100;
+  return {
+    years,
+    months,
+    startingCorpus: currentCorpus,
+    newContributions,
+    corpus,
+    gains: corpus - currentCorpus - newContributions,
+    annuityCorpus,
+    lumpSum: corpus - annuityCorpus,
+    monthlyPension: annuityCorpus * annuityRatePct / 100 / 12,
+    schedule,
+  };
+}
+
+export function epfCalc({ monthlyBasicDa, years, annualSalaryGrowthPct = 5, annualInterestPct = 8.25, currentBalance = 0, employeePct = 12, employerPct = 12, epsMonthlyCap = 1250 } = {}) {
+  if (!(monthlyBasicDa > 0)) throw new Error('Enter your monthly basic salary plus DA.');
+  if (!Number.isInteger(years) || years < 1 || years > 50) throw new Error('Enter a whole contribution period between 1 and 50 years.');
+  if (!(currentBalance >= 0)) throw new Error('Current EPF balance cannot be negative.');
+  if (!(annualSalaryGrowthPct >= 0 && annualSalaryGrowthPct <= 30)) throw new Error('Salary growth must be between 0% and 30% a year.');
+  if (!(annualInterestPct >= 0 && annualInterestPct <= 20)) throw new Error('EPF interest must be between 0% and 20%.');
+  if (!(employeePct >= 0 && employeePct <= 100) || !(employerPct >= 0 && employerPct <= 100)) throw new Error('Contribution percentages must be between 0% and 100%.');
+  if (!(epsMonthlyCap >= 0)) throw new Error('The EPS cap cannot be negative.');
+
+  let balance = currentBalance;
+  let employeeContribution = 0;
+  let employerEpfContribution = 0;
+  let epsContribution = 0;
+  let totalInterest = 0;
+  let accruedInterest = 0;
+  const schedule = [];
+  const months = years * 12;
+  for (let m = 1; m <= months; m++) {
+    const yearIndex = Math.floor((m - 1) / 12);
+    const salary = monthlyBasicDa * Math.pow(1 + annualSalaryGrowthPct / 100, yearIndex);
+    const employee = salary * employeePct / 100;
+    const employerTotal = salary * employerPct / 100;
+    const eps = Math.min(employerTotal, salary * 8.33 / 100, epsMonthlyCap);
+    const employerEpf = employerTotal - eps;
+
+    // Approximation of EPF's annual crediting: interest is calculated on
+    // monthly running balances during the year and credited at year end.
+    accruedInterest += balance * (annualInterestPct / 1200);
+    balance += employee + employerEpf;
+    employeeContribution += employee;
+    employerEpfContribution += employerEpf;
+    epsContribution += eps;
+
+    if (m % 12 === 0) {
+      balance += accruedInterest;
+      totalInterest += accruedInterest;
+      accruedInterest = 0;
+      schedule.push({
+        year: m / 12,
+        employeeContribution,
+        employerEpfContribution,
+        interestCredited: totalInterest,
+        balance,
+      });
+    }
+  }
+  return { balance, currentBalance, employeeContribution, employerEpfContribution, epsContribution, totalInterest, schedule };
+}
+
+export function hraCalc({ salaryBasicDaAnnual, hraReceivedAnnual, rentPaidAnnual, metro = false } = {}) {
+  if (!(salaryBasicDaAnnual > 0)) throw new Error('Enter annual basic salary plus DA.');
+  if (!(hraReceivedAnnual >= 0) || !(rentPaidAnnual >= 0)) throw new Error('HRA and rent cannot be negative.');
+  const limits = {
+    actualHra: hraReceivedAnnual,
+    rentOverTenPercent: Math.max(0, rentPaidAnnual - salaryBasicDaAnnual * 0.10),
+    salaryCap: salaryBasicDaAnnual * (metro ? 0.50 : 0.40),
+  };
+  const exempt = Math.min(limits.actualHra, limits.rentOverTenPercent, limits.salaryCap);
+  const limitingFactor = Object.entries(limits).find(([, value]) => value === exempt)?.[0] || 'actualHra';
+  return { ...limits, exempt, taxable: Math.max(0, hraReceivedAnnual - exempt), limitingFactor };
 }
 
 function slabTax(income, slabs) {
@@ -935,7 +1044,150 @@ const defs = {
       actionsRow(btn({ label: 'Calculate lumpsum', icon: 'coins', onClick: run })), grid, scheduleWrap, status);
     shareState(root, [['amount', amount], ['rate', rate], ['years', years]], run);
   },
+
+  'nps-calculator'(root) {
+    const age = input({ type: 'number', step: '1', min: 18, max: 74, value: '30' });
+    const retire = input({ type: 'number', step: '1', min: 19, max: 75, value: '60' });
+    const monthly = input({ type: 'number', step: 'any', value: '10000' });
+    const corpusNow = input({ type: 'number', step: 'any', value: '0' });
+    const rate = input({ type: 'number', step: 'any', value: '10' });
+    const stepUp = input({ type: 'number', step: 'any', value: '5' });
+    const annuityPct = input({ type: 'number', step: 'any', min: 0, max: 100, value: '40' });
+    const annuityRate = input({ type: 'number', step: 'any', value: '7' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const scheduleWrap = h('div', {});
+    const inr = (v) => `₹${money(v)}`;
+    const run = () => {
+      try {
+        const r = npsCalc({
+          currentAge: Math.floor(num(age)), retirementAge: Math.floor(num(retire)),
+          monthlyContribution: num(monthly), currentCorpus: num(corpusNow) || 0,
+          annualReturnPct: num(rate), annualStepUpPct: num(stepUp) || 0,
+          annuityPct: num(annuityPct), annuityRatePct: num(annuityRate),
+        });
+        grid.set([
+          { label: 'Projected NPS corpus', value: inr(r.corpus), kind: 'good' },
+          { label: 'You contribute from today', value: inr(r.newContributions) },
+          { label: 'Estimated gains', value: inr(r.gains), kind: 'warn' },
+          { label: 'Lump sum portion', value: inr(r.lumpSum) },
+          { label: 'Used to buy annuity', value: inr(r.annuityCorpus) },
+          { label: 'Estimated monthly pension', value: inr(r.monthlyPension), kind: 'good' },
+        ]);
+        scheduleWrap.replaceChildren(
+          h('h3', { text: 'Corpus by age', style: 'margin:20px 0 10px' }),
+          table({ headers: ['Age', 'Starting + contributed', 'Est. gains', 'Corpus'], rows: r.schedule.map((y) => [String(y.age), inr(y.contributed), inr(y.gains), inr(y.balance)]) }));
+        status.set(`Projection assumes contributions at the start of each month and a steady ${fmtNumber(num(rate))}% return. NPS is market-linked and annuity income depends on the annuity plan chosen at exit — this is an estimate, not a promise.`, 'success');
+      } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Current age', control: age }),
+        field({ label: 'Retirement age', control: retire }),
+        field({ label: 'Monthly contribution (₹)', control: monthly }),
+        field({ label: 'Current corpus (₹)', control: corpusNow })),
+      h('div', { class: 'field-row' },
+        field({ label: 'Expected return % (p.a.)', control: rate }),
+        field({ label: 'Yearly contribution step-up %', control: stepUp }),
+        field({ label: 'Corpus used for annuity %', control: annuityPct }),
+        field({ label: 'Expected annuity rate % (p.a.)', control: annuityRate })),
+      actionsRow(btn({ label: 'Calculate NPS', icon: 'bank', onClick: run })), grid, scheduleWrap, status);
+    shareState(root, [['age', age], ['retire', retire], ['monthly', monthly], ['corpus', corpusNow], ['rate', rate], ['step', stepUp], ['annuity', annuityPct], ['annuityRate', annuityRate]], run);
+  },
+
+  'epf-calculator'(root) {
+    const basic = input({ type: 'number', step: 'any', value: '50000' });
+    const age = input({ type: 'number', step: '1', min: 18, max: 70, value: '25' });
+    const retire = input({ type: 'number', step: '1', min: 19, max: 70, value: '58' });
+    const balanceNow = input({ type: 'number', step: 'any', value: '0' });
+    const growth = input({ type: 'number', step: 'any', value: '5' });
+    const rate = input({ type: 'number', step: 'any', value: '8.25' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const scheduleWrap = h('div', {});
+    const inr = (v) => `₹${money(v)}`;
+    const run = () => {
+      try {
+        const years = Math.floor(num(retire)) - Math.floor(num(age));
+        if (!(years >= 1)) throw new Error('Retirement age must be after your current age.');
+        const r = epfCalc({
+          monthlyBasicDa: num(basic), years, currentBalance: num(balanceNow) || 0,
+          annualSalaryGrowthPct: num(growth) || 0, annualInterestPct: num(rate),
+        });
+        grid.set([
+          { label: 'Projected EPF balance', value: inr(r.balance), kind: 'good' },
+          { label: 'Your contributions', value: inr(r.employeeContribution) },
+          { label: 'Employer’s EPF share', value: inr(r.employerEpfContribution) },
+          { label: 'Interest credited', value: inr(r.totalInterest), kind: 'warn' },
+          { label: 'Diverted to EPS (not EPF)', value: inr(r.epsContribution) },
+        ]);
+        scheduleWrap.replaceChildren(
+          h('h3', { text: 'Year-by-year EPF projection', style: 'margin:20px 0 10px' }),
+          table({ headers: ['Year', 'Employee', 'Employer EPF', 'Interest', 'Balance'], rows: r.schedule.map((y) => [String(y.year), inr(y.employeeContribution), inr(y.employerEpfContribution), inr(y.interestCredited), inr(y.balance)]) }));
+        status.set('Assumes 12% employee + 12% employer contributions on basic + DA, with the employer EPS diversion capped at ₹1,250/month. Actual EPFO crediting, exemptions and joining-date rules can change the passbook figure.', 'success');
+      } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Monthly basic + DA (₹)', control: basic }),
+        field({ label: 'Current age', control: age }),
+        field({ label: 'Retirement age', control: retire }),
+        field({ label: 'Current EPF balance (₹)', control: balanceNow })),
+      h('div', { class: 'field-row' },
+        field({ label: 'Salary growth % (p.a.)', control: growth }),
+        field({ label: 'Expected EPF interest % (p.a.)', control: rate })),
+      actionsRow(btn({ label: 'Calculate EPF', icon: 'shield', onClick: run })), grid, scheduleWrap, status);
+    shareState(root, [['basic', basic], ['age', age], ['retire', retire], ['balance', balanceNow], ['growth', growth], ['rate', rate]], run);
+  },
+
+  'hra-calculator'(root) {
+    const basic = input({ type: 'number', step: 'any', value: '50000' });
+    const hra = input({ type: 'number', step: 'any', value: '20000' });
+    const rent = input({ type: 'number', step: 'any', value: '20000' });
+    const city = select({ options: [{ v: 'metro', t: 'Metro (Delhi, Mumbai, Kolkata, Chennai)' }, { v: 'nonmetro', t: 'Non-metro' }], value: 'metro' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const breakdown = h('div', {});
+    const inr = (v) => `₹${money(v)}`;
+    const labels = {
+      actualHra: 'Actual HRA received',
+      rentOverTenPercent: 'Rent paid minus 10% of basic + DA',
+      salaryCap: '50% / 40% of basic + DA',
+    };
+    const run = () => {
+      try {
+        const r = hraCalc({
+          salaryBasicDaAnnual: num(basic) * 12,
+          hraReceivedAnnual: num(hra) * 12,
+          rentPaidAnnual: num(rent) * 12,
+          metro: city.value === 'metro',
+        });
+        grid.set([
+          { label: 'Exempt HRA (year)', value: inr(r.exempt), kind: 'good' },
+          { label: 'Exempt HRA (month)', value: inr(r.exempt / 12) },
+          { label: 'Taxable HRA (year)', value: inr(r.taxable), kind: r.taxable ? 'warn' : 'good' },
+          { label: 'Limit that decided it', value: labels[r.limitingFactor] },
+        ]);
+        breakdown.replaceChildren(
+          h('h3', { text: 'The three HRA limits', style: 'margin:20px 0 10px' }),
+          table({ headers: ['Limit', 'Annual amount', 'Result'], rows: [
+            ['Actual HRA received', inr(r.actualHra), r.limitingFactor === 'actualHra' ? 'Lowest ✓' : '—'],
+            ['Rent paid − 10% of basic + DA', inr(r.rentOverTenPercent), r.limitingFactor === 'rentOverTenPercent' ? 'Lowest ✓' : '—'],
+            [city.value === 'metro' ? '50% of basic + DA (metro)' : '40% of basic + DA (non-metro)', inr(r.salaryCap), r.limitingFactor === 'salaryCap' ? 'Lowest ✓' : '—'],
+          ] }));
+        status.set('HRA exemption is an old-regime calculation and needs rent actually paid for a home you occupy. The lowest of the three limits is exempt; the rest of the HRA is taxable salary.', 'success');
+      } catch (e) { grid.replaceChildren(); breakdown.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Monthly basic + DA (₹)', control: basic }),
+        field({ label: 'Monthly HRA received (₹)', control: hra }),
+        field({ label: 'Monthly rent paid (₹)', control: rent }),
+        field({ label: 'City type', control: city })),
+      actionsRow(btn({ label: 'Calculate HRA exemption', icon: 'receipt', onClick: run })), grid, breakdown, status);
+    shareState(root, [['basic', basic], ['hra', hra], ['rent', rent], ['city', city]], run);
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc, incomeTaxIndia, rdCalc, cagrCalc, gratuityCalc };
+export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc, incomeTaxIndia, rdCalc, cagrCalc, gratuityCalc, npsCalc, epfCalc, hraCalc };
