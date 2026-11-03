@@ -269,6 +269,39 @@ await domTest('sip-calculator: a shared link pre-fills inputs, auto-runs, and UR
   await new Promise((r) => setTimeout(r, 20));
   assert.match(document.defaultView.location.search, /monthly=7000/, 'recalculating must sync the URL so Copy link shares the latest result');
 });
+await domTest('batch-3 GSC upgrades compute in the real UIs', async () => {
+  let app = await loadToolPage('percentage-change', 'calculators');
+  let inputs = app.querySelectorAll('input');
+  inputs[0].value = '80'; inputs[1].value = '100';
+  click(btnByLabel(app, 'Calculate change'));
+  assert.match(app.textContent, /\+25%/, '80 → 100 is a +25% change');
+  assert.match(app.textContent, /Reverse change/, 'the upgraded result must show the reverse direction');
+  assert.match(app.textContent, /-20%|−20%/, '100 → 80 is a −20% reverse change');
+  assert.match(app.textContent, /Formula:/, 'the worked formula must be visible');
+
+  app = await loadToolPage('keyword-density-checker', 'webseo');
+  app.querySelector('textarea').value = 'Keyword research helps content. Keyword research guides tools. Tools help research.';
+  app.querySelector('input[type="text"]').value = 'keyword research';
+  click(btnByLabel(app, 'Count keywords'));
+  assert.match(app.textContent, /“keyword research” count/, 'target phrase stats must be shown');
+  assert.match(app.textContent, /Keyword frequency/, 'the frequency table must render');
+  assert.ok(btnByLabel(app, 'Download CSV'), 'frequency results must be exportable');
+
+  app = await loadToolPage('robots-txt-generator', 'webseo');
+  click(btnByLabel(app, 'Block everything'));
+  assert.match(app.textContent, /Blocked ✕/, 'blocking / must make the crawl tester report Blocked');
+  assert.match(app.textContent, /User-agent: \*/, 'the generated robots.txt must remain visible');
+  assert.ok(btnByLabel(app, 'Block AI training crawlers'), 'AI-crawler preset must be present');
+
+  app = await loadToolPage('data-storage-converter', 'converters');
+  assert.match(app.textContent, /1,000 megabyte \(MB\)/, '1 GB must convert to 1,000 MB by default');
+  assert.match(app.textContent, /gibibyte \(GiB\)/, 'the all-units table must include binary GiB');
+
+  app = await loadToolPage('palette-generator', 'color');
+  assert.ok(btnByLabel(app, 'Copy CSS variables'), 'each palette must offer CSS-variable export');
+  click(btnByLabel(app, 'Random color'));
+  assert.match(app.textContent, /Random base color: #[0-9A-F]{6}/, 'random base colour must regenerate the palettes');
+});
 await domTest('batch-2 tools (base, roman, morse, lumpsum) mount and compute', async () => {
   let app = await loadToolPage('number-base-converter', 'developer');
   app.querySelector('input').value = 'FF';

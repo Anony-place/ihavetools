@@ -115,39 +115,142 @@ export function parseUrlParts(raw) {
 
 /* ═══════════════════════════ Keyword density ═══════════════════════════ */
 const STOPWORDS = new Set('a,an,and,are,as,at,be,been,but,by,can,could,did,do,does,for,from,had,has,have,he,her,his,how,i,if,in,into,is,it,its,just,like,may,might,must,not,of,on,or,our,shall,she,should,since,so,some,than,that,the,their,them,then,there,these,they,this,those,to,too,us,was,we,were,what,when,where,which,while,who,whom,why,will,with,would,you,your,yours'.split(','));
-export function keywordDensity(text, { phraseLength = 1, filterStop = true } = {}) {
-  const words = (text.toLowerCase().match(/\p{L}[\p{L}'’-]*/gu) || []);
-  if (!words.length) return { total: 0, top: [] };
-  const build = () => {
-    const counts = new Map();
-    for (let i = 0; i + phraseLength <= words.length; i++) {
-      const gram = words.slice(i, i + phraseLength);
-      if (filterStop && gram.some((g) => STOPWORDS.has(g))) continue;
-      const key = gram.join(' ');
-      counts.set(key, (counts.get(key) || 0) + 1);
+const tokenizeWords = (text) => String(text || '').toLowerCase().match(/\p{L}[\p{L}'’-]*/gu) || [];
+
+/**
+ * Keyword frequency + density.
+ * `total` is always the word count. Density is the share of all words that
+ * belong to occurrences of the term: count × phrase length ÷ total words,
+ * capped at 100% for pathological overlapping phrases. A target phrase is
+ * counted independently of the stop-word filter and phrase-length setting.
+ */
+export function keywordDensity(text, { phraseLength = 1, filterStop = true, minCount = 1, limit = 100, target = '' } = {}) {
+  const words = tokenizeWords(text);
+  const n = [1, 2, 3].includes(Number(phraseLength)) ? Number(phraseLength) : 1;
+  const minimum = Math.max(1, Number(minCount) || 1);
+  const cap = Math.max(1, Number(limit) || 100);
+  if (!words.length) return { total: 0, totalWords: 0, totalPhrases: 0, distinct: 0, terms: [], top: [], target: null };
+
+  const counts = new Map();
+  for (let i = 0; i + n <= words.length; i++) {
+    const gram = words.slice(i, i + n);
+    if (filterStop && gram.some((g) => STOPWORDS.has(g))) continue;
+    const key = gram.join(' ');
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+
+  const totalPhrases = Math.max(0, words.length - n + 1);
+  const matchedTerms = [...counts.entries()]
+    .filter(([, c]) => c >= minimum)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([phrase, count]) => ({ phrase, count, density: Math.min(100, (count * n / words.length) * 100) }));
+  const terms = matchedTerms.slice(0, cap);
+
+  const targetWords = tokenizeWords(target);
+  let targetResult = null;
+  if (targetWords.length) {
+    let count = 0;
+    for (let i = 0; i + targetWords.length <= words.length; i++) {
+      if (targetWords.every((word, j) => words[i + j] === word)) count++;
     }
-    return counts;
-  };
-  const counts = build();
-  const total = phraseLength === 1 ? words.length : Math.max(1, words.length - phraseLength + 1);
-  const top = [...counts.entries()].filter(([k, c]) => c >= 2 || phraseLength > 1).sort((a, b) => b[1] - a[1]).slice(0, 25)
-    .map(([k, c]) => ({ phrase: k, count: c, density: (c / total) * 100 }));
-  return { total, top };
+    targetResult = {
+      phrase: targetWords.join(' '),
+      count,
+      density: Math.min(100, (count * targetWords.length / words.length) * 100),
+    };
+  }
+
+  return { total: words.length, totalWords: words.length, totalPhrases, distinct: counts.size, matched: matchedTerms.length, terms, top: terms, target: targetResult };
+}
+
+export function keywordFrequencyCsv(terms = []) {
+  const cell = (value) => `"${String(value).replace(/"/g, '""')}"`;
+  return [
+    'term,count,density_percent',
+    ...terms.map((t) => [cell(t.phrase), t.count, Number(t.density || 0).toFixed(4)].join(',')),
+  ].join('\n') + '\n';
 }
 
 /* ═══════════════════════════ Robots.txt builder ═══════════════════════════ */
 export function buildRobots(rules, { sitemap = '', crawlDelay = null } = {}) {
   const lines = [];
   for (const rule of rules) {
+    const disallow = rule.disallow || [];
+    const allow = rule.allow || [];
     lines.push(`User-agent: ${rule.agent || '*'}`);
-    for (const d of rule.disallow || []) lines.push(`Disallow: ${d}`);
-    for (const a of rule.allow || []) lines.push(`Allow: ${a}`);
+    // An empty group is easy for both people and parsers to misread. Spell
+    // out the conventional empty Disallow when the intent is "allow all".
+    if (!disallow.length && !allow.length) lines.push('Disallow:');
+    for (const d of disallow) lines.push(`Disallow: ${d}`);
+    for (const a of allow) lines.push(`Allow: ${a}`);
     if (crawlDelay != null && crawlDelay !== '' && rule.agent !== 'Googlebot') lines.push(`Crawl-delay: ${crawlDelay}`);
     lines.push('');
   }
   if (!rules.length) lines.push('User-agent: *', 'Disallow:', '');
   if (sitemap) lines.push(`Sitemap: ${sitemap}`);
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
+const robotsPatternRegex = (pattern) => {
+  const anchored = pattern.endsWith('$');
+  const body = anchored ? pattern.slice(0, -1) : pattern;
+  const escaped = body.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}${anchored ? '$' : ''}`);
+};
+
+const robotsPath = (raw) => {
+  const value = String(raw || '').trim();
+  if (!value) throw new Error('Enter a URL or path to test.');
+  try {
+    const url = new URL(value);
+    return `${url.pathname || '/'}${url.search || ''}`;
+  } catch {
+    return value.startsWith('/') ? value : `/${value}`;
+  }
+};
+
+/**
+ * Test one path against the current in-memory robots rules.
+ * The most specific matching user-agent token wins over `*`; then the
+ * longest matching Allow/Disallow pattern wins. On an exact length tie,
+ * Allow is the least restrictive result. `*` and a trailing `$` follow the
+ * pattern syntax supported by major search crawlers.
+ */
+export function testRobotsAccess(rules, userAgent, rawPath) {
+  const path = robotsPath(rawPath);
+  const ua = String(userAgent || '*').trim().toLowerCase() || '*';
+  const specific = (rules || []).filter((rule) => {
+    const token = String(rule.agent || '*').trim().toLowerCase();
+    return token && token !== '*' && (ua === token || ua.includes(token));
+  });
+  const bestSpecificLength = specific.reduce((max, rule) => Math.max(max, String(rule.agent || '').trim().length), 0);
+  const groups = bestSpecificLength
+    ? specific.filter((rule) => String(rule.agent || '').trim().length === bestSpecificLength)
+    : (rules || []).filter((rule) => String(rule.agent || '*').trim() === '*');
+  const agentGroup = groups.length ? String(groups[0].agent || '*') : '*';
+
+  let winner = null;
+  for (const group of groups) {
+    const candidates = [
+      ...(group.disallow || []).map((pattern) => ({ type: 'Disallow', pattern })),
+      ...(group.allow || []).map((pattern) => ({ type: 'Allow', pattern })),
+    ];
+    for (const candidate of candidates) {
+      const pattern = String(candidate.pattern || '');
+      if (!pattern || !robotsPatternRegex(pattern).test(path)) continue;
+      if (!winner || pattern.length > winner.pattern.length || (pattern.length === winner.pattern.length && candidate.type === 'Allow')) {
+        winner = { ...candidate, pattern };
+      }
+    }
+  }
+
+  return {
+    allowed: !winner || winner.type === 'Allow',
+    agentGroup,
+    path,
+    ruleType: winner?.type || null,
+    pattern: winner?.pattern || null,
+  };
 }
 
 /* ═══════════════════════════ Sitemap XML builder ═══════════════════════════ */
@@ -220,8 +323,22 @@ const defs = {
     const sitemap = input({ type: 'url', placeholder: 'https://example.com/sitemap.xml' });
     const delay = input({ type: 'number', min: 0, placeholder: 'seconds (optional)' });
     const out = resultPanel({ label: 'robots.txt', download: true, downloadName: 'robots.txt' });
+    const testAgent = input({ type: 'text', value: 'Googlebot', placeholder: 'Googlebot, Bingbot, GPTBot…' });
+    const testUrl = input({ type: 'text', value: '/private/', placeholder: '/private/ or https://example.com/private/' });
+    const testOut = resultPanel({ label: 'Crawl test result', copy: false, placeholder: 'Run a test to see which rule wins.' });
     const status = statusLine('');
     let rules = [{ agent: '*', disallow: [], allow: [] }];
+    const runTest = () => {
+      try {
+        const r = testRobotsAccess(rules, testAgent.value, testUrl.value);
+        testOut.set([
+          r.allowed ? 'Allowed ✓' : 'Blocked ✕',
+          `Crawler group used: ${r.agentGroup}`,
+          `Path tested: ${r.path}`,
+          r.pattern ? `Winning rule: ${r.ruleType}: ${r.pattern}` : 'Winning rule: none — crawling is allowed by default.',
+        ].join('\n'));
+      } catch (e) { testOut.set(e.message); }
+    };
     const render = () => {
       rows.replaceChildren(...rules.map((r, i) => h('div', { class: 'file-row', style: 'flex-wrap:wrap' },
         h('code', { class: 'mono', text: `UA: ${r.agent}` }),
@@ -234,6 +351,7 @@ const defs = {
         const text = buildRobots(rules, { sitemap: sitemap.value.trim(), crawlDelay: delay.value });
         out.set(text);
         status.set('Generated ✓ — place this file at the root of your domain.', 'success');
+        runTest();
       } catch (e) { status.set(e.message, 'error'); }
     };
     const addRule = () => {
@@ -253,15 +371,31 @@ const defs = {
       formWrap.replaceChildren(form);
     };
     const formWrap = h('div', {});
+    const setRules = (next) => { rules = next; render(); build(); };
+    const aiTrainingAgents = ['GPTBot', 'ClaudeBot', 'CCBot', 'Google-Extended', 'Applebot-Extended', 'Meta-ExternalAgent'];
     root.append(
       actionsRow(
         btn({ label: 'Add rule', icon: 'robot', onClick: addRule }),
         btn({ label: 'Allow everything', variant: 'secondary', onClick: () => { rules = [{ agent: '*', disallow: [], allow: [] }]; render(); build(); } }),
         btn({ label: 'Block everything', variant: 'secondary', onClick: () => { rules = [{ agent: '*', disallow: ['/'], allow: [] }]; render(); build(); } })),
+      h('h3', { text: 'Starting presets', style: 'margin:18px 0 10px' }),
+      actionsRow(
+        btn({ label: 'WordPress defaults', variant: 'secondary', icon: 'settings', onClick: () => setRules([{ agent: '*', disallow: ['/wp-admin/'], allow: ['/wp-admin/admin-ajax.php'] }]) }),
+        btn({ label: 'Block AI training crawlers', variant: 'secondary', icon: 'robot', onClick: () => setRules([
+          { agent: '*', disallow: [], allow: [] },
+          ...aiTrainingAgents.map((agent) => ({ agent, disallow: ['/'], allow: [] })),
+        ]) })),
+      h('p', { class: 'hint', text: 'The AI preset blocks common training/data crawlers while leaving ordinary search crawlers under the wildcard rule. Review every preset before using it on a live site.' }),
       rows, formWrap,
       h('div', { class: 'field-row', style: 'margin-top:14px' }, field({ label: 'Sitemap URL', control: sitemap }), field({ label: 'Crawl-delay', control: delay, hint: 'Not supported by Google' })),
       actionsRow(btn({ label: 'Generate', icon: 'settings', onClick: build })),
-      status, h('br'), out.panel);
+      status, h('br'), out.panel,
+      h('h3', { text: 'Test a URL against these rules', style: 'margin:22px 0 10px' }),
+      h('div', { class: 'field-row' },
+        field({ label: 'Crawler user-agent', control: testAgent }),
+        field({ label: 'URL or path', control: testUrl })),
+      actionsRow(btn({ label: 'Test crawler access', variant: 'secondary', icon: 'check', onClick: runTest })),
+      h('br'), testOut.panel);
     render(); build();
   },
 
@@ -347,30 +481,59 @@ const defs = {
 
   'keyword-density-checker'(root) {
     const inp = textarea({ rows: 10, mono: false, placeholder: 'Paste your content here…' });
+    const target = input({ type: 'text', placeholder: 'Optional — e.g. online tools' });
     const len = select({ options: [{ v: '1', t: 'Single words' }, { v: '2', t: '2-word phrases' }, { v: '3', t: '3-word phrases' }], value: '1' });
+    const minimum = select({ options: [{ v: '1', t: 'All terms' }, { v: '2', t: '2+ times' }, { v: '3', t: '3+ times' }, { v: '5', t: '5+ times' }], value: '1' });
     const stop = switchChip({ label: 'Filter stop words', checked: true });
     const grid = statsGrid();
     const status = statusLine('');
     const out = h('div', {});
+    let lastCsv = '';
     const run = () => {
       const text = inp.value;
-      if (!text.trim()) { status.set('Paste some content first.', 'warning'); return; }
-      const r = keywordDensity(text, { phraseLength: Number(len.value), filterStop: stop.querySelector('input').checked });
-      grid.set([
-        { label: 'Total words', value: r.total.toLocaleString(), kind: 'good' },
-        { label: 'Distinct terms', value: r.top.length ? '≥' + r.top.length : '0' },
-        { label: 'Top density', value: r.top.length ? `${r.top[0].density.toFixed(1)}%` : '—' },
-      ]);
+      if (!text.trim()) { lastCsv = ''; status.set('Paste some content first.', 'warning'); return; }
+      const r = keywordDensity(text, {
+        phraseLength: Number(len.value),
+        filterStop: stop.querySelector('input').checked,
+        minCount: Number(minimum.value),
+        target: target.value,
+      });
+      lastCsv = keywordFrequencyCsv(r.terms);
+      const stats = [
+        { label: 'Total words', value: r.totalWords.toLocaleString(), kind: 'good' },
+        { label: 'Distinct terms', value: r.distinct.toLocaleString() },
+        { label: 'Top density', value: r.terms.length ? `${r.terms[0].density.toFixed(1)}%` : '—' },
+      ];
+      if (r.target) {
+        stats.push(
+          { label: `“${r.target.phrase}” count`, value: r.target.count.toLocaleString(), kind: r.target.count ? 'good' : 'warn' },
+          { label: 'Target density', value: `${r.target.density.toFixed(2)}%` });
+      }
+      grid.set(stats);
       out.replaceChildren(
-        h('h3', { text: 'Most frequent', style: 'margin:18px 0 10px' }),
-        r.top.length
-          ? table({ headers: ['Term', 'Count', 'Density'], rows: r.top.map((t) => [t.phrase, String(t.count), `${t.density.toFixed(2)}%`]) })
-          : h('p', { class: 'hint', text: 'No repeated terms found (terms appearing once are hidden). Try pasting more text.' }));
-      status.set(`Analysed ${r.total.toLocaleString()} words ✓`, 'success');
+        h('h3', { text: 'Keyword frequency', style: 'margin:18px 0 10px' }),
+        r.terms.length
+          ? table({ headers: ['Term', 'Frequency', 'Density'], rows: r.terms.map((t) => [t.phrase, String(t.count), `${t.density.toFixed(2)}%`]) })
+          : h('p', { class: 'hint', text: 'No terms match the current minimum-frequency filter.' }),
+        r.matched > r.terms.length
+          ? h('p', { class: 'hint', text: `Showing the top ${r.terms.length} of ${r.matched.toLocaleString()} matching terms. Download the CSV for the displayed rows.` })
+          : h('span'));
+      status.set(`Analysed ${r.totalWords.toLocaleString()} words ✓`, 'success');
     };
     root.append(field({ label: 'Content', control: inp }),
-      h('div', { class: 'field-row', style: 'align-items:end' }, field({ label: 'Phrase length', control: len }), field({ label: 'Options', control: stop })),
-      actionsRow(btn({ label: 'Analyse', icon: 'chart', onClick: run })), grid, out, status);
+      field({ label: 'Target keyword or phrase', control: target, hint: 'Counted exactly, even if it contains stop words' }),
+      h('div', { class: 'field-row', style: 'align-items:end' },
+        field({ label: 'Phrase length', control: len }),
+        field({ label: 'Show terms occurring', control: minimum }),
+        field({ label: 'Options', control: stop })),
+      actionsRow(
+        btn({ label: 'Count keywords', icon: 'chart', onClick: run }),
+        btn({ label: 'Download CSV', variant: 'secondary', icon: 'download', onClick: () => {
+          if (!lastCsv) { status.set('Analyse some content before downloading the CSV.', 'warning'); return; }
+          downloadText(lastCsv, 'keyword-frequency.csv', 'text/csv;charset=utf-8');
+          toast('Keyword frequency CSV downloading', 'success');
+        } })),
+      grid, out, status);
   },
 
   'youtube-thumbnail-downloader'(root) {
@@ -483,4 +646,4 @@ const defs = {
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { parseUrlParts, keywordDensity, buildRobots, buildSitemapXml, extractYouTubeId, youtubeThumbUrl, YT_THUMB_SIZES, makeQrModules, qrSvgString };
+export const __test = { parseUrlParts, keywordDensity, keywordFrequencyCsv, buildRobots, testRobotsAccess, buildSitemapXml, extractYouTubeId, youtubeThumbUrl, YT_THUMB_SIZES, makeQrModules, qrSvgString };

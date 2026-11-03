@@ -49,7 +49,7 @@
 - [Slug Generator](https://i-have-tools.vercel.app/tools/slug-generator/): Turn any title into a clean, SEO-friendly URL slug.
 - [Lorem Ipsum Generator](https://i-have-tools.vercel.app/tools/lorem-ipsum-generator/): Generate placeholder paragraphs, sentences or words on demand.
 - [Percentage Calculator](https://i-have-tools.vercel.app/tools/percentage-calculator/): Three percentage calculations in one tool, with worked formulas.
-- [Percentage Change](https://i-have-tools.vercel.app/tools/percentage-change/): Percentage increase or decrease between two values.
+- [Percentage Change Calculator](https://i-have-tools.vercel.app/tools/percentage-change/): Calculate percentage increase or decrease between two numbers.
 - [Discount Calculator](https://i-have-tools.vercel.app/tools/discount-calculator/): Sale price and savings from a price and percent off.
 - [Age Calculator](https://i-have-tools.vercel.app/tools/age-calculator/): Exact age in years, months and days — plus the next birthday.
 - [BMI Calculator](https://i-have-tools.vercel.app/tools/bmi-calculator/): Body Mass Index in metric or imperial, with WHO categories.
@@ -77,13 +77,13 @@
 - [Color Picker](https://i-have-tools.vercel.app/tools/color-picker/): Pick colors, get every format, plus tints and shades.
 - [HEX / RGB / HSL Converter](https://i-have-tools.vercel.app/tools/hex-rgb-converter/): Convert colors between HEX, RGB and HSL — both ways.
 - [Color Contrast Checker](https://i-have-tools.vercel.app/tools/color-contrast-checker/): WCAG AA/AAA contrast ratios with pass/fail verdicts.
-- [Palette Generator](https://i-have-tools.vercel.app/tools/palette-generator/): Build color harmonies from one base color.
+- [Palette Generator](https://i-have-tools.vercel.app/tools/palette-generator/): Build color harmonies from one base color — copy HEX or CSS.
 - [Meta Tag Generator](https://i-have-tools.vercel.app/tools/meta-tag-generator/): Generate SEO, Open Graph and Twitter meta tags in one go.
-- [Robots.txt Generator](https://i-have-tools.vercel.app/tools/robots-txt-generator/): Build a valid robots.txt with rules, presets and sitemap.
+- [Robots.txt Generator](https://i-have-tools.vercel.app/tools/robots-txt-generator/): Create, preset and test robots.txt rules before you publish.
 - [Sitemap Generator](https://i-have-tools.vercel.app/tools/sitemap-generator/): Paste URLs, get a valid sitemap.xml to download.
 - [Open Graph Preview](https://i-have-tools.vercel.app/tools/open-graph-preview/): Preview how a link looks when shared on social platforms.
 - [URL Parser](https://i-have-tools.vercel.app/tools/url-parser/): Break any URL into protocol, host, path and query params.
-- [Keyword Density Checker](https://i-have-tools.vercel.app/tools/keyword-density-checker/): Top words and phrases with density percentages.
+- [Keyword Density & Frequency Checker](https://i-have-tools.vercel.app/tools/keyword-density-checker/): Count keyword frequency and density for words and phrases.
 - [Scientific Calculator](https://i-have-tools.vercel.app/tools/scientific-calculator/): Full expression calculator with functions, history and keyboard support.
 - [Fraction Calculator](https://i-have-tools.vercel.app/tools/fraction-calculator/): Add, subtract, multiply and divide fractions — simplified.
 - [Time Duration Calculator](https://i-have-tools.vercel.app/tools/time-duration-calculator/): Add or subtract durations like 2h 45m + 30m.

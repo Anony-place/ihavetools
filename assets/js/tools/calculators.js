@@ -352,22 +352,30 @@ const defs = {
     const from = input({ type: 'number', step: 'any', placeholder: 'e.g. 80' });
     const to = input({ type: 'number', step: 'any', placeholder: 'e.g. 100' });
     const grid = statsGrid();
+    const formula = h('p', { class: 'hint', style: 'margin-top:8px' });
     const status = statusLine('');
     const run = () => {
       const a = num(from), b = num(to);
-      if (!isFin(a) || !isFin(b)) { status.set('Enter both values.', 'warning'); return; }
+      if (!isFin(a) || !isFin(b)) { grid.replaceChildren(); formula.textContent = ''; status.set('Enter both values.', 'warning'); return; }
       try {
         const r = pctChange(a, b);
+        const signed = `${r > 0 ? '+' : ''}${fmtNumber(r, 4)}%`;
+        const reverse = b !== 0 ? pctChange(b, a) : null;
         grid.set([
-          { label: r >= 0 ? 'Percentage increase' : 'Percentage decrease', value: `${fmtNumber(Math.abs(r), 4)}%`, kind: r >= 0 ? 'good' : 'bad' },
+          { label: 'Percentage change', value: signed, kind: r >= 0 ? 'good' : 'bad' },
           { label: 'Absolute difference', value: fmtNumber(b - a) },
           { label: 'Multiplier', value: `${fmtNumber(b / a, 4)}×` },
+          { label: 'Reverse change', value: reverse == null ? 'Undefined' : `${reverse > 0 ? '+' : ''}${fmtNumber(reverse, 4)}%` },
         ]);
-        status.set(`The value went ${r >= 0 ? 'up' : 'down'} by ${fmtNumber(Math.abs(r), 4)}%.`, 'success');
-      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+        formula.textContent = `Formula: ((${fmtNumber(b)} − ${fmtNumber(a)}) ÷ |${fmtNumber(a)}|) × 100 = ${signed}`;
+        status.set(r === 0
+          ? 'No change — the starting and new values are the same.'
+          : `The value went ${r > 0 ? 'up' : 'down'} by ${fmtNumber(Math.abs(r), 4)}%. ${reverse == null ? 'The reverse percentage change is undefined from a new value of zero.' : `Going back would be a ${fmtNumber(Math.abs(reverse), 4)}% change because the base value is different.`}`,
+        'success');
+      } catch (e) { grid.replaceChildren(); formula.textContent = ''; status.set(e.message, 'error'); }
     };
     root.append(h('div', { class: 'field-row' }, field({ label: 'Starting value', control: from }), field({ label: 'New value', control: to })),
-      actionsRow(btn({ label: 'Calculate change', icon: 'trending', onClick: run })), grid, status);
+      actionsRow(btn({ label: 'Calculate change', icon: 'trending', onClick: run })), grid, formula, status);
     shareState(root, [['from', from], ['to', to]], run);
   },
 
