@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 98 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 106 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -119,6 +119,14 @@
 - [Roman Numeral Converter](https://i-have-tools.vercel.app/tools/roman-numeral-converter/): Convert numbers to Roman numerals and back, with strict standard rules.
 - [Morse Code Translator](https://i-have-tools.vercel.app/tools/morse-code-translator/): Translate text to Morse code and back — with sound playback.
 - [Lumpsum Calculator](https://i-have-tools.vercel.app/tools/lumpsum-calculator/): Future value of a one-time investment, with year-by-year growth.
+- [NPS Calculator](https://i-have-tools.vercel.app/tools/nps-calculator/): Project your NPS retirement corpus and estimated monthly pension.
+- [EPF Calculator](https://i-have-tools.vercel.app/tools/epf-calculator/): Project your Provident Fund balance, employer share and interest.
+- [HRA Calculator](https://i-have-tools.vercel.app/tools/hra-calculator/): Find your exempt and taxable HRA with the three-limit rule.
+- [CGPA Calculator](https://i-have-tools.vercel.app/tools/cgpa-calculator/): Convert CGPA to percentage and calculate credit-weighted SGPA.
+- [Attendance Calculator](https://i-have-tools.vercel.app/tools/attendance-calculator/): See your attendance %, classes needed, or how many you can miss.
+- [QR Code Scanner](https://i-have-tools.vercel.app/tools/qr-code-scanner/): Scan QR codes from an image or camera — safely inspect the link first.
+- [Spin the Wheel — Random Name Picker](https://i-have-tools.vercel.app/tools/spin-wheel/): Spin a colourful prize wheel to pick a fair random name or option.
+- [Typing Speed Test](https://i-have-tools.vercel.app/tools/typing-speed-test/): Measure WPM and accuracy in 30, 60 or 120 seconds.
 
 ## About this site
 - [About](https://i-have-tools.vercel.app/about/)

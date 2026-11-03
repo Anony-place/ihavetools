@@ -137,8 +137,48 @@ Is ek branch/PR me shipped:
 nahi mila, isliye total indexed/not-indexed count aur reasons par koi
 claim/fix is batch me nahi. Wo report milte hi alag diagnosis hoga.
 
-**Batch-4 me shifted:** Full Lighthouse/accessibility pass aur PWA install
-prompt. Abhi search relevance/product depth hi bottleneck hai; performance
+## ✅ BATCH-4 — "In-demand market coverage" (IMPLEMENTED — 2026-11-03)
+
+GSC ka 14-day measurement chalega, lekin development wait nahi karega.
+Batch-4 ka selection teen filters se hua hai: (1) India/global me clear
+repeat-use demand, (2) browser-local bina backend/API ke best-quality
+implementation possible, (3) existing clusters ko strong internal links
+milte hain. Thin/duplicate landing pages sirf count badhane ke liye nahi
+banegi.
+
+Ek hi branch/PR me 8 naye tools (98 → **106**):
+
+1. **NPS Calculator** — retirement corpus, annuity portion aur estimated
+   monthly pension, step-up contribution ke saath.
+2. **EPF Calculator** — employee/employer EPF contributions (EPS cap ko
+   alag dikhakar), salary growth aur year-wise balance.
+3. **HRA Calculator** — Section 10(13A) ki teen limits me sabse kam wali
+   exemption, taxable HRA aur winning condition transparent.
+4. **CGPA Calculator** — CGPA ↔ percentage (institution multiplier ke
+   saath) aur credit-weighted SGPA subjects se.
+5. **Attendance Calculator** — current %, target tak kitni classes
+   lagatar attend karni hain, ya kitni safely miss ho sakti hain.
+6. **QR Code Scanner** — image upload + live camera decode, safe payload
+   actions (URL/Wi-Fi/email/phone), QR Generator cluster complete.
+7. **Spin the Wheel — Random Name Picker** — crypto-random winner, wheel
+   animation, shuffle, winner history aur remove-winner flow.
+8. **Typing Speed Test** — 30/60/120-second tests, net/gross WPM,
+   accuracy, CPM aur per-character live feedback.
+
+Har tool ke saath: pure-logic engine tests, DOM interaction test,
+hand-written deep guide + FAQs (guides 38 → **46**), shareable links
+jaha inputs share karna safe/useful hai, generated pages, full
+`npm run check`, ek PR, production merge/deploy verify.
+
+**Batch-4 implementation status (2026-11-03):** teino clusters ship-ready
+hain — **106 tools / 46 deep guides**, full suite **252/252 green**
+(169 engine + 55 DOM + 8 Chrome + 20 link). QR Scanner ke liye Apache-2.0
+jsQR isi site se lazy-load hota hai (koi external scan server nahi), aur
+top-20 OG set me 6 naye Batch-4 pages ki per-tool images bhi generated
+hain. Batch-3 ka GSC measurement isse alag apne 14-day clock par chalega.
+
+**Batch-5 me shifted:** Full Lighthouse/accessibility pass aur PWA install
+prompt. Abhi pehle discoverable demand coverage badhana hai; performance
 foundation pehle se strong hai.
 
 ---

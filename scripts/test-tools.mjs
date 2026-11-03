@@ -711,6 +711,10 @@ await test('QR codes round-trip through a real decoder (jsQR)', async () => {
   vm.createContext(ctx);
   vm.runInContext(readFileSync(new URL('../assets/vendor/qrcode-generator.js', import.meta.url), 'utf8'), ctx);
   assert.equal(typeof ctx.qrcode, 'function', 'vendored QR lib did not initialise');
+  const scanCtx = {};
+  vm.createContext(scanCtx);
+  vm.runInContext(readFileSync(new URL('../assets/vendor/jsqr.js', import.meta.url), 'utf8'), scanCtx);
+  assert.equal(typeof scanCtx.jsQR, 'function', 'vendored jsQR scanner did not initialise');
   const decode = (modules) => {
     const size = modules.length, scale = 8, quiet = 4;
     const dim = (size + quiet * 2) * scale;
@@ -722,8 +726,7 @@ await test('QR codes round-trip through a real decoder (jsQR)', async () => {
         data[px * 4] = 0; data[px * 4 + 1] = 0; data[px * 4 + 2] = 0;
       }
     }
-    const out = jsQR(data, dim, dim);
-    return out ? out.data : null;
+    return seo.decodeQrPixels(scanCtx.jsQR, { data, width: dim, height: dim });
   };
   for (const payload of ['https://i-have-tools.vercel.app/tools/qr-code-generator/', 'Hello QR — ₹100 ✓', 'WIFI:S:HomeWifi;T:WPA;P:secret123;;']) {
     const { modules, version } = seo.makeQrModules(ctx.qrcode, payload, 'M');
@@ -794,7 +797,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -1261,6 +1264,101 @@ await test('merge two PDFs and split pages', async () => {
   out2.addPage(p3);
   const loaded2 = await PDFDocument.load(await out2.save());
   assert.equal(loaded2.getPageCount(), 1);
+});
+
+console.log('\n── Batch-4 in-demand tools ──');
+await test('batch-4 catalogue reaches 106 tools and 46 guided pages', () => {
+  assert.equal(registry.tools.length, 106);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 46);
+  const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
+  for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
+    assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
+  }
+  const q = (s) => registry.searchTools(s, 20).map((t) => t.id);
+  assert.ok(q('nps').includes('nps-calculator'));
+  assert.ok(q('cgpa to percentage').includes('cgpa-calculator'));
+  assert.ok(q('scan qr').includes('qr-code-scanner'));
+  assert.ok(q('wheel of names').includes('spin-wheel'));
+  assert.ok(q('typing speed').includes('typing-speed-test'));
+});
+await test('NPS, EPF and HRA formulas match worked examples', () => {
+  const zero = calc.npsCalc({ currentAge: 30, retirementAge: 31, monthlyContribution: 1000, annualReturnPct: 0, annuityPct: 40, annuityRatePct: 12 });
+  assert.equal(zero.corpus, 12000);
+  assert.equal(zero.annuityCorpus, 4800);
+  assert.equal(zero.lumpSum, 7200);
+  assert.equal(zero.monthlyPension, 48);
+  const nps = calc.npsCalc({ currentAge: 30, retirementAge: 60, monthlyContribution: 5000, annualReturnPct: 10, annuityPct: 40, annuityRatePct: 7 });
+  assert.equal(Math.round(nps.corpus), 11396627, 'guide example: ₹5k/month for 30 years at 10%');
+  assert.equal(Math.round(nps.monthlyPension), 26592);
+  assert.equal(nps.schedule.at(-1).age, 60);
+
+  const epf50 = calc.epfCalc({ monthlyBasicDa: 50000, years: 1, annualSalaryGrowthPct: 0, annualInterestPct: 0 });
+  assert.equal(epf50.balance, 129000, '₹6,000 employee + ₹4,750 employer EPF per month');
+  assert.equal(epf50.epsContribution, 15000, 'EPS is capped at ₹1,250/month in the standard model');
+  const epf15 = calc.epfCalc({ monthlyBasicDa: 15000, years: 1, annualSalaryGrowthPct: 0, annualInterestPct: 0 });
+  assert.equal(epf15.balance, 28206);
+  assert.equal(epf15.employerEpfContribution, 6606);
+  const epfGuide = calc.epfCalc({ monthlyBasicDa: 30000, years: 20, annualSalaryGrowthPct: 5, annualInterestPct: 8.25 });
+  assert.equal(Math.round(epfGuide.balance), 5415302, 'guide example must be generated by the shipped engine');
+
+  const hra = calc.hraCalc({ salaryBasicDaAnnual: 600000, hraReceivedAnnual: 240000, rentPaidAnnual: 240000, metro: true });
+  assert.deepEqual(
+    { actual: hra.actualHra, rentLimit: hra.rentOverTenPercent, cap: hra.salaryCap, exempt: hra.exempt, taxable: hra.taxable, limit: hra.limitingFactor },
+    { actual: 240000, rentLimit: 180000, cap: 300000, exempt: 180000, taxable: 60000, limit: 'rentOverTenPercent' });
+  assert.equal(calc.hraCalc({ salaryBasicDaAnnual: 600000, hraReceivedAnnual: 240000, rentPaidAnnual: 50000 }).exempt, 0, 'rent at or below 10% of salary gives no exemption');
+  assert.throws(() => calc.npsCalc({ currentAge: 60, retirementAge: 60, monthlyContribution: 1000, annualReturnPct: 10 }), /after your current age/);
+  assert.throws(() => calc.epfCalc({ monthlyBasicDa: 10000, years: 0 }), /between 1 and 50/);
+});
+await test('CGPA conversion, weighted SGPA and attendance maths', () => {
+  assert.equal(stu.cgpaToPercentage(8.5).percentage, 80.75);
+  assert.ok(Math.abs(stu.percentageToCgpa(85).cgpa - 8.947368421052632) < 1e-12);
+  assert.equal(stu.percentageToCgpa(100).cgpa, 10, 'reverse conversion is capped at the scale maximum');
+  const sgpa = stu.weightedGpa([{ gradePoint: 9, credits: 4 }, { gradePoint: 8, credits: 3 }, { gradePoint: 10, credits: 2 }]);
+  assert.ok(Math.abs(sgpa.gpa - 8.88888888888889) < 1e-12);
+  assert.equal(sgpa.totalCredits, 9);
+  const short = stu.attendanceCalc({ held: 40, attended: 28, targetPct: 75 });
+  assert.equal(short.currentPct, 70);
+  assert.equal(short.classesNeeded, 8, '36/48 is the first whole-class point at 75%');
+  const safe = stu.attendanceCalc({ held: 40, attended: 32, targetPct: 75 });
+  assert.equal(safe.classesNeeded, 0);
+  assert.equal(safe.classesCanMiss, 2, '32/42 stays above target but 32/43 does not');
+  assert.equal(stu.attendanceCalc({ held: 40, attended: 39, targetPct: 100 }).impossible, true);
+  assert.throws(() => stu.attendanceCalc({ held: 10, attended: 11, targetPct: 75 }), /between 0 and classes held/);
+});
+await test('wheel selection geometry and typing score are exact', () => {
+  assert.deepEqual(misc.parseWheelEntries('  Ana \n\nBen\n  Cy '), ['Ana', 'Ben', 'Cy']);
+  assert.deepEqual(misc.shuffleEntries(['A', 'B', 'C'], () => 0), ['B', 'C', 'A'], 'deterministic Fisher-Yates check');
+  for (const [count, winnerIndex] of [[4, 0], [4, 3], [7, 5], [12, 11]]) {
+    const rotation = misc.wheelRotationForWinner({ currentRotation: 37, count, winnerIndex, jitter: 0.5, fullSpins: 5 });
+    const centre = (winnerIndex + 0.5) * (360 / count);
+    const landed = ((rotation + centre) % 360 + 360) % 360;
+    assert.ok(Math.min(landed, 360 - landed) < 1e-9, `winner ${winnerIndex}/${count} must land at the pointer`);
+    assert.ok(rotation >= 37 + 5 * 360);
+  }
+  const target = 'a'.repeat(275);
+  const typed = `${'a'.repeat(250)}${'b'.repeat(25)}`;
+  const score = misc.typingStats(target, typed, 60);
+  assert.equal(score.netWpm, 50);
+  assert.equal(score.grossWpm, 55);
+  assert.ok(Math.abs(score.accuracy - (250 / 275 * 100)) < 1e-12);
+  assert.equal(score.complete, true);
+  assert.throws(() => misc.parseWheelEntries('only one'), /at least two/);
+});
+await test('QR payload classifier exposes destinations and refuses script URLs', () => {
+  const site = seo.qrPayloadInfo('https://Example.com/path?q=1');
+  assert.equal(site.type, 'Website URL');
+  assert.equal(site.href, 'https://example.com/path?q=1');
+  assert.match(site.safety, /example\.com/);
+  const script = seo.qrPayloadInfo('javascript:alert(1)');
+  assert.equal(script.type, 'Plain text');
+  assert.equal(script.href, null, 'non-http schemes never become an open button');
+  const wifi = seo.qrPayloadInfo('WIFI:S:Home\\;WiFi;T:WPA;P:secret;;');
+  assert.equal(wifi.type, 'Wi-Fi network');
+  assert.match(wifi.summary, /Home;WiFi/);
+  const upi = seo.qrPayloadInfo('upi://pay?pa=shop@bank&pn=Test%20Shop&am=100');
+  assert.equal(upi.type, 'UPI payment request');
+  assert.match(upi.summary, /Test Shop/);
+  assert.equal(upi.href, null, 'payment payloads are inspected, not launched');
 });
 
 console.log('\n── Registry ↔ data consistency ──');

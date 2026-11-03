@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://i-have-tools.vercel.app/</loc>
-    <lastmod>2026-11-01</lastmod>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/pdf/</loc>
@@ -10,7 +10,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/image/</loc>
-    <lastmod>2026-10-31</lastmod>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/video/</loc>
@@ -22,11 +22,11 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/text/</loc>
-    <lastmod>2026-11-01</lastmod>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/calculators/</loc>
-    <lastmod>2026-11-01</lastmod>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/converters/</loc>
@@ -38,11 +38,11 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/security/</loc>
-    <lastmod>2026-09-15</lastmod>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/web-seo/</loc>
-    <lastmod>2026-10-31</lastmod>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/color/</loc>
@@ -54,7 +54,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/math/</loc>
-    <lastmod>2026-06-13</lastmod>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/datetime/</loc>
@@ -62,11 +62,11 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/student/</loc>
-    <lastmod>2026-06-13</lastmod>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/misc/</loc>
-    <lastmod>2026-09-19</lastmod>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/tools/json-formatter/</loc>
@@ -459,6 +459,38 @@
   <url>
     <loc>https://i-have-tools.vercel.app/tools/lumpsum-calculator/</loc>
     <lastmod>2026-11-01</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/nps-calculator/</loc>
+    <lastmod>2026-11-03</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/epf-calculator/</loc>
+    <lastmod>2026-11-03</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/hra-calculator/</loc>
+    <lastmod>2026-11-03</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/cgpa-calculator/</loc>
+    <lastmod>2026-11-03</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/attendance-calculator/</loc>
+    <lastmod>2026-11-03</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/qr-code-scanner/</loc>
+    <lastmod>2026-11-03</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/spin-wheel/</loc>
+    <lastmod>2026-11-03</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/typing-speed-test/</loc>
+    <lastmod>2026-11-03</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/about/</loc>

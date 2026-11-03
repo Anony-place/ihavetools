@@ -1,8 +1,8 @@
 // =============================================================================
 // iHaveTools — Student tools: scientific-calculator, fraction-calculator,
-// time-duration-calculator
+// time-duration-calculator, cgpa-calculator, attendance-calculator
 // =============================================================================
-import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, mountTool, shareState } from '../ui.js';
 
 /* ═══════════════════════════ Expression engine (recursive descent) ═══════════════════════════ */
 const FUNCS1 = {
@@ -189,6 +189,65 @@ export function durationTotal(rows, op) {
   return { h: hh, m: mm, s: ss, text: `${pad(hh)}:${pad(mm)}:${pad(ss)}`, decimalHours: total / 3600, totalSeconds: total };
 }
 
+/* ═══════════════════════════ CGPA + attendance ═══════════════════════════ */
+export function cgpaToPercentage(cgpa, { scale = 10, multiplier = 9.5 } = {}) {
+  if (!(scale > 0 && scale <= 100)) throw new Error('Enter a valid grade scale, such as 10 or 4.');
+  if (!(multiplier > 0 && multiplier <= 100)) throw new Error('Enter the conversion multiplier used by your institution.');
+  if (!(cgpa >= 0 && cgpa <= scale)) throw new Error(`CGPA must be between 0 and ${scale} on this scale.`);
+  const raw = cgpa * multiplier;
+  return { percentage: Math.min(100, raw), rawPercentage: raw, capped: raw > 100 };
+}
+
+export function percentageToCgpa(percentage, { scale = 10, multiplier = 9.5 } = {}) {
+  if (!(scale > 0 && scale <= 100)) throw new Error('Enter a valid grade scale, such as 10 or 4.');
+  if (!(multiplier > 0 && multiplier <= 100)) throw new Error('Enter the conversion multiplier used by your institution.');
+  if (!(percentage >= 0 && percentage <= 100)) throw new Error('Percentage must be between 0 and 100.');
+  const raw = percentage / multiplier;
+  return { cgpa: Math.min(scale, raw), rawCgpa: raw, capped: raw > scale };
+}
+
+export function weightedGpa(subjects = []) {
+  const rows = subjects.filter((s) => s && (Number(s.credits) > 0 || Number(s.gradePoint) > 0));
+  if (!rows.length) throw new Error('Add at least one subject with credits and a grade point.');
+  let weighted = 0;
+  let credits = 0;
+  for (const [i, s] of rows.entries()) {
+    const gp = Number(s.gradePoint);
+    const cr = Number(s.credits);
+    if (!(gp >= 0 && gp <= 100) || !(cr > 0 && cr <= 1000)) throw new Error(`Subject ${i + 1}: enter a valid grade point and credits greater than zero.`);
+    weighted += gp * cr;
+    credits += cr;
+  }
+  return { gpa: weighted / credits, totalCredits: credits, weightedPoints: weighted, subjects: rows.length };
+}
+
+export function attendanceCalc({ held, attended, targetPct } = {}) {
+  if (!Number.isInteger(held) || held < 1) throw new Error('Enter at least one class held so far.');
+  if (!Number.isInteger(attended) || attended < 0 || attended > held) throw new Error('Classes attended must be a whole number between 0 and classes held.');
+  if (!(targetPct > 0 && targetPct <= 100)) throw new Error('Target attendance must be between 1% and 100%.');
+  const target = targetPct / 100;
+  const currentPct = attended / held * 100;
+  let classesNeeded = 0;
+  let classesCanMiss = 0;
+  let impossible = false;
+  if (attended / held >= target) {
+    classesCanMiss = Math.max(0, Math.floor(attended / target - held + 1e-9));
+  } else if (targetPct === 100) {
+    classesNeeded = null;
+    impossible = true;
+  } else {
+    classesNeeded = Math.max(0, Math.ceil((target * held - attended) / (1 - target) - 1e-9));
+  }
+  return {
+    currentPct,
+    classesNeeded,
+    classesCanMiss,
+    impossible,
+    projectedAttended: classesNeeded == null ? null : attended + classesNeeded,
+    projectedHeld: classesNeeded == null ? null : held + classesNeeded,
+  };
+}
+
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
   'scientific-calculator'(root) {
@@ -306,7 +365,133 @@ const defs = {
         btn({ label: 'Calculate total', icon: 'hourglass', onClick: run })),
       grid, status);
   },
+
+  'cgpa-calculator'(root) {
+    const mode = segControl({ options: [{ v: 'to-pct', t: 'CGPA → Percentage' }, { v: 'to-cgpa', t: 'Percentage → CGPA' }], value: 'to-pct', ariaLabel: 'Conversion direction' });
+    const value = input({ type: 'number', step: 'any', min: 0, value: '8.5' });
+    const preset = select({ options: [
+      { v: 'x95', t: '10-point × 9.5 (common CBSE-style)' },
+      { v: 'linear10', t: '10-point linear (×10)' },
+      { v: 'four', t: '4-point linear (×25)' },
+      { v: 'custom', t: 'Custom scale / multiplier' },
+    ], value: 'x95' });
+    const scale = input({ type: 'number', step: 'any', value: '10' });
+    const multiplier = input({ type: 'number', step: 'any', value: '9.5' });
+    preset.addEventListener('change', () => {
+      if (preset.value === 'x95') { scale.value = '10'; multiplier.value = '9.5'; }
+      if (preset.value === 'linear10') { scale.value = '10'; multiplier.value = '10'; }
+      if (preset.value === 'four') { scale.value = '4'; multiplier.value = '25'; }
+    });
+    const grid = statsGrid();
+    const status = statusLine('Institutions publish their own conversion rules — always use the multiplier on your marksheet or university notice when one is given.');
+    const fmt = (n, d = 2) => String(Number(n.toFixed(d)));
+    const runConvert = () => {
+      try {
+        const options = { scale: Number(scale.value), multiplier: Number(multiplier.value) };
+        if (mode.getValue() === 'to-pct') {
+          const r = cgpaToPercentage(Number(value.value), options);
+          grid.set([
+            { label: 'Percentage', value: `${fmt(r.percentage)}%`, kind: 'good' },
+            { label: 'Formula', value: `${value.value} × ${multiplier.value}` },
+            { label: 'Scale', value: `${scale.value}-point` },
+          ]);
+          status.set(r.capped ? 'The raw multiplication exceeds 100%, so the result is capped at 100%.' : 'Converted ✓', r.capped ? 'warning' : 'success');
+        } else {
+          const r = percentageToCgpa(Number(value.value), options);
+          grid.set([
+            { label: 'CGPA', value: fmt(r.cgpa, 2), kind: 'good' },
+            { label: 'Formula', value: `${value.value} ÷ ${multiplier.value}` },
+            { label: 'Scale', value: `${scale.value}-point` },
+          ]);
+          status.set(r.capped ? `The raw result is ${fmt(r.rawCgpa, 2)}, so it is capped at the ${scale.value}-point maximum.` : 'Converted ✓', r.capped ? 'warning' : 'success');
+        }
+      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+    };
+
+    const rowsWrap = h('div', { class: 'file-list' });
+    const sgpaGrid = statsGrid();
+    const sgpaStatus = statusLine('');
+    const mkRow = (grade = '', credits = '') => {
+      const gp = input({ type: 'number', step: 'any', min: 0, placeholder: 'Grade point', value: grade });
+      const cr = input({ type: 'number', step: 'any', min: 0, placeholder: 'Credits', value: credits });
+      const row = h('div', { class: 'file-row' },
+        h('span', { class: 'hint', text: 'Subject' }), gp, cr,
+        h('span', { class: 'fr-actions' }, h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Remove subject', onclick: () => row.remove() }, '✕')));
+      row.getSubject = () => ({ gradePoint: Number(gp.value), credits: Number(cr.value) });
+      return row;
+    };
+    rowsWrap.append(mkRow('9', '4'), mkRow('8', '3'), mkRow('10', '2'));
+    const runSgpa = () => {
+      try {
+        const subjects = [...rowsWrap.querySelectorAll('.file-row')].map((r) => r.getSubject());
+        const r = weightedGpa(subjects);
+        sgpaGrid.set([
+          { label: 'SGPA / weighted GPA', value: fmt(r.gpa, 2), kind: 'good' },
+          { label: 'Total credits', value: fmt(r.totalCredits, 2) },
+          { label: 'Subjects counted', value: String(r.subjects) },
+        ]);
+        sgpaStatus.set(`Weighted points ${fmt(r.weightedPoints, 2)} ÷ total credits ${fmt(r.totalCredits, 2)}.`, 'success');
+      } catch (e) { sgpaGrid.replaceChildren(); sgpaStatus.set(e.message, 'error'); }
+    };
+
+    root.append(
+      field({ label: 'Direction', control: mode }),
+      h('div', { class: 'field-row', style: 'align-items:end' },
+        field({ label: 'Value to convert', control: value }),
+        field({ label: 'Preset', control: preset }),
+        field({ label: 'Grade scale', control: scale }),
+        field({ label: 'Multiplier', control: multiplier })),
+      actionsRow(btn({ label: 'Convert', icon: 'graduation', onClick: runConvert })),
+      grid, status,
+      h('h3', { text: 'SGPA from subjects', style: 'margin:24px 0 10px' }),
+      h('p', { class: 'hint', text: 'Enter each subject’s grade point and credits. The SGPA is the credit-weighted average.' }),
+      rowsWrap,
+      actionsRow(
+        btn({ label: 'Add subject', variant: 'secondary', icon: 'plus', onClick: () => rowsWrap.append(mkRow()) }),
+        btn({ label: 'Calculate SGPA', icon: 'calculator', onClick: runSgpa })),
+      sgpaGrid, sgpaStatus);
+    shareState(root, [
+      ['mode', { get: () => mode.getValue(), set: (v) => mode.setValue(v) }],
+      ['value', value], ['scale', scale], ['multiplier', multiplier],
+    ], runConvert);
+  },
+
+  'attendance-calculator'(root) {
+    const held = input({ type: 'number', step: '1', min: 1, value: '40' });
+    const attended = input({ type: 'number', step: '1', min: 0, value: '28' });
+    const target = input({ type: 'number', step: 'any', min: 1, max: 100, value: '75' });
+    const grid = statsGrid();
+    const status = statusLine('');
+    const run = () => {
+      try {
+        const r = attendanceCalc({ held: Math.floor(Number(held.value)), attended: Math.floor(Number(attended.value)), targetPct: Number(target.value) });
+        const targetLabel = `${Number(target.value).toFixed(2).replace(/\.00$/, '')}% target`;
+        grid.set([
+          { label: 'Current attendance', value: `${r.currentPct.toFixed(2)}%`, kind: r.classesNeeded ? 'bad' : 'good' },
+          r.impossible
+            ? { label: targetLabel, value: 'No longer possible', kind: 'bad' }
+            : r.classesNeeded
+              ? { label: 'Attend next classes', value: String(r.classesNeeded), kind: 'warn' }
+              : { label: 'Classes you can miss', value: String(r.classesCanMiss), kind: 'good' },
+          { label: 'Attended / held', value: `${attended.value} / ${held.value}` },
+        ]);
+        status.set(r.impossible
+          ? 'A missed class can never be removed from the denominator, so exactly 100% is no longer reachable. Attending every remaining class still gets you as close as possible.'
+          : r.classesNeeded
+            ? `Attend the next ${r.classesNeeded} class${r.classesNeeded === 1 ? '' : 'es'} in a row to reach ${r.projectedAttended}/${r.projectedHeld} and meet the target.`
+            : `You are at or above the target. Missing ${r.classesCanMiss} more class${r.classesCanMiss === 1 ? '' : 'es'} keeps you at or above it, assuming no other attendance rules apply.`,
+        r.classesNeeded || r.impossible ? 'warning' : 'success');
+      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+    };
+    root.append(
+      h('div', { class: 'field-row' },
+        field({ label: 'Classes held so far', control: held }),
+        field({ label: 'Classes attended', control: attended }),
+        field({ label: 'Target attendance %', control: target })),
+      actionsRow(btn({ label: 'Calculate attendance', icon: 'calendar', onClick: run })), grid, status);
+    shareState(root, [['held', held], ['attended', attended], ['target', target]], run);
+  },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { evaluate, parseFraction, fractionCalc, durationTotal };
+export const __test = { evaluate, parseFraction, fractionCalc, durationTotal, cgpaToPercentage, percentageToCgpa, weightedGpa, attendanceCalc };

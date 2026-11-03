@@ -58,8 +58,8 @@ scripts/
   build.mjs        ← generates every HTML page (home, categories, tools,
                      about/privacy/terms, 404), sitemap, llms.txt, sprite,
                      search index — all from registry.js
-  test-tools.mjs   ← 164 engine tests (pure logic, run in Node)
-  test-dom.mjs     ← 52 DOM tests: loads built pages into jsdom and drives real UIs
+  test-tools.mjs   ← 169 engine tests (pure logic, run in Node)
+  test-dom.mjs     ← 55 DOM tests: loads built pages into jsdom and drives real UIs
   test-chrome.mjs  ← 8 chrome tests: homepage, search, categories, theme, nav
   link-check.mjs   ← 20 integrity checks: dead links, sitemap↔files, SEO meta,
                      performance & trust invariants (no registry in browser…)
@@ -83,10 +83,10 @@ See **PLAN.md** for the SEO/speed roadmap (what is done, what is next).
 ```bash
 npm install          # devDependencies only (jsdom, sharp, pdf-lib, playwright*)
 npm run build        # regenerate all HTML from the registry
-npm test             # engine tests (164)
-npm run test:dom     # DOM tests against built pages (52)
+npm test             # engine tests (169)
+npm run test:dom     # DOM tests against built pages (55)
 npm run test:chrome  # chrome tests (8)
-npm run check        # build + all engine/DOM/Chrome tests + link checks (244)
+npm run check        # build + all engine/DOM/Chrome tests + link checks (252)
 ```
 
 \* `playwright` is optional and only used for manual visual checks; the CI and
