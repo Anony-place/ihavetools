@@ -86,6 +86,24 @@ await chromeTest('theme toggle: button switches data-theme and persists', async 
   assert.equal(doc.documentElement.getAttribute('data-theme'), 'light', 'click 2 → light');
 });
 
+await chromeTest('install action appears only on native prompt and is one-shot', async () => {
+  const dom = await loadPage('/');
+  const button = dom.window.document.querySelector('.install-app');
+  assert.ok(button && button.hidden);
+  let called = 0;
+  const event = new dom.window.Event('beforeinstallprompt', { cancelable: true });
+  event.prompt = async () => { called++; };
+  dom.window.dispatchEvent(event);
+  assert.equal(event.defaultPrevented, true);
+  assert.equal(button.hidden, false);
+  button.click();
+  await Promise.resolve();
+  assert.equal(called, 1);
+  assert.equal(button.hidden, true);
+  dom.window.dispatchEvent(new dom.window.Event('appinstalled'));
+  assert.equal(button.hidden, true);
+});
+
 console.log('\n── Category pages ──');
 await chromeTest('category page: lists exactly its tools with working links', async () => {
   const dom = await loadPage('/categories/security/');

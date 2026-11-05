@@ -91,7 +91,7 @@ console.log('\n── SEO metadata ──');
 test('every page has unique title & description, canonical, OG tags', () => {
   const titles = new Set(), descs = new Set();
   for (const file of htmlFiles) {
-    if (file.endsWith('404.html')) continue;
+    if (file.endsWith('404.html') || file.endsWith('offline.html')) continue; // utility pages are noindex, not landing pages
     const html = readFileSync(file, 'utf8');
     const title = /<title>([^<]+)<\/title>/.exec(html)?.[1];
     const desc = /<meta name="description" content="([^"]*)"/.exec(html)?.[1];

@@ -9,9 +9,10 @@
     "test": "node scripts/test-tools.mjs",
     "test:dom": "node scripts/test-dom.mjs",
     "test:chrome": "node scripts/test-chrome.mjs",
+    "test:sw": "node scripts/test-sw.mjs",
     "icons": "node scripts/icons.mjs",
     "og": "node scripts/og.mjs",
-    "check": "node scripts/build.mjs && node scripts/test-tools.mjs && node scripts/test-dom.mjs && node scripts/test-chrome.mjs && node scripts/link-check.mjs"
+    "check": "node scripts/build.mjs && node scripts/test-tools.mjs && node scripts/test-dom.mjs && node scripts/test-chrome.mjs && node scripts/test-sw.mjs && node scripts/link-check.mjs"
   },
   "devDependencies": {
     "jsdom": "^30.1.0",

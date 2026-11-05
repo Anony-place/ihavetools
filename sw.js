@@ -1,62 +1,55 @@
-// iHaveTools service worker — static asset caching only.
-// Lives at the domain root so its scope covers the whole site (a worker
-// under /assets/ could only control /assets/*). Registered ONLY on real
-// HTTPS hosts (see site.js). Bump VERSION on every deploy that changes
-// CSS/JS so clients drop old caches.
-const VERSION = 'iht-v2';
-const CORE = [
-  '/assets/css/styles.css',
-  '/assets/js/icons.js',
-  '/assets/js/ui.js',
-  '/assets/js/site.js',
-  '/assets/js/search-index.js',
-  '/assets/icons/favicon.svg',
-  '/assets/icons/sprite.svg',
-  '/assets/icons/icon-192.png',
-  '/assets/icons/icon-512.png',
-  '/manifest.webmanifest',
-];
+// Static, same-origin resources only. Never cache tool inputs or uploaded files.
+const VERSION = 'iht-v3';
+const PAGES = `${VERSION}-pages`;
+const ASSETS = `${VERSION}-assets`;
+const CORE = ['/', '/offline.html', '/assets/css/styles.css', '/assets/js/icons.js',
+  '/assets/js/ui.js', '/assets/js/site.js', '/assets/js/search-index.js',
+  '/assets/icons/favicon.svg', '/assets/icons/sprite.svg',
+  '/assets/icons/icon-192.png', '/assets/icons/icon-512.png', '/manifest.webmanifest'];
+const LIMIT = 100;
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(CORE)).then(() => self.skipWaiting()));
 });
-
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
-  );
+  event.waitUntil(caches.keys().then((keys) => Promise.all(keys
+    .filter((key) => key.startsWith('iht-') && ![VERSION, PAGES, ASSETS].includes(key))
+    .map((key) => caches.delete(key)))).then(() => self.clients.claim()));
 });
-
+async function remember(name, request, response) {
+  if (!response.ok || response.type === 'opaque') return;
+  try {
+    const cache = await caches.open(name);
+    await cache.put(request, response);
+    const keys = await cache.keys();
+    while (keys.length > LIMIT) await cache.delete(keys.shift());
+  } catch { /* Quota or private browsing: networking must still work. */ }
+}
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET' || !req.url.startsWith(self.location.origin)) return;
   const url = new URL(req.url);
-
-  if (url.pathname.startsWith('/assets/')) {
-    // Static assets: stale-while-revalidate — serve the cached copy
-    // instantly, refresh it in the background for the next visit.
-    event.respondWith(
-      caches.open(VERSION).then((cache) => cache.match(req).then((hit) => {
-        const network = fetch(req).then((res) => {
-          if (res && res.ok) cache.put(req, res.clone());
-          return res;
-        }).catch(() => hit);
-        return hit || network;
-      })),
-    );
-    return;
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (req.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(req);
+        // Do not persist query strings (which can contain user-provided inputs).
+        if (!url.search && response.ok) await remember(PAGES, req, response.clone());
+        return response;
+      } catch {
+        const path = url.origin + url.pathname;
+        return (await (await caches.open(PAGES)).match(path)) || (await (await caches.open(VERSION)).match(path)) || (await caches.match('/offline.html')) || Response.error();
+      }
+    })());
+  } else if (url.pathname.startsWith('/assets/') && !url.search) {
+    // Network first avoids serving old JS/CSS after deployment; cached copies
+    // remain available when offline. Do not cache non-asset API responses.
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(req);
+        if (response.ok) await remember(ASSETS, req, response.clone());
+        return response;
+      } catch { return (await (await caches.open(ASSETS)).match(req)) || (await caches.match(req)) || Response.error(); }
+    })());
   }
-  // Navigations & everything else: network-first so HTML is never stale,
-  // cache fallback keeps visited pages (and the homepage) working offline.
-  event.respondWith(
-    fetch(req)
-      .then((res) => {
-        const copy = res.clone();
-        caches.open(VERSION).then((c) => c.put(req, copy));
-        return res;
-      })
-      .catch(() => caches.match(req).then((hit) => hit || caches.match('/'))),
-  );
 });
