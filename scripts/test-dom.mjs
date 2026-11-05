@@ -696,6 +696,23 @@ await domTest('html-formatter: minify output', async () => {
   assert.equal(resultText(document).trim(), '<div><p>hi</p></div>');
 });
 
+console.log('\n── Batch-6 planning UIs ──');
+for (const [id, query, expected] of [
+  ['final-grade-calculator', '?current=86&target=88&weight=25&exam=80', /94\.00%.*84\.50%/s],
+  ['savings-goal-calculator', '?goal=100000&initial=10000&rate=0&months=12', /7,500\.00.*100,000\.00/s],
+  ['swp-calculator', '?initial=100000&withdrawal=30000&rate=0&months=12', /100,000\.00.*month 4/s],
+  ['electricity-cost-calculator', '?watts=1000&hours=2&days=30&rate=8&fixed=50', /60\.00.*480\.00.*530\.00/s],
+  ['fuel-cost-calculator', '?distance=100&mileage=20&price=100&trips=2&people=4', /200\.00.*10\.00.*1,000\.00.*250\.00/s],
+]) {
+  await domTest(`${id}: shared inputs calculate the worked example`, async () => {
+    const app = await loadToolPage(id, 'calculators', query);
+    assert.match(app.textContent, expected);
+    const first = app.querySelector('input'); first.value = '';
+    click(btnByLabel(app, 'Calculate'));
+    assert.match(app.textContent, /must be|whole number/i);
+  });
+}
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);
