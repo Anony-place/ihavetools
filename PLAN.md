@@ -220,6 +220,41 @@ keyboard/screen-reader and real-device offline pass remains open.
 
 ---
 
+## ✅ BATCH-6 — Student, investment and everyday planning (2026-11-05)
+
+Market review (qualitative, not search-volume evidence): Calcmint and
+MasterCalculator highlight final-grade and everyday cost calculators; Calkulator
+lists SWP and goal planners. These are distinct tasks missing from our existing
+106-tool catalogue, not duplicate SEO pages.
+
+One planned batch on the active branch:
+1. Final Grade Calculator: required final score, feasibility and score scenarios,
+   including 0% and 100% exam weights and school-specific grading caveats.
+2. Savings Goal Calculator: monthly end-of-month contribution for a target,
+   initial balance, editable return, zero-rate and already-funded cases.
+3. SWP Calculator: month-by-month withdrawal projection, partial final withdrawal,
+   depletion and honest assumptions; no guaranteed return/tax claims.
+4. Electricity Cost Calculator: appliance wattage, hours/day, days, unit rate and
+   fixed charge, with a clear flat-tariff limitation (no invented slabs).
+5. Fuel Cost Calculator: distance, mileage, price, trip/return and per-person cost,
+   with transparent assumptions.
+
+For every tool: usable UI and validation, safe shareable inputs, unique registry
+metadata, contextual related links, hand-written guide + FAQs, engine and DOM
+regressions; rebuild, OG if required, full check, one PR and production verification.
+Keep Batch-3 GSC measurement separate. Full real-browser Lighthouse/accessibility
+and PWA validation remain outstanding from Batch-5.
+
+Implementation: 111 tools / 51 hand-written guides, five shareable calculator
+interfaces and worked examples, at least three related-tool inbound sources per
+new tool. Tests cover zero rates, already-funded goals, SWP depletion/partial
+withdrawal, impossible/zero-weight exam targets, validation and all five shared
+links. Financial projections assume a constant nominal annual rate divided by
+12, no fees or tax; actual results can differ. Electricity uses a flat tariff.
+Final check results are recorded in README; publication awaits PR checks.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha

@@ -797,7 +797,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -1267,9 +1267,9 @@ await test('merge two PDFs and split pages', async () => {
 });
 
 console.log('\n── Batch-4 in-demand tools ──');
-await test('batch-4 catalogue reaches 106 tools and 46 guided pages', () => {
-  assert.equal(registry.tools.length, 106);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 46);
+await test('batch-4 catalogue remains present after expansion', () => {
+  assert.equal(registry.tools.length, 111);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 51);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
@@ -1359,6 +1359,47 @@ await test('QR payload classifier exposes destinations and refuses script URLs',
   assert.equal(upi.type, 'UPI payment request');
   assert.match(upi.summary, /Test Shop/);
   assert.equal(upi.href, null, 'payment payloads are inspected, not launched');
+});
+
+console.log('\n── Batch-6 planning tools ──');
+await test('final grade handles attainable, impossible and zero-weight goals', () => {
+  assert.equal(calc.finalGradeCalc(86, 88, 25, 80).required, 94);
+  assert.equal(calc.finalGradeCalc(86, 88, 25, 80).overall, 84.5);
+  assert.ok(calc.finalGradeCalc(50, 100, 20, 0).required > 100);
+  assert.equal(calc.finalGradeCalc(80, 70, 0, 0).targetMetWithoutExam, true);
+  assert.equal(calc.finalGradeCalc(80, 90, 0, 0).targetMetWithoutExam, false);
+  assert.equal(calc.finalGradeCalc(80, 90, 100, 50).required, 90);
+  assert.throws(() => calc.finalGradeCalc(101, 0, 20, 50));
+});
+await test('savings goal handles zero, tiny rates and already funded goals', () => {
+  assert.equal(calc.savingsGoalCalc(100000, 10000, 0, 12).payment, 7500);
+  assert.equal(calc.savingsGoalCalc(100, 200, 0, 12).payment, 0);
+  const r = calc.savingsGoalCalc(100000, 10000, 0.0000000001, 12);
+  assert.ok(Math.abs(r.payment - 7500) < 0.001);
+  assert.ok(Math.abs(calc.savingsGoalCalc(100000, 10000, 12, 12).final - 100000) < 1e-7);
+  assert.throws(() => calc.savingsGoalCalc(100, 0, 0, 0));
+});
+await test('SWP stops at depletion and caps the final withdrawal', () => {
+  assert.deepEqual(calc.swpCalc(100000, 30000, 0, 12), { balance: 0, withdrawn: 100000, growth: 0, depletedMonth: 4, lastWithdrawal: 10000 });
+  assert.equal(calc.swpCalc(100000, 10000, 0, 12).depletedMonth, 10);
+  assert.equal(calc.swpCalc(0, 1000, 10, 12).depletedMonth, 0);
+  const r = calc.swpCalc(1000, 100, 12, 1); assert.equal(r.balance, 910); assert.equal(r.growth, 10);
+  assert.throws(() => calc.swpCalc(1000, 0, 0, 12));
+});
+await test('energy and fuel examples plus invalid inputs', () => {
+  assert.deepEqual(calc.electricityCostCalc(1000, 2, 30, 8, 50), { units: 60, energyCost: 480, total: 530 });
+  assert.deepEqual(calc.fuelCostCalc(100, 20, 100, 2, 4), { totalDistance: 200, litres: 10, total: 1000, perPerson: 250 });
+  assert.throws(() => calc.electricityCostCalc(1000, 25, 30, 8, 0));
+  assert.throws(() => calc.fuelCostCalc(100, 0, 100, 2, 1));
+  assert.throws(() => calc.fuelCostCalc(100, 20, 100, 1.5, 1));
+});
+await test('batch-6 registry, search and guides', () => {
+  for (const id of ['final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator']) {
+    const tool = registry.getTool(id); assert.ok(tool && tool.guide?.length >= 3 && tool.faqs?.length >= 3);
+    const inbound = registry.tools.filter(t => t.id !== id && registry.relatedTools(t, 6).some(r => r.id === id));
+    assert.ok(inbound.length >= 3, `${id} needs three contextual related links, got ${inbound.length}`);
+    assert.ok(registry.searchTools(tool.name, 20).some(t => t.id === id));
+  }
 });
 
 console.log('\n── Registry ↔ data consistency ──');

@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://i-have-tools.vercel.app/</loc>
-    <lastmod>2026-11-03</lastmod>
+    <lastmod>2026-11-05</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/pdf/</loc>
@@ -26,7 +26,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/calculators/</loc>
-    <lastmod>2026-11-03</lastmod>
+    <lastmod>2026-11-05</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/converters/</loc>
@@ -62,7 +62,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/student/</loc>
-    <lastmod>2026-11-03</lastmod>
+    <lastmod>2026-11-05</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/misc/</loc>
@@ -491,6 +491,26 @@
   <url>
     <loc>https://i-have-tools.vercel.app/tools/typing-speed-test/</loc>
     <lastmod>2026-11-03</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/final-grade-calculator/</loc>
+    <lastmod>2026-11-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/savings-goal-calculator/</loc>
+    <lastmod>2026-11-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/swp-calculator/</loc>
+    <lastmod>2026-11-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/electricity-cost-calculator/</loc>
+    <lastmod>2026-11-05</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/fuel-cost-calculator/</loc>
+    <lastmod>2026-11-05</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/about/</loc>

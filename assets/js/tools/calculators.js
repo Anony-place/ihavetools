@@ -400,6 +400,47 @@ export function simpleInterest({ principal, annualRatePct, time, unit = 'years' 
 }
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
+// Batch-6 planning engines. Monetary values use the user's chosen currency.
+function bounded(value, min, max, label) {
+  if (!Number.isFinite(value) || value < min || value > max) throw new Error(`${label} must be between ${min} and ${max}.`);
+}
+export function finalGradeCalc(current, target, weight, exam) {
+  for (const [v, label] of [[current, 'Current grade'], [target, 'Target grade'], [weight, 'Final weight'], [exam, 'Exam score']]) bounded(v, 0, 100, label);
+  const w = weight / 100, base = current * (1 - w);
+  return { required: w === 0 ? null : (target - base) / w, overall: base + exam * w, minimum: base, maximum: base + 100 * w, targetMetWithoutExam: w === 0 && current >= target };
+}
+export function savingsGoalCalc(goal, initial, annualRate, months) {
+  bounded(goal, 0, 1e12, 'Goal'); bounded(initial, 0, 1e12, 'Current savings'); bounded(annualRate, 0, 100, 'Annual return');
+  if (!Number.isInteger(months) || months < 1 || months > 1200) throw new Error('Months must be a whole number from 1 to 1200.');
+  const r = annualRate / 1200, growthFactor = Math.expm1(months * Math.log1p(r)), factor = 1 + growthFactor;
+  const annuityFactor = r === 0 ? months : growthFactor / r;
+  const payment = Math.max(0, (goal - initial * factor) / annuityFactor);
+  const final = initial * factor + payment * annuityFactor;
+  return { payment, final, contributed: payment * months, growth: final - initial - payment * months };
+}
+export function swpCalc(initial, withdrawal, annualRate, months) {
+  bounded(initial, 0, 1e12, 'Starting corpus'); bounded(withdrawal, 0.01, 1e12, 'Monthly withdrawal'); bounded(annualRate, 0, 100, 'Annual return');
+  if (!Number.isInteger(months) || months < 1 || months > 1200) throw new Error('Months must be a whole number from 1 to 1200.');
+  let balance = initial, withdrawn = 0, growth = 0, depletedMonth = initial === 0 ? 0 : null, lastWithdrawal = 0;
+  for (let i = 1; i <= months && balance > 0; i++) {
+    const interest = balance * annualRate / 1200; growth += interest; balance += interest;
+    lastWithdrawal = Math.min(balance, withdrawal); balance -= lastWithdrawal; withdrawn += lastWithdrawal;
+    if (balance <= 0) { balance = 0; depletedMonth = i; }
+  }
+  return { balance, withdrawn, growth, depletedMonth, lastWithdrawal };
+}
+export function electricityCostCalc(watts, hours, days, rate, fixed) {
+  bounded(watts, 0, 1e7, 'Power'); bounded(hours, 0, 24, 'Hours per day'); bounded(days, 1, 366, 'Days'); bounded(rate, 0, 1e6, 'Unit rate'); bounded(fixed, 0, 1e12, 'Fixed charge');
+  const units = watts * hours * days / 1000;
+  return { units, energyCost: units * rate, total: units * rate + fixed };
+}
+export function fuelCostCalc(distance, mileage, price, trips, people) {
+  bounded(distance, 0, 1e9, 'Distance'); bounded(mileage, 0.001, 1e6, 'Mileage'); bounded(price, 0, 1e6, 'Fuel price');
+  if (!Number.isInteger(trips) || trips < 1 || trips > 10000 || !Number.isInteger(people) || people < 1 || people > 10000) throw new Error('Trips and people must be whole numbers between 1 and 10000.');
+  const totalDistance = distance * trips, litres = totalDistance / mileage, total = litres * price;
+  return { totalDistance, litres, total, perPerson: total / people };
+}
+
 const defs = {
   'percentage-calculator'(root) {
     const mode = segControl({ options: [{ v: 'of', t: 'X% of Y' }, { v: 'what', t: 'X is what % of Y' }, { v: 'change', t: '% change' }], value: 'of', ariaLabel: 'Calculation type' });
@@ -1140,6 +1181,62 @@ const defs = {
     shareState(root, [['basic', basic], ['age', age], ['retire', retire], ['balance', balanceNow], ['growth', growth], ['rate', rate]], run);
   },
 
+  'final-grade-calculator'(root) {
+    const current = input({ type: 'number', step: 'any', value: '86' });
+    const target = input({ type: 'number', step: 'any', value: '88' });
+    const weight = input({ type: 'number', step: 'any', value: '25' });
+    const exam = input({ type: 'number', step: 'any', value: '80' });
+    const grid = statsGrid(), status = statusLine('');
+    const run = () => { try {
+      const r = finalGradeCalc(num(current), num(target), num(weight), num(exam));
+      const required = r.required === null ? 'No effect' : r.required <= 0 ? '0% is enough' : r.required > 100 ? `${r.required.toFixed(2)}% (above 100%)` : `${r.required.toFixed(2)}%`;
+      grid.set([{ label: 'Exam score needed', value: required }, { label: 'Overall with your exam score', value: `${r.overall.toFixed(2)}%`, kind: 'good' }, { label: 'Possible overall range', value: `${r.minimum.toFixed(2)}–${r.maximum.toFixed(2)}%` }]);
+      status.set(r.required === null ? (r.targetMetWithoutExam ? 'The final has zero weight; your current grade already meets the target.' : 'The final has zero weight; it cannot change your current grade to reach the target.') : r.required > 100 ? 'Target exceeds the maximum without extra credit or a grading adjustment.' : 'Assumes current grade is the average of all work excluding the final. Check your syllabus for rounding and grading rules.', r.required > 100 ? 'warn' : 'success');
+    } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Current grade (%)', control: current }), field({ label: 'Target grade (%)', control: target }), field({ label: 'Final exam weight (%)', control: weight }), field({ label: 'What-if exam score (%)', control: exam })), actionsRow(btn({ label: 'Calculate final grade', icon: 'calculator', onClick: run })), grid, status);
+    shareState(root, [['current', current], ['target', target], ['weight', weight], ['exam', exam]], run);
+  },
+  'savings-goal-calculator'(root) {
+    const goal = input({ type: 'number', value: '100000' }), initial = input({ type: 'number', value: '10000' }), rate = input({ type: 'number', step: 'any', value: '0' }), months = input({ type: 'number', step: '1', value: '12' });
+    const grid = statsGrid(), status = statusLine('');
+    const run = () => { try { const r = savingsGoalCalc(num(goal), num(initial), num(rate), num(months));
+      grid.set([{ label: 'Monthly savings needed', value: money(r.payment), kind: 'good' }, { label: 'Projected final balance', value: money(r.final) }, { label: 'New contributions', value: money(r.contributed) }, { label: 'Estimated growth', value: money(r.growth) }]);
+      status.set('Fixed annual return divided by 12, compounded monthly; deposits at month end. Taxes, fees, inflation and variable returns are excluded.', 'success');
+    } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Target amount', control: goal }), field({ label: 'Current savings', control: initial }), field({ label: 'Annual return (%)', control: rate }), field({ label: 'Months to goal', control: months })), actionsRow(btn({ label: 'Calculate savings goal', icon: 'calculator', onClick: run })), grid, status);
+    shareState(root, [['goal', goal], ['initial', initial], ['rate', rate], ['months', months]], run);
+  },
+  'swp-calculator'(root) {
+    const initial = input({ type: 'number', value: '100000' }), withdrawal = input({ type: 'number', value: '10000' }), rate = input({ type: 'number', step: 'any', value: '0' }), months = input({ type: 'number', step: '1', value: '12' });
+    const grid = statsGrid(), status = statusLine('');
+    const run = () => { try { const r = swpCalc(num(initial), num(withdrawal), num(rate), num(months));
+      grid.set([{ label: 'Remaining balance', value: money(r.balance), kind: r.depletedMonth === null ? 'good' : 'warn' }, { label: 'Total withdrawn', value: money(r.withdrawn) }, { label: 'Estimated growth', value: money(r.growth) }, { label: 'Depleted in month', value: r.depletedMonth === null ? 'Not in this period' : String(r.depletedMonth) }]);
+      status.set(r.depletedMonth !== null && r.depletedMonth > 0 ? `Corpus exhausted in month ${r.depletedMonth}; last withdrawal was ${money(r.lastWithdrawal)}. Fixed monthly return is applied before withdrawal; taxes and fees excluded.` : 'Fixed annual return divided by 12 is applied monthly before withdrawal. Actual returns vary; taxes, fees and inflation are excluded.', r.depletedMonth !== null ? 'warn' : 'success');
+    } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Starting corpus', control: initial }), field({ label: 'Monthly withdrawal', control: withdrawal }), field({ label: 'Annual return (%)', control: rate }), field({ label: 'Projection months', control: months })), actionsRow(btn({ label: 'Calculate SWP', icon: 'calculator', onClick: run })), grid, status);
+    shareState(root, [['initial', initial], ['withdrawal', withdrawal], ['rate', rate], ['months', months]], run);
+  },
+  'electricity-cost-calculator'(root) {
+    const watts = input({ type: 'number', value: '1000' }), hours = input({ type: 'number', step: 'any', value: '2' }), days = input({ type: 'number', value: '30' }), rate = input({ type: 'number', step: 'any', value: '8' }), fixed = input({ type: 'number', step: 'any', value: '0' });
+    const grid = statsGrid(), status = statusLine('');
+    const run = () => { try { const r = electricityCostCalc(num(watts), num(hours), num(days), num(rate), num(fixed));
+      grid.set([{ label: 'Energy (kWh / units)', value: r.units.toFixed(2) }, { label: 'Energy charge', value: money(r.energyCost) }, { label: 'Estimated total', value: money(r.total), kind: 'good' }]);
+      status.set('Uses one flat price per kWh and a user-entered fixed charge. Real bills can include slabs, taxes, subsidies and variable appliance power.', 'success');
+    } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Power (watts)', control: watts }), field({ label: 'Hours per day', control: hours }), field({ label: 'Days', control: days }), field({ label: 'Price per kWh / unit', control: rate }), field({ label: 'Fixed charge for period', control: fixed })), actionsRow(btn({ label: 'Calculate electricity cost', icon: 'calculator', onClick: run })), grid, status);
+    shareState(root, [['watts', watts], ['hours', hours], ['days', days], ['rate', rate], ['fixed', fixed]], run);
+  },
+  'fuel-cost-calculator'(root) {
+    const distance = input({ type: 'number', step: 'any', value: '100' }), mileage = input({ type: 'number', step: 'any', value: '20' }), price = input({ type: 'number', step: 'any', value: '100' }), trips = input({ type: 'number', value: '2' }), people = input({ type: 'number', value: '1' });
+    const grid = statsGrid(), status = statusLine('');
+    const run = () => { try { const r = fuelCostCalc(num(distance), num(mileage), num(price), num(trips), num(people));
+      grid.set([{ label: 'Total distance (km)', value: r.totalDistance.toFixed(2) }, { label: 'Fuel needed (litres)', value: r.litres.toFixed(2) }, { label: 'Total fuel cost', value: money(r.total), kind: 'good' }, { label: 'Cost per person', value: money(r.perPerson) }]);
+      status.set('Trips multiplies the entered distance: use 2 for a return journey if distance is one-way. Tolls, parking and changes in mileage are excluded.', 'success');
+    } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Distance per trip (km)', control: distance }), field({ label: 'Mileage (km per litre)', control: mileage }), field({ label: 'Fuel price per litre', control: price }), field({ label: 'Number of trips', control: trips }), field({ label: 'People sharing', control: people })), actionsRow(btn({ label: 'Calculate fuel cost', icon: 'calculator', onClick: run })), grid, status);
+    shareState(root, [['distance', distance], ['mileage', mileage], ['price', price], ['trips', trips], ['people', people]], run);
+  },
+
   'hra-calculator'(root) {
     const basic = input({ type: 'number', step: 'any', value: '50000' });
     const hra = input({ type: 'number', step: 'any', value: '20000' });
@@ -1190,4 +1287,4 @@ const defs = {
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc, incomeTaxIndia, rdCalc, cagrCalc, gratuityCalc, npsCalc, epfCalc, hraCalc };
+export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc, incomeTaxIndia, rdCalc, cagrCalc, gratuityCalc, npsCalc, epfCalc, hraCalc, finalGradeCalc, savingsGoalCalc, swpCalc, electricityCostCalc, fuelCostCalc };

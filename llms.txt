@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 106 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 111 tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -127,6 +127,11 @@
 - [QR Code Scanner](https://i-have-tools.vercel.app/tools/qr-code-scanner/): Scan QR codes from an image or camera — safely inspect the link first.
 - [Spin the Wheel — Random Name Picker](https://i-have-tools.vercel.app/tools/spin-wheel/): Spin a colourful prize wheel to pick a fair random name or option.
 - [Typing Speed Test](https://i-have-tools.vercel.app/tools/typing-speed-test/): Measure WPM and accuracy in 30, 60 or 120 seconds.
+- [Final Grade Calculator](https://i-have-tools.vercel.app/tools/final-grade-calculator/): Find the exam score needed to reach your target course grade.
+- [Savings Goal Calculator](https://i-have-tools.vercel.app/tools/savings-goal-calculator/): Estimate the monthly contribution needed to reach a savings goal.
+- [SWP Calculator](https://i-have-tools.vercel.app/tools/swp-calculator/): Project monthly withdrawals and see when a corpus runs out.
+- [Electricity Cost Calculator](https://i-have-tools.vercel.app/tools/electricity-cost-calculator/): Estimate appliance energy use and electricity cost.
+- [Fuel Cost Calculator](https://i-have-tools.vercel.app/tools/fuel-cost-calculator/): Estimate trip fuel, cost and each passenger’s share.
 
 ## About this site
 - [About](https://i-have-tools.vercel.app/about/)
