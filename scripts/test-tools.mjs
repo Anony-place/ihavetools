@@ -797,7 +797,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -1268,8 +1268,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 111);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 51);
+  assert.equal(registry.tools.length, 113);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 53);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
@@ -1399,6 +1399,38 @@ await test('batch-6 registry, search and guides', () => {
     const inbound = registry.tools.filter(t => t.id !== id && registry.relatedTools(t, 6).some(r => r.id === id));
     assert.ok(inbound.length >= 3, `${id} needs three contextual related links, got ${inbound.length}`);
     assert.ok(registry.searchTools(tool.name, 20).some(t => t.id === id));
+  }
+});
+
+console.log('\n── Batch-7 private document tools ──');
+await test('JSON comparison ignores object ordering but respects arrays, types and escaped keys', () => {
+  assert.deepEqual(dev.compareJson('{"a":1,"b":2}', '{"b":2,"a":1}'), []);
+  const changes = dev.compareJson('{"a/b":1,"~x":[1,2],"gone":null}', '{"a/b":2,"~x":[1,3],"new":true}');
+  assert.deepEqual(changes.map(x => [x.type, x.path]), [['changed','/a~1b'], ['removed','/gone'], ['added','/new'], ['changed','/~0x/1']]);
+  assert.equal(dev.compareJson('1', '"1"')[0].path, '');
+  assert.equal(dev.compareJson('[1]', '[1,2]')[0].path, '/1');
+  assert.deepEqual(dev.compareJson('{"__proto__": 2}', '{"__proto__": 3}').map(x => x.path), ['/__proto__']);
+  assert.throws(() => dev.compareJson('{', '{}'), /Left JSON is invalid/);
+  assert.throws(() => dev.compareJson('{}', '{'), /Right JSON is invalid/);
+  assert.throws(() => dev.compareJson('[1,2]', '[2,3]', { maxChanges: 1 }), /More than/);
+  assert.throws(() => dev.compareJson('[1,2]', '[1,2]', { maxNodes: 1 }), /safety limit/);
+});
+await test('PDF organizer exports reordered, removed and rotated real PDF pages', async () => {
+  const lib = await import('pdf-lib'); const source = await lib.PDFDocument.create();
+  source.addPage([100, 200]); const p2 = source.addPage([200, 300]); p2.setRotation(lib.degrees(90)); source.addPage([300, 400]);
+  const bytes = await pdf.organizePdf(lib, source, [{ index: 2, rotation: 90 }, { index: 1, rotation: 90 }]);
+  const out = await lib.PDFDocument.load(bytes); assert.equal(out.getPageCount(), 2);
+  assert.equal(out.getPage(0).getWidth(), 300); assert.equal(out.getPage(0).getRotation().angle, 90);
+  assert.equal(out.getPage(1).getWidth(), 200); assert.equal(out.getPage(1).getRotation().angle, 180);
+  assert.equal(source.getPageCount(), 3); assert.equal(source.getPage(1).getRotation().angle, 90);
+  await assert.rejects(pdf.organizePdf(lib, source, []), /at least one/);
+  await assert.rejects(pdf.organizePdf(lib, source, [{ index: 3, rotation: 0 }]), /Invalid/);
+});
+await test('batch-7 pages have guides, search coverage and three inbound links', () => {
+  for (const id of ['pdf-organizer', 'json-compare']) {
+    const tool = registry.getTool(id); assert.ok(tool.guide.length >= 3 && tool.faqs.length >= 3);
+    assert.ok(registry.searchTools(tool.name, 20).some(t => t.id === id));
+    assert.ok(registry.tools.filter(t => t.id !== id && registry.relatedTools(t, 6).some(r => r.id === id)).length >= 3);
   }
 });
 

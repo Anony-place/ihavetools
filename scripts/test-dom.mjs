@@ -713,6 +713,65 @@ for (const [id, query, expected] of [
   });
 }
 
+console.log('\n── Batch-7 private document UIs ──');
+await domTest('JSON compare reports structural paths safely and rejects invalid JSON', async () => {
+  const app = await loadToolPage('json-compare', 'developer');
+  const [a,b] = app.querySelectorAll('textarea');
+  a.value = '{"b":2,"a":1}'; b.value = '{"a":1,"b":2}'; click(btnByLabel(app, 'Compare JSON'));
+  assert.match(app.textContent, /No structural differences/);
+  b.value = '{"a":1,"b":"<img src=x onerror=alert(1)>"}'; click(btnByLabel(app, 'Compare JSON'));
+  assert.match(app.textContent, /CHANGED \/b/); assert.equal(app.querySelector('.result-body img'), null);
+  b.value = '{'; click(btnByLabel(app, 'Compare JSON')); assert.match(app.textContent, /Right JSON is invalid/);
+});
+await domTest('PDF organizer accepts a drop, reorders, rotates, removes and exports actual PDF', async () => {
+  const lib = await import('pdf-lib'); window.PDFLib = { ...lib, PDFDocument: { create: (...args) => lib.PDFDocument.create(...args), load: (bytes, ...args) => lib.PDFDocument.load(new Uint8Array(bytes), ...args) } };
+  const src = await lib.PDFDocument.create(); src.addPage([100,200]); src.addPage([200,300]); src.addPage([300,400]);
+  const file = new File([await src.save()], 'source.pdf', { type: 'application/pdf' });
+  const app = await loadToolPage('pdf-organizer', 'pdf');
+  const event = new window.Event('drop', { bubbles: true, cancelable: true }); Object.defineProperty(event, 'dataTransfer', { value: { files: [file] } });
+  app.querySelector('.dropzone').dispatchEvent(event); await new Promise(r => setTimeout(r, 100));
+  assert.equal(app.querySelectorAll('.file-row').length, 3, app.textContent);
+  click(app.querySelector('[aria-label="Remove page 2"]'));
+  click(app.querySelector('[aria-label="Move page 3 up"]'));
+  click(app.querySelector('[aria-label="Rotate page 3 clockwise"]'));
+  let output; const original = URL.createObjectURL; URL.createObjectURL = (blob) => { output = blob; return 'blob:test'; };
+  try { click(btnByLabel(app, 'Export organized PDF')); await new Promise(r => setTimeout(r, 100));
+    assert.ok(output, 'download was not created'); const result = await lib.PDFDocument.load(await output.arrayBuffer());
+    assert.equal(result.getPageCount(), 2); assert.equal(result.getPage(0).getWidth(), 300); assert.equal(result.getPage(0).getRotation().angle, 90);
+    click(btnByLabel(app, 'Restore original')); assert.equal(app.querySelectorAll('.file-row').length, 3);
+  } finally { URL.createObjectURL = original; }
+});
+await domTest('PDF merge handles dropped duplicate filenames by identity and removal', async () => {
+  const lib = await import('pdf-lib'); window.PDFLib = { ...lib, PDFDocument: { create: (...args) => lib.PDFDocument.create(...args), load: (bytes, ...args) => lib.PDFDocument.load(new Uint8Array(bytes), ...args) } };
+  const one = await lib.PDFDocument.create(); one.addPage([100,200]);
+  const two = await lib.PDFDocument.create(); two.addPage([200,300]);
+  const app = await loadToolPage('pdf-merge', 'pdf');
+  const files = [new File([await one.save()], 'same.pdf', { type:'application/pdf' }), new File([await two.save()], 'same.pdf', { type:'application/pdf' })];
+  const event = new window.Event('drop', { bubbles:true, cancelable:true }); Object.defineProperty(event,'dataTransfer',{value:{files}});
+  app.querySelector('.dropzone').dispatchEvent(event);
+  assert.equal(app.querySelectorAll('.file-row').length, 2);
+  let output; const original = URL.createObjectURL; URL.createObjectURL = (blob) => { output = blob; return 'blob:test'; };
+  try { click(btnByLabel(app,'Merge PDFs')); await new Promise(r => setTimeout(r, 100));
+    assert.ok(output, app.textContent); const result = await lib.PDFDocument.load(await output.arrayBuffer());
+    assert.equal(result.getPage(0).getWidth(),100); assert.equal(result.getPage(1).getWidth(),200);
+    click(app.querySelector('[aria-label="Remove"]')); assert.equal(app.querySelectorAll('.file-row').length, 1);
+    assert.match(app.textContent, /1Files/);
+  } finally { URL.createObjectURL = original; }
+});
+
+await domTest('Image to PDF keeps duplicate filenames distinct and updates removed-file totals', async () => {
+  const app = await loadToolPage('image-to-pdf', 'pdf');
+  const files = [new File(['a'], 'same.png', { type: 'image/png' }), new File(['bc'], 'same.png', { type: 'image/png' })];
+  const event = new window.Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'dataTransfer', { value: { files } });
+  app.querySelector('.dropzone').dispatchEvent(event);
+  const rows = app.querySelectorAll('.file-row');
+  assert.equal(rows.length, 2); assert.equal(rows[0].file, files[0]); assert.equal(rows[1].file, files[1]);
+  click(rows[0].querySelector('[aria-label="Remove"]'));
+  assert.equal(app.querySelector('.file-row').file, files[1]);
+  assert.match(app.textContent, /2 BTotal size/);
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);

@@ -46,7 +46,9 @@ self.addEventListener('fetch', (event) => {
     // remain available when offline. Do not cache non-asset API responses.
     event.respondWith((async () => {
       try {
-        const response = await fetch(req);
+        // Revalidate the HTTP cache as well as Cache Storage so freshly deployed
+        // HTML does not run an older tool bundle cached under the same URL.
+        const response = await fetch(req, { cache: 'no-cache' });
         if (response.ok) await remember(ASSETS, req, response.clone());
         return response;
       } catch { return (await (await caches.open(ASSETS)).match(req)) || (await caches.match(req)) || Response.error(); }

@@ -24,8 +24,10 @@ const caches = {
 const listeners = {};
 let online = true;
 let status = 200;
+let lastFetchOptions;
 const self = { location: { origin }, clients: { claim: async () => {} }, skipWaiting: async () => {}, addEventListener: (name, cb) => { listeners[name] = cb; } };
-vm.runInNewContext(readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), { self, caches, URL, Response, fetch: async (req) => {
+vm.runInNewContext(readFileSync(new URL('../sw.js', import.meta.url), 'utf8'), { self, caches, URL, Response, fetch: async (req, options) => {
+  lastFetchOptions = options;
   if (!online) throw Error('offline');
   return new Response(`network:${req.url}`, { status });
 } });
@@ -44,6 +46,7 @@ assert.match(await (await request('/tools/example/')).text(), /network:/);
 assert.match(await (await request('/tools/example/?secret=private')).text(), /network:/);
 assert.equal([...stores.values()].some((s) => [...s.keys()].some((k) => k.includes('secret'))), false);
 await request('/assets/js/tools/example.js', 'cors');
+assert.equal(lastFetchOptions.cache, 'no-cache', 'deployed assets must revalidate the HTTP cache');
 status = 404; await request('/missing/'); status = 200;
 online = false;
 assert.match(await (await request('/tools/example/?secret=other')).text(), /network:.*example\/$/);

@@ -1,6 +1,6 @@
 # iHaveTools
 
-**111 free online tools. No sign-up, no uploads, no limits.** Every tool runs
+**113 free online tools. No sign-up or file uploads.** Every tool runs
 entirely in your browser — your files and text never leave your device.
 
 **Live site:** https://i-have-tools.vercel.app/ (Vercel, auto-deployed from `main` on every merge)
@@ -17,7 +17,7 @@ suite enforces this.
 
 ## Highlights
 
-- **PDF tools** — merge, split and rotate PDFs in the browser via
+- **PDF tools** — merge, split, rotate and organize PDF pages in the browser via
   [pdf-lib](https://github.com/Hopding/pdf-lib) (bundled locally, no CDN).
 - **Image tools** — compression, resizing, format conversion, cropping and
   EXIF inspection using the browser's own canvas and decoders.
@@ -58,8 +58,8 @@ scripts/
   build.mjs        ← generates every HTML page (home, categories, tools,
                      about/privacy/terms, 404), sitemap, llms.txt, sprite,
                      search index — all from registry.js
-  test-tools.mjs   ← 174 engine tests (pure logic, run in Node)
-  test-dom.mjs     ← 60 DOM tests: loads built pages into jsdom and drives real UIs
+  test-tools.mjs   ← 177 engine tests (pure logic, run in Node)
+  test-dom.mjs     ← 64 DOM tests: loads built pages into jsdom and drives real UIs
   test-chrome.mjs  ← 9 chrome tests: homepage, search, categories, theme, nav, install
   test-sw.mjs      ← service worker lifecycle, offline, privacy and cache-limit regression tests
   link-check.mjs   ← 20 integrity checks: dead links, sitemap↔files, SEO meta,
