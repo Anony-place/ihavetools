@@ -99,7 +99,7 @@ const THEME_INIT = `<script>(function(){try{var t=localStorage.getItem('iht-them
    the HTML for crawlers and paint without JS (no layout shift). site.js only
    adds behaviour (theme values, toggles) to these elements. */
 function headerHtml(home, withSearch = false) {
-  const searchHtml = withSearch ? `<div class="search-box header-search"><span class="search-glyph">${icon('search')}</span><label class="sr-only" for="global-search">Search tools</label><input id="global-search" type="search" placeholder="Search ${tools.length} tools… (Ctrl K)" autocomplete="off" aria-expanded="false" aria-controls="search-results"><ul class="search-results" id="search-results" hidden></ul></div>` : (home ? '' : `<a class="btn btn-secondary btn-sm hide-sm" href="${ROOT_PREFIX}" aria-label="Search all tools" style="gap:7px"><span style="display:inline-flex">${icon('search')}</span>Search</a>`);
+  const searchHtml = withSearch ? `<div class="search-box header-search"><span class="search-glyph">${icon('search')}</span><label class="sr-only" for="global-search">Search tools</label><input id="global-search" type="search" placeholder="Search ${tools.length} tools… (Ctrl K)" autocomplete="off" aria-controls="search-results"><ul class="search-results" id="search-results" hidden></ul></div>` : (home ? '' : `<a class="btn btn-secondary btn-sm hide-sm" href="${ROOT_PREFIX}" aria-label="Search all tools" style="gap:7px"><span style="display:inline-flex">${icon('search')}</span>Search</a>`);
   const drop = `<details class="nav-drop"><summary>Categories <span style="display:inline-flex;width:14px">${icon('arrow-down')}</span></summary><div class="dropdown-panel">${categories.map((c) => `<a href="${ROOT_PREFIX}categories/${c.id}/"><span style="display:inline-flex">${icon(c.icon)}</span>${esc(c.name)}<span class="dd-count">${toolsByCategory(c.id).length}</span></a>`).join('')}</div></details>`;
   const popular6 = tools.slice().sort((a, b) => b.popularity - a.popularity).slice(0, 6);
   // Mobile menu links are text-only: 22 fewer icon references per page.
@@ -173,7 +173,7 @@ ${content}
     <div class="footer-bottom">
       <span>© <span id="footer-year">2026</span> iHaveTools. All tools are free and run client-side.</span>
       <span><a href="${ROOT_PREFIX}about/">About</a> · <a href="${ROOT_PREFIX}privacy-policy/">Privacy Policy</a> · <a href="${ROOT_PREFIX}terms/">Terms</a></span>
-      <span>Built for speed, privacy and everyday usefulness.</span>
+      <span>Built for speed, privacy and everyday usefulness. <button class="install-app" type="button" hidden>Install app</button></span>
     </div>
   </div>
 </footer>
@@ -232,7 +232,7 @@ function buildHome() {
     <div class="search-box">
       <span class="search-glyph">${icon('search')}</span>
       <label class="sr-only" for="global-search">Search tools</label>
-      <input id="global-search" type="search" placeholder="Search ${tools.length} tools — try “json”, “compress” or “password”…" autocomplete="off" aria-expanded="false" aria-controls="search-results">
+      <input id="global-search" type="search" placeholder="Search ${tools.length} tools — try “json”, “compress” or “password”…" autocomplete="off" aria-controls="search-results">
       <kbd>/</kbd>
       <ul class="search-results" id="search-results" hidden></ul>
     </div>
@@ -485,7 +485,7 @@ ${body}
     <section><h2>What is iHaveTools?</h2>
     <p>iHaveTools is a collection of ${tools.length} free online tools for everyday work: calculators, converters, text and image utilities, PDF tools and developer helpers. Every tool works instantly in your web browser — there is no account to create, nothing to install and nothing to pay.</p></section>
     <section><h2>How it works — and why your data stays private</h2>
-    <p>Unlike most tool sites, iHaveTools has no server that processes your work. When you compress an image, merge a PDF or format JSON here, the computation happens on your own device using built-in browser technology (Canvas, Web Audio, Web Crypto and pdf-lib). Your files and text are never uploaded, so there is nothing for us to store, lose or leak. You can verify this yourself: once a tool page has loaded, it keeps working with your device offline.</p></section>
+    <p>Unlike most tool sites, iHaveTools has no server that processes your work. When you compress an image, merge a PDF or format JSON here, the computation happens on your own device using built-in browser technology (Canvas, Web Audio, Web Crypto and pdf-lib). Your files and text are never uploaded, so there is nothing for us to store, lose or leak. Previously visited tools can work offline when their required files have been cached; some features require browser or device support.</p></section>
     <section><h2>Our principles</h2>
     <ul>
       <li><strong>Private by design</strong> — your data never leaves your device. See the <a href="/privacy-policy/">Privacy Policy</a>.</li>
@@ -511,7 +511,7 @@ ${body}
     <p>The site itself sets no cookies. Two pieces of information may be stored <em>on your own device</em>, by your browser, at your control:</p>
     <ul>
       <li><strong>Theme preference</strong> — if you switch between light and dark mode, your choice is saved in <code>localStorage</code> so the site remembers it. It never leaves your device.</li>
-      <li><strong>Offline cache</strong> — a service worker caches the site's own static files (styles and scripts) so repeat visits load faster and tools work offline. It never stores files or text you process with a tool.</li>
+      <li><strong>Offline cache</strong> — a service worker caches the site's pages and static files for offline access. Only previously visited pages and resources are available offline; query-string URLs are not saved. It never stores files or text you process with a tool.</li>
     </ul>
     <p>You can clear both at any time from your browser's site-data settings.</p></section>
     <section><h2>Analytics and advertising</h2>

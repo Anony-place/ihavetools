@@ -119,7 +119,7 @@ function setupSearch() {
   let active = -1;
   let results = [];
 
-  const close = () => { list.hidden = true; active = -1; input.setAttribute('aria-expanded', 'false'); };
+  const close = () => { list.hidden = true; active = -1; };
   const render = (items, q) => {
     results = items;
     active = -1;
@@ -134,7 +134,6 @@ function setupSearch() {
           h('span', { class: 'sr-cat', text: t.c }))))
       : [h('li', { class: 'no-results', text: `No tools match “${q}”. Try “json”, “image” or “password”.` })]));
     list.hidden = false;
-    input.setAttribute('aria-expanded', 'true');
   };
   const setActive = (i) => {
     active = i;
@@ -281,6 +280,34 @@ function initFooter() {
   if (y) y.textContent = String(new Date().getFullYear());
 }
 
+/* ---------- Optional native install ----------
+   Listen immediately: the browser may fire before DOMContentLoaded. */
+let installPrompt = null;
+function showInstall() {
+  const button = $('.install-app');
+  if (button) button.hidden = !installPrompt;
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    installPrompt = event;
+    showInstall();
+  });
+  window.addEventListener('appinstalled', () => { installPrompt = null; showInstall(); });
+}
+export function initInstall() {
+  const button = $('.install-app');
+  if (!button) return;
+  showInstall();
+  button.addEventListener('click', async () => {
+    const prompt = installPrompt;
+    if (!prompt) return;
+    installPrompt = null;
+    showInstall();
+    try { await prompt.prompt(); } catch { /* Browser declined or prompt expired. */ }
+  });
+}
+
 /* ---------- Service worker ----------
    Registered from the domain root (/sw.js) on real HTTPS hosts — a worker
    under /assets/ could only control /assets/ pages, which is useless.
@@ -318,6 +345,7 @@ if (typeof document !== 'undefined') {
     initDropdowns();
     initFooter();
     initSW();
+    initInstall();
     setupSearch();
     initFavourites();
     initRecents();

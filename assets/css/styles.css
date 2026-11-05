@@ -586,6 +586,9 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 }
 .footer-bottom a { color: var(--text-2); font-weight: 600; }
 .footer-bottom a:hover { color: var(--text); }
+.install-app { color: var(--text-2); font: inherit; font-weight: 600; background: transparent; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+.install-app:hover { color: var(--text); }
+.install-app[hidden] { display: none; }
 
 /* 404 */
 .notfound { text-align: center; padding: 90px 20px; }

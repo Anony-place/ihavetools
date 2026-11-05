@@ -183,6 +183,43 @@ foundation pehle se strong hai.
 
 ---
 
+## BATCH-5 — Market-led retention, PWA & accessibility (2026-11-05)
+
+Market review: competing utility suites prominently surface PDF/image workflows,
+calculators and privacy-first local processing. Our existing catalogue already
+covers the core merge/split, image compression and calculators; demand evidence
+is qualitative, not search-volume or ranking proof. Avoid duplicate thin tools.
+Prioritise repeat-use experience and correctness before adding speculative pages.
+
+One batch on this branch:
+1. Audit offline caching: home should be available after installation; visited
+   pages/assets should work offline, unvisited pages get an honest offline page;
+   query parameters must not multiply cached HTML or leak shared input values.
+   Preserve other apps' caches and limit runtime storage; update assets safely.
+2. Add a non-intrusive, accessible install action only when the browser offers
+   native installation; no fake prompts or unsupported-browser promises.
+3. Run performance/accessibility audit where browser tooling is available, fix
+   actionable issues and document actual measurements or tooling limitations.
+4. Add regression coverage for worker lifecycle, offline/error/cache behavior,
+   and install UI; run full check. Rebuild generated pages, review, then one PR
+   and production verification if checks and deployment permit.
+5. GSC remains separate: compare at least 14 days and inspect Indexing → Pages
+   when user supplies it; do not claim ranking improvements without data.
+
+Implementation: native install button only when offered; versioned service worker
+pre-caches home and offline notice, network-first cached visited pages/assets,
+query strings excluded from page cache, capped runtime caches and cleanup limited
+to iHaveTools caches. Offline functionality requires previously cached resources.
+Automated `npm run check`: 169 engine, 55 DOM, 9 chrome, worker regression suite,
+20 integrity checks passed. Sample static HTML axe-core/jsdom audit of home, NPS
+and QR scanner: zero reported violations after removing invalid search input
+`aria-expanded`; colour contrast disabled and two checks incomplete in jsdom.
+No Lighthouse score or real-browser/device accessibility or install/offline test
+is claimed: Chromium is not available in this environment. A full Lighthouse,
+keyboard/screen-reader and real-device offline pass remains open.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha
