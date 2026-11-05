@@ -255,6 +255,42 @@ Final check results are recorded in README; publication awaits PR checks.
 
 ---
 
+## BATCH-7 — Private document and JSON workflows (2026-11-05)
+
+Market scan: PDF page organizers and structural JSON compare are established
+workflows, distinct from our existing PDF split/rotate and line-based text diff.
+This is qualitative competitor evidence, not verified search-volume data. Aim for
+useful local processing, not duplicate pages or unsupported feature claims.
+
+One complete branch/PR:
+1. PDF Page Organizer: locally load one unencrypted PDF, list numbered pages,
+   reorder, remove, restore and rotate individually with keyboard-friendly
+   buttons; export a new file using the existing vendored pdf-lib. No thumbnail
+   or visual-preview claim. Warn that forms, bookmarks and signatures may change.
+2. JSON Compare: safely compare parsed JSON structurally, ignore object key order,
+   keep array order, report added/removed/changed JSON Pointer paths, invalid
+   input and bounded work/output; no uploading or URL sharing of document data.
+3. Repair existing PDF input drag/drop and duplicate-name file selection bugs in
+   merge/image-to-PDF; ensure list removal updates totals and exported order.
+4. Add distinctive hand-written guides, FAQs, contextual links, registry/search,
+   realistic engine, actual PDF export and DOM tests; build, full check, one PR,
+   merge and verify production if checks allow. Keep GSC measurement independent.
+5. Real-browser Lighthouse, accessibility and device PWA checks remain pending;
+   report limits honestly rather than inventing scores.
+
+Implemented: 113 tools / 53 guides, including the organizer and structural
+JSON compare. PDF drop handlers now work and duplicate filenames keep separate
+file identities; removal updates size totals. The worker revalidates HTTP-cached
+assets to reduce old-bundle/new-page mismatches after deploys. The organizer uses numbered pages,
+not previews, and is limited to 500 pages / 200 MB. JSON comparison is limited
+and uses JavaScript numeric parsing, with caveats documented. Verified locally:
+177 engine + 64 DOM + 9 chrome + 20 integrity checks, plus worker regression
+suite. DOM tests exercise real PDF exports and duplicate-name PDF merge, and
+pure tests check source and output page geometry/rotation. PR/deployment and
+real-browser/device verification are separate from these automated results.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha

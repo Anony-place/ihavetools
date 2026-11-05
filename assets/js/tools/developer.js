@@ -642,7 +642,58 @@ export function formatJs(src, indentSize = 2) {
 }
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
+/** Structural JSON comparison. Object key order is ignored; arrays compare by index.
+ * JSON Pointer paths use RFC 6901 escaping and the root pointer is the empty string. */
+export function compareJson(leftText, rightText, { maxNodes = 100000, maxChanges = 1000 } = {}) {
+  if (leftText.length > 1000000 || rightText.length > 1000000) throw new Error('Each JSON input must be at most 1,000,000 characters.');
+  let left, right;
+  try { left = JSON.parse(leftText); } catch (e) { throw new Error(`Left JSON is invalid: ${e.message}`); }
+  try { right = JSON.parse(rightText); } catch (e) { throw new Error(`Right JSON is invalid: ${e.message}`); }
+  const kind = (v) => v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v;
+  const segment = (s) => String(s).replace(/~/g, '~0').replace(/\//g, '~1');
+  const changes = [], stack = [{ left, right, path: '' }]; let nodes = 0;
+  while (stack.length) {
+    if (++nodes > maxNodes) throw new Error('Comparison exceeds the 100,000-node safety limit. Compare smaller documents.');
+    const { left: a, right: b, path, added, removed } = stack.pop();
+    if (added || removed) changes.push({ type: added ? 'added' : 'removed', path, ...(added ? { right: b } : { left: a }) });
+    else if (kind(a) !== kind(b) || (kind(a) !== 'object' && kind(a) !== 'array' && a !== b)) changes.push({ type: 'changed', path, left: a, right: b });
+    else if (kind(a) === 'object' || kind(a) === 'array') {
+      const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort();
+      for (let i = keys.length - 1; i >= 0; i--) {
+        const key = keys[i], hasA = Object.hasOwn(a, key), hasB = Object.hasOwn(b, key);
+        stack.push({ left: a[key], right: b[key], path: `${path}/${segment(key)}`, added: !hasA, removed: !hasB });
+      }
+    }
+    if (changes.length > maxChanges) throw new Error(`More than ${maxChanges} differences; compare smaller documents.`);
+  }
+  return changes;
+}
+
 const defs = {
+  'json-compare'(root) {
+    const left = textarea({ rows: 10, value: '{\n  "name": "Ana",\n  "active": true,\n  "tags": ["a", "b"]\n}', placeholder: 'Paste original JSON…' });
+    const right = textarea({ rows: 10, value: '{\n  "tags": ["a", "c"],\n  "name": "Ana",\n  "role": "editor"\n}', placeholder: 'Paste revised JSON…' });
+    const status = statusLine('Compare two JSON values. Object key order is ignored; array order matters.');
+    const out = resultPanel({ label: 'Structural differences', copy: false });
+    const preview = (v) => { const text = JSON.stringify(v, (_key, value) => typeof value === 'number' && !Number.isFinite(value) ? String(value) : value); return text.length > 240 ? `${text.slice(0, 240)}…` : text; };
+    const run = () => {
+      try {
+        const differences = compareJson(left.value, right.value);
+        if (!differences.length) { out.set('No structural differences.'); status.set('The parsed JSON values match.', 'success'); return; }
+        const view = h('div', {});
+        differences.forEach((d) => view.append(h('div', { class: 'diff-line' },
+          h('strong', { text: `${d.type.toUpperCase()} ${d.path || '(root)'}` }),
+          d.type !== 'added' ? h('pre', { text: `Before: ${preview(d.left)}` }) : null,
+          d.type !== 'removed' ? h('pre', { text: `After: ${preview(d.right)}` }) : null)));
+        out.set(view); status.set(`${differences.length} difference${differences.length === 1 ? '' : 's'} found. Paths are JSON Pointers; long values are shortened.`, 'success');
+      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+    };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Original JSON', control: left }), field({ label: 'Revised JSON', control: right })),
+      actionsRow(btn({ label: 'Compare JSON', icon: 'diff', onClick: run }), btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { left.value = ''; right.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+      status, out.panel,
+      h('p', { class: 'hint', text: 'Values are parsed as JavaScript JSON: duplicate keys use the last value and numbers have floating-point precision limits. Inputs stay in your browser.' }));
+  },
+
   'json-formatter'(root) {
     const inp = textarea({ value: '{\n  "hello": "world",\n  "items": [1, 2, 3],\n  "nested": {"works": true}\n}', rows: 12, placeholder: 'Paste JSON here…' });
     const indent = select({ id: 'indent', options: [{ v: 2, t: '2 spaces' }, { v: 4, t: '4 spaces' }, { v: 1, t: '1 space' }, { v: 3, t: '3 spaces' }], value: '2' });
@@ -1054,7 +1105,7 @@ const defs = {
 export function mount(id) { mountTool(id, defs); }
 
 export const __test = {
-  validateJson, jsonFormat, jsonMinify, b64encode, b64decode, urlEncode, urlDecode, uuidv4,
+  validateJson, jsonFormat, jsonMinify, compareJson, b64encode, b64decode, urlEncode, urlDecode, uuidv4,
   parseTimestamp, dateToParts, digest, toHex, toB64, findMatches, decodeJwt,
   formatHtml, minifyHtml, formatCss, minifyCss, formatJs, convertBase, groupDigits,
 };
