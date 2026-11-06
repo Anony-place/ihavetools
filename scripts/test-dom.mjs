@@ -707,6 +707,20 @@ await domTest('tone-generator: renders stats and honest WAV size', async () => {
   const slider = app.querySelector('input[type=range]');
   assert.ok(slider, 'no fine-tune slider');
 });
+await domTest('tone generator rejects blank and zero inputs and cancels late playback', async () => {
+ const previous=window.AudioContext;const pending=[];let started=0,stopped=0,closed=0;
+ window.AudioContext=class {constructor(){this.destination={};}decodeAudioData(wav,ok,fail){pending.push({ok,fail});}createBufferSource(){return {connect(){},start(){started++;},stop(){stopped++;}};}close(){closed++;return Promise.resolve();}};
+ try {
+  const app=await loadToolPage('tone-generator','audio');const [freq,duration]=app.querySelectorAll('input[type=number]');const play=btnByLabel(app,'Play tone');
+  freq.value='0';fire(freq,'input');click(play);assert.match(statusText(document),/Frequency must be/);assert.equal(pending.length,0);
+  freq.value='440';duration.value='';fire(duration,'input');click(play);assert.match(statusText(document),/Enter a frequency and duration/);assert.equal(pending.length,0);
+  duration.value='0';fire(duration,'input');click(play);assert.match(statusText(document),/Duration must be/);
+  duration.value='1';fire(duration,'input');click(play);freq.value='500';fire(freq,'input');pending[0].ok({});assert.equal(started,0);assert.match(statusText(document),/Settings changed/);
+  click(play);pending[1].ok({});assert.equal(started,1);assert.match(statusText(document),/500 Hz/);freq.value='600';fire(freq,'input');assert.equal(stopped,1);
+  click(play);window.dispatchEvent(new window.Event('pagehide'));pending[2].ok({});assert.equal(started,1);assert.equal(closed,1);
+ } finally {window.AudioContext=previous;}
+});
+
 await domTest('audio-trimmer: export before load shows error state', async () => {
   const app = await loadToolPage('audio-trimmer', 'audio');
   click(btnByLabel(app, 'Export WAV'));

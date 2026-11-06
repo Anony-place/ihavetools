@@ -43,8 +43,10 @@ export function convertCase(text, mode) {
     case 'lower': return text.toLowerCase();
     case 'title': return text.toLowerCase().replace(/\p{L}[\p{L}'’]*/gu, (w, off, s) => {
       const small = new Set(['a','an','and','as','at','but','by','for','if','in','nor','of','on','or','so','the','to','up','yet']);
-      const prev = s.slice(0, off).trimEnd().slice(-1);
-      if (off !== 0 && small.has(w) && prev !== '.' && prev !== '!' && prev !== '?') return w;
+      let i = off - 1;
+      while (i >= 0 && /\s/u.test(s[i])) i--;
+      const prev = i >= 0 ? s[i] : '';
+      if (prev && small.has(w) && prev !== '.' && prev !== '!' && prev !== '?' && prev !== '…') return w;
       return cap(w);
     });
     case 'sentence': return text.toLowerCase().replace(/(^\s*|[.!?…]\s+|\n\s*)(\p{L})/gu, (m, p, c) => p + c.toUpperCase());
@@ -67,7 +69,7 @@ export const CASE_MODES = [
 
 /* ═══════════════════════════ Line operations ═══════════════════════════ */
 export function dedupeLines(text, { caseInsensitive = false, trim = false, keepEmpty = true } = {}) {
-  const lines = text.split(/\r?\n/);
+  const lines = text.split(/\r\n|\r|\n/);
   const seen = new Set();
   const out = [];
   for (const line of lines) {
@@ -81,9 +83,18 @@ export function dedupeLines(text, { caseInsensitive = false, trim = false, keepE
   return out;
 }
 
-export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensitive = true, unique = false } = {}) {
-  let lines = text.split(/\r?\n/);
+export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensitive = true, unique = false, random = Math.random } = {}) {
+  let lines = text.split(/\r\n|\r|\n/);
   if (unique) lines = dedupeLines(lines.join('\n'), { caseInsensitive, trim: false, keepEmpty: true });
+  if (mode === 'shuffle') {
+    for (let i = lines.length - 1; i > 0; i--) {
+      const draw = random();
+      if (!Number.isFinite(draw) || draw < 0 || draw >= 1) throw new Error('Random value must be in the range [0, 1).');
+      const j = Math.floor(draw * (i + 1));
+      [lines[i], lines[j]] = [lines[j], lines[i]];
+    }
+    return lines.join('\n');
+  }
   const coll = new Intl.Collator(undefined, { sensitivity: caseInsensitive ? 'accent' : 'variant', numeric: mode === 'natural' });
   const cmp = (a, b) => {
     let r = 0;
@@ -94,7 +105,6 @@ export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensi
       const va = Number.isFinite(na), vb = Number.isFinite(nb);
       r = va !== vb ? (va ? -1 : 1) : va ? (na < nb ? -1 : na > nb ? 1 : coll.compare(a, b)) : coll.compare(a, b);
     } else if (mode === 'length') r = [...a].length - [...b].length || coll.compare(a, b);
-    else if (mode === 'shuffle') r = Math.random() - 0.5;
     return direction === 'desc' && mode !== 'shuffle' ? -r : r;
   };
   lines.sort(cmp);
@@ -330,7 +340,7 @@ const defs = {
     root.addEventListener('change', invalidate);
     const run = () => {
       if (!inp.value.trim()) { status.set('Paste some lines first.', 'warning'); return; }
-      const before = inp.value.split(/\r?\n/).filter((l) => l.trim()).length;
+      const before = inp.value.split(/\r\n|\r|\n/).filter((l) => l.trim()).length;
       const result = dedupeLines(inp.value, {
         caseInsensitive: ci.querySelector('input').checked,
         trim: trim.querySelector('input').checked,
@@ -374,7 +384,7 @@ const defs = {
         field({ label: 'Mode', control: mode }),
         field({ label: 'Direction', control: dir })),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, uniq),
-      h('p', { class: 'hint', text: 'Alphabetical order depends on your browser locale. Numeric mode parses the first number after a non-numeric prefix; non-numeric lines sort after numbers in ascending order. Blank lines are retained.' }),
+      h('p', { class: 'hint', text: 'Alphabetical order depends on your browser locale. Numeric mode parses the first number after a non-numeric prefix; non-numeric lines sort after numbers in ascending order. Blank lines are retained; line endings in output are normalized to LF.' }),
       actionsRow(btn({ label: 'Sort', icon: 'sort', onClick: run }),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel);

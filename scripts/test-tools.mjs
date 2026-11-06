@@ -1331,6 +1331,16 @@ await test('random numbers respect range/count/unique/sort', () => {
   assert.throws(() => misc.randomNumbers({ min: 1, max: 5, count: 10, unique: true }), /unique/);
   assert.throws(() => misc.randomNumbers({ min: 10, max: 1, count: 1 }), /less than or equal/);
 });
+await test('text line operations handle CR and shuffle with Fisher–Yates', () => {
+ assert.deepEqual(text.dedupeLines('a\rb\ra'),['a','b']);
+ assert.equal(text.sortLines('b\ra\nc',{mode:'alpha'}),'a\nb\nc');
+ const permutations=new Set();
+ for(let a=0;a<3;a++) for(let b=0;b<2;b++) {const draws=[(a+0.1)/3,(b+0.1)/2];permutations.add(text.sortLines('a\nb\nc',{mode:'shuffle',random:()=>draws.shift()}));}
+ assert.equal(permutations.size,6);
+ assert.throws(()=>text.sortLines('a\nb',{mode:'shuffle',random:()=>1}),/Random value/);
+ assert.equal(text.convertCase('  the story of time. the end','title'),'  The Story of Time. The End');
+});
+
 await test('audio: tone synthesis is pure and correct', () => {
   const s = audio.synthesizeSamples({ freq: 440, wave: 'sine', seconds: 1, sampleRate: 8000, volume: 1 });
   assert.equal(s.length, 8000);
@@ -1359,6 +1369,20 @@ await test('audio: resample + gain + WAV encode', () => {
   assert.equal(dv.getInt16(44, true), 0);
   assert.ok(dv.getInt16(46, true) > 16000, `0.5 sample: ${dv.getInt16(46, true)}`);
   assert.equal(dv.getInt16(50, true), 0x7FFF);
+});
+
+await test('audio: invalid WAV inputs and unsafe resampling fail clearly', () => {
+ assert.throws(()=>audio.synthesizeSamples({freq:5000,sampleRate:8000}),/Nyquist/);
+ assert.throws(()=>audio.synthesizeSamples({sampleRate:0}),/Sample rate/);
+ assert.throws(()=>audio.synthesizeSamples({wave:'other'}),/waveform/);
+ assert.throws(()=>audio.resampleLinear(new Float32Array([1]),Infinity),/finite/);
+ assert.throws(()=>audio.resampleLinear(new Float32Array([1]),1e-10),/30 million/);
+ assert.throws(()=>audio.applyGain(new Float32Array([1]),Infinity),/finite/);
+ assert.throws(()=>audio.encodeWav([new Float32Array([1]),new Float32Array([1,2])],44100),/same length/);
+ assert.throws(()=>audio.encodeWav([new Float32Array([NaN])],44100),/invalid sample/);
+ assert.throws(()=>audio.encodeWav([new Float32Array([1])],0),/sample rate/);
+ const wav=new DataView(audio.encodeWav([new Float32Array([1,-1]),new Float32Array([-1,1])],8000));
+ assert.equal(wav.getUint16(22,true),2);assert.equal(wav.getInt16(44,true),32767);assert.equal(wav.getInt16(46,true),-32768);assert.equal(wav.getInt16(48,true),-32768);assert.equal(wav.getInt16(50,true),32767);
 });
 
 await test('audio: MP4 box parser on a synthetic file', () => {
