@@ -382,6 +382,30 @@ await test('random draws and wheel validate boundaries without retries', () => {
  assert.deepEqual(misc.parseWheelEntries('A\nA\nB'),['A','A','B']);
 });
 
+await test('student calculators reject unsafe input and retain exact boundaries', () => {
+ assert.throws(()=>stu.evaluate('1e-999'),/too small/); assert.throws(()=>math.parseNumbers('1e-999'),/too small/);
+ assert.equal(stu.evaluate('1e+21 / 1e20'),10); assert.equal(stu.evaluate('6 × 3 ÷ 2 − 1'),8); assert.ok(Math.abs(stu.evaluate('sin(30)',{degrees:true})-0.5)<1e-12);
+ assert.throws(()=>stu.evaluate('('.repeat(65)+'1'+')'.repeat(65)),/64 levels/); assert.throws(()=>stu.evaluate('1+'.repeat(300)+'1'),/512 characters/);
+ assert.equal(stu.durationTotal([[1,59,59],[0,0,1]],['+']).text,'02:00:00');
+ for (const rows of [[[0,60,0]],[[0,0,1.5]],[[-1,59,59]],[[NaN,0,0]]]) assert.throws(()=>stu.durationTotal(rows,[]),/whole non-negative/);
+ assert.throws(()=>stu.weightedGpa([{gradePoint:'',credits:'4'}]),/Subject 1/); assert.throws(()=>stu.weightedGpa([{gradePoint:-2,credits:0}]),/Subject 1/);
+ assert.equal(stu.weightedGpa([{gradePoint:0,credits:4},{gradePoint:10,credits:1}]).gpa,2);
+ assert.equal(stu.attendanceCalc({held:1,attended:0,targetPct:50.000001}).classesNeeded,2);
+ assert.equal(stu.attendanceCalc({held:3,attended:1,targetPct:33.333334}).classesNeeded,1);
+ assert.equal(stu.attendanceCalc({held:4,attended:3,targetPct:75}).classesCanMiss,0);
+ assert.throws(()=>stu.attendanceCalc({held:10.2,attended:5,targetPct:75}),/whole number/);
+ assert.throws(()=>stu.attendanceCalc({held:1000000000,attended:0,targetPct:99.999999}),/safe integer/);
+});
+
+await test('attendance answers match independent exact brute force for small class counts', () => {
+ for(let held=1;held<=12;held++) for(let attended=0;attended<=held;attended++) for(const pct of [25,50,75,80,90,100]){
+  const r=stu.attendanceCalc({held,attended,targetPct:pct});
+  if(attended*100 < held*pct && pct<100){let n=0;while((attended+n)*100<(held+n)*pct)n++;assert.equal(r.classesNeeded,n);}
+  else if(attended*100>=held*pct){let n=0;while(attended*100 >= (held+n+1)*pct)n++;assert.equal(r.classesCanMiss,n);}
+  else assert.equal(r.impossible,true);
+ }
+});
+
 console.log('\n── Parser-based formatters ──');
 await test('HTML formatter preserves preformatted content and rejects unsafe minification',async()=>{
  const out=await dev.formatHtml('<pre>  keep\n   me</pre>');assert.ok(out.includes('  keep\n   me'));

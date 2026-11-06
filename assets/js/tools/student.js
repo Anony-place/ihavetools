@@ -18,7 +18,10 @@ const FUNCS1 = {
 const CONSTS = { pi: Math.PI, e: Math.E, tau: Math.PI * 2, phi: (1 + Math.sqrt(5)) / 2 };
 
 export function evaluate(input, { degrees = false, factorial = true } = {}) {
-  const src = String(input);
+  const src = String(input).replace(/[−×÷]/g, ch => ({ '−': '-', '×': '*', '÷': '/' })[ch]);
+  if (src.length > 512) throw new Error('Expressions are limited to 512 characters.');
+  let depth = 0;
+  for (const ch of src) { if (ch === '(' && ++depth > 64) throw new Error('Expressions are limited to 64 levels of parentheses.'); if (ch === ')') depth--; }
   let pos = 0;
   const skip = () => { while (pos < src.length && /\s/.test(src[pos])) pos++; };
   const peek = () => { skip(); return src[pos]; };
@@ -78,23 +81,23 @@ export function evaluate(input, { degrees = false, factorial = true } = {}) {
       return v;
     }
     if (/[0-9.]/.test(c)) {
-      let s = pos;
-      while (pos < src.length && /[0-9._]/.test(src[pos])) pos++;
-      let numStr = src.slice(s, pos).replace(/_/g, '');
-      if (/^\.[0-9]+$/.test(numStr)) numStr = '0' + numStr;
-      const v = Number(numStr);
-      if (!Number.isFinite(v)) throw new Error(`“${numStr}” is not a valid number.`);
+      const m = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/.exec(src.slice(pos));
+      if (!m) throw new Error('Invalid number.');
+      pos += m[0].length;
+      const v = Number(m[0]);
+      if (!Number.isFinite(v)) throw new Error(`“${m[0]}” is not a valid finite number.`);
+      if (v === 0 && /[1-9]/.test(m[0].split(/[eE]/)[0])) throw new Error('Number is too small to represent without rounding to zero.');
       return v;
     }
     if (/[a-zA-Z]/.test(c)) {
       let s = pos;
       while (pos < src.length && /[a-zA-Z0-9]/.test(src[pos])) pos++;
       const name = src.slice(s, pos).toLowerCase();
-      if (name in CONSTS) {
+      if (Object.hasOwn(CONSTS, name)) {
         if (peek() === '(') throw new Error(`“${name}” is a constant — remove the parentheses.`);
         return CONSTS[name];
       }
-      if (name in FUNCS1) {
+      if (Object.hasOwn(FUNCS1, name)) {
         if (peek() !== '(') throw new Error(`“${name}” is a function — write it like ${name}(x).`);
         pos++;
         const arg = parseExpr();
@@ -184,17 +187,17 @@ export function fractionCalc(aText, op, bText) {
 
 /* ═══════════════════════════ Time durations ═══════════════════════════ */
 export function durationTotal(rows, op) {
-  let total = 0; // seconds
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > 1000 || !Array.isArray(op) || op.length !== rows.length - 1 || op.some(o => o !== '+' && o !== '-')) throw new Error('Enter 1–1,000 duration rows with valid + or − operators.');
+  let total = 0;
   for (let i = 0; i < rows.length; i++) {
-    const [h, m, s] = rows[i];
-    const secs = (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
-    if (secs < 0) throw new Error(`Row ${i + 1} has a negative duration.`);
-    if (i === 0) total = secs;
-    else total += (op[i - 1] === '-' ? -1 : 1) * secs;
+    const row = rows[i];
+    if (!Array.isArray(row) || row.length !== 3 || row.some(v => !Number.isSafeInteger(v) || v < 0) || row[0] > 1000000 || row[1] > 59 || row[2] > 59) throw new Error(`Row ${i + 1}: enter whole non-negative hours (up to 1,000,000), minutes and seconds (0–59).`);
+    const secs = row[0] * 3600 + row[1] * 60 + row[2];
+    total += (i > 0 && op[i - 1] === '-' ? -1 : 1) * secs;
   }
   if (total < 0) throw new Error('The subtraction goes below zero — check your rows.');
   const hh = Math.floor(total / 3600), mm = Math.floor((total % 3600) / 60), ss = total % 60;
-  const pad = (x) => String(x).padStart(2, '0');
+  const pad = x => String(x).padStart(2, '0');
   return { h: hh, m: mm, s: ss, text: `${pad(hh)}:${pad(mm)}:${pad(ss)}`, decimalHours: total / 3600, totalSeconds: total };
 }
 
@@ -216,14 +219,15 @@ export function percentageToCgpa(percentage, { scale = 10, multiplier = 9.5 } = 
 }
 
 export function weightedGpa(subjects = []) {
-  const rows = subjects.filter((s) => s && (Number(s.credits) > 0 || Number(s.gradePoint) > 0));
+  if (!Array.isArray(subjects) || subjects.length > 1000) throw new Error('Enter at most 1,000 subjects.');
+  const rows = subjects.filter(s => s && !(String(s.credits ?? '').trim() === '' && String(s.gradePoint ?? '').trim() === ''));
   if (!rows.length) throw new Error('Add at least one subject with credits and a grade point.');
   let weighted = 0;
   let credits = 0;
   for (const [i, s] of rows.entries()) {
     const gp = Number(s.gradePoint);
     const cr = Number(s.credits);
-    if (!(gp >= 0 && gp <= 100) || !(cr > 0 && cr <= 1000)) throw new Error(`Subject ${i + 1}: enter a valid grade point and credits greater than zero.`);
+    if (String(s.gradePoint ?? '').trim() === '' || String(s.credits ?? '').trim() === '' || !(gp >= 0 && gp <= 100) || !(cr > 0 && cr <= 1000)) throw new Error(`Subject ${i + 1}: enter a valid grade point and credits greater than zero.`);
     weighted += gp * cr;
     credits += cr;
   }
@@ -231,39 +235,30 @@ export function weightedGpa(subjects = []) {
 }
 
 export function attendanceCalc({ held, attended, targetPct } = {}) {
-  if (!Number.isInteger(held) || held < 1) throw new Error('Enter at least one class held so far.');
-  if (!Number.isInteger(attended) || attended < 0 || attended > held) throw new Error('Classes attended must be a whole number between 0 and classes held.');
-  if (!(targetPct > 0 && targetPct <= 100)) throw new Error('Target attendance must be between 1% and 100%.');
-  const target = targetPct / 100;
+  if (!Number.isSafeInteger(held) || held < 1 || held > 1000000000) throw new Error('Enter 1 to 1,000,000,000 classes held as a whole number.');
+  if (!Number.isSafeInteger(attended) || attended < 0 || attended > held) throw new Error('Classes attended must be a whole number between 0 and classes held.');
+  const targetText = String(targetPct);
+  if (!/^(?:\d+)(?:\.\d{1,6})?$/.test(targetText) || !(targetPct >= 1 && targetPct <= 100)) throw new Error('Target attendance must be from 1% to 100%, with at most 6 decimal places.');
+  const [whole, fraction = ''] = targetText.split('.');
+  const t = BigInt(whole) * 1000000n + BigInt(fraction.padEnd(6, '0'));
+  const scale = 100000000n, h = BigInt(held), a = BigInt(attended);
   const currentPct = attended / held * 100;
-  let classesNeeded = 0;
-  let classesCanMiss = 0;
-  let impossible = false;
-  if (attended / held >= target) {
-    classesCanMiss = Math.max(0, Math.floor(attended / target - held + 1e-9));
-  } else if (targetPct === 100) {
-    classesNeeded = null;
-    impossible = true;
-  } else {
-    classesNeeded = Math.max(0, Math.ceil((target * held - attended) / (1 - target) - 1e-9));
-  }
-  return {
-    currentPct,
-    classesNeeded,
-    classesCanMiss,
-    impossible,
+  let classesNeeded = 0, classesCanMiss = 0, impossible = false;
+  if (a * scale >= t * h) classesCanMiss = Number(a * scale / t - h);
+  else if (t === scale) { classesNeeded = null; impossible = true; }
+  else { const numerator = t * h - a * scale, denominator = scale - t; const need = (numerator + denominator - 1n) / denominator; if (need + h > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Required class count exceeds the exact safe integer limit; choose a lower target.'); classesNeeded = Number(need); }
+  return { currentPct, classesNeeded, classesCanMiss, impossible,
     projectedAttended: classesNeeded == null ? null : attended + classesNeeded,
-    projectedHeld: classesNeeded == null ? null : held + classesNeeded,
-  };
+    projectedHeld: classesNeeded == null ? null : held + classesNeeded };
 }
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
   'scientific-calculator'(root) {
-    let degrees = false;
+    let degrees = true;
     const inp = input({ type: 'text', class: 'input mono', placeholder: 'e.g. 2^10 + sin(30)*5', autocomplete: 'off', spellcheck: 'false', style: 'font-size:1.1rem' });
     const mode = segControl({ options: [{ v: 'deg', t: 'DEG' }, { v: 'rad', t: 'RAD' }], value: 'deg', ariaLabel: 'Angle unit' });
-    mode.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { degrees = b.dataset.v === 'deg'; }));
+    mode.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { degrees = b.dataset.v === 'deg'; grid.replaceChildren(); status.set('Angle mode changed. Calculate again.', 'info'); }));
     const grid = statsGrid();
     const status = statusLine('');
     const history = h('ul', { class: 'calc-history' });
@@ -277,7 +272,7 @@ const defs = {
         if (historyData.length > 30) historyData.pop();
         history.replaceChildren(...historyData.map((hh) => h('li', {},
           h('span', { class: 'h-expr', text: hh.expr }),
-          h('button', { type: 'button', class: 'h-res', style: 'background:none;border:0;cursor:pointer;color:var(--primary);font:inherit;font-weight:700', text: `= ${hh.res}`, title: 'Reuse this result', onclick: () => { inp.value = String(hh.res); inp.focus(); } }))));
+          h('button', { type: 'button', class: 'h-res', style: 'background:none;border:0;cursor:pointer;color:var(--primary);font:inherit;font-weight:700', text: `= ${hh.res}`, title: 'Reuse this result', onclick: () => { inp.value = String(hh.res); grid.replaceChildren(); status.set('History value loaded. Calculate again.', 'info'); inp.focus(); } }))));
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     const PAD = [
@@ -290,7 +285,7 @@ const defs = {
       ['sin(', 'fn'], ['cos(', 'fn'], ['tan(', 'fn'], ['exp(', 'fn'],
     ];
     const pad = h('div', { class: 'calc-pad' },
-      PAD.map(([label, kind]) => h('button', { type: 'button', class: `btn ${kind && kind !== 'const' && kind !== 'fn' ? 'btn-fn' : ''}`, text: label, onclick: () => { inp.value += label; inp.focus(); } })));
+      PAD.map(([label, kind]) => h('button', { type: 'button', class: `btn ${kind && kind !== 'const' && kind !== 'fn' ? 'btn-fn' : ''}`, text: label, onclick: () => { inp.value += label; grid.replaceChildren(); status.set('Expression changed. Calculate again.', 'info'); inp.focus(); } })));
     root.append(
       field({ label: 'Expression', control: inp, hint: 'Supports + − × ÷ ^ ! %, parentheses, sqrt, cbrt, ln, log (base 10), log2, exp, abs, floor, ceil, round, sign, sin/cos/tan (+ inverses, hyperbolic), pi, e, tau, phi' }),
       h('div', { class: 'field-row', style: 'align-items:end;margin-bottom:8px' },
@@ -301,6 +296,7 @@ const defs = {
       pad,
       h('h3', { text: 'History', style: 'margin:20px 0 6px' }),
       historyWrap(history));
+    inp.addEventListener('input', () => { grid.replaceChildren(); status.set('Expression changed. Calculate again.', 'info'); });
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); show(inp.value); } });
     function historyWrap(el) { return h('div', { class: 'result-panel result-body', style: 'padding:8px 14px;max-height:220px' }, el); }
   },
@@ -318,12 +314,14 @@ const defs = {
         grid.set([
           { label: 'Result', value: r.result, kind: 'good' },
           ...(r.mixed ? [{ label: 'Mixed number', value: r.mixed }] : []),
-          { label: 'Decimal', value: String(Number(r.decimal.toFixed(6))) },
+          { label: 'Decimal', value: String(Number(r.decimal.toPrecision(8))) },
         ]);
         steps.textContent = `Working: (${a.value}) ${op.getValue()} (${b.value}) = ${r.unsimplified} → simplified to ${r.result}`;
         status.set('Calculated ✓', 'success');
       } catch (e) { grid.replaceChildren(); steps.textContent = ''; status.set(e.message, 'error'); }
     };
+    [a, b].forEach(el => el.addEventListener('input', () => { grid.replaceChildren(); steps.textContent = ''; status.set('Input changed. Calculate again.', 'info'); }));
+    op.addEventListener('click', () => { grid.replaceChildren(); steps.textContent = ''; status.set('Operation changed. Calculate again.', 'info'); });
     root.append(
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'First fraction', control: a }),
@@ -346,8 +344,8 @@ const defs = {
         opSel ? h('div', { style: 'width:64px' }, opSel) : h('span', { class: 'hint', text: 'Duration' }),
         hh, mm, ss,
         h('span', { class: 'fr-actions' },
-          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Remove row', onclick: () => row.remove() }, '✕')));
-      row.getValues = () => [Number(hh.value) || 0, Number(mm.value) || 0, Number(ss.value) || 0];
+          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Remove row', onclick: () => { row.remove(); grid.replaceChildren(); status.set('Rows changed. Calculate again.', 'info'); } }, '✕')));
+      row.getValues = () => [hh, mm, ss].map(el => el.value === '' ? 0 : Number(el.value));
       return row;
     };
     rowsWrap.append(mkRow(0), mkRow(1));
@@ -367,10 +365,12 @@ const defs = {
         status.set('Calculated ✓', 'success');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
+    rowsWrap.addEventListener('input', () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });
+    rowsWrap.addEventListener('change', () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });
     root.append(
-      rowsWrap,
+      rowsWrap, h('p', { class: 'hint', text: 'Whole non-negative values only; minutes and seconds must be 0–59. Up to 1,000 rows.' }),
       actionsRow(
-        btn({ label: 'Add row', variant: 'secondary', icon: 'plus', onClick: () => rowsWrap.append(mkRow(rowsWrap.children.length)) }),
+        btn({ label: 'Add row', variant: 'secondary', icon: 'plus', onClick: () => { rowsWrap.append(mkRow(rowsWrap.children.length)); grid.replaceChildren(); status.set('Rows changed. Calculate again.', 'info'); } }),
         btn({ label: 'Calculate total', icon: 'hourglass', onClick: run })),
       grid, status);
   },
@@ -396,7 +396,8 @@ const defs = {
     const fmt = (n, d = 2) => String(Number(n.toFixed(d)));
     const runConvert = () => {
       try {
-        const options = { scale: Number(scale.value), multiplier: Number(multiplier.value) };
+        const options = { scale: scale.value === '' ? NaN : Number(scale.value), multiplier: multiplier.value === '' ? NaN : Number(multiplier.value) };
+        if (value.value === '') throw new Error('Enter a value to convert.');
         if (mode.getValue() === 'to-pct') {
           const r = cgpaToPercentage(Number(value.value), options);
           grid.set([
@@ -425,8 +426,8 @@ const defs = {
       const cr = input({ type: 'number', step: 'any', min: 0, placeholder: 'Credits', value: credits });
       const row = h('div', { class: 'file-row' },
         h('span', { class: 'hint', text: 'Subject' }), gp, cr,
-        h('span', { class: 'fr-actions' }, h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Remove subject', onclick: () => row.remove() }, '✕')));
-      row.getSubject = () => ({ gradePoint: Number(gp.value), credits: Number(cr.value) });
+        h('span', { class: 'fr-actions' }, h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Remove subject', onclick: () => { row.remove(); sgpaGrid.replaceChildren(); sgpaStatus.set('Subjects changed. Calculate again.', 'info'); } }, '✕')));
+      row.getSubject = () => ({ gradePoint: gp.value, credits: cr.value });
       return row;
     };
     rowsWrap.append(mkRow('9', '4'), mkRow('8', '3'), mkRow('10', '2'));
@@ -443,6 +444,10 @@ const defs = {
       } catch (e) { sgpaGrid.replaceChildren(); sgpaStatus.set(e.message, 'error'); }
     };
 
+    const clearConversion = () => { grid.replaceChildren(); status.set('Input changed. Convert again.', 'info'); };
+    [value, preset, scale, multiplier].forEach(el => { el.addEventListener('input', clearConversion); el.addEventListener('change', clearConversion); });
+    mode.addEventListener('click', clearConversion);
+    rowsWrap.addEventListener('input', () => { sgpaGrid.replaceChildren(); sgpaStatus.set('Subjects changed. Calculate again.', 'info'); });
     root.append(
       field({ label: 'Direction', control: mode }),
       h('div', { class: 'field-row', style: 'align-items:end' },
@@ -456,7 +461,7 @@ const defs = {
       h('p', { class: 'hint', text: 'Enter each subject’s grade point and credits. The SGPA is the credit-weighted average.' }),
       rowsWrap,
       actionsRow(
-        btn({ label: 'Add subject', variant: 'secondary', icon: 'plus', onClick: () => rowsWrap.append(mkRow()) }),
+        btn({ label: 'Add subject', variant: 'secondary', icon: 'plus', onClick: () => { rowsWrap.append(mkRow()); sgpaGrid.replaceChildren(); sgpaStatus.set('Subjects changed. Calculate again.', 'info'); } }),
         btn({ label: 'Calculate SGPA', icon: 'calculator', onClick: runSgpa })),
       sgpaGrid, sgpaStatus);
     shareState(root, [
@@ -473,10 +478,10 @@ const defs = {
     const status = statusLine('');
     const run = () => {
       try {
-        const r = attendanceCalc({ held: Math.floor(Number(held.value)), attended: Math.floor(Number(attended.value)), targetPct: Number(target.value) });
+        const r = attendanceCalc({ held: held.value === '' ? NaN : Number(held.value), attended: attended.value === '' ? NaN : Number(attended.value), targetPct: target.value === '' ? NaN : Number(target.value) });
         const targetLabel = `${Number(target.value).toFixed(2).replace(/\.00$/, '')}% target`;
         grid.set([
-          { label: 'Current attendance', value: `${r.currentPct.toFixed(2)}%`, kind: r.classesNeeded ? 'bad' : 'good' },
+          { label: 'Current attendance', value: `${r.currentPct.toFixed(2)}%`, kind: r.classesNeeded || r.impossible ? 'bad' : 'good' },
           r.impossible
             ? { label: targetLabel, value: 'No longer possible', kind: 'bad' }
             : r.classesNeeded
@@ -492,11 +497,12 @@ const defs = {
         r.classesNeeded || r.impossible ? 'warning' : 'success');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
+    [held, attended, target].forEach(el => el.addEventListener('input', () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); }));
     root.append(
       h('div', { class: 'field-row' },
         field({ label: 'Classes held so far', control: held }),
         field({ label: 'Classes attended', control: attended }),
-        field({ label: 'Target attendance %', control: target })),
+        field({ label: 'Target attendance %', control: target, hint: '1–100%, up to 6 decimal places.' })),
       actionsRow(btn({ label: 'Calculate attendance', icon: 'calendar', onClick: run })), grid, status);
     shareState(root, [['held', held], ['attended', attended], ['target', target]], run);
   },

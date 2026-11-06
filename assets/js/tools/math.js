@@ -7,6 +7,7 @@ const display = (n) => n !== 0 && (Math.abs(n) < 1e-7 || Math.abs(n) >= 1e15)
 function numeric(token) {
   if (!NUMBER.test(token) || !Number.isFinite(Number(token))) throw new Error(`“${token.slice(0, 40)}” is not a valid number.`);
   const n = Number(token);
+  if (n === 0 && /[1-9]/.test(token.split(/[eE]/)[0])) throw new Error('Number is too small to represent without rounding to zero.');
   if (Math.abs(n) > 1e12) throw new Error('Each number must be between -1 trillion and 1 trillion.');
   return n;
 }
@@ -98,6 +99,7 @@ const defs = {
       detail.replaceChildren(table({ headers:['Sorted values'], rows:[[s.sorted.map(display).join('  ≤  ')]] }));
       status.set('Up to 10,000 values between −1 trillion and 1 trillion. Decimal results are rounded for display; floating-point precision is limited.', 'info');
     } catch(e) { grid.replaceChildren(); detail.replaceChildren(); status.set(e.message,'error'); } };
+    root.addEventListener('input', () => { grid.replaceChildren(); detail.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });
     root.append(field({label:'Your numbers',control:inp,hint:'Separate values with commas, spaces, semicolons or newlines.'}),actionsRow(btn({label:'Calculate',icon:'sigma',onClick:run})),grid,detail,status);
   },
   'ratio-calculator'(root) {
@@ -108,6 +110,7 @@ const defs = {
       grid.set([{label:'Simplified',value:`${r.simplified[0]} : ${r.simplified[1]}`,kind:'good'},{label:'Decimal',value:display(r.factor)}]); detail.replaceChildren(table({headers:['Calculation','Result'],rows}));
       status.set('Simplification uses exact decimal inputs; decimal and proportion results are rounded for display.', 'info');
     } catch(e){grid.replaceChildren();detail.replaceChildren();status.set(e.message,'error');}};
+    root.addEventListener('input', () => { grid.replaceChildren(); detail.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });
     root.append(h('div',{class:'field-row'},field({label:'a',control:a}),field({label:'b',control:b}),field({label:'c (optional): a : b = c : x',control:c})),h('p',{class:'hint',text:'a and b must be positive; c may be zero. Use decimal points, up to 6 decimal places and 1 billion.'}),actionsRow(btn({label:'Simplify / solve',icon:'ratio',onClick:run})),grid,detail,status);
   },
   'gcd-lcm-calculator'(root) {
@@ -117,11 +120,13 @@ const defs = {
       detail.replaceChildren(h('h3',{text:'Prime factorisation',style:'margin:18px 0 10px'}),table({headers:['Number','Prime factors of absolute value'],rows:values.map(v=>[String(v),primeFactors(v).join(' × ') || '1'])}));
       status.set('Uses absolute values. LCM must fit within JavaScript’s exact safe integer range.', 'info');
     }catch(e){grid.replaceChildren();detail.replaceChildren();status.set(e.message,'error');}};
+    root.addEventListener('input', () => { grid.replaceChildren(); detail.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });
     root.append(field({label:'Numbers (2–100 non-zero integers)',control:inp,hint:'Each absolute value must be at most 1 billion.'}),actionsRow(btn({label:'Calculate GCD & LCM',icon:'grid',onClick:run})),grid,detail,status);
   },
   'weighted-average-calculator'(root) {
     const inp=textarea({rows:5,value:'80, 3\n90, 2',placeholder:'One value and weight per line, e.g. 80, 3'}),grid=statsGrid(),status=statusLine(''),detail=h('div',{});
     const run=()=>{try{const r=weightedAverage(inp.value); grid.set([{label:'Weighted average',value:display(r.average),kind:'good'},{label:'Total weight',value:display(r.totalWeight)},{label:'Sum of value × weight',value:display(r.weightedSum)},{label:'Pairs',value:String(r.pairs.length)}]);detail.replaceChildren(table({headers:['Value','Weight','Value × weight'],rows:r.pairs.map(([v,w])=>[display(v),display(w),display(v*w)])}));status.set('Weights do not have to total 100. Results are rounded for display and use floating-point arithmetic.', 'info');}catch(e){grid.replaceChildren();detail.replaceChildren();status.set(e.message,'error');}};
+    root.addEventListener('input', () => { grid.replaceChildren(); detail.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });
     root.append(field({label:'Value, weight — one pair per line',control:inp,hint:'Separate the two entries with a comma, space or semicolon. Weights must be non-negative.'}),actionsRow(btn({label:'Calculate weighted average',icon:'sigma',onClick:run})),grid,detail,status);
   },
 };
