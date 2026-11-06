@@ -1087,6 +1087,18 @@ await domTest('JSON converters clear stale output after editing and reject dupli
   }
 });
 
+await domTest('JSON format and minify preserve exact source tokens and clear stale output', async () => {
+  for (const id of ['json-formatter','json-minifier']) {
+    const app=await loadToolPage(id,'developer'); const input=app.querySelector('textarea'); input.value='{"n":9007199254740993,"a":1,"a":2}';
+    click(btnByLabel(app,'Minify')); assert.equal(resultText(document),input.value); assert.match(statusText(document),/duplicate keys preserved/);
+    input.value='{"n":2}'; fire(input,'input'); assert.ok(!app.querySelector('.result-panel').dataset.has);
+  }
+  const app=await loadToolPage('json-compare','developer'); const fields=app.querySelectorAll('textarea');
+  fields[0].value='{"n":9007199254740993}'; fields[1].value='{"n":9007199254740992}'; click(btnByLabel(app,'Compare JSON')); assert.match(statusText(document),/safe numeric range/);
+  fields[0].value='{}'; fields[1].value='{}'; click(btnByLabel(app,'Compare JSON')); assert.match(resultText(document),/No structural differences/);
+  fields[1].value='{"a":1}'; fire(fields[1],'input'); assert.ok(!app.querySelector('.result-panel').dataset.has);
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);

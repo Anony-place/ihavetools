@@ -344,3 +344,20 @@ PDF-lib has real generated-PDF tests for some operations; diverse documents, att
   boundaries and mocked out-of-order file reads. Spreadsheet formula injection
   remains a user risk, and full fidelity across spreadsheet programs, huge
   pasted inputs, browsers and all 128 tools is not certified.
+
+## Batch-20 JSON developer tools
+
+- JSON formatter and minifier now validate syntax and alter only whitespace;
+  numeric literals, escape sequences, key order and duplicate keys are preserved
+  rather than being reserialized through JavaScript numbers/objects. Duplicate
+  keys are warned about because downstream parsers may overwrite them.
+- JSON comparison now rejects duplicate keys, unsafe integers, overflow,
+  underflow and negative zero instead of potentially reporting a false match.
+  Decimal comparisons still use binary floating point and can round; for exact
+  decimal comparison use strings or a specialised parser. This same guard is
+  shared with the Batch-19 JSON converters.
+- JSON inputs are limited to 1,000,000 characters and 256 nesting levels;
+  formatted output is capped at 10,000,000 characters. Inputs and indentation
+  changes clear stale formatter/minifier/comparison results. Tests cover exact
+  token preservation, duplicate keys, number boundaries and resource limits.
+  Tests are representative, not exhaustive parser, browser or 128-tool proof.

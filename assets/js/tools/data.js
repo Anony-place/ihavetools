@@ -3,7 +3,7 @@
 // Includes an RFC 4180-compliant CSV parser (quotes, escaped quotes,
 // embedded commas/newlines) — no naive splitting.
 // =============================================================================
-import { validateJson } from './developer.js';
+import { parseConversionJson } from './developer.js';
 import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, readFile, mountTool } from '../ui.js';
 
 /* ═══════════════════════════ RFC 4180 CSV parser ═══════════════════════════ */
@@ -66,27 +66,6 @@ function coerce(v) {
   return v;
 }
 export function csvToJsonString(text, opts = {}) { return JSON.stringify(csvToJson(text, opts), null, 2); }
-
-// Reject conversions that JSON.parse/stringify would silently corrupt. Decimal
-// numbers still use binary floating-point; callers must disclose rounding.
-function parseConversionJson(text) {
-  let parsed;
-  try { parsed = JSON.parse(text); } catch (e) { throw new Error(`Invalid JSON: ${e.message}`); }
-  let validation;
-  try { validation = validateJson(text); } catch { throw new Error('JSON is too deeply nested to inspect safely.'); }
-  if (!validation.ok) throw new Error(`Invalid JSON: ${validation.message}`);
-  if (validation.duplicateKeys.length) throw new Error('Duplicate JSON object keys would overwrite values. Use unique keys.');
-  const tokens = /"(?:\\.|[^"\\])*"|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
-  for (const match of text.matchAll(tokens)) {
-    const token = match[0];
-    if (token[0] === '"') continue;
-    const n = Number(token);
-    if (!Number.isFinite(n) || (Number.isInteger(n) && !Number.isSafeInteger(n))) throw new Error('JSON contains a number outside the safe numeric range. Use a quoted string to preserve it.');
-    const significand = token.split(/[eE]/)[0];
-    if ((n === 0 && /[1-9]/.test(significand)) || Object.is(n, -0)) throw new Error('JSON contains a number that would become zero or lose its negative-zero sign. Use a quoted string to preserve it.');
-  }
-  return parsed;
-}
 
 /* ═══════════════════════════ JSON → CSV ═══════════════════════════ */
 export function jsonToCsv(jsonText, { delimiter = ',', columns = null, includeHeader = true } = {}) {
