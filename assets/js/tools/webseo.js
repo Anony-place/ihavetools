@@ -18,7 +18,7 @@ export function loadQrLib() {
   qrLibPromise = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = '/assets/vendor/qrcode-generator.js';
-    s.onload = () => window.qrcode ? resolve(window.qrcode) : reject(new Error('The QR engine loaded but did not initialise.'));
+    s.onload = () => { if (window.qrcode) resolve(window.qrcode); else { qrLibPromise = null; reject(new Error('The QR engine loaded but did not initialise.')); } };
     s.onerror = () => { qrLibPromise = null; reject(new Error('Could not load the QR engine. Check your connection and try again.')); };
     document.head.append(s);
   });
@@ -32,7 +32,7 @@ export function loadJsQrLib() {
   jsQrPromise = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = '/assets/vendor/jsqr.js';
-    s.onload = () => window.jsQR ? resolve(window.jsQR) : reject(new Error('The QR scanner loaded but did not initialise.'));
+    s.onload = () => { if (window.jsQR) resolve(window.jsQR); else { jsQrPromise = null; reject(new Error('The QR scanner loaded but did not initialise.')); } };
     s.onerror = () => { jsQrPromise = null; reject(new Error('Could not load the QR scanner. Check your connection and try again.')); };
     document.head.append(s);
   });
@@ -47,9 +47,10 @@ export function decodeQrPixels(lib, imageData) {
 }
 
 export function qrPayloadInfo(raw) {
-  const text = String(raw || '').trim();
+  const original = String(raw ?? '');
+  const text = original.trim();
   if (!text) throw new Error('The QR code did not contain readable text.');
-  const base = { type: 'Plain text', text, href: null, actionLabel: null, summary: text, safety: 'Review the content before using it.' };
+  const base = { type: 'Plain text', text: original, href: null, actionLabel: null, summary: text, safety: 'Review the content before using it.' };
 
   if (/^WIFI:/i.test(text)) {
     const fieldValue = (key) => {
@@ -81,8 +82,9 @@ export function qrPayloadInfo(raw) {
 
 /** Build a QR module matrix. lib = the vendored qrcode() factory. */
 export function makeQrModules(lib, text, ecl = 'M') {
-  const s = String(text || '').trim();
-  if (!s) throw new Error('Enter some text or a URL first.');
+  const s = String(text ?? '');
+  if (!s.trim()) throw new Error('Enter some text or a URL first.');
+  if (/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(s)) throw new Error('Text contains an unpaired Unicode surrogate.');
   if (!lib) throw new Error('The QR engine is not loaded yet.');
   if (!['L', 'M', 'Q', 'H'].includes(ecl)) throw new Error('Unsupported error-correction level.');
   let qr;
@@ -686,13 +688,15 @@ const defs = {
   'qr-code-generator'(root) {
     const inp = textarea({ rows: 3, mono: false, placeholder: 'Text, a URL, or Wi-Fi like: WIFI:S:MyNetwork;T:WPA;P:mypassword;;' });
     const ecl = select({ options: [{ v: 'L', t: 'L — smallest code (~7% recovery)' }, { v: 'M', t: 'M — balanced (~15%)' }, { v: 'Q', t: 'Q — sturdy (~25%)' }, { v: 'H', t: 'H — toughest (~30%)' }], value: 'M' });
-    const sizeSel = select({ options: [{ v: '512', t: '512 px' }, { v: '1024', t: '1024 px' }, { v: '2048', t: '2048 px' }], value: '1024' });
+    const sizeSel = select({ options: [{ v: '512', t: 'Up to 512 px' }, { v: '1024', t: 'Up to 1024 px' }, { v: '2048', t: 'Up to 2048 px' }], value: '1024' });
     const fg = input({ type: 'color', value: '#000000' });
     const bg = input({ type: 'color', value: '#ffffff' });
     const grid = statsGrid();
     const status = statusLine('Type something, then generate. Test-scan the result before printing it anywhere important.');
     const out = h('div', {});
-    let last = null; // {modules, size, version}
+    let last = null, revision = 0; // {modules, size, version}
+    const invalidate = () => { revision++; last = null; out.replaceChildren(); grid.replaceChildren(); status.set('Settings changed. Generate a new QR code.', 'info'); };
+    [inp, ecl, sizeSel, fg, bg].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     const draw = (px) => {
       const { modules, size } = last;
       const cell = Math.max(1, Math.floor(px / (size + 8)));
@@ -708,19 +712,21 @@ const defs = {
       return canvas;
     };
     const run = async () => {
-      const text = inp.value.trim();
-      if (!text) { status.set('Enter some text or a URL first.', 'warning'); out.replaceChildren(); grid.replaceChildren(); return; }
+      const token = ++revision; last = null; out.replaceChildren(); grid.replaceChildren();
+      const text = inp.value, correction = ecl.value;
+      if (!text.trim()) { status.set('Enter some text or a URL first.', 'warning'); return; }
       status.set('Loading the QR engine…', 'info');
       try {
         const lib = await loadQrLib();
-        last = makeQrModules(lib, text, ecl.value);
+        if (token !== revision) return;
+        last = makeQrModules(lib, text, correction);
         const preview = draw(512);
         preview.setAttribute('class', 'img-preview');
         preview.setAttribute('style', 'margin-top:14px;max-width:320px;width:100%');
         out.replaceChildren(preview,
           h('div', { style: 'margin-top:10px;display:flex;gap:8px;flex-wrap:wrap' },
             h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => {
-              draw(Number(sizeSel.value)).toBlob((blob) => { if (blob) { downloadBlob(blob, 'qr-code.png'); toast('PNG download started', 'success'); } }, 'image/png');
+              draw(Number(sizeSel.value)).toBlob((blob) => { if (token === revision && blob) { downloadBlob(blob, 'qr-code.png'); toast('PNG download started', 'success'); } }, 'image/png');
             } }, 'Download PNG'),
             h('button', { type: 'button', class: 'btn btn-secondary btn-sm', onclick: () => {
               downloadText(qrSvgString(last.modules, { fg: fg.value, bg: bg.value }), 'qr-code.svg', 'image/svg+xml;charset=utf-8');
@@ -729,13 +735,14 @@ const defs = {
         grid.set([
           { label: 'QR version', value: `v${last.version}` },
           { label: 'Modules', value: `${last.size} × ${last.size}` },
-          { label: 'Error correction', value: ecl.value },
+          { label: 'Error correction', value: correction },
           { label: 'Characters', value: `${[...text].length}` },
+          { label: 'PNG dimensions', value: `${Math.max(1, Math.floor(Number(sizeSel.value) / (last.size + 8))) * (last.size + 8)} × ${Math.max(1, Math.floor(Number(sizeSel.value) / (last.size + 8))) * (last.size + 8)} px` },
         ]);
-        status.set('QR code ready ✓ — scan it with your phone camera to verify before using it.', 'success');
-      } catch (e) { out.replaceChildren(); grid.replaceChildren(); status.set(e.message, 'error'); }
+        status.set(fg.value === bg.value ? 'Foreground and background are the same colour; this code will not be readable. Change colours and generate again.' : 'QR code ready ✓ — scan it with your phone camera to verify before using it.', fg.value === bg.value ? 'warning' : 'success');
+      } catch (e) { if (token === revision) { last = null; out.replaceChildren(); grid.replaceChildren(); status.set(e.message, 'error'); } }
     };
-    root.append(field({ label: 'Text or URL to encode', control: inp, hint: 'Wi-Fi format: WIFI:S:NetworkName;T:WPA;P:password;;' }),
+    root.append(field({ label: 'Text or URL to encode', control: inp, hint: 'Payload whitespace is preserved. Wi-Fi format: WIFI:S:NetworkName;T:WPA;P:password;;' }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Error correction', control: ecl }),
         field({ label: 'PNG size', control: sizeSel }),
@@ -753,23 +760,19 @@ const defs = {
     const preview = h('div', { style: 'margin-top:14px' });
     const video = h('video', { playsinline: true, muted: true, style: 'display:none;width:min(560px,100%);border-radius:14px;margin-top:14px;background:#000' });
     const canvas = document.createElement('canvas');
-    let stream = null;
-    let timer = null;
-    let previewUrl = '';
-
+    let stream = null, timer = null, previewUrl = '', revision = 0;
+    const releasePreview = () => { if (previewUrl) URL.revokeObjectURL(previewUrl); previewUrl = ''; preview.replaceChildren(); };
     const stopCamera = () => {
-      if (timer) clearTimeout(timer);
-      timer = null;
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-      stream = null;
-      video.srcObject = null;
-      video.style.display = 'none';
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
+      if (timer) clearTimeout(timer); timer = null;
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = null; video.srcObject = null; video.style.display = 'none';
+      startBtn.disabled = false; stopBtn.disabled = true;
     };
+    const invalidate = () => { revision++; stopCamera(); return revision; };
+    const resetResult = placeholder => { actions.replaceChildren(); grid.replaceChildren(); out.placeholder(placeholder); };
     const showResult = (text, source) => {
-      stopCamera();
       const info = qrPayloadInfo(text);
+      stopCamera();
       out.set(info.text);
       grid.set([
         { label: 'Payload type', value: info.type, kind: 'good' },
@@ -778,99 +781,84 @@ const defs = {
         { label: 'Detected destination', value: info.summary.length > 80 ? `${info.summary.slice(0, 77)}…` : info.summary },
       ]);
       actions.replaceChildren(...(info.href ? [
-        h('a', {
-          class: 'btn btn-primary btn-sm', href: info.href,
+        h('a', { class: 'btn btn-primary btn-sm', href: info.href,
           ...(info.type === 'Website URL' || info.type === 'Location' ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
         }, info.actionLabel || 'Open'),
       ] : []));
       status.set(`QR decoded ✓ ${info.safety}`, 'success');
     };
-    const decodeCurrentCanvas = async (source) => {
+    const decodeCurrentCanvas = async (source, token) => {
       const lib = await loadJsQrLib();
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (token !== revision) return false;
+      const pixels = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, canvas.width, canvas.height);
       const text = decodeQrPixels(lib, pixels);
       if (text) { showResult(text, source); return true; }
       return false;
     };
     const drawScaled = (source, width, height, maxSide = 1800) => {
+      if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0 || width * height > 40000000) throw new Error('Image dimensions must be valid and at most 40 million pixels.');
       const scale = Math.min(1, maxSide / Math.max(width, height));
-      canvas.width = Math.max(1, Math.round(width * scale));
-      canvas.height = Math.max(1, Math.round(height * scale));
+      canvas.width = Math.max(1, Math.round(width * scale)); canvas.height = Math.max(1, Math.round(height * scale));
       canvas.getContext('2d', { willReadFrequently: true }).drawImage(source, 0, 0, canvas.width, canvas.height);
     };
-    const scanFile = async (file) => {
-      stopCamera();
-      actions.replaceChildren();
-      grid.replaceChildren();
-      out.placeholder('Looking for a QR code…');
+    const scanFile = async file => {
+      const token = invalidate(); releasePreview(); resetResult('Looking for a QR code…');
+      if (file.size > 25 * 1024 * 1024) { status.set('Choose an image no larger than 25 MiB.', 'error'); return; }
       status.set('Loading the local QR decoder…', 'info');
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      previewUrl = URL.createObjectURL(file);
-      preview.replaceChildren(h('img', { class: 'img-preview', src: previewUrl, alt: 'Uploaded image being scanned for a QR code', style: 'max-width:360px;width:100%' }));
       try {
+        previewUrl = URL.createObjectURL(file); const currentUrl = previewUrl;
+        preview.replaceChildren(h('img', { class: 'img-preview', src: currentUrl, alt: 'Uploaded image being scanned for a QR code', style: 'max-width:360px;width:100%' }));
+        let bitmap = null;
         try {
-          let bitmap;
           try { bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
-          catch { bitmap = await createImageBitmap(file); }
-          drawScaled(bitmap, bitmap.width, bitmap.height);
-          bitmap.close?.();
+          catch { if (token !== revision) return; bitmap = await createImageBitmap(file); }
         } catch {
-          const img = new Image();
-          img.src = previewUrl;
+          if (token !== revision) return;
+          const img = new Image(); img.src = currentUrl;
           if (img.decode) await img.decode();
           else await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+          if (token !== revision) return;
           drawScaled(img, img.naturalWidth, img.naturalHeight);
         }
-        if (!await decodeCurrentCanvas('Uploaded image')) {
-          status.set('No QR code found in that image. Try a closer crop with the full code, quiet white border and less glare or blur.', 'warning');
-        }
-      } catch (e) {
-        status.set(`Could not scan that image: ${e.message}`, 'error');
-      }
+        if (bitmap) { try { if (token !== revision) return; drawScaled(bitmap, bitmap.width, bitmap.height); } finally { bitmap.close?.(); } }
+        if (token !== revision) return;
+        const found = await decodeCurrentCanvas('Uploaded image', token);
+        if (token === revision && !found) status.set('No QR code found in that image. Try a closer crop with the full code, quiet white border and less glare or blur.', 'warning');
+      } catch (e) { if (token === revision) status.set(`Could not scan that image: ${e.message}`, 'error'); }
     };
     const zone = dropzone({
       accept: 'image/*', title: 'Choose a QR image or drop it here',
-      sub: 'Screenshot, JPG, PNG or WebP — decoded locally, never uploaded',
-      onFiles: (files) => { if (files[0]) scanFile(files[0]); },
+      sub: 'Screenshot, JPG, PNG or WebP — up to 25 MiB and 40 million pixels, decoded locally',
+      onFiles: files => { if (files[0]) scanFile(files[0]); },
     });
-    const scanFrame = async () => {
-      if (!stream) return;
+    const scanFrame = async token => {
+      if (token !== revision || !stream) return;
       try {
         if (video.readyState >= 2 && video.videoWidth) {
           drawScaled(video, video.videoWidth, video.videoHeight, 1280);
-          if (await decodeCurrentCanvas('Camera')) return;
+          if (await decodeCurrentCanvas('Camera', token)) return;
         }
-      } catch (e) { status.set(`Camera scan stopped: ${e.message}`, 'error'); stopCamera(); return; }
-      if (stream) timer = setTimeout(scanFrame, 220);
+      } catch (e) { if (token === revision) { status.set(`Camera scan stopped: ${e.message}`, 'error'); stopCamera(); } return; }
+      if (token === revision && stream) timer = setTimeout(() => scanFrame(token), 220);
     };
     const startBtn = btn({ label: 'Start camera', icon: 'eye', onClick: async () => {
-      actions.replaceChildren();
-      grid.replaceChildren();
-      out.placeholder('Point the camera at a QR code…');
-      preview.replaceChildren();
-      if (!navigator.mediaDevices?.getUserMedia) {
-        status.set('This browser cannot open a camera here. Camera scanning needs a secure HTTPS page and camera permission — image upload still works.', 'error');
-        return;
-      }
+      const token = invalidate(); releasePreview(); resetResult('Point the camera at a QR code…');
+      if (!navigator.mediaDevices?.getUserMedia) { status.set('This browser cannot open a camera here. Camera scanning needs a secure HTTPS page and camera permission — image upload still works.', 'error'); return; }
+      startBtn.disabled = true; stopBtn.disabled = false;
       try {
         status.set('Requesting camera permission…', 'info');
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
-        video.srcObject = stream;
-        video.style.display = 'block';
+        const requested = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+        if (token !== revision) { requested.getTracks().forEach(t => t.stop()); return; }
+        stream = requested; video.srcObject = stream; video.style.display = 'block';
         await video.play();
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
+        if (token !== revision) return;
         status.set('Camera is scanning locally. Keep the whole QR code in frame; the result will appear here before anything opens.', 'warning');
-        scanFrame();
-      } catch {
-        stopCamera();
-        status.set('Camera permission was denied or no camera is available. You can still upload a QR image above.', 'error');
-      }
+        scanFrame(token);
+      } catch { if (token === revision) { stopCamera(); status.set('Camera permission was denied or no camera is available. You can still upload a QR image above.', 'error'); } }
     } });
-    const stopBtn = btn({ label: 'Stop camera', variant: 'secondary', icon: 'x', onClick: () => { stopCamera(); status.set('Camera stopped.', 'info'); } });
+    const stopBtn = btn({ label: 'Stop camera', variant: 'secondary', icon: 'x', onClick: () => { invalidate(); resetResult('Camera stopped.'); status.set('Camera stopped.', 'info'); } });
     stopBtn.disabled = true;
-    window.addEventListener('pagehide', stopCamera, { once: true });
+    window.addEventListener('pagehide', () => { invalidate(); releasePreview(); });
 
     root.append(
       zone,

@@ -11,6 +11,20 @@
 
 ---
 
+## Batch 26 plan — QR generation, scanner and camera lifecycle
+
+1. Audit exact QR payload preservation, library loading and asynchronous generator
+   state; invalidate outputs and pending downloads on edits or newer requests.
+2. Isolate scanner file/camera sessions with generation tokens, cancel pending
+   permission requests safely, stop stale streams and clean up URLs on page exit.
+3. Enforce practical upload limits, preserve safe link classification and disclose
+   processing/resource limitations. Cover failures and race conditions using mocked
+   browser APIs alongside real encoder/decoder round trips.
+4. Update audit, run full checks and dependency audit, then one PR with CI and
+   production verification. Physical camera and real-browser tests remain pending.
+
+---
+
 ## Batch 25 plan — SEO generator output integrity
 
 1. Audit robots.txt, sitemap, meta and URL parsing workflows against published
