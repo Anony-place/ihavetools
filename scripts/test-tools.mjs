@@ -1077,6 +1077,29 @@ await test('contrast rejects alpha; fraction arithmetic refuses unsafe integers'
  for(let n=1;n<=5;n++) assert.equal(text.lorem({unit:'words',count:n}).split(/\s+/).length,n);
 });
 
+await test('finance: small rates, safe bounds and decimal withdrawal residue', () => {
+  // Independent Python Decimal, 60-digit precision: 12000.000000065000... and 100000.000005000...
+  const rd=calc.rdCalc({monthly:1000,annualRatePct:1e-9,months:12});
+  assert.ok(Math.abs(rd.maturity-12000.000000065) < 1e-10);
+  const fd=calc.fdCalc({principal:100000,annualRatePct:1e-9,years:5,perYear:4});
+  assert.ok(Math.abs(fd.interest-0.00000500000000011875) < 1e-17);
+  const swp=calc.swpCalc(0.3,0.1,0,3); assert.equal(swp.depletedMonth,3); assert.equal(swp.balance,0); assert.equal(swp.withdrawn,0.3);
+  assert.equal(calc.simpleInterest({principal:50000,annualRatePct:8,time:3}).interest,12000);
+  assert.equal(calc.simpleInterest({principal:36500,annualRatePct:10,time:365,unit:'days'}).interest,3650);
+  for (const v of [NaN, Infinity, -1, 101]) assert.throws(()=>calc.simpleInterest({principal:100,annualRatePct:v,time:1}), /rate/);
+  assert.throws(()=>calc.simpleInterest({principal:100,annualRatePct:1,time:1,unit:'weeks'}),/Choose/);
+  assert.throws(()=>calc.fdCalc({principal:Infinity,annualRatePct:5,years:1}),/Deposit/);
+  assert.throws(()=>calc.fdCalc({principal:100,annualRatePct:Infinity,years:1}),/rate/);
+  assert.throws(()=>calc.rdCalc({monthly:100,annualRatePct:Infinity,months:12}),/rate/);
+  assert.throws(()=>calc.rdCalc({monthly:Infinity,annualRatePct:1,months:12}),/deposit/);
+  assert.throws(()=>calc.cagrCalc({startValue:1,endValue:Infinity,years:2}),/Ending/);
+  assert.throws(()=>calc.cagrCalc({startValue:1e-300,endValue:1e12,years:.01}),/range/);
+  assert.throws(()=>calc.tipCalc(100,10,1.5),/whole number/);
+  assert.throws(()=>calc.tipCalc(100,10,NaN),/whole number/);
+  assert.throws(()=>calc.gstCalc({amount:100,rate:18,mode:'unknown'}),/mode/);
+  const loan=calc.loanPrepaymentCalc(100,0,25,0,0,1); assert.equal(loan.baseline.paid,100); assert.equal(loan.baseline.months,4);
+});
+
 console.log('\n── Data (CSV/JSONL) ──');
 await test('RFC 4180 quoted commas and escaped quotes', () => {
   const rows = data.parseCsv('a,b\n"x,1",2\n"he said ""hi""",3');

@@ -1287,7 +1287,7 @@ export const tools = [
     steps: 'Enter the deposit amount.|Enter the bank’s FD interest rate and the tenure in years.|Choose the compounding frequency (quarterly is standard for most banks) and read the maturity value.',
     guide: [
       { h: 'How FD maturity is calculated',
-        p: 'A cumulative FD compounds like this: Maturity = P × (1 + r ÷ n)^(n × t). Indian banks almost always compound quarterly (n = 4), which is this calculator’s default. Worked example: ₹1,00,000 at 7% for 5 years compounded quarterly matures at ₹1,41,478 — ₹41,478 of interest, an effective yield of 7.19% a year. The “effective yield” is always a little above the quoted rate precisely because interest starts earning interest every quarter.' },
+        p: 'A cumulative FD compounds like this: Maturity = P × (1 + r ÷ n)^(n × t). Quarterly (n = 4) is the default. Fractional periods use the exponential formula; actual banks can use different broken-period and day-count rules. Worked example: ₹1,00,000 at 7% for 5 years compounded quarterly matures at ₹1,41,478 — ₹41,478 of interest, an effective yield of 7.19% a year. At a positive rate, compounding more than once a year makes the effective yield higher than the quoted nominal rate; at zero interest they are equal.' },
       { h: 'Cumulative vs interest-payout FDs',
         p: 'A cumulative FD reinvests every quarter’s interest until maturity (the number this calculator shows). A payout FD instead pays interest monthly/quarterly into your account — convenient as income, but that interest stops compounding, so the total earned is visibly less. Payout rates are also typically applied with a small discount for monthly payouts. If you don’t need the income, cumulative wins.' },
       { h: 'Before you lock in', list: [
@@ -1507,7 +1507,7 @@ export const tools = [
     popularity: 84, added: '2026-11-01',
     steps: 'Enter your monthly deposit amount.|Enter the bank’s RD interest rate and the tenure (years plus extra months).|Read the maturity value, total interest and year-by-year growth.',
     faqs: [
-      { q: 'How is RD interest calculated?', a: 'Each monthly instalment earns interest compounded quarterly for the time it stays invested — early instalments earn the most. Calculators use the standard closed-form formula A = P × [((1+i)ⁿ − 1) ÷ (1 − (1+i)^(−1/3))], where i is the quarterly rate. Your bank’s exact figure can differ by a few rupees depending on the actual deposit dates in each quarter.' },
+      { q: 'How is RD interest calculated?', a: 'Each monthly instalment earns interest compounded quarterly for the time it stays invested — early instalments earn the most. Calculators use the standard closed-form formula A = P × [((1+i)ⁿ − 1) ÷ (1 − (1+i)^(−1/3))], where i is the quarterly rate. A bank’s result can differ with its method, actual deposit dates and rounding; check its terms.' },
       { q: 'Is RD interest taxable?', a: 'Yes. RD interest is added to your income and taxed at your slab rate, and the bank deducts TDS when the interest crosses the prescribed yearly threshold. Unlike PPF, there is no tax exemption on RD interest.' },
       { q: 'What is the difference between an RD and an FD?', a: 'An FD is one lump sum locked in once; an RD builds the deposit month by month from your salary. Because later RD instalments earn interest for less time, depositing the same total earns less interest in an RD than in an FD of the same rate and overall period.' },
     ],
@@ -1521,7 +1521,7 @@ export const tools = [
           ['5 years', '₹3,00,000', '₹3,59,664', '₹59,664'],
         ] } },
       { h: 'RD vs FD vs SIP — pick by the job', list: [
-        'Goal in 6–24 months, amount must be exact (fees, a gadget, a trip): RD — guaranteed, no market risk.',
+        'For a 6–24 month goal, an RD provides a contractual deposit rate; check bank terms, penalties and deposit-insurance limits.',
         'Lump sum already in hand: FD earns more than drip-feeding the same money into an RD.',
         'Goal 5+ years away and you can tolerate ups and downs: a mutual-fund SIP has historically beaten RD rates, but nothing about it is guaranteed.',
         'Tax: RD and FD interest is taxed every year at your slab rate — at the 30% slab, a 7% RD effectively returns under 5% after tax.',

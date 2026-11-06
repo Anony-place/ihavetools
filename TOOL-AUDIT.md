@@ -361,3 +361,26 @@ PDF-lib has real generated-PDF tests for some operations; diverse documents, att
   changes clear stale formatter/minifier/comparison results. Tests cover exact
   token preservation, duplicate keys, number boundaries and resource limits.
   Tests are representative, not exhaustive parser, browser or 128-tool proof.
+
+## Batch-21 finance calculator audit
+
+- GST extraction previously labelled the gross amount as “pre-tax”; it now
+  displays net and gross correctly and explains that the equal CGST/SGST split
+  is illustrative for intra-state supply, not an IGST determination. CBIC's
+  official FAQ distinguishes intra-state and inter-state taxes:
+  https://cbic-gst.gov.in/hindi/faq.html
+- FD and RD rates and deposit inputs now have finite bounds; their calculations
+  use numerically stable log/exponential functions for very small rates. A
+  60-digit Python Decimal reference checked 1e-9% examples. FD fractional-period
+  compounding is an estimate: SBI's deposit-method page describes actual broken
+  periods using day counts rather than assuming this formula universally:
+  https://sbi.co.in/portal/web/interest-rates/deposit-rates
+- Simple-interest rate/time and CAGR boundaries reject invalid/non-finite
+  inputs; simple-interest day conversion explicitly uses 365 days. RD no longer
+  silently rounds fractional years; tip splitting no longer silently rounds or
+  defaults an invalid number of people. SWP handles a small floating-point
+  residual at depletion; loan repayment accounts for small rounding residue.
+- Edited inputs clear old results for the reviewed financial calculators. Engine
+  and jsdom cases cover examples and boundary failures, not every bank product,
+  day-count convention, tax scenario or real-browser behavior. Projections are
+  estimates, not financial or tax advice. All-tool certification remains open.

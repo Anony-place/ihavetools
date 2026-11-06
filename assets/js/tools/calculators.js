@@ -75,6 +75,7 @@ export function bmiCalc({ cm = null, ft = null, inch = null, kg = null, lb = nul
 export function gstCalc({ amount, rate, mode }) {
   if (!Number.isFinite(amount) || amount <= 0 || amount > 1e12) throw new Error('Enter an amount greater than zero and at most 1 trillion.');
   if (!(rate >= 0 && rate <= 100)) throw new Error('The GST rate must be between 0 and 100.');
+  if (!['add', 'remove'].includes(mode)) throw new Error('Choose a valid GST calculation mode.');
   let net, gst;
   if (mode === 'add') { net = amount; gst = (amount * rate) / 100; }
   else { net = (amount * 100) / (100 + rate); gst = amount - net; }
@@ -101,9 +102,9 @@ export function emiCalc(principal, annualRatePct, months) {
   return { emi, total, totalInterest: total - principal, years };
 }
 export function tipCalc(bill, tipPct, people, { roundTip = false, roundTotal = false } = {}) {
-  if (!(bill >= 0)) throw new Error('Enter a valid bill amount.');
+  if (!Number.isFinite(bill) || bill < 0 || bill > 1e12) throw new Error('Bill amount must be between 0 and 1 trillion.');
   if (!(tipPct >= 0 && tipPct <= 500)) throw new Error('Tip percentage must be between 0 and 500.');
-  if (!(people >= 1)) throw new Error('There must be at least one person.');
+  if (!Number.isInteger(people) || people < 1 || people > 10000) throw new Error('People must be a whole number from 1 to 10000.');
   let tip = (bill * tipPct) / 100;
   if (roundTip) tip = Math.ceil(tip);
   let total = bill + tip;
@@ -169,24 +170,28 @@ export function ppfCalc({ yearlyDeposit, annualRatePct = 7.1, years = 15 }) {
 }
 
 export function fdCalc({ principal, annualRatePct, years, perYear = 4 }) {
-  if (!(principal > 0)) throw new Error('Deposit amount must be greater than zero.');
-  if (!(years > 0)) throw new Error('Tenure must be greater than zero.');
-  if (!(annualRatePct >= 0)) throw new Error('Interest rate cannot be negative.');
+  if (!Number.isFinite(principal) || principal <= 0 || principal > 1e12) throw new Error('Deposit amount must be greater than zero and at most 1 trillion.');
+  if (!Number.isFinite(years) || years <= 0 || years > 100) throw new Error('Tenure must be greater than zero and at most 100 years.');
+  if (!Number.isFinite(annualRatePct) || annualRatePct < 0 || annualRatePct > 100) throw new Error('Interest rate must be between 0% and 100%.');
   if (![1, 2, 4, 12].includes(perYear)) throw new Error('Unsupported compounding frequency.');
-  const maturity = principal * Math.pow(1 + annualRatePct / 100 / perYear, perYear * years);
-  const effectiveYield = years > 0 ? (Math.pow(maturity / principal, 1 / years) - 1) * 100 : 0;
-  return { maturity, interest: maturity - principal, effectiveYield };
+  const logPeriod = Math.log1p(annualRatePct / 100 / perYear);
+  const interest = principal * Math.expm1(logPeriod * perYear * years);
+  const maturity = principal + interest;
+  const effectiveYield = 100 * Math.expm1(logPeriod * perYear);
+  if (![maturity, interest, effectiveYield].every(Number.isFinite)) throw new Error('Result is too large to calculate.');
+  return { maturity, interest, effectiveYield };
 }
 
 export function rdCalc({ monthly, annualRatePct, months }) {
-  if (!(monthly > 0)) throw new Error('Monthly deposit must be greater than zero.');
-  if (!(annualRatePct >= 0)) throw new Error('Interest rate cannot be negative.');
+  if (!Number.isFinite(monthly) || monthly <= 0 || monthly > 1e12) throw new Error('Monthly deposit must be greater than zero and at most 1 trillion.');
+  if (!Number.isFinite(annualRatePct) || annualRatePct < 0 || annualRatePct > 100) throw new Error('Interest rate must be between 0% and 100%.');
   if (!Number.isInteger(months) || months < 3 || months > 1200 || months % 3 !== 0) throw new Error('RD tenure must be in whole quarters from 3 to 1200 months — interest compounds quarterly.');
   // Standard RD closed form with quarterly compounding (deposit at the
   // start of each month): A = P × [((1+i)^n − 1) / (1 − (1+i)^(−1/3))],
   // where i = R/400 is the quarterly rate and n = number of quarters.
   const i = annualRatePct / 400;
-  const valueAt = (m) => (i === 0 ? monthly * m : monthly * ((Math.pow(1 + i, m / 3) - 1) / (1 - Math.pow(1 + i, -1 / 3))));
+  const logPeriod = Math.log1p(i);
+  const valueAt = (m) => (i === 0 ? monthly * m : monthly * (Math.expm1(logPeriod * m / 3) / -Math.expm1(-logPeriod / 3)));
   const maturity = valueAt(months);
   const deposited = monthly * months;
   const schedule = [];
@@ -199,12 +204,14 @@ export function rdCalc({ monthly, annualRatePct, months }) {
 }
 
 export function cagrCalc({ startValue, endValue, years }) {
-  if (!(startValue > 0)) throw new Error('The starting value must be greater than zero.');
-  if (!(endValue >= 0)) throw new Error('The ending value cannot be negative.');
-  if (!(years > 0)) throw new Error('The time period must be greater than zero.');
+  if (!Number.isFinite(startValue) || startValue <= 0 || startValue > 1e12) throw new Error('Starting value must be greater than zero and at most 1 trillion.');
+  if (!Number.isFinite(endValue) || endValue < 0 || endValue > 1e12) throw new Error('Ending value must be between zero and 1 trillion.');
+  if (!Number.isFinite(years) || years <= 0 || years > 100) throw new Error('Time period must be greater than zero and at most 100 years.');
   const growthMultiple = endValue / startValue;
-  const cagrPct = endValue === 0 ? -100 : (Math.pow(growthMultiple, 1 / years) - 1) * 100;
-  return { cagrPct, growthMultiple, absoluteReturnPct: (growthMultiple - 1) * 100, gain: endValue - startValue };
+  const cagrPct = endValue === 0 ? -100 : Math.expm1((Math.log(endValue) - Math.log(startValue)) / years) * 100;
+  const absoluteReturnPct = (growthMultiple - 1) * 100;
+  if (![growthMultiple, cagrPct, absoluteReturnPct].every(Number.isFinite)) throw new Error('Result is outside the supported numeric range.');
+  return { cagrPct, growthMultiple, absoluteReturnPct, gain: endValue - startValue };
 }
 
 export function gratuityCalc({ monthlySalary, years, months = 0 }) {
@@ -410,14 +417,22 @@ export function incomeTaxIndia({ grossSalary = 0, otherIncome = 0, deductionsOld
 }
 
 export function simpleInterest({ principal, annualRatePct, time, unit = 'years' }) {
-  if (!(principal > 0)) throw new Error('Principal must be greater than zero.');
+  if (!Number.isFinite(principal) || principal <= 0 || principal > 1e12) throw new Error('Principal must be greater than zero and at most 1 trillion.');
+  if (!Number.isFinite(annualRatePct) || annualRatePct < 0 || annualRatePct > 100) throw new Error('Annual rate must be between 0% and 100%.');
+  if (!['years', 'months', 'days'].includes(unit)) throw new Error('Choose years, months or days.');
   const years = unit === 'years' ? time : unit === 'months' ? time / 12 : time / 365;
-  if (!(years > 0)) throw new Error('Time must be greater than zero.');
+  if (!Number.isFinite(years) || years <= 0 || years > 100) throw new Error('Time must be greater than zero and at most 100 years.');
   const interest = (principal * annualRatePct * years) / 100;
   return { interest, total: principal + interest, years };
 }
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
+function clearOnEdit(root, status, ...results) {
+  const clear = () => { results.forEach(el => el.replaceChildren()); status.set('Inputs changed. Calculate again.', 'info'); };
+  root.addEventListener('input', clear); root.addEventListener('change', clear);
+  root.querySelectorAll('.seg-row button').forEach(button => button.addEventListener('click', clear));
+}
+
 // Batch-6 planning engines. Monetary values use the user's chosen currency.
 function bounded(value, min, max, label) {
   if (!Number.isFinite(value) || value < min || value > max) throw new Error(`${label} must be between ${min} and ${max}.`);
@@ -442,7 +457,9 @@ export function swpCalc(initial, withdrawal, annualRate, months) {
   let balance = initial, withdrawn = 0, growth = 0, depletedMonth = initial === 0 ? 0 : null, lastWithdrawal = 0;
   for (let i = 1; i <= months && balance > 0; i++) {
     const interest = balance * annualRate / 1200; growth += interest; balance += interest;
-    lastWithdrawal = Math.min(balance, withdrawal); balance -= lastWithdrawal; withdrawn += lastWithdrawal;
+    const roundingTolerance = Number.EPSILON * Math.max(balance, withdrawal) * 8;
+    lastWithdrawal = balance <= withdrawal + roundingTolerance ? balance : withdrawal;
+    balance -= lastWithdrawal; withdrawn += lastWithdrawal;
     if (balance <= 0) { balance = 0; depletedMonth = i; }
   }
   return { balance, withdrawn, growth, depletedMonth, lastWithdrawal };
@@ -472,7 +489,8 @@ export function loanPrepaymentCalc(principal, annualRate, payment, extra, lump, 
       const charge = balance * rate; interest += charge; balance += charge;
       const regular = Math.min(balance, payment + (accelerated ? extra : 0)); balance -= regular; paid += regular;
       if (accelerated && month === lumpMonth && balance > 0) { lumpApplied = Math.min(balance, lump); balance -= lumpApplied; paid += lumpApplied; }
-      if (balance <= Math.max(1e-9, principal * 1e-14)) return { months: month, interest, paid, lumpApplied };
+      // Eliminate only floating-point residue and include it in total paid.
+      if (balance <= Number.EPSILON * principal * 8) { paid += balance; return { months: month, interest, paid, lumpApplied }; }
     }
     throw new Error('Loan takes over 1,200 months to repay under these assumptions.');
   };
@@ -756,21 +774,22 @@ const defs = {
       try {
         const res = gstCalc({ amount: num(amount), rate: r, mode: mode.getValue() });
         grid.set([
-          { label: mode.getValue() === 'add' ? 'Base (net)' : 'Base (net)', value: money(res.net) },
+          { label: 'Base (net)', value: money(res.net) },
           { label: `GST @ ${fmtNumber(r)}%`, value: money(res.gst), kind: 'warn' },
-          { label: mode.getValue() === 'add' ? 'Total (gross)' : 'Pre-tax amount', value: money(res.gross), kind: 'good' },
+          { label: 'Total (gross)', value: money(res.gross), kind: 'good' },
           { label: 'CGST split', value: money(res.cgst) },
           { label: 'SGST split', value: money(res.sgst) },
         ]);
-        status.set(mode.getValue() === 'add' ? 'GST added ✓' : 'GST extracted ✓', 'success');
+        status.set(`${mode.getValue() === 'add' ? 'GST added' : 'GST extracted'}. Equal CGST/SGST is an illustrative intra-state split; inter-state supplies generally use IGST. Cess and special rules are excluded.`, 'success');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(field({ label: 'Mode', control: mode }),
       h('div', { class: 'field-row', style: 'align-items:end' },
-        field({ label: mode.getValue() === 'add' ? 'Amount (before GST)' : 'Amount (including GST)', control: amount }),
+        field({ label: 'Amount', control: amount, hint: 'Before GST when adding; including GST when extracting.' }),
         field({ label: 'GST rate', control: rate }),
         field({ label: 'Custom rate', control: custom })),
       actionsRow(btn({ label: 'Calculate GST', icon: 'receipt', onClick: run })), grid, status);
+    clearOnEdit(root, status, grid);
     shareState(root, [
       ['mode', { get: () => mode.getValue(), set: (v) => mode.setValue(v) }],
       ['amount', amount],
@@ -833,11 +852,11 @@ const defs = {
     const status = statusLine('');
     const run = () => {
       try {
-        const r = tipCalc(num(bill), num(pct), Math.floor(num(people) || 1), {
+        const r = tipCalc(num(bill), num(pct), num(people), {
           roundTip: roundTip.querySelector('input').checked,
           roundTotal: roundTotal.querySelector('input').checked,
         });
-        const n = Math.floor(num(people) || 1);
+        const n = num(people);
         grid.set([
           { label: 'Tip', value: money(r.tip) },
           { label: 'Total', value: money(r.total), kind: 'good' },
@@ -856,6 +875,7 @@ const defs = {
         ),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, roundTip, roundTotal),
       actionsRow(btn({ label: 'Calculate tip', icon: 'coins', onClick: run })), grid, status);
+    clearOnEdit(root, status, grid);
     shareState(root, [
       ['bill', bill], ['tip', pct], ['people', people],
       ['round', {
@@ -918,16 +938,17 @@ const defs = {
           { label: 'Total amount', value: money(r.total), kind: 'good' },
           { label: 'Interest per year', value: money(r.interest / r.years) },
         ]);
-        status.set(`Formula: P × R × T = ${fmtNumber(num(principal))} × ${fmtNumber(num(rate))}% × ${fmtNumber(r.years, 4)} yr`, 'info');
+        status.set(`Formula: P × R × T = ${fmtNumber(num(principal))} × ${fmtNumber(num(rate))}% × ${fmtNumber(r.years, 4)} yr. Days use a fixed 365-day year; results are estimates.`, 'info');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
       h('div', { class: 'field-row' },
         field({ label: 'Principal', control: principal }),
-        field({ label: 'Annual rate %', control: rate }),
-        field({ label: 'Time', control: time }),
+        field({ label: 'Annual rate %', control: rate, hint: '0–100%' }),
+        field({ label: 'Time', control: time, hint: 'Up to 100 years; days use 365 per year' }),
         field({ label: 'Unit', control: unit })),
       actionsRow(btn({ label: 'Calculate interest', icon: 'trending', onClick: run })), grid, status);
+    clearOnEdit(root, status, grid);
     shareState(root, [['principal', principal], ['rate', rate], ['time', time], ['unit', unit]], run);
   },
 
@@ -1010,16 +1031,17 @@ const defs = {
           { label: 'Maturity value', value: money(r.maturity), kind: 'good' },
           { label: 'Effective yield', value: `${fmtNumber(r.effectiveYield, 2)}% p.a.` },
         ]);
-        status.set(`Maturity after ${fmtNumber(num(years))} years with ${freq.options[freq.selectedIndex].text.toLowerCase()} compounding. Tax (TDS) is not included.`, 'success');
+        status.set(`Estimate after ${fmtNumber(num(years))} years using fractional-period exponential compounding; banks may calculate broken periods differently. Taxes, TDS and fees are excluded.`, 'success');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
       h('div', { class: 'field-row' },
         field({ label: 'Deposit amount', control: principal }),
-        field({ label: 'Interest rate % (p.a.)', control: rate }),
-        field({ label: 'Tenure (years)', control: years }),
+        field({ label: 'Interest rate % (p.a.)', control: rate, hint: '0–100%' }),
+        field({ label: 'Tenure (years)', control: years, hint: 'Up to 100 years; fractional periods are estimated' }),
         field({ label: 'Compounding', control: freq })),
       actionsRow(btn({ label: 'Calculate FD', icon: 'coins', onClick: run })), grid, status);
+    clearOnEdit(root, status, grid);
     shareState(root, [['principal', principal], ['rate', rate], ['years', years], ['freq', freq]], run);
   },
 
@@ -1084,7 +1106,9 @@ const defs = {
     const scheduleWrap = h('div', {});
     const run = () => {
       try {
-        const totalMonths = Math.round(num(years)) * 12 + Number(extraMonths.value);
+        const wholeYears = num(years);
+        if (!Number.isInteger(wholeYears) || wholeYears < 0) throw new Error('Tenure years must be a non-negative whole number.');
+        const totalMonths = wholeYears * 12 + Number(extraMonths.value);
         const r = rdCalc({ monthly: num(monthly), annualRatePct: num(rate), months: totalMonths });
         grid.set([
           { label: 'Total deposited', value: money(r.deposited) },
@@ -1095,16 +1119,17 @@ const defs = {
         scheduleWrap.replaceChildren(
           h('h3', { text: 'Year-by-year growth', style: 'margin:20px 0 10px' }),
           table({ headers: ['After', 'Deposited', 'Interest', 'Value'], rows: r.schedule.map((y) => [y.months % 12 === 0 ? `Y${y.months / 12}` : `${y.months} mo`, money(y.deposited), money(y.interest), money(y.value)]) }));
-        status.set(`Depositing ${money(num(monthly))} a month at ${fmtNumber(num(rate))}% with quarterly compounding. Interest is taxed at your slab rate; your bank's exact figure may differ slightly by deposit dates.`, 'success');
+        status.set(`Depositing ${money(num(monthly))} a month at ${fmtNumber(num(rate))}% with quarterly compounding. Interest is taxed at your slab rate; the bank's method, actual deposit dates and taxes can change the result.`, 'success');
       } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
       h('div', { class: 'field-row' },
         field({ label: 'Monthly deposit', control: monthly }),
-        field({ label: 'Interest rate % (p.a.)', control: rate }),
-        field({ label: 'Tenure (years)', control: years }),
+        field({ label: 'Interest rate % (p.a.)', control: rate, hint: '0–100%' }),
+        field({ label: 'Tenure (years)', control: years, hint: 'Whole years plus the selected extra months; 3–1200 months total' }),
         field({ label: 'Plus', control: extraMonths })),
       actionsRow(btn({ label: 'Calculate RD', icon: 'bank', onClick: run })), grid, scheduleWrap, status);
+    clearOnEdit(root, status, grid, scheduleWrap);
     shareState(root, [['monthly', monthly], ['rate', rate], ['years', years], ['months', extraMonths]], run);
   },
 
@@ -1143,6 +1168,7 @@ const defs = {
         field({ label: 'Ending value', control: end }),
         field({ label: 'Time period (years)', control: years })),
       actionsRow(btn({ label: 'Calculate CAGR', icon: 'trending', onClick: run })), grid, pathWrap, status);
+    clearOnEdit(root, status, grid, pathWrap);
     shareState(root, [['start', start], ['end', end], ['years', years]], run);
   },
 
@@ -1309,6 +1335,7 @@ const defs = {
       status.set('Fixed rate and payment. Interest accrues monthly; extra and lump sum are paid after that month’s interest. Fees, rate changes, tax and lender rounding excluded. Lump sum is capped to the remaining balance.', 'success');
     } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
     root.append(h('div', { class: 'field-row' }, field({ label: 'Outstanding balance', control: principal }), field({ label: 'Annual rate (%)', control: rate }), field({ label: 'Monthly payment', control: payment }), field({ label: 'Extra every month', control: extra }), field({ label: 'One-time prepayment', control: lump }), field({ label: 'Prepayment month', control: month })), actionsRow(btn({ label: 'Calculate prepayment', icon: 'calculator', onClick: run })), grid, status);
+    clearOnEdit(root, status, grid);
     shareState(root, [['principal', principal], ['rate', rate], ['payment', payment], ['extra', extra], ['lump', lump], ['month', month]], run);
   },
   'inflation-calculator'(root) {
@@ -1359,6 +1386,7 @@ const defs = {
       status.set('Fixed annual return divided by 12, compounded monthly; deposits at month end. Taxes, fees, inflation and variable returns are excluded.', 'success');
     } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
     root.append(h('div', { class: 'field-row' }, field({ label: 'Target amount', control: goal }), field({ label: 'Current savings', control: initial }), field({ label: 'Annual return (%)', control: rate }), field({ label: 'Months to goal', control: months })), actionsRow(btn({ label: 'Calculate savings goal', icon: 'calculator', onClick: run })), grid, status);
+    clearOnEdit(root, status, grid);
     shareState(root, [['goal', goal], ['initial', initial], ['rate', rate], ['months', months]], run);
   },
   'swp-calculator'(root) {
@@ -1369,6 +1397,7 @@ const defs = {
       status.set(r.depletedMonth !== null && r.depletedMonth > 0 ? `Corpus exhausted in month ${r.depletedMonth}; last withdrawal was ${money(r.lastWithdrawal)}. Fixed monthly return is applied before withdrawal; taxes and fees excluded.` : 'Fixed annual return divided by 12 is applied monthly before withdrawal. Actual returns vary; taxes, fees and inflation are excluded.', r.depletedMonth !== null ? 'warn' : 'success');
     } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
     root.append(h('div', { class: 'field-row' }, field({ label: 'Starting corpus', control: initial }), field({ label: 'Monthly withdrawal', control: withdrawal }), field({ label: 'Annual return (%)', control: rate }), field({ label: 'Projection months', control: months })), actionsRow(btn({ label: 'Calculate SWP', icon: 'calculator', onClick: run })), grid, status);
+    clearOnEdit(root, status, grid);
     shareState(root, [['initial', initial], ['withdrawal', withdrawal], ['rate', rate], ['months', months]], run);
   },
   'electricity-cost-calculator'(root) {
