@@ -12,6 +12,24 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
+## Batch 26 — QR workflow integrity and camera lifecycle
+
+- QR generator preserves leading/trailing payload whitespace, rejects unpaired
+  surrogates, invalidates obsolete results and pending PNG callbacks, reports the
+  actual rounded PNG size, and warns when foreground/background are identical.
+  Non-identical colours can still have insufficient contrast: always test-scan.
+- QR scanner preserves raw decoded text, uses per-operation tokens for file,
+  decoder and camera races, lets users cancel while permission is pending, stops
+  late-arriving streams and cleans preview URLs on pagehide (including repeat
+  pagehide after a back-forward-cache restore). Image limit: 25 MiB and 40 million
+  pixels; the browser may allocate memory before dimensions are checked.
+- Added real encoder/jsQR round trips for whitespace and mocked DOM coverage for
+  late library loading, pending PNG saves, out-of-order bitmaps, cancellation,
+  oversized files and repeat pagehide. Camera permissions, image codecs, physical
+  scanning and download behavior still require real browser/device checks.
+- A permission prompt may remain unresolved: see MDN getUserMedia documentation
+  https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia .
+
 ## Batch 25 — SEO generator output integrity
 
 - Sitemap generator validates HTTP(S) URLs, a single origin, actual calendar

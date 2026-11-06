@@ -776,7 +776,7 @@ await test('QR codes round-trip through a real decoder (jsQR)', async () => {
     }
     return seo.decodeQrPixels(scanCtx.jsQR, { data, width: dim, height: dim });
   };
-  for (const payload of ['https://i-have-tools.vercel.app/tools/qr-code-generator/', 'Hello QR — ₹100 ✓', 'WIFI:S:HomeWifi;T:WPA;P:secret123;;']) {
+  for (const payload of ['https://i-have-tools.vercel.app/tools/qr-code-generator/', 'Hello QR — ₹100 ✓', 'WIFI:S:HomeWifi;T:WPA;P:secret123;;', '  padded text \n']) {
     const { modules, version } = seo.makeQrModules(ctx.qrcode, payload, 'M');
     assert.ok(version >= 1 && version <= 40);
     assert.equal(decode(modules), payload, `round-trip failed for: ${payload}`);
@@ -1599,6 +1599,8 @@ await test('QR payload classifier exposes destinations and refuses script URLs',
   assert.equal(site.type, 'Website URL');
   assert.equal(site.href, 'https://example.com/path?q=1');
   assert.match(site.safety, /example\.com/);
+  assert.equal(seo.qrPayloadInfo('  https://example.com/  ').text, '  https://example.com/  ');
+  assert.throws(() => seo.makeQrModules(() => {}, '\ud800'), /surrogate/);
   const script = seo.qrPayloadInfo('javascript:alert(1)');
   assert.equal(script.type, 'Plain text');
   assert.equal(script.href, null, 'non-http schemes never become an open button');

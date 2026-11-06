@@ -1192,6 +1192,46 @@ await domTest('SEO generators reject unsafe input and invalidate old downloads',
  app=await loadToolPage('keyword-density-checker','webseo'); const content=app.querySelector('textarea'); content.value='alpha alpha beta'; fire(content,'input'); click(btnByLabel(app,'Count keywords')); assert.match(app.textContent,/alpha/); content.value='new'; fire(content,'input'); assert.doesNotMatch(app.textContent,/alpha/); click(btnByLabel(app,'Download CSV')); assert.match(statusText(document),/before downloading/);
 });
 
+await domTest('QR generator invalidates old content and delayed PNG downloads', async () => {
+ const canvas=window.HTMLCanvasElement.prototype, oldCtx=canvas.getContext, oldBlob=canvas.toBlob, oldQr=window.qrcode, oldCreate=URL.createObjectURL; let saved, downloads=0;
+ window.qrcode=()=>({addData(){},make(){},getModuleCount(){return 21;},isDark(){return false;}});
+ canvas.getContext=()=>({fillRect(){},set fillStyle(v){}}); canvas.toBlob=cb=>{saved=cb;}; URL.createObjectURL=()=>{downloads++;return 'blob:download';};
+ try { const app=await loadToolPage('qr-code-generator','webseo'), input=app.querySelector('textarea'); input.value=' first '; fire(input,'input'); click(btnByLabel(app,'Generate QR code')); await new Promise(r=>setTimeout(r,20)); assert.ok(btnByLabel(app,'Download PNG'));
+   click(btnByLabel(app,'Download PNG')); input.value='second'; fire(input,'input'); assert.equal(btnByLabel(app,'Download PNG'),undefined); saved(new Blob(['x'])); assert.equal(downloads,0);
+   click(btnByLabel(app,'Generate QR code')); await new Promise(r=>setTimeout(r,20)); assert.ok(btnByLabel(app,'Download SVG')); app.querySelector('input[type=color]').value='#123456'; fire(app.querySelector('input[type=color]'),'input'); assert.equal(btnByLabel(app,'Download SVG'),undefined);
+ } finally {canvas.getContext=oldCtx;canvas.toBlob=oldBlob;window.qrcode=oldQr;URL.createObjectURL=oldCreate;}
+});
+await domTest('QR generator ignores delayed library load after edits', async () => {
+ const previous=window.qrcode; delete window.qrcode;
+ try { const app=await loadToolPage('qr-code-generator','webseo'), input=app.querySelector('textarea'); input.value='old'; fire(input,'input'); click(btnByLabel(app,'Generate QR code')); const script=[...document.querySelectorAll('script')].find(el=>el.src.endsWith('/assets/vendor/qrcode-generator.js')); assert.ok(script);
+ input.value='new'; fire(input,'input'); window.qrcode=()=>({addData(){},make(){},getModuleCount(){return 21;},isDark(){return false;}}); script.onload(); await new Promise(r=>setTimeout(r,20)); assert.equal(btnByLabel(app,'Download PNG'),undefined); assert.match(statusText(document),/changed/);
+ } finally {window.qrcode=previous;}
+});
+await domTest('QR scanner cancels pending camera permission and stops late stream', async () => {
+ const old=Object.getOwnPropertyDescriptor(navigator,'mediaDevices'); let grant, stopped=0;
+ Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:()=>new Promise(resolve=>{grant=resolve;})}});
+ try { const app=await loadToolPage('qr-code-scanner','webseo'); click(btnByLabel(app,'Start camera')); assert.equal(btnByLabel(app,'Stop camera').disabled,false); click(btnByLabel(app,'Stop camera')); grant({getTracks:()=>[{stop(){stopped++;}}]}); await new Promise(r=>setTimeout(r,20)); assert.equal(stopped,1); assert.match(statusText(document),/Camera stopped/); assert.equal(app.querySelector('video').srcObject,null); }
+ finally {if(old) Object.defineProperty(navigator,'mediaDevices',old); else delete navigator.mediaDevices;}
+});
+await domTest('QR scanner ignores out-of-order files and cleans bitmap and previews', async () => {
+ const oldBitmap=global.createImageBitmap, oldQr=window.jsQR, canvas=window.HTMLCanvasElement.prototype, oldCtx=canvas.getContext, oldCreate=URL.createObjectURL, oldRevoke=URL.revokeObjectURL; const pending=[],revoked=[],closed=[]; let drawn='';
+ global.createImageBitmap=file=>new Promise(resolve=>pending.push({name:file.name,resolve})); URL.createObjectURL=f=>`blob:${f.name}`; URL.revokeObjectURL=u=>revoked.push(u); window.jsQR=()=>({data:drawn});
+ canvas.getContext=()=>({drawImage(image){drawn=image.name;},getImageData(){return {data:new Uint8ClampedArray(4),width:1,height:1};}});
+ try {const app=await loadToolPage('qr-code-scanner','webseo'); const drop=name=>{const ev=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(ev,'dataTransfer',{value:{files:[new File(['x'],name,{type:'image/png'})]}}); app.querySelector('.dropzone').dispatchEvent(ev);};
+  drop('old'); drop('new'); assert.deepEqual(revoked,['blob:old']); pending[1].resolve({name:'new payload',width:1,height:1,close(){closed.push('new');}}); await new Promise(r=>setTimeout(r,20)); assert.equal(resultText(document),'new payload');
+  pending[0].resolve({name:'old payload',width:1,height:1,close(){closed.push('old');}}); await new Promise(r=>setTimeout(r,20)); assert.equal(resultText(document),'new payload'); assert.deepEqual(closed.sort(),['new','old']);
+  window.dispatchEvent(new window.Event('pagehide')); assert.ok(revoked.includes('blob:new'));
+ } finally {global.createImageBitmap=oldBitmap;window.jsQR=oldQr;canvas.getContext=oldCtx;URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;}
+});
+
+await domTest('QR scanner rejects oversized input and cleans up on repeated pagehide', async () => {
+ const old=Object.getOwnPropertyDescriptor(navigator,'mediaDevices'); let grants=[]; let stopped=0;
+ Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:()=>new Promise(resolve=>grants.push(resolve))}});
+ try { const app=await loadToolPage('qr-code-scanner','webseo'); const drop=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(drop,'dataTransfer',{value:{files:[{name:'large.png',size:26*1024*1024,type:'image/png'}]}}); app.querySelector('.dropzone').dispatchEvent(drop); assert.match(statusText(document),/25 MiB/);
+ for(let i=0;i<2;i++){click(btnByLabel(app,'Start camera')); window.dispatchEvent(new window.Event('pagehide')); grants[i]({getTracks:()=>[{stop(){stopped++;}}]}); await new Promise(r=>setTimeout(r,10));} assert.equal(stopped,2);
+ } finally {if(old) Object.defineProperty(navigator,'mediaDevices',old); else delete navigator.mediaDevices;}
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);
