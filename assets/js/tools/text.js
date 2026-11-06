@@ -167,7 +167,7 @@ export function lorem({ unit = 'paragraphs', count = 3, classic = true } = {}) {
   };
   if (unit === 'words') {
     const words = Array.from({ length: count }, () => pick(LOREM));
-    return (classic ? ['Lorem', 'ipsum', 'dolor', 'sit', 'amet', ...words.slice(5)] : words).join(' ');
+    return (classic ? ['Lorem', 'ipsum', 'dolor', 'sit', 'amet'].slice(0, count).concat(words.slice(5)) : words).join(' ');
   }
   if (unit === 'sentences') return Array.from({ length: count }, (_, k) => sentence(k === 0)).join(' ');
   return Array.from({ length: count }, (_, k) => paragraph(k === 0)).join('\n\n');

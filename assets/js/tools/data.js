@@ -10,44 +10,46 @@ export function parseCsv(text, { delimiter = ',', headerRow = true } = {}) {
   const rows = [];
   let row = [];
   let fieldBuf = '';
-  let inQuotes = false;
+  let inQuotes = false, closedQuote = false;
   let i = 0;
   const n = text.length;
-  const endField = () => { row.push(fieldBuf); fieldBuf = ''; };
+  const endField = () => { row.push(fieldBuf); fieldBuf = ''; closedQuote = false; };
   const endRow = () => { endField(); rows.push(row); row = []; };
   if (!text.trim()) throw new Error('Paste some CSV text first.');
+  if (![';', ',', '\t', '|'].includes(delimiter)) throw new Error('Choose a valid delimiter.');
   while (i < n) {
     const c = text[i];
     if (inQuotes) {
       if (c === '"') {
         if (text[i + 1] === '"') { fieldBuf += '"'; i += 2; continue; }
-        inQuotes = false; i++; continue;
+        inQuotes = false; closedQuote = true; i++; continue;
       }
       fieldBuf += c; i++; continue;
     }
+    if (closedQuote && c !== delimiter && c !== '\r' && c !== '\n') throw new Error(`Unexpected character after closing quote at position ${i + 1}.`);
     if (c === '"') {
-      if (fieldBuf === '') { inQuotes = true; i++; continue; }
+      if (fieldBuf === '' && !closedQuote) { inQuotes = true; i++; continue; }
       throw new Error(`Unexpected double quote at position ${i + 1} — quotes are only valid at the start of a field.`);
     }
     if (c === delimiter) { endField(); i++; continue; }
-    if (c === '\r') { i++; continue; }
-    if (c === '\n') { endRow(); i++; continue; }
+    if (c === '\r' || c === '\n') { endRow(); if (c === '\r' && text[i + 1] === '\n') i++; i++; continue; }
     fieldBuf += c; i++;
   }
   if (inQuotes) throw new Error('A quoted field was left open — check for a missing closing double quote.');
-  if (fieldBuf !== '' || row.length) endRow();
-  if (rows.length && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') rows.pop();
+  if (fieldBuf !== '' || row.length || closedQuote) endRow();
   if (!rows.length) throw new Error('No rows found in the CSV input.');
-  const width = Math.max(...rows.map((r) => r.length));
+  const width = rows.reduce((max,r) => Math.max(max,r.length), 0);
   const ragged = rows.filter((r) => r.length !== width).length;
   if (ragged) throw new Error(`${ragged} row${ragged === 1 ? ' has' : 's have'} a different number of columns than the widest row (${width}). Check for missing delimiters.`);
   if (!headerRow) return { headers: rows[0].map((_, k) => `column_${k + 1}`), rows };
-  return { headers: rows[0].map((hd, k) => hd.trim() || `column_${k + 1}`), rows: rows.slice(1) };
+  const headers = rows[0].map((hd, k) => hd.trim() || `column_${k + 1}`);
+  if (new Set(headers).size !== headers.length) throw new Error('Duplicate column headers would overwrite data. Give every column a unique header.');
+  return { headers, rows: rows.slice(1) };
 }
 
 export function csvToJson(text, opts = {}) {
   const { headers, rows } = parseCsv(text, opts);
-  return rows.map((r) => Object.fromEntries(headers.map((hd, k) => [hd, coerce(r[k] ?? '')])));
+  return rows.map((r) => Object.fromEntries(headers.map((hd, k) => [hd, opts.coerceTypes ? coerce(r[k] ?? '') : (r[k] ?? '')])));
 }
 function coerce(v) {
   if (v === '') return '';
@@ -55,7 +57,7 @@ function coerce(v) {
   if (t === 'true') return true;
   if (t === 'false') return false;
   if (t === 'null') return null;
-  if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(t) && t.length < 16) return Number(t);
+  if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(t) && t.length < 16 && Number.isFinite(Number(t))) return Number(t);
   return v;
 }
 export function csvToJsonString(text, opts = {}) { return JSON.stringify(csvToJson(text, opts), null, 2); }
@@ -81,17 +83,18 @@ export function jsonToCsv(jsonText, { delimiter = ',', columns = null, includeHe
   };
   const lines = [];
   if (includeHeader) lines.push(headers.map(cell).join(delimiter));
-  for (const o of objs) lines.push(headers.map((hd) => cell(o[hd])).join(delimiter));
+  for (const o of objs) lines.push(headers.map((hd) => cell(Object.hasOwn(o, hd) ? o[hd] : undefined)).join(delimiter));
   return lines.join('\n');
 }
 
 /* ═══════════════════════════ JSON Lines ═══════════════════════════ */
 export function jsonlToJsonArray(text) {
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  if (!lines.length) throw new Error('Paste some JSON Lines first.');
+  const lines = text.split(/\r?\n/);
+  if (!lines.some(l => l.trim())) throw new Error('Paste some JSON Lines first.');
   const out = [];
   const errors = [];
   lines.forEach((line, idx) => {
+    if (!line.trim()) return;
     try { out.push(JSON.parse(line)); }
     catch (e) { errors.push({ line: idx + 1, message: e.message }); }
   });
@@ -116,12 +119,13 @@ const defs = {
     const inp = textarea({ rows: 10, value: 'name,role,city\nAda,engineer,"London"\nGrace,"Admiral, USN","New York"', placeholder: 'Paste CSV…' });
     const delim = select({ options: [{ v: ',', t: 'Comma ,' }, { v: ';', t: 'Semicolon ;' }, { v: '\t', t: 'Tab' }, { v: '|', t: 'Pipe |' }], value: ',' });
     const header = switchChip({ label: 'First row is a header', checked: true });
+    const coerceTypes = switchChip({ label: 'Infer basic types (may change values)', checked: false });
     const status = statusLine('Quoted fields, escaped quotes ("") and multi-line values are all handled.');
     const out = resultPanel({ label: 'JSON', download: true, downloadName: 'data.json', downloadMime: 'application/json;charset=utf-8' });
     const zoneWrap = h('div', {});
     const run = () => {
       try {
-        const json = csvToJsonString(inp.value, { delimiter: delim.value, headerRow: header.querySelector('input').checked });
+        const json = csvToJsonString(inp.value, { delimiter: delim.value, headerRow: header.querySelector('input').checked, coerceTypes: coerceTypes.querySelector('input').checked });
         out.set(json);
         const rows = JSON.parse(json).length;
         status.set(`${rows} record${rows === 1 ? '' : 's'} converted ✓`, 'success');
@@ -131,7 +135,8 @@ const defs = {
       zoneWrap,
       h('div', { class: 'field-row', style: 'align-items:end;margin-top:12px' },
         field({ label: 'Delimiter', control: delim }),
-        field({ label: 'Options', control: header })),
+        field({ label: 'Options', control: header }),
+        field({ label: 'Value types', control: coerceTypes, hint: 'Default preserves all CSV values as text, including leading zeroes.' })),
       actionsRow(btn({ label: 'Convert to JSON', icon: 'table', onClick: run })),
       status, h('br'), out.panel);
     import('../ui.js').then(({ dropzone }) => {
@@ -149,7 +154,7 @@ const defs = {
     const inp = textarea({ rows: 10, value: '[{"name":"Ada","role":"engineer","city":"London"},{"name":"Grace","role":"Admiral, USN","city":"New York"}]', placeholder: 'Paste a JSON array of objects…' });
     const delim = select({ options: [{ v: ',', t: 'Comma ,' }, { v: ';', t: 'Semicolon ;' }, { v: '\t', t: 'Tab' }], value: ',' });
     const cols = input({ type: 'text', placeholder: 'e.g. name, city (blank = all columns)' });
-    const status = statusLine('Values containing delimiters, quotes or newlines are escaped correctly.');
+    const status = statusLine('CSV quoting does not prevent spreadsheet formula execution. Treat untrusted cells as text when opening in spreadsheet software.');
     const out = resultPanel({ label: 'CSV', download: true, downloadName: 'data.csv', downloadMime: 'text/csv;charset=utf-8' });
     const run = () => {
       try {
@@ -158,7 +163,7 @@ const defs = {
           columns: cols.value.split(',').map((s) => s.trim()).filter(Boolean),
         });
         out.set(csv);
-        status.set(`${csv.split('\n').length - 1} data rows written ✓`, 'success');
+        status.set('CSV created. Quoting does not prevent spreadsheet formula execution; treat untrusted values as text.', 'info');
       } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
     };
     root.append(field({ label: 'JSON array', control: inp }),

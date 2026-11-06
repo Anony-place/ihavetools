@@ -47,13 +47,19 @@ export function parseColor(text) {
   if (s.startsWith('#') || /^[0-9a-fA-F]{3,8}$/.test(s)) return hexToRgb(s);
   const rgbM = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)\s*(?:[,/]\s*([\d.%]+)\s*)?\)$/i.exec(s);
   if (rgbM) {
-    const rgb = { r: clampByte(Number(rgbM[1])), g: clampByte(Number(rgbM[2])), b: clampByte(Number(rgbM[3])) };
+    const rgb = { r: Number(rgbM[1]), g: Number(rgbM[2]), b: Number(rgbM[3]) };
     if (rgbM[4]) rgb.a = rgbM[4].endsWith('%') ? Number(rgbM[4].slice(0, -1)) / 100 : Number(rgbM[4]);
-    if ([rgb.r, rgb.g, rgb.b].some((v) => v > 255 || v < 0)) throw new Error('RGB channels must be between 0 and 255.');
+    if ([rgb.r, rgb.g, rgb.b].some((v) => !Number.isFinite(v) || v > 255 || v < 0)) throw new Error('RGB channels must be between 0 and 255.');
+    if (rgb.a != null && (!Number.isFinite(rgb.a) || rgb.a < 0 || rgb.a > 1)) throw new Error('Alpha must be between 0 and 1.');
+    rgb.r = clampByte(rgb.r); rgb.g = clampByte(rgb.g); rgb.b = clampByte(rgb.b);
     return rgb;
   }
   const hslM = /^hsla?\(\s*([\d.]+)(?:deg)?[\s,]+([\d.]+)%[\s,]+([\d.]+)%\s*(?:[,/]\s*([\d.%]+)\s*)?\)$/i.exec(s);
-  if (hslM) return hslToRgb({ h: Number(hslM[1]), s: Number(hslM[2]), l: Number(hslM[3]), a: hslM[4] ? (hslM[4].endsWith('%') ? Number(hslM[4].slice(0, -1)) / 100 : Number(hslM[4])) : 1 });
+  if (hslM) {
+    const a = hslM[4] ? (hslM[4].endsWith('%') ? Number(hslM[4].slice(0, -1)) / 100 : Number(hslM[4])) : 1;
+    if (!Number.isFinite(a) || a < 0 || a > 1) throw new Error('Alpha must be between 0 and 1.');
+    return hslToRgb({ h: Number(hslM[1]), s: Number(hslM[2]), l: Number(hslM[3]), a });
+  }
   throw new Error(`“${s}” is not a color format this tool understands. Try #4f46e5, rgb(79,70,229) or hsl(243,75%,59%).`);
 }
 export function luminance({ r, g, b }) {
@@ -61,6 +67,7 @@ export function luminance({ r, g, b }) {
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
 }
 export function contrastRatio(rgb1, rgb2) {
+  if ((rgb1.a ?? 1) !== 1 || (rgb2.a ?? 1) !== 1) throw new Error('Contrast requires opaque colors. Composite transparent colors against their actual backgrounds first.');
   const l1 = luminance(rgb1), l2 = luminance(rgb2);
   return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
 }
@@ -206,11 +213,11 @@ const defs = {
           h('p', { style: `color:${rgbToHex(f).slice(0, 7)};font-size:.75rem;margin:0 0 12px`, text: 'Small text sample at 12px, often used for captions.' }),
           h('p', { style: `color:${rgbToHex(f).slice(0, 7)};font-size:1.6rem;font-weight:700;margin:0`, text: 'Large bold text 25px' }));
         status.set(`Passes ${rows.filter(([, ok]) => ok).length} of ${rows.length} WCAG thresholds.`, ratio >= 4.5 ? 'success' : 'warning');
-      } catch (e) { status.set(e.message, 'error'); }
+      } catch (e) { grid.replaceChildren(); sample.replaceChildren(); status.set(e.message, 'error'); }
     };
     [[fg, fgHex], [bg, bgHex]].forEach(([c, x]) => {
       c.addEventListener('input', () => { x.value = c.value; render(); });
-      x.addEventListener('input', () => { try { hexToRgb(x.value); render(); } catch { /* typing */ } });
+      x.addEventListener('input', render);
     });
     root.append(
       sample,

@@ -122,27 +122,31 @@ export function evaluate(input, { degrees = false, factorial = true } = {}) {
 }
 
 /* ═══════════════════════════ Fractions ═══════════════════════════ */
+function safeFraction(n, d) {
+  if (!Number.isSafeInteger(n) || !Number.isSafeInteger(d)) throw new Error('Fraction is too large for exact integer arithmetic. Use smaller numbers.');
+  return { n, d };
+}
 export function parseFraction(text) {
   const s = String(text).trim().replace(/\s+/g, ' ');
   let m = /^(-?)(\d+)\s+(\d+)\/(\d+)$/.exec(s); // mixed: -2 1/2
   if (m) {
     const [, sign, whole, num, den] = m;
     if (Number(den) === 0) throw new Error('A fraction cannot have a zero denominator.');
-    return { n: (Number(whole) * Number(den) + Number(num)) * (sign ? -1 : 1), d: Number(den) };
+    return safeFraction((Number(whole) * Number(den) + Number(num)) * (sign ? -1 : 1), Number(den));
   }
   m = /^(-?) (\d+) \/ (\d+)$/.exec(s);
   if (m) {
     const [, sign, num, den] = m;
     if (Number(den) === 0) throw new Error('A fraction cannot have a zero denominator.');
-    return { n: Number(num) * (sign ? -1 : 1), d: Number(den) };
+    return safeFraction(Number(num) * (sign ? -1 : 1), Number(den));
   }
   m = /^(-?)(\d+)\/(\d+)$/.exec(s.replace(/\s/g, ''));
   if (m) {
     const [, sign, num, den] = m;
     if (Number(den) === 0) throw new Error('A fraction cannot have a zero denominator.');
-    return { n: Number(num) * (sign ? -1 : 1), d: Number(den) };
+    return safeFraction(Number(num) * (sign ? -1 : 1), Number(den));
   }
-  if (/^-?\d+$/.test(s)) return { n: Number(s), d: 1 };
+  if (/^-?\d+$/.test(s)) return safeFraction(Number(s), 1);
   throw new Error(`“${text}” is not a fraction. Write 3/4 or a mixed number like 2 1/2.`);
 }
 function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a; }
@@ -155,8 +159,12 @@ export function fractionCalc(aText, op, bText) {
   const a = parseFraction(aText), b = parseFraction(bText);
   let r;
   switch (op) {
-    case '+': r = { n: a.n * b.d + b.n * a.d, d: a.d * b.d }; break;
-    case '-': r = { n: a.n * b.d - b.n * a.d, d: a.d * b.d }; break;
+    case '+':
+    case '-': {
+      const left = a.n * b.d, right = b.n * a.d;
+      if (!Number.isSafeInteger(left) || !Number.isSafeInteger(right)) throw new Error('Fraction is too large for exact integer arithmetic. Use smaller numbers.');
+      r = { n: op === '+' ? left + right : left - right, d: a.d * b.d }; break;
+    }
     case '*': r = { n: a.n * b.n, d: a.d * b.d }; break;
     case '/':
       if (b.n === 0) throw new Error('Division by the zero fraction is undefined.');
@@ -164,6 +172,7 @@ export function fractionCalc(aText, op, bText) {
       break;
     default: throw new Error('Unknown operation.');
   }
+  safeFraction(r.n, r.d);
   const simp = simplify(r);
   const mixed = (() => {
     const whole = Math.trunc(simp.n / simp.d);

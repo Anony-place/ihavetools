@@ -719,14 +719,13 @@ await domTest('css-formatter: clear button resets panel', async () => {
   const ta = app.querySelector('textarea');
   ta.value = 'body{color:red}';
   click(btnByLabel(app, 'Format'));
+  await new Promise(r=>setTimeout(r,100));
   assert.match(resultText(document), /color: red;/);
 });
-await domTest('html-formatter: minify output', async () => {
+await domTest('html-formatter: parser output and safe minification disclosure', async () => {
   const app = await loadToolPage('html-formatter', 'developer');
-  const ta = app.querySelector('textarea');
-  ta.value = '<div>\n<p>hi</p>\n</div>';
-  click(btnByLabel(app, 'Minify'));
-  assert.equal(resultText(document).trim(), '<div><p>hi</p></div>');
+  assert.equal(btnByLabel(app, 'Minify'),undefined); assert.match(app.textContent,/minification is unavailable/);
+  app.querySelector('textarea').value='<pre>  keep\n   me</pre>';click(btnByLabel(app, 'Format'));await new Promise(r=>setTimeout(r,100)); assert.match(resultText(document),/  keep\n   me/);
 });
 
 console.log('\n── Batch-6 planning UIs ──');
@@ -932,6 +931,22 @@ await domTest('image tools accept picker and drop, clear stale results, and refu
       assert.match(target.textContent,/Loaded|Analysed/,`${id}: ${target.textContent}`);
     }
   } finally { global.Image=originalImage; URL.createObjectURL=originalCreate; URL.revokeObjectURL=originalRevoke; canvas.getContext=getContext; canvas.toBlob=toBlob; }
+});
+
+console.log('\n── All registered tool UI mount smoke test ──');
+await domTest('all 128 registered tools mount in jsdom',async()=>{
+ const {tools}=await import('../assets/js/registry.js'); const issues=[];
+ for (const tool of tools) {try {await loadToolPage(tool.id,tool.engine);} catch(e){issues.push(`${tool.id}: ${e.message}`);}}
+ assert.deepEqual(issues,[]);
+});
+await domTest('compound interest always contributes monthly for yearly compounding',async()=>{
+ const app=await loadToolPage('compound-interest-calculator','calculators');const inputs=app.querySelectorAll('input[type=number]'); inputs[0].value='0';inputs[1].value='0';inputs[2].value='1';inputs[3].value='100';app.querySelector('select').value='1';click(btnByLabel(app,'Calculate growth'));assert.match(app.textContent,/1,200\.00Total contributed/);
+});
+await domTest('CSV text preservation and duplicate headers in UI',async()=>{
+ const app=await loadToolPage('csv-to-json','data');const input=app.querySelector('textarea');input.value='id,flag\n001,true';click(btnByLabel(app,'Convert to JSON'));assert.match(app.textContent,/"001"/);assert.match(app.textContent,/"true"/);input.value='x,x\n1,2';click(btnByLabel(app,'Convert to JSON'));assert.match(app.textContent,/Duplicate column/);assert.doesNotMatch(resultText(document),/001/);
+});
+await domTest('contrast checker rejects alpha and clears stale result',async()=>{
+ const app=await loadToolPage('color-contrast-checker','color');const fields=app.querySelectorAll('input[type=text]');fields[0].value='#0000';fire(fields[0],'input');assert.match(app.textContent,/requires opaque colors/);assert.doesNotMatch(app.textContent,/Contrast ratio/);
 });
 
 /* ═════════════════ summary ═════════════════ */

@@ -475,7 +475,7 @@ PR #19 merged, CI passed, Vercel production READY/PROMOTED; ISO week, age and ti
 
 ---
 
-## 🚧 BATCH-14 — Reliable conversion workflows (2026-11-06)
+## ✅ BATCH-14 — Reliable conversion workflows (2026-11-06)
 
 Market scan (Measurement Wizard, Toolonic and Baseutils) shows pressure,
 energy, power and fuel-economy workflows beyond our existing eight converter
@@ -503,7 +503,32 @@ One batch, one PR:
 
 Local implementation complete: 128 tools / 78 guides; 206 engine, 93 DOM,
 9 chrome, service-worker and 20 integrity checks passed; npm audit reports zero
-vulnerabilities. PR, CI, merge and production verification remain pending.
+vulnerabilities. PR #20 merged, CI passed, production READY/PROMOTED; live converter examples verified.
+
+---
+
+## 🚧 BATCH-15 — A-to-Z real-tools audit (2026-11-06)
+
+User requested an audit of every tool, to distinguish working implementations
+from misleading or incomplete claims. No new thin tools this batch.
+
+1. Inventory all 128 registered tools and map implementation, existing test
+   coverage and limitations in a persistent audit report. Inspect every engine,
+   prioritising claims that can cause wrong output or data loss. Check actual
+   working logic, validation and known browser/API restrictions, not just links.
+2. Exercise representative and boundary cases, plus real file processing where
+   feasible. Identify unverified tools explicitly instead of declaring all good.
+3. Fix confirmed high-impact defects and misleading descriptions in one batch;
+   add regression tests, keep local processing and existing routes intact.
+4. Rebuild, full checks, audit dependencies, one PR, CI and deployment verification.
+   Report outstanding manual real-browser/device/file and accessibility testing
+   honestly. GSC is independent and must not block this work.
+
+Audit inventory and limitations: `TOOL-AUDIT.md`. All 128 UIs mounted in
+jsdom; this is not per-tool certification. Confirmed high-impact calculation,
+CSV, code-formatting and other bugs fixed. HTML minify disabled for safety.
+Real-browser/file matrix and deeper per-tool validation remain open.
+PR, CI and production verification remain pending.
 
 ---
 

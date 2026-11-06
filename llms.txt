@@ -33,9 +33,9 @@
 - [JWT Decoder](https://i-have-tools.vercel.app/tools/jwt-decoder/): Decode JWT headers and payloads and inspect expiry times.
 - [HTML Formatter](https://i-have-tools.vercel.app/tools/html-formatter/): Indent messy HTML into clean, readable markup.
 - [CSS Formatter](https://i-have-tools.vercel.app/tools/css-formatter/): Beautify or minify CSS with a real tokenizer.
-- [JavaScript Formatter](https://i-have-tools.vercel.app/tools/js-formatter/): Re-indent JavaScript with a string- and template-aware tokenizer.
-- [Extract Audio from Video](https://i-have-tools.vercel.app/tools/extract-audio/): Pull the sound out of any video and save it as a WAV file.
-- [MP4 Inspector](https://i-have-tools.vercel.app/tools/mp4-inspector/): Read duration, resolution, codecs and bitrate straight from MP4 bytes.
+- [JavaScript Formatter](https://i-have-tools.vercel.app/tools/js-formatter/): Format JavaScript using a parser-based formatter.
+- [Extract Audio from Video](https://i-have-tools.vercel.app/tools/extract-audio/): Extract supported video audio in your browser and save it as WAV.
+- [MP4 Inspector](https://i-have-tools.vercel.app/tools/mp4-inspector/): Inspect supported MP4 boxes and available track metadata.
 - [Tone Generator](https://i-have-tools.vercel.app/tools/tone-generator/): Play or download pure tones — sine, square, sawtooth, triangle.
 - [Audio Trimmer](https://i-have-tools.vercel.app/tools/audio-trimmer/): Cut audio files precisely and export the selection as WAV.
 - [Audio Speed Changer](https://i-have-tools.vercel.app/tools/audio-speed-changer/): Speed audio up to 4× or slow it to 0.25×, with volume boost.
@@ -97,10 +97,10 @@
 - [Date Difference](https://i-have-tools.vercel.app/tools/date-difference/): Days, weeks, calendar difference and weekdays between two dates.
 - [Date Add / Subtract](https://i-have-tools.vercel.app/tools/date-add-calculator/): Add or subtract days, weeks, months or years from a date.
 - [Time Zone Converter](https://i-have-tools.vercel.app/tools/time-zone-converter/): Convert a time between any two IANA time zones.
-- [CSV to JSON](https://i-have-tools.vercel.app/tools/csv-to-json/): RFC 4180-correct CSV conversion, with header row support.
+- [CSV to JSON](https://i-have-tools.vercel.app/tools/csv-to-json/): Convert quoted CSV to JSON while preserving text by default.
 - [JSON to CSV](https://i-have-tools.vercel.app/tools/json-to-csv/): JSON arrays to properly escaped CSV, with column selection.
 - [JSON Lines Converter](https://i-have-tools.vercel.app/tools/json-lines-converter/): Convert JSON ⇄ JSON Lines (NDJSON) with per-line validation.
-- [Random Number Generator](https://i-have-tools.vercel.app/tools/random-number-generator/): Truly random numbers in any range — lottery-grade fairness.
+- [Random Number Generator](https://i-have-tools.vercel.app/tools/random-number-generator/): Random whole numbers in a bounded range using browser cryptography.
 - [Dice Roller](https://i-have-tools.vercel.app/tools/dice-roller/): Roll up to 12 dice with any number of sides — crypto-random.
 - [PDF Merge](https://i-have-tools.vercel.app/tools/pdf-merge/): Combine PDFs in order — processed entirely in your browser.
 - [PDF Rotate](https://i-have-tools.vercel.app/tools/pdf-rotate/): Rotate every page or just some pages by 90°, 180° or 270°.

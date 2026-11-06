@@ -8,7 +8,7 @@ import { h, field, input, textarea, select, switchChip, segControl, btn, actions
 /* Unbiased random integer in [0, max) via rejection sampling */
 export function randomInt(max, rng = globalThis.crypto) {
   if (!rng?.getRandomValues) throw new Error('Your browser does not provide crypto.getRandomValues. Please use a modern, secure browser.');
-  if (max <= 0 || max > 4294967296) throw new Error('Invalid random range.');
+  if (!Number.isInteger(max) || max <= 0 || max > 4294967296) throw new Error('Invalid random range.');
   const limit = Math.floor(4294967296 / max) * max;
   const buf = new Uint32Array(1);
   let v;
