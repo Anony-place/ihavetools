@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="google-site-verification" content="MsDOM6JlqwnItZo1uJAFNYWAEkaDQPOJvzyfIIE9Vbg">
 <title>Privacy Policy | iHaveTools</title>
-<meta name="description" content="iHaveTools Privacy Policy — your files and text are processed in your browser and never uploaded. No accounts, no analytics trackers. What little data…">
+<meta name="description" content="iHaveTools Privacy Policy — local processing, optional share links, YouTube thumbnails, browser storage and hosting logs.">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <link rel="canonical" href="https://i-have-tools.vercel.app/privacy-policy/">
 <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)">
@@ -18,7 +18,7 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Privacy Policy | iHaveTools">
-<meta property="og:description" content="iHaveTools Privacy Policy — your files and text are processed in your browser and never uploaded. No accounts, no analytics trackers. What little data…">
+<meta property="og:description" content="iHaveTools Privacy Policy — local processing, optional share links, YouTube thumbnails, browser storage and hosting logs.">
 <meta property="og:url" content="https://i-have-tools.vercel.app/privacy-policy/">
 <meta property="og:image" content="https://i-have-tools.vercel.app/assets/icons/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -26,13 +26,13 @@
 <meta property="og:image:alt" content="iHaveTools — free online tools">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Privacy Policy | iHaveTools">
-<meta name="twitter:description" content="iHaveTools Privacy Policy — your files and text are processed in your browser and never uploaded. No accounts, no analytics trackers. What little data…">
+<meta name="twitter:description" content="iHaveTools Privacy Policy — local processing, optional share links, YouTube thumbnails, browser storage and hosting logs.">
 <meta name="twitter:image" content="https://i-have-tools.vercel.app/assets/icons/og-image.png">
 <script>(function(){try{var t=localStorage.getItem('iht-theme');if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){}})();</script>
 <link rel="stylesheet" href="/assets/css/styles.css">
 <link rel="modulepreload" href="/assets/js/site.js">
 <link rel="modulepreload" href="/assets/js/icons.js">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Privacy Policy","description":"iHaveTools Privacy Policy — your files and text are processed in your browser and never uploaded. No accounts, no analytics trackers. What little data…","url":"https://i-have-tools.vercel.app/privacy-policy/","inLanguage":"en","isPartOf":{"@id":"https://i-have-tools.vercel.app/#site"},"dateModified":"2026-11-06"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Privacy Policy","description":"iHaveTools Privacy Policy — local processing, optional share links, YouTube thumbnails, browser storage and hosting logs.","url":"https://i-have-tools.vercel.app/privacy-policy/","inLanguage":"en","isPartOf":{"@id":"https://i-have-tools.vercel.app/#site"},"dateModified":"2026-11-06"}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://i-have-tools.vercel.app/"},{"@type":"ListItem","position":2,"name":"Privacy Policy","item":"https://i-have-tools.vercel.app/privacy-policy/"}]}</script>
 </head>
 <body class="page-static">
@@ -53,7 +53,7 @@
 <div class="container">
   <header class="page-head">
     <h1>Privacy Policy</h1>
-    <p class="lede">Short version: your files and text never leave your device. There are no accounts and no trackers.</p>
+    <p class="lede">Most processing is local. Optional shared links, YouTube thumbnails, browser storage and hosting requests have privacy implications explained below.</p>
   </header>
 </div>
 <section class="section" style="padding-top:8px">
@@ -61,20 +61,25 @@
 
     <p><em>Last updated: 2026-11-06</em></p>
     <section><h2>What data the tools process</h2>
-    <p>Every tool on iHaveTools runs entirely in your web browser. Files you open (PDFs, images, audio) and text you type or paste are processed in your device's memory and are <strong>never uploaded to a server</strong>. We could not read your documents even if we wanted to — the site is plain static files, and the source code is public for anyone to audit.</p></section>
+    <p>Tools run in your browser. Files you select for PDF, image, audio and video processing and text entered into text tools are processed locally rather than uploaded for processing. Browser extensions, operating-system software, screen captures, downloads and services you choose to use separately are outside our control.</p>
+    <p>The YouTube thumbnail downloader requests images from YouTube’s CDN (i.ytimg.com). That service receives the requested video ID and normal request information such as your IP address, under its own policies. Opening external links or QR-code actions also contacts their destinations.</p></section>
+    <section><h2>Optional calculator links</h2>
+    <p>Calculator inputs are not automatically added to the address bar. If you choose “Copy link with inputs”, the resulting link contains your values in its URL fragment. Fragments are not sent in normal HTTP requests, but anyone with the link can read them; they may also remain in browser history, bookmarks, clipboard or sharing apps. Avoid sharing sensitive information. “Copy page link” excludes inputs.</p>
+    <p>Older links may contain values in the query string. Opening one sends those values to the host and intermediaries as part of the request and may record them in logs or history. The tool removes known input parameters from the address bar after loading, but cannot erase earlier records or prevent the initial request.</p></section>
     <section><h2>Accounts and personal data</h2>
     <p>There are no user accounts, no sign-up forms and no newsletters. We do not collect names, email addresses or payment details.</p></section>
     <section><h2>Cookies, local storage and caching</h2>
-    <p>The site itself sets no cookies. Two pieces of information may be stored <em>on your own device</em>, by your browser, at your control:</p>
+    <p>The site itself sets no cookies. The browser may store the following <em>on your own device</em>:</p>
     <ul>
       <li><strong>Theme preference</strong> — if you switch between light and dark mode, your choice is saved in <code>localStorage</code> so the site remembers it. It never leaves your device.</li>
+      <li><strong>Favourites and recently used</strong> — tool IDs are saved in <code>localStorage</code> to display your lists on this device.</li>
       <li><strong>Offline cache</strong> — a service worker caches the site's pages and static files for offline access. Only previously visited pages and resources are available offline; query-string URLs are not saved. It never stores files or text you process with a tool.</li>
     </ul>
-    <p>You can clear both at any time from your browser's site-data settings.</p></section>
+    <p>You can clear site data at any time from your browser's site-data settings.</p></section>
     <section><h2>Analytics and advertising</h2>
     <p>iHaveTools currently runs <strong>no analytics and no advertising trackers</strong>. If privacy-respecting, aggregate analytics or ads are ever added to keep the site free, this policy will be updated first and the change will be visible here with a new date.</p></section>
     <section><h2>Hosting logs</h2>
-    <p>The static hosting provider (Firebase Hosting, by Google) may automatically log standard request information — such as IP address, browser type and time of request — to deliver the site and prevent abuse, under Google's own privacy policy. This is the same baseline logging almost every website host performs; we do not receive per-visitor profiles from it.</p></section>
+    <p>The static hosting provider, Vercel, and network intermediaries may log request information such as IP address, URL path, query string, browser and request time under their own policies. We do not control all provider logging or retention. Do not put sensitive information in a query string.</p></section>
     <section><h2>External links</h2>
     <p>Pages may link to external sites (for example, our public code repository). Their privacy practices are their own; this policy covers only iHaveTools.</p></section>
     <section><h2>Changes and questions</h2>

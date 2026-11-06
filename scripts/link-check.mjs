@@ -125,16 +125,14 @@ test('tool pages have steps, FAQ and privacy note', () => {
     assert.match(html, /Related tools/, `${t.id} missing related tools`);
   }
 });
-test('privacy claims only where technically true (file tools promise local processing)', () => {
+test('privacy disclosures cover sharing, hosting, local storage and remote thumbnail requests', () => {
+  const policy = readFileSync(join(ROOT, 'privacy-policy/index.html'), 'utf8');
+  for (const term of ['Vercel', 'query string', 'fragment', 'i.ytimg.com', 'Favourites and recently used', 'browser history']) assert.ok(policy.includes(term), term);
+  const youtube = readFileSync(join(ROOT, 'tools/youtube-thumbnail-downloader/index.html'), 'utf8');
+  assert.match(youtube, /image CDN/); assert.doesNotMatch(youtube, /Your file is processed locally in your browser and is not uploaded/);
   for (const t of tools) {
     const html = readFileSync(join(ROOT, 'tools', t.id, 'index.html'), 'utf8');
-    if (/is not uploaded|never uploaded|never sent|never leave/i.test(html)) {
-      const local = ['image', 'pdf'].some((c) => t.categories.includes(c))
-        || ['security', 'developer'].some((c) => t.categories.includes(c))
-        || t.categories.includes('misc')
-        || true; // all tools in this site are client-side by construction (see README architecture)
-      assert.ok(local, `${t.id} claims local processing`);
-    }
+    assert.doesNotMatch(html, /Your data is never uploaded or stored/);
   }
 });
 

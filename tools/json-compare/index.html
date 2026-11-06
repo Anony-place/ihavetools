@@ -59,10 +59,10 @@
     <span class="kicker"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-diff"/></svg> Developer</span>
     <h1>JSON Compare</h1>
     <p class="lede">Compare JSON objects and arrays locally in your browser, ignoring object key order and reporting added, removed and changed values by JSON Pointer.</p>
-    <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> This tool runs entirely in your browser. Your data is never uploaded or stored.</span>
+    <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> Calculations and text processing happen in your browser. Optional share links can contain inputs; see the Privacy Policy.</span>
     <div class="page-head-actions">
       <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="json-compare" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
-      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy link</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a clean link to this page without inputs"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-link"/></svg></span> <span data-copy-label>Copy page link</span></button>
     </div>
   </header>
 </div>
@@ -77,7 +77,7 @@
     <section><h2>JSON Compare guide</h2><h3>Compare data rather than formatting</h3><p>The tool parses each input, then compares values structurally. Whitespace, indentation and object key order are ignored. Added or removed subtrees appear at their parent path; arrays compare element by element in their original order.</p><h3>Example and JSON Pointer paths</h3><p>Comparing {&quot;a&quot;:1,&quot;items&quot;:[&quot;x&quot;,&quot;y&quot;]} to {&quot;items&quot;:[&quot;x&quot;,&quot;z&quot;],&quot;a&quot;:1,&quot;new&quot;:true} reports a changed /items/1 and an added /new. JSON Pointer uses zero-based array indexes; a slash in a key is escaped as ~1 and a tilde as ~0. The empty pointer identifies the root.</p><h3>Understand the boundaries</h3><ul><li>A moved array item is not detected as a move; each changed index is reported.</li><li>Duplicate object keys are resolved by JSON.parse, with the last value winning.</li><li>JavaScript numbers cannot exactly represent every large integer or decimal; do not use this to audit exact high-precision numbers.</li><li>Inputs are limited to one million characters each, with limits of 100,000 visited nodes and 1,000 differences to protect the browser. Long displayed values are shortened.</li></ul></section>
     <section><h2>Why use the iHaveTools JSON Compare?</h2>
       <ul>
-        <li><strong>Private by design</strong> — This tool runs entirely in your browser. Your data is never uploaded or stored.</li>
+        <li><strong>Private by design</strong> — Calculations and text processing happen in your browser. Optional share links can contain inputs; see the Privacy Policy.</li>
         <li><strong>Free and unlimited</strong> — no sign-up, no watermarks, no daily limits and nothing to install.</li>
         <li><strong>Works everywhere</strong> — any modern browser on a phone, tablet or computer, ready the moment the page opens.</li>
       </ul>

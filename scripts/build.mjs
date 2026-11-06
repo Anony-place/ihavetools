@@ -15,7 +15,7 @@ import { iconRef as icon, icons as iconBodies, brandMark } from '../assets/js/ic
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const URL_BASE = site.url.replace(/\/$/, '');
 const today = new Date().toISOString().slice(0, 10);
-// Production is served from the domain root (Firebase Hosting). Absolute
+// Production is served from the domain root on Vercel. Absolute
 // paths everywhere — the committed HTML, site.js, PDF loader and the
 // service worker all already assume this. (Previously this flipped between
 // '' and '../../', making every rebuild silently rewrite every URL.)
@@ -36,21 +36,22 @@ function write(relPath, content) {
 
 function privacyFor(tool) {
   const cats = tool.categories;
-  if (cats.includes('image') || cats.includes('pdf')) {
+  if (tool.id === 'youtube-thumbnail-downloader') return 'Thumbnail images load from YouTube’s image CDN, which receives your IP address and the requested video ID.';
+  if (tool.engine === 'image' || tool.engine === 'pdf') {
     return tool.id.startsWith('image-metadata')
       ? 'Your image is analysed locally in your browser and is not uploaded.'
       : 'Your file is processed locally in your browser and is not uploaded.';
   }
   if (cats.includes('security') || ['uuid-generator', 'hash-generator', 'random-number-generator'].includes(tool.id)) {
-    return 'Everything is generated or computed locally in your browser with its cryptographic APIs. Nothing is sent anywhere.';
+    return 'This tool processes or generates its content locally in your browser.';
   }
-  return 'This tool runs entirely in your browser. Your data is never uploaded or stored.';
+  return 'Calculations and text processing happen in your browser. Optional share links can contain inputs; see the Privacy Policy.';
 }
 
 function faqsFor(tool) {
   const faqs = tool.faqs?.length ? [...tool.faqs] : [
     { q: `Is ${tool.name} free to use?`, a: 'Yes — it is completely free, with no sign-up, no watermarks and no usage limits.' },
-    { q: 'Does my data leave my device?', a: privacyFor(tool).replace(/^Everything is generated or computed/, 'No — everything is generated or computed').replace(/^This tool runs/, 'No — this tool runs').replace(/^Your file is processed/, 'No — your file is processed').replace(/^Your image is analysed/, 'No — your image is analysed') },
+    { q: 'How is my data handled?', a: privacyFor(tool) },
   ];
   // Every tool also gets FAQs built from its own description/aliases, so
   // long-tail questions ("what is X used for?", "is <alias> the same as X?")
@@ -309,7 +310,7 @@ function buildHome() {
 <section class="section tint" id="about">
   <div class="container">
     <div class="privacy-strip">
-      <div class="strip-item">${icon('shield-check')}<div><h3>Private by design</h3><p>Text, files and data are processed on your device. Nothing is uploaded — so tools stay fast and your information stays yours.</p></div></div>
+      <div class="strip-item">${icon('shield-check')}<div><h3>Private by design</h3><p>Most tools process inputs on your device. Share links can expose values, and YouTube thumbnails load from its CDN. See our Privacy Policy.</p></div></div>
       <div class="strip-item">${icon('zap')}<div><h3>Fast and dependency-free</h3><p>No frameworks, no trackers on tool pages, no waiting. Pages are static and open instantly, even on slow connections.</p></div></div>
       <div class="strip-item">${icon('check-circle')}<div><h3>Honest tools only</h3><p>Every tool listed here genuinely works — no half-finished stubs, no fake buttons, no empty categories.</p></div></div>
     </div>
@@ -319,7 +320,7 @@ function buildHome() {
   write('index.html', layout({
     bodyClass: 'page-home',
     title: `${site.name} — Free Online Tools for Everyday Work`,
-    description: `${tools.length} free online tools: calculators, converters, text and image utilities, developer helpers and more. Fast, private, no sign-up — everything runs in your browser.`,
+    description: `${tools.length} free online tools: calculators, converters, text and image utilities, developer helpers and more. Fast, private, no sign-up — tools run in your browser.`,
     canonical: pageUrl('/'),
     jsonLd: [{
       '@context': 'https://schema.org',
@@ -368,7 +369,7 @@ ${breadcrumb([[c.name]])}
   write(`categories/${c.id}/index.html`, layout({
     bodyClass: 'page-category',
     title: `${c.name} Tools — Free Online, No Sign-Up | ${site.name}`,
-    description: metaDesc(`Free ${c.name.toLowerCase()} tools online (${list.length}) — ${c.description} No sign-up; everything runs in your browser.`),
+    description: metaDesc(`Free ${c.name.toLowerCase()} tools online (${list.length}) — ${c.description} No sign-up; tools run in your browser.`),
     canonical: pageUrl(`/categories/${c.id}/`),
     ogImage: `/assets/og/category-${c.id}.png`,
     jsonLd: [
@@ -401,7 +402,7 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
     <span class="privacy-note">${icon('shield-check')} ${esc(privacy)}</span>
     <div class="page-head-actions">
       <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="${t.id}" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex">${icon('star')}</span> <span data-fav-label>Add to favourites</span></button>
-      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a link to this tool"><span style="display:inline-flex">${icon('link')}</span> <span data-copy-label>Copy link</span></button>
+      <button type="button" class="btn btn-secondary btn-sm" data-copy-link title="Copy a clean link to this page without inputs"><span style="display:inline-flex">${icon('link')}</span> <span data-copy-label>Copy page link</span></button>
     </div>
   </header>
 </div>
@@ -480,15 +481,15 @@ ${body}
   const pages = [
     {
       id: 'about', title: 'About iHaveTools', desc: metaDesc(`About iHaveTools — ${tools.length} free online tools that run entirely in your browser. No sign-up, no uploads, no limits. How it works and why it is private.`),
-      lede: `${tools.length} free tools. No sign-up, no uploads, no limits — everything runs in your browser.`,
+      lede: `${tools.length} free tools. No sign-up, no uploads, no limits — tools run in your browser.`,
       body: `
     <section><h2>What is iHaveTools?</h2>
     <p>iHaveTools is a collection of ${tools.length} free online tools for everyday work: calculators, converters, text and image utilities, PDF tools and developer helpers. Every tool works instantly in your web browser — there is no account to create, nothing to install and nothing to pay.</p></section>
     <section><h2>How it works — and why your data stays private</h2>
-    <p>Unlike most tool sites, iHaveTools has no server that processes your work. When you compress an image, merge a PDF or format JSON here, the computation happens on your own device using built-in browser technology (Canvas, Web Audio, Web Crypto and pdf-lib). Your files and text are never uploaded, so there is nothing for us to store, lose or leak. Previously visited tools can work offline when their required files have been cached; some features require browser or device support.</p></section>
+    <p>Unlike most tool sites, iHaveTools has no server that processes your work. When you compress an image, merge a PDF or format JSON here, the computation happens on your own device using built-in browser technology (Canvas, Web Audio, Web Crypto and pdf-lib). Selected files and text are processed locally by these tools. Some optional links contain entered calculator values, and the YouTube thumbnail tool contacts YouTube’s CDN. Previously visited tools can work offline when their required files have been cached; some features require browser or device support.</p></section>
     <section><h2>Our principles</h2>
     <ul>
-      <li><strong>Private by design</strong> — your data never leaves your device. See the <a href="/privacy-policy/">Privacy Policy</a>.</li>
+      <li><strong>Private by design</strong> — processing is primarily local; sharing and external services have exceptions. See the <a href="/privacy-policy/">Privacy Policy</a>.</li>
       <li><strong>Free and unlimited</strong> — no sign-up walls, watermarks or daily limits.</li>
       <li><strong>Fast</strong> — static pages, no frameworks, no trackers in your way.</li>
       <li><strong>Honest</strong> — every tool listed on this site genuinely works; there are no empty placeholder pages.</li>
@@ -496,28 +497,33 @@ ${body}
     <section><h2>Browse the tools</h2>
     <ul>${categories.map((c) => `<li><a href="/categories/${c.id}/">${esc(c.name)} tools</a> (${toolsByCategory(c.id).length}) — ${esc(c.description)}</li>`).join('')}</ul></section>
     <section><h2>Contact &amp; feedback</h2>
-    <p>Found a bug, or want a tool we do not have yet? The project is open source — open an issue on <a href="https://github.com/Anony-place/ihavetools/issues" rel="noopener">GitHub</a>. The full source code is available in the same repository, so anyone can audit exactly what the site does with data (nothing).</p></section>`,
+    <p>Found a bug, or want a tool we do not have yet? The project is open source — open an issue on <a href="https://github.com/Anony-place/ihavetools/issues" rel="noopener">GitHub</a>. The full source code is available in the same repository, so anyone can inspect how the tools work.</p></section>`,
     },
     {
-      id: 'privacy-policy', title: 'Privacy Policy', desc: metaDesc('iHaveTools Privacy Policy — your files and text are processed in your browser and never uploaded. No accounts, no analytics trackers. What little data exists is explained here.'),
-      lede: 'Short version: your files and text never leave your device. There are no accounts and no trackers.',
+      id: 'privacy-policy', title: 'Privacy Policy', desc: metaDesc('iHaveTools Privacy Policy — local processing, optional share links, YouTube thumbnails, browser storage and hosting logs.'),
+      lede: 'Most processing is local. Optional shared links, YouTube thumbnails, browser storage and hosting requests have privacy implications explained below.',
       body: `
     <p><em>Last updated: ${today}</em></p>
     <section><h2>What data the tools process</h2>
-    <p>Every tool on iHaveTools runs entirely in your web browser. Files you open (PDFs, images, audio) and text you type or paste are processed in your device's memory and are <strong>never uploaded to a server</strong>. We could not read your documents even if we wanted to — the site is plain static files, and the source code is public for anyone to audit.</p></section>
+    <p>Tools run in your browser. Files you select for PDF, image, audio and video processing and text entered into text tools are processed locally rather than uploaded for processing. Browser extensions, operating-system software, screen captures, downloads and services you choose to use separately are outside our control.</p>
+    <p>The YouTube thumbnail downloader requests images from YouTube’s CDN (i.ytimg.com). That service receives the requested video ID and normal request information such as your IP address, under its own policies. Opening external links or QR-code actions also contacts their destinations.</p></section>
+    <section><h2>Optional calculator links</h2>
+    <p>Calculator inputs are not automatically added to the address bar. If you choose “Copy link with inputs”, the resulting link contains your values in its URL fragment. Fragments are not sent in normal HTTP requests, but anyone with the link can read them; they may also remain in browser history, bookmarks, clipboard or sharing apps. Avoid sharing sensitive information. “Copy page link” excludes inputs.</p>
+    <p>Older links may contain values in the query string. Opening one sends those values to the host and intermediaries as part of the request and may record them in logs or history. The tool removes known input parameters from the address bar after loading, but cannot erase earlier records or prevent the initial request.</p></section>
     <section><h2>Accounts and personal data</h2>
     <p>There are no user accounts, no sign-up forms and no newsletters. We do not collect names, email addresses or payment details.</p></section>
     <section><h2>Cookies, local storage and caching</h2>
-    <p>The site itself sets no cookies. Two pieces of information may be stored <em>on your own device</em>, by your browser, at your control:</p>
+    <p>The site itself sets no cookies. The browser may store the following <em>on your own device</em>:</p>
     <ul>
       <li><strong>Theme preference</strong> — if you switch between light and dark mode, your choice is saved in <code>localStorage</code> so the site remembers it. It never leaves your device.</li>
+      <li><strong>Favourites and recently used</strong> — tool IDs are saved in <code>localStorage</code> to display your lists on this device.</li>
       <li><strong>Offline cache</strong> — a service worker caches the site's pages and static files for offline access. Only previously visited pages and resources are available offline; query-string URLs are not saved. It never stores files or text you process with a tool.</li>
     </ul>
-    <p>You can clear both at any time from your browser's site-data settings.</p></section>
+    <p>You can clear site data at any time from your browser's site-data settings.</p></section>
     <section><h2>Analytics and advertising</h2>
     <p>iHaveTools currently runs <strong>no analytics and no advertising trackers</strong>. If privacy-respecting, aggregate analytics or ads are ever added to keep the site free, this policy will be updated first and the change will be visible here with a new date.</p></section>
     <section><h2>Hosting logs</h2>
-    <p>The static hosting provider (Firebase Hosting, by Google) may automatically log standard request information — such as IP address, browser type and time of request — to deliver the site and prevent abuse, under Google's own privacy policy. This is the same baseline logging almost every website host performs; we do not receive per-visitor profiles from it.</p></section>
+    <p>The static hosting provider, Vercel, and network intermediaries may log request information such as IP address, URL path, query string, browser and request time under their own policies. We do not control all provider logging or retention. Do not put sensitive information in a query string.</p></section>
     <section><h2>External links</h2>
     <p>Pages may link to external sites (for example, our public code repository). Their privacy practices are their own; this policy covers only iHaveTools.</p></section>
     <section><h2>Changes and questions</h2>
@@ -610,7 +616,7 @@ function buildMeta() {
   // (long-cache header on /assets/icons/** in firebase.json).
   write('assets/icons/sprite.svg', `<svg xmlns="http://www.w3.org/2000/svg">${Object.entries(iconBodies).map(([n, b]) => `<symbol id="i-${n}" viewBox="0 0 24 24">${b}</symbol>`).join('')}</svg>\n`);
   // llms.txt — a clean map of the site for AI search/answer engines.
-  write('llms.txt', `# ${site.name}\n\n> ${site.description} ${tools.length} tools, free, no sign-up. Every tool runs locally in the visitor's browser; user files and text are never uploaded.\n\n## Categories\n${categories.map((c) => `- [${c.name} tools](${pageUrl(`/categories/${c.id}/`)}): ${c.description}`).join('\n')}\n\n## Tools\n${tools.map((t) => `- [${t.name}](${pageUrl(`/tools/${t.id}/`)}): ${t.blurb}`).join('\n')}\n\n## About this site\n- [About](${pageUrl('/about/')})\n- [Privacy Policy](${pageUrl('/privacy-policy/')})\n- [Terms of Use](${pageUrl('/terms/')})\n`);
+  write('llms.txt', `# ${site.name}\n\n> ${site.description} ${tools.length} tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.\n\n## Categories\n${categories.map((c) => `- [${c.name} tools](${pageUrl(`/categories/${c.id}/`)}): ${c.description}`).join('\n')}\n\n## Tools\n${tools.map((t) => `- [${t.name}](${pageUrl(`/tools/${t.id}/`)}): ${t.blurb}`).join('\n')}\n\n## About this site\n- [About](${pageUrl('/about/')})\n- [Privacy Policy](${pageUrl('/privacy-policy/')})\n- [Terms of Use](${pageUrl('/terms/')})\n`);
   write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${pageUrl('/sitemap.xml')}\n`);
   write('manifest.webmanifest', JSON.stringify({
     name: site.name,

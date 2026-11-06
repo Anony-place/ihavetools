@@ -1,7 +1,7 @@
 # iHaveTools
 
 **122 free online tools. No sign-up or file uploads.** Every tool runs
-entirely in your browser — your files and text never leave your device.
+in your browser. Optional share links contain inputs; YouTube thumbnails load from its CDN.
 
 **Live site:** https://i-have-tools.vercel.app/ (Vercel, auto-deployed from `main` on every merge)
 
@@ -59,7 +59,7 @@ scripts/
                      about/privacy/terms, 404), sitemap, llms.txt, sprite,
                      search index — all from registry.js
   test-tools.mjs   ← 190 engine tests (pure logic, run in Node)
-  test-dom.mjs     ← 76 DOM tests: loads built pages into jsdom and drives real UIs
+  test-dom.mjs     ← 81 DOM tests: loads built pages into jsdom and drives real UIs
   test-chrome.mjs  ← 9 chrome tests: homepage, search, categories, theme, nav, install
   test-sw.mjs      ← service worker lifecycle, offline, privacy and cache-limit regression tests
   link-check.mjs   ← 20 integrity checks: dead links, sitemap↔files, SEO meta,
@@ -73,11 +73,12 @@ See **PLAN.md** for the SEO/speed roadmap (what is done, what is next).
   cards and JSON-LD (`WebApplication`, `FAQPage`, `BreadcrumbList`).
 - The registry powers the homepage grid, category pages, search index,
   sitemap and related-tools sections — nothing is hand-copied.
-- **No user data ever touches a server.** There is no backend: hosting serves
-  static files only. File tools process bytes in browser memory via FileReader,
-  Canvas, Web Audio and pdf-lib.
-- **Privacy claims are enforced, not decorative**: any page promising "never
-  uploaded" is backed by code with no network calls handling user input.
+- Most tools process inputs locally. File tools use browser memory via FileReader,
+  Canvas, Web Audio and pdf-lib. The YouTube thumbnail tool requests images from
+  i.ytimg.com using the video ID. Hosting providers may log requests.
+- Calculator input links are opt-in and place values in a fragment, visible to
+  recipients and potentially in browser history and clipboard. Legacy query
+  links can expose values in hosting/intermediary logs; see the Privacy Policy.
 
 ## Development
 
@@ -85,7 +86,7 @@ See **PLAN.md** for the SEO/speed roadmap (what is done, what is next).
 npm install          # devDependencies only (jsdom, sharp, pdf-lib, playwright*)
 npm run build        # regenerate all HTML from the registry
 npm test             # engine tests (190)
-npm run test:dom     # DOM tests against built pages (76)
+npm run test:dom     # DOM tests against built pages (81)
 npm run test:chrome  # chrome tests (9)
 npm run check        # build + engine/DOM/Chrome, service worker and link checks
 ```
@@ -100,8 +101,8 @@ generated automatically.
 
 ## Deployment
 
-Firebase Hosting serves the repo root as-is (`firebase.json`). CI (GitHub
-Actions) builds and runs all four test suites on every push/PR to `main`.
+Vercel serves the repo root as-is (`vercel.json`). CI (GitHub Actions) builds
+and runs the test suites on each push/PR to `main`.
 
 ## License
 

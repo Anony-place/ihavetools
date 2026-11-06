@@ -47,14 +47,13 @@ export async function copyText(text) {
   try {
     if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
   } catch { /* fall through */ }
+  let ta;
   try {
-    const ta = h('textarea', { value: text, 'aria-hidden': 'true' });
+    ta = h('textarea', { value: text, 'aria-hidden': 'true' });
     ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
     document.body.append(ta); ta.select(); ta.setSelectionRange(0, text.length);
-    const ok = document.execCommand('copy');
-    ta.remove();
-    return ok;
-  } catch { return false; }
+    return document.execCommand('copy');
+  } catch { return false; } finally { ta?.remove(); }
 }
 
 export function copyButton(getText, { label = 'Copy', small = true, onDone } = {}) {
@@ -310,16 +309,17 @@ export function privacyText(kind) {
 }
 
 /* ---------- Tool mounting ---------- */
-/* ── Shareable state via URL query params ──────────────────────────────────
-   Calculators declare `[key, target]` pairs once (target = input/select
-   element, or {get, set} for segmented controls & switches) and get:
-   1) inputs pre-filled when a shared link like ?monthly=5000&rate=12 opens,
-   2) the URL kept in sync after every calculation, so the page's existing
-      "Copy link" button shares the *result*, not just the page.
-   Everything is try/catch-guarded: history/location may be unavailable in
-   tests or odd embedding contexts, and sharing must never break a tool. */
+/* Shareable calculator state is opt-in. New links use a fragment, which is
+   not sent as part of an HTTP request; it is still visible to anyone who has
+   the link and can remain in browser history or the clipboard. Legacy query
+   links remain readable, but their initial request may already have been logged. */
 export function urlParams() {
-  try { return new URLSearchParams(location.search); } catch { return new URLSearchParams(); }
+  try {
+    if (location.hash.startsWith('#iht=')) {
+      try { return new URLSearchParams(decodeURIComponent(location.hash.slice(5))); } catch { /* try an old query link */ }
+    }
+    return new URLSearchParams(location.search);
+  } catch { return new URLSearchParams(); }
 }
 function pairGet(target) {
   if (typeof target === 'function') return target();
@@ -331,39 +331,52 @@ function pairSet(target, v) {
   else if (target && typeof target.set === 'function') target.set(v);
   else if (target) target.value = v;
 }
-/** Fill controls from the current query string. Returns true if anything applied. */
 export function prefillFromUrl(pairs) {
   const q = urlParams();
   let any = false;
   for (const [key, target] of pairs) {
     const v = q.get(key);
     if (v == null || v === '') continue;
-    pairSet(target, v);
-    any = true;
+    pairSet(target, v); any = true;
   }
+  // Remove only known legacy calculator parameters; unrelated queries and
+  // anchors are preserved. This cannot retract the initial network request.
+  try {
+    const u = new URL(location.href);
+    let changed = false;
+    for (const [key] of pairs) if (u.searchParams.has(key)) { u.searchParams.delete(key); changed = true; }
+    if (changed) history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+  } catch { /* history may be unavailable */ }
   return any;
 }
-/** Write current control values into the URL (no reload, no history spam). */
-export function syncUrlParams(pairs) {
-  try {
-    const q = new URLSearchParams();
-    for (const [key, target] of pairs) {
-      const v = pairGet(target);
-      if (v !== '' && v != null) q.set(key, String(v));
-    }
-    const s = q.toString();
-    history.replaceState(null, '', s ? `?${s}` : location.pathname);
-  } catch { /* sharing is best-effort */ }
-}
-/** One-liner for tool defs: prefill + auto-run shared links, sync after clicks. */
 export function shareState(root, pairs, run) {
   const applied = prefillFromUrl(pairs);
-  root.addEventListener('click', (e) => {
-    if (e.target?.closest?.('button')) setTimeout(() => syncUrlParams(pairs), 0);
-  });
-  if (applied && typeof run === 'function') {
-    setTimeout(() => { try { run(); } catch { /* invalid shared values: tool shows its own warning */ } }, 0);
-  }
+  const help = h('p', { class: 'hint', text: 'Optional: sharing inputs creates a link containing your values. Anyone with it can see them, and links may remain in history or clipboard. Do not share sensitive information.' });
+  const output = input({ type: 'text', readonly: true, 'aria-label': 'Generated link with inputs' });
+  const fallback = h('div', { hidden: true }, field({ label: 'Link with inputs (select and copy if needed)', control: output }));
+  const message = h('p', { class: 'hint', role: 'status', 'aria-live': 'polite' });
+  const copy = btn({ label: 'Copy link with inputs', icon: 'link', onClick: async () => {
+    try {
+      const params = new URLSearchParams();
+      for (const [key, target] of pairs) {
+        const v = pairGet(target);
+        if (v !== '' && v != null) params.set(key, String(v));
+      }
+      const base = new URL(location.href); base.search = ''; base.hash = '';
+      const fragment = params.toString();
+      if (!fragment) { message.textContent = 'Enter some values first.'; return; }
+      if (fragment.length > 4000) { message.textContent = 'Inputs are too long to share as a link.'; return; }
+      output.value = `${base.href}#iht=${encodeURIComponent(fragment)}`;
+      fallback.hidden = false;
+      const copied = await copyText(output.value);
+      message.textContent = copied ? 'Link copied. It contains your inputs.' : 'Clipboard unavailable. Select and copy the link below.';
+    } catch { message.textContent = 'Could not create a share link.'; }
+  } });
+  const clearGenerated = () => { if (!fallback.hidden) { fallback.hidden = true; output.value = ''; message.textContent = 'Inputs changed; generate a new link to share them.'; } };
+  root.addEventListener('input', clearGenerated);
+  root.addEventListener('change', clearGenerated);
+  root.append(h('div', { class: 'share-inputs' }, help, copy, message, fallback));
+  if (applied && typeof run === 'function') setTimeout(() => { try { run(); } catch { /* tool reports invalid values */ } }, 0);
   return applied;
 }
 

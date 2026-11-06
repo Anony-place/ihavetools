@@ -1,5 +1,5 @@
 // Static, same-origin resources only. Never cache tool inputs or uploaded files.
-const VERSION = 'iht-v3';
+const VERSION = 'iht-v4';
 const PAGES = `${VERSION}-pages`;
 const ASSETS = `${VERSION}-assets`;
 const CORE = ['/', '/offline.html', '/assets/css/styles.css', '/assets/js/icons.js',
@@ -9,7 +9,7 @@ const CORE = ['/', '/offline.html', '/assets/css/styles.css', '/assets/js/icons.
 const LIMIT = 100;
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(CORE)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(VERSION).then((cache) => cache.addAll(CORE.map((path) => new Request(new URL(path, self.location.origin), { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (event) => {
   event.waitUntil(caches.keys().then((keys) => Promise.all(keys

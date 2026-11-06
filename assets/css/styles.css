@@ -649,3 +649,6 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 @media print {
   .site-header, .site-footer, .breadcrumb, .tool-docs, .action-row { display: none; }
 }
+
+/* Optional calculator input sharing */
+.share-inputs { margin-top: 20px; }

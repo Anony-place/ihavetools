@@ -264,10 +264,11 @@ export function initShare() {
       const label = btn.querySelector('[data-copy-label]') || btn;
       const original = label.textContent;
       try {
-        await navigator.clipboard.writeText(location.href);
+        const page = new URL(location.href); page.search = ''; page.hash = '';
+        await navigator.clipboard.writeText(page.href);
         label.textContent = 'Link copied ✓';
       } catch {
-        label.textContent = 'Copy failed — use the address bar';
+        label.textContent = 'Copy failed — remove any query or fragment before sharing';
       }
       setTimeout(() => { label.textContent = original; }, 2200);
     });
