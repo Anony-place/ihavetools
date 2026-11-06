@@ -11,7 +11,7 @@ export function hexToRgb(hex) {
   let s = String(hex).trim().replace(/^#/, '');
   if (/^[0-9a-fA-F]{3}$/.test(s)) s = [...s].map((c) => c + c).join('');
   else if (/^[0-9a-fA-F]{4}$/.test(s)) s = [...s].map((c) => c + c).join('');
-  if (!/^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(s)) throw new Error(`“${hex}” is not a valid HEX color. Use 3, 6 or 8 hex digits, like #4f46e5 or 46e.`);
+  if (!/^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(s)) throw new Error(`“${hex}” is not a valid HEX color. Use 3, 4, 6 or 8 hex digits, like #4f46e5 or 46e.`);
   return { r: parseInt(s.slice(0, 2), 16), g: parseInt(s.slice(2, 4), 16), b: parseInt(s.slice(4, 6), 16), a: s.length === 8 ? parseInt(s.slice(6, 8), 16) / 255 : 1 };
 }
 export function rgbToHex({ r, g, b, a = 1 }) {
@@ -42,12 +42,13 @@ export function hslToRgb({ h: hue, s, l, a = 1 }) {
   return { r: clampByte(f(0) * 255), g: clampByte(f(8) * 255), b: clampByte(f(4) * 255), a };
 }
 export function parseColor(text) {
-  const s = String(text).trim();
+  let s = String(text).trim();
   if (!s) throw new Error('Enter a color first.');
   if (s.startsWith('#') || /^[0-9a-fA-F]{3,8}$/.test(s)) return hexToRgb(s);
+  if (/^[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+$/.test(s)) s = `rgb(${s})`;
   const rgbM = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)\s*(?:[,/]\s*([\d.%]+)\s*)?\)$/i.exec(s);
   if (rgbM) {
-    const rgb = { r: Number(rgbM[1]), g: Number(rgbM[2]), b: Number(rgbM[3]) };
+    const rgb = { r: Number(rgbM[1]), g: Number(rgbM[2]), b: Number(rgbM[3]), a: 1 };
     if (rgbM[4]) rgb.a = rgbM[4].endsWith('%') ? Number(rgbM[4].slice(0, -1)) / 100 : Number(rgbM[4]);
     if ([rgb.r, rgb.g, rgb.b].some((v) => !Number.isFinite(v) || v > 255 || v < 0)) throw new Error('RGB channels must be between 0 and 255.');
     if (rgb.a != null && (!Number.isFinite(rgb.a) || rgb.a < 0 || rgb.a > 1)) throw new Error('Alpha must be between 0 and 1.');
@@ -73,10 +74,11 @@ export function contrastRatio(rgb1, rgb2) {
 }
 export function harmony(rgb, type) {
   const hsl = rgbToHsl(rgb);
-  const rots = { complementary: [0, 180], analogous: [0, -30, 30], triadic: [0, 120, 240], split: [0, 150, 210], tetradic: [0, 90, 180, 270], mono: [0, 0, 0, 0] };
+  const rots = { complementary: [0, 180], analogous: [0, -30, 30], triadic: [0, 120, 240], split: [0, 150, 210], tetradic: [0, 90, 180, 270], mono: [0, 0, 0, 0, 0] };
   const shades = { mono: [-25, -12, 0, 12, 25] };
   return (rots[type] || [0]).map((rot, i) => {
-    const mod = { h: (hsl.h + rot + 360) % 360, s: hsl.s, l: Math.max(5, Math.min(95, hsl.l + ((shades[type] || [0])[i] || 0))) };
+    if ((type === 'mono' && i === 2) || (type !== 'mono' && i === 0)) return { ...rgb };
+    const mod = { h: (hsl.h + rot + 360) % 360, s: hsl.s, l: Math.max(0, Math.min(100, hsl.l + ((shades[type] || [0])[i] || 0))) };
     return hslToRgb(mod);
   });
 }
@@ -110,29 +112,36 @@ const defs = {
     const status = statusLine('');
     const scales = h('div', {});
     let current = hexToRgb('#4f46e5');
+    let revision = 0;
+    window.addEventListener('pagehide', () => { revision++; });
     const eyedropperBtn = ('EyeDropper' in window)
       ? btn({ label: 'Pick from screen', variant: 'secondary', icon: 'eye', onClick: async () => {
+          const token = ++revision;
           try {
             const ed = new window.EyeDropper();
             const res = await ed.open();
+            if (token !== revision) return;
             setColor(res.sRGBHex);
             status.set('Color captured from screen ✓', 'success');
-          } catch { status.set('Screen picking was cancelled.', 'info'); }
+          } catch { if (token === revision) status.set('Screen picking was cancelled.', 'info'); }
         } })
       : null;
-    const setColor = (rgbOrHex) => {
+    const setColor = (rgbOrHex, syncText = true) => {
       try {
-        current = typeof rgbOrHex === 'string' ? hexToRgb(rgbOrHex) : rgbOrHex;
+        const next = typeof rgbOrHex === 'string' ? hexToRgb(rgbOrHex) : rgbOrHex;
+        if ((next.a ?? 1) !== 1) throw new Error('Color picker supports opaque colors only.');
+        current = next;
         const hex = rgbToHex(current).slice(0, 7);
         const hsl = rgbToHsl(current);
         color.value = hex;
-        hexIn.value = hex;
+        if (syncText) hexIn.value = hex;
         grid.set([
           { label: 'HEX', value: hex.toUpperCase(), kind: 'good' },
           { label: 'RGB', value: `${current.r}, ${current.g}, ${current.b}` },
           { label: 'HSL', value: `${hsl.h}, ${hsl.s}%, ${hsl.l}%` },
           { label: 'CSS rgb()', value: `rgb(${current.r} ${current.g} ${current.b})` },
         ]);
+        status.set('', 'info');
         scales.replaceChildren(
           h('h3', { text: 'Tints and shades', style: 'margin:20px 0 10px' }),
           h('div', { class: 'swatch-row' },
@@ -140,10 +149,10 @@ const defs = {
               const mod = hslToRgb({ h: hsl.h, s: hsl.s, l: Math.max(4, Math.min(96, hsl.l + d)) });
               return swatchButton(mod, async (hx) => { (await copyText(hx)) ? toast(`${hx} copied`, 'success') : toast('Copy failed', 'error'); });
             })));
-      } catch (e) { status.set(e.message, 'error'); }
+      } catch (e) { grid.replaceChildren(); scales.replaceChildren(); status.set(e.message, 'error'); }
     };
-    color.addEventListener('input', () => setColor(color.value));
-    hexIn.addEventListener('input', () => { try { setColor(parseColor(hexIn.value)); status.set('', 'info'); } catch { /* typing */ } });
+    color.addEventListener('input', () => { revision++; setColor(color.value); status.set('', 'info'); });
+    hexIn.addEventListener('input', () => { revision++; setColor(hexIn.value, false); });
     root.append(
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Pick a color', control: color }),
@@ -160,27 +169,39 @@ const defs = {
     const hsl = input({ type: 'text', class: 'input mono', value: 'hsl(243, 75%, 59%)' });
     const preview = h('div', { style: 'height:72px;border-radius:12px;border:1px solid var(--border);margin-bottom:14px', role: 'img', 'aria-label': 'Color preview' });
     const status = statusLine('Edit any field — the others update live.');
+    let current = null;
+    const rgbText = (c) => (c.a ?? 1) === 1 ? `rgb(${c.r}, ${c.g}, ${c.b})` : `rgb(${c.r} ${c.g} ${c.b} / ${c.a})`;
+    const hslText = (c) => { const hh = rgbToHsl(c); return (c.a ?? 1) === 1 ? `hsl(${hh.h}, ${hh.s}%, ${hh.l}%)` : `hsl(${hh.h} ${hh.s}% ${hh.l}% / ${c.a})`; };
+    const copyBtn = btn({ label: 'Copy all formats', variant: 'secondary', icon: 'copy', onClick: async () => {
+      if (!current) return;
+      (await copyText(`${rgbToHex(current)}\n${rgbText(current)}\n${hslText(current)}`)) ? toast('All formats copied', 'success') : toast('Copy failed', 'error');
+    } });
     const update = (source) => {
       try {
         const c = parseColor({ hex: hex.value, rgb: rgb.value, hsl: hsl.value }[source]);
+        current = c;
         if (source !== 'hex') hex.value = rgbToHex(c);
-        if (source !== 'rgb') rgb.value = `rgb(${c.r}, ${c.g}, ${c.b})`;
-        if (source !== 'hsl') { const hh = rgbToHsl(c); hsl.value = `hsl(${hh.h}, ${hh.s}%, ${hh.l}%)`; }
-        preview.style.background = rgbToHex(c);
-        status.set('Converted ✓', 'success');
-      } catch (e) { if (source) status.set(e.message, 'error'); }
+        if (source !== 'rgb') rgb.value = rgbText(c);
+        if (source !== 'hsl') hsl.value = hslText(c);
+        preview.style.background = `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a ?? 1})`;
+        copyBtn.disabled = false;
+        status.set('Converted ✓ — RGB/HSL channels and HEX alpha are rounded; formats may not round-trip exactly.', 'success');
+      } catch (e) {
+        current = null;
+        if (source !== 'hex') hex.value = '';
+        if (source !== 'rgb') rgb.value = '';
+        if (source !== 'hsl') hsl.value = '';
+        preview.style.background = '';
+        copyBtn.disabled = true;
+        status.set(e.message, 'error');
+      }
     };
     [[hex, 'hex'], [rgb, 'rgb'], [hsl, 'hsl']].forEach(([el, name]) => el.addEventListener('input', () => update(name)));
     root.append(preview,
       field({ label: 'HEX', control: hex }),
       field({ label: 'RGB', control: rgb, hint: 'Accepts rgb(79, 70, 229) or 79, 70, 229' }),
-      field({ label: 'HSL', control: hsl }),
-      actionsRow(btn({ label: 'Copy all formats', variant: 'secondary', icon: 'copy', onClick: async () => {
-        const c = parseColor(hex.value);
-        const hh = rgbToHsl(c);
-        (await copyText(`${rgbToHex(c)}\nrgb(${c.r}, ${c.g}, ${c.b})\nhsl(${hh.h}, ${hh.s}%, ${hh.l}%)`)) ? toast('All formats copied', 'success') : toast('Copy failed', 'error');
-      } })),
-      status);
+      field({ label: 'HSL', control: hsl, hint: 'HSL channels are rounded to whole numbers; HEX alpha uses 8-bit precision. Supports a subset of CSS color syntax.' }),
+      actionsRow(copyBtn), status);
     update('hex');
   },
 
@@ -195,8 +216,8 @@ const defs = {
     const render = () => {
       try {
         const f = hexToRgb(fgHex.value); const b = hexToRgb(bgHex.value);
-        fg.value = rgbToHex(f).slice(0, 7); bg.value = rgbToHex(b).slice(0, 7);
         const ratio = contrastRatio(f, b);
+        fg.value = rgbToHex(f).slice(0, 7); bg.value = rgbToHex(b).slice(0, 7);
         const rows = [
           ['Normal text (AA)', ratio >= 4.5], ['Normal text (AAA)', ratio >= 7],
           ['Large text ≥24px (AA)', ratio >= 3], ['Large text (AAA)', ratio >= 4.5],
@@ -212,8 +233,8 @@ const defs = {
           h('p', { style: `color:${rgbToHex(f).slice(0, 7)};font-size:1.05rem;margin:0 0 8px`, text: 'Normal text sample — The quick brown fox jumps over the lazy dog.' }),
           h('p', { style: `color:${rgbToHex(f).slice(0, 7)};font-size:.75rem;margin:0 0 12px`, text: 'Small text sample at 12px, often used for captions.' }),
           h('p', { style: `color:${rgbToHex(f).slice(0, 7)};font-size:1.6rem;font-weight:700;margin:0`, text: 'Large bold text 25px' }));
-        status.set(`Passes ${rows.filter(([, ok]) => ok).length} of ${rows.length} WCAG thresholds.`, ratio >= 4.5 ? 'success' : 'warning');
-      } catch (e) { grid.replaceChildren(); sample.replaceChildren(); status.set(e.message, 'error'); }
+        status.set(`Passes ${rows.filter(([, ok]) => ok).length} of ${rows.length} WCAG thresholds. Display ratio is rounded; pass/fail uses the unrounded ratio.`, ratio >= 4.5 ? 'success' : 'warning');
+      } catch (e) { grid.replaceChildren(); sample.replaceChildren(); sample.style.background = ''; status.set(e.message, 'error'); }
     };
     [[fg, fgHex], [bg, bgHex]].forEach(([c, x]) => {
       c.addEventListener('input', () => { x.value = c.value; render(); });
@@ -263,7 +284,7 @@ const defs = {
       render();
       status.set(`Random base color: ${base.value.toUpperCase()}`, 'success');
     };
-    base.addEventListener('input', render);
+    base.addEventListener('input', () => { render(); status.set('Harmonies regenerated for the selected base color.', 'info'); });
     root.append(
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Base color', control: base }),

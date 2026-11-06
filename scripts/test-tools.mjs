@@ -762,6 +762,25 @@ await test('palette CSS variables use stable slug names and HEX values', () => {
   assert.match(css, /^:root \{\n  --split-complementary-1: #336699;\n  --split-complementary-2: #ffffff;\n\}$/);
 });
 
+await test('color alpha, shorthand and advertised comma RGB parsing', () => {
+  assert.deepEqual(color.parseColor('79, 70, 229'), {r:79,g:70,b:229,a:1});
+  assert.equal(color.rgbToHex(color.hexToRgb('#f008')), '#ff000088');
+  assert.equal(color.parseColor('rgb(255 0 0 / 50%)').a, 0.5);
+  assert.equal(color.parseColor('hsl(0 100% 50% / 0.25)').a, 0.25);
+  assert.throws(() => color.parseColor('rgb(2,3,4,1.2)'), /Alpha/);
+});
+await test('palette retains exact base and provides five monochromatic shades', () => {
+  for(const base of ['#000000','#ffffff','#010203','#4f46e5']) {
+    const c = color.hexToRgb(base);
+    for(const type of ['complementary','analogous','triadic','split','tetradic']) assert.equal(color.rgbToHex(color.harmony(c,type)[0]),base);
+    const mono = color.harmony(c,'mono'); assert.equal(mono.length,5); assert.equal(color.rgbToHex(mono[2]),base);
+  }
+});
+await test('contrast threshold uses unrounded WCAG ratio', () => {
+  const ratio=color.contrastRatio(color.hexToRgb('#070707'),color.hexToRgb('#777777'));
+  assert.equal(ratio.toFixed(2),'4.50'); assert.ok(ratio<4.5);
+});
+
 console.log('\n── Web & SEO ──');
 await test('URL parsing full anatomy', () => {
   const p = seo.parseUrlParts('https://user@example.com:8080/products/list?category=shoes&sort=price%20asc#results');
