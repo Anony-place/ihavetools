@@ -148,14 +148,14 @@ function loadImage(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => { resolve(img); };
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(`“${file.name}” could not be decoded. The file may be corrupted or in an unsupported format.`)); };
     img.src = url;
   });
 }
 async function canvasToBlob(canvas, mime, quality) {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Your browser could not encode this image. Try a different output format.')), mime, quality);
+    canvas.toBlob((blob) => { if (!blob) reject(new Error('Your browser could not encode this image. Try a different output format.')); else if (blob.type !== mime) reject(new Error('Your browser does not support encoding this format. Try another format.')); else resolve(blob); }, mime, quality);
   });
 }
 function checkDecodable(file, allowed = ['jpeg', 'png', 'webp', 'gif', 'bmp']) {
@@ -166,10 +166,18 @@ function checkDecodable(file, allowed = ['jpeg', 'png', 'webp', 'gif', 'bmp']) {
   });
 }
 
+// One common callback for picker and drag/drop; native file inputs cannot be
+// assigned a dropped FileList reliably, so pass files through a custom event.
+function imageZone(options) {
+  let zone;
+  zone = dropzone({ ...options, onFiles: (files) => zone.dispatchEvent(new window.CustomEvent('iht-files', { detail: files })) });
+  return zone;
+}
+
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
   'image-compressor'(root) {
-    const zone = dropzone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'JPG, PNG or WebP — processed locally, never uploaded' });
+    const zone = imageZone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'JPG, PNG or WebP — processed locally, never uploaded' });
     const quality = input({ type: 'range', min: 5, max: 100, value: '80' });
     const qualityOut = h('span', { class: 'hint', text: '80%' });
     quality.addEventListener('input', () => { qualityOut.textContent = `${quality.value}%`; });
@@ -179,20 +187,22 @@ const defs = {
     const grid = statsGrid();
     const preview = h('div', {});
     let file = null, lastBlob = null;
-    zone.addEventListener('iht-file', (e) => {});
     const origHook = (f) => {
       file = f;
+      lastBlob = null; grid.replaceChildren(); preview.replaceChildren();
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       status.set(`Loaded ${f.name} (${fmtBytes(f.size)}). Adjust options, then Compress.`, 'info');
     };
-    zone.querySelector('input[type=file]').addEventListener('change', (e) => { if (e.target.files[0]) origHook(e.target.files[0]); });
+    zone.addEventListener('iht-files', (e) => { if (e.detail[0]) origHook(e.detail[0]); });
     const run = async () => {
       if (!file) { status.set('Choose an image first.', 'warning'); return; }
       status.set('Compressing…', 'info');
+      const selected = file;
       try {
-        await checkDecodable(file);
-        const img = await loadImage(file);
+        await checkDecodable(selected);
+        const img = await loadImage(selected);
+        if (file !== selected) return;
         let w = img.naturalWidth, h0 = img.naturalHeight;
         if (Number(maxW.value) > 0 && Number(maxW.value) < w) {
           const t = computeTargetDims(w, h0, { width: Math.floor(Number(maxW.value)) });
@@ -203,9 +213,11 @@ const defs = {
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, w, h0);
         const fmt = fmtSel.value;
+        if (fmt === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h0); }
+        ctx.drawImage(img, 0, 0, w, h0);
         const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : clampQuality(quality.value));
+        if (file !== selected) return;
         lastBlob = blob;
         const saved = Math.max(0, Math.round((1 - blob.size / file.size) * 100));
         grid.set([
@@ -223,11 +235,11 @@ const defs = {
             } }, 'Download compressed image'))));
         if (blob.size >= file.size) status.set('Done — but this format/quality did not shrink the file. Try lower quality or JPEG/WebP.', 'warning');
         else status.set(`Compressed ✓ ${fmtBytes(file.size)} → ${fmtBytes(blob.size)} (${saved}% smaller).`, 'success');
-      } catch (e) { grid.replaceChildren(); preview.replaceChildren(); status.set(e.message, 'error'); }
+      } catch (e) { if (file === selected) { grid.replaceChildren(); preview.replaceChildren(); status.set(e.message, 'error'); } }
     };
     root.append(zone,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
-        field({ label: `Quality (${(qualityOut.textContent)})`, control: h('div', {}, quality) }),
+        field({ label: 'Quality (%)', control: quality, hint: 'Used for JPEG and WebP; PNG is lossless.' }), qualityOut,
         field({ label: 'Output format', control: fmtSel }),
         field({ label: 'Max width (px)', control: maxW, hint: 'Blank keeps original size' })),
       actionsRow(btn({ label: 'Compress', icon: 'minimize', onClick: run })),
@@ -236,7 +248,7 @@ const defs = {
   },
 
   'image-resizer'(root) {
-    const zone = dropzone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'Processed locally — never uploaded' });
+    const zone = imageZone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'Processed locally — never uploaded' });
     const wIn = input({ type: 'number', min: 1, placeholder: 'width' });
     const hIn = input({ type: 'number', min: 1, placeholder: 'height' });
     const pctIn = input({ type: 'number', min: 1, max: 1000, placeholder: 'e.g. 50 (= half size)' });
@@ -246,20 +258,22 @@ const defs = {
     const info = h('p', { class: 'hint' });
     const preview = h('div', {});
     let file = null, img = null, lastBlob = null;
-    zone.querySelector('input[type=file]').addEventListener('change', async (e) => {
-      const f = e.target.files[0];
+    zone.addEventListener('iht-files', async (e) => {
+      const f = e.detail[0];
       if (!f) return;
-      file = f;
+      file = f; img = null; lastBlob = null; preview.replaceChildren(); info.textContent = '';
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       try {
         await checkDecodable(file);
-        img = await loadImage(file);
+        const loaded = await loadImage(f);
+        if (file !== f) return;
+        img = loaded;
         wIn.placeholder = String(img.naturalWidth);
         hIn.placeholder = String(img.naturalHeight);
         info.textContent = `Original: ${img.naturalWidth} × ${img.naturalHeight} px.`;
         status.set(`Loaded ${f.name}. Enter target dimensions.`, 'info');
-      } catch (err) { status.set(err.message, 'error'); }
+      } catch (err) { if (file === f) { file = null; img = null; status.set(err.message, 'error'); } }
     });
     [wIn, hIn].forEach((el) => el.addEventListener('input', () => {
       if (!img || !lock.querySelector('input').checked) return;
@@ -269,6 +283,7 @@ const defs = {
     const run = async () => {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
       status.set('Resizing…', 'info');
+      const selected = file, format = fmtSel.value;
       try {
         const target = pctIn.value
           ? computeTargetDims(img.naturalWidth, img.naturalHeight, { percent: Number(pctIn.value) })
@@ -280,11 +295,12 @@ const defs = {
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, target.width, target.height);
-        const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmtSel.value], 0.92);
+        const blob = await canvasToBlob(canvas, MIME_BY_FMT[format], 0.92);
+        if (file !== selected) return;
         lastBlob = blob;
         preview.replaceChildren(
           h('img', { class: 'img-preview', src: URL.createObjectURL(blob), alt: 'Resized preview', style: 'margin-top:12px' }),
-          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadBlob(lastBlob, `resized-${baseName(file.name)}.${EXT_BY_FMT[fmtSel.value]}`); toast('Download started', 'success'); } }, `Download ${target.width} × ${target.height}`)));
+          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadBlob(lastBlob, `resized-${baseName(selected.name)}.${EXT_BY_FMT[format]}`); toast('Download started', 'success'); } }, `Download ${target.width} × ${target.height}`)));
         status.set(`Resized to ${target.width} × ${target.height} px (${fmtBytes(blob.size)}) ✓`, 'success');
       } catch (e) { preview.replaceChildren(); status.set(e.message, 'error'); }
     };
@@ -301,7 +317,7 @@ const defs = {
   },
 
   'image-converter'(root, preset = null) {
-    const zone = dropzone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'JPG, PNG, WebP, GIF, BMP — converted locally' });
+    const zone = imageZone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'JPG, PNG, WebP, GIF, BMP — converted locally' });
     const fmtSel = select({ options: [{ v: 'png', t: 'PNG' }, { v: 'jpeg', t: 'JPEG' }, { v: 'webp', t: 'WebP' }], value: 'png' });
     if (preset) fmtSel.value = preset;
     const bgPicker = input({ type: 'color', value: '#ffffff' });
@@ -312,36 +328,40 @@ const defs = {
     const info = h('p', { class: 'hint' });
     const preview = h('div', {});
     let file = null, lastBlob = null;
-    zone.querySelector('input[type=file]').addEventListener('change', async (e) => {
-      const f = e.target.files[0];
+    zone.addEventListener('iht-files', async (e) => {
+      const f = e.detail[0];
       if (!f) return;
-      file = f;
+      file = f; lastBlob = null; preview.replaceChildren(); info.textContent = '';
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       try {
-        const t = await checkDecodable(file);
+        const t = await checkDecodable(f);
+        if (file !== f) return;
         info.textContent = `Detected format: ${t.toUpperCase()}.`;
         status.set(preset ? `Loaded ${f.name}. Click Convert to ${EXT_BY_FMT[preset].toUpperCase()}.` : `Loaded ${f.name}. Choose the output format.`, 'info');
-      } catch (err) { file = null; status.set(err.message, 'error'); }
+      } catch (err) { if (file === f) { file = null; status.set(err.message, 'error'); } }
     });
     const run = async () => {
       if (!file) { status.set('Choose an image first.', 'warning'); return; }
       status.set('Converting…', 'info');
+      const selected = file, format = fmtSel.value;
       try {
-        await checkDecodable(file);
-        const img = await loadImage(file);
+        await checkDecodable(selected);
+        const img = await loadImage(selected);
+        if (file !== selected) return;
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
         const ctx = canvas.getContext('2d');
-        if (fmtSel.value === 'jpeg') { ctx.fillStyle = bgPicker.value; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+        if (format === 'jpeg') { ctx.fillStyle = bgPicker.value; ctx.fillRect(0, 0, canvas.width, canvas.height); }
         ctx.drawImage(img, 0, 0);
-        const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmtSel.value], 0.92);
+        const blob = await canvasToBlob(canvas, MIME_BY_FMT[format], 0.92);
+        if (file !== selected) return;
         lastBlob = blob;
         preview.replaceChildren(
           h('img', { class: 'img-preview', src: URL.createObjectURL(blob), alt: 'Converted preview', style: 'margin-top:12px' }),
-          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadBlob(lastBlob, `${baseName(file.name)}.${EXT_BY_FMT[fmtSel.value]}`); toast('Download started', 'success'); } }, `Download ${fmtSel.value.toUpperCase()}`)));
-        status.set(`Converted ${file.name} → ${fmtSel.value.toUpperCase()} (${fmtBytes(blob.size)}) ✓`, 'success');
-      } catch (e) { preview.replaceChildren(); status.set(e.message, 'error'); }
+          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadBlob(lastBlob, `${baseName(selected.name)}.${EXT_BY_FMT[format]}`); toast('Download started', 'success'); } }, `Download ${format.toUpperCase()}`)));
+        status.set(`Converted ${selected.name} → ${format.toUpperCase()} (${fmtBytes(blob.size)}) ✓`, 'success');
+      } catch (e) { if (file === selected) { preview.replaceChildren(); status.set(e.message, 'error'); } }
     };
     root.append(zone, info,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
@@ -359,7 +379,7 @@ const defs = {
   'jpg-to-webp'(root) { defs['image-converter'](root, 'webp'); },
 
   'image-cropper'(root) {
-    const zone = dropzone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'Cropped locally — never uploaded' });
+    const zone = imageZone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'Cropped locally — never uploaded' });
     const aspect = segControl({ options: [{ v: 'free', t: 'Free' }, { v: '1', t: '1:1' }, { v: '4/3', t: '4:3' }, { v: '16/9', t: '16:9' }], value: 'free', ariaLabel: 'Aspect ratio' });
     const status = statusLine('Choose an image, then drag a selection on the preview.');
     const stage = h('div', { class: 'cropper-stage' });
@@ -368,15 +388,17 @@ const defs = {
     const preview = h('div', {});
     let file = null, img = null, sel = null, dragging = false, startX = 0, startY = 0;
     let dispScale = 1;
-    zone.querySelector('input[type=file]').addEventListener('change', async (e) => {
-      const f = e.target.files[0];
+    zone.addEventListener('iht-files', async (e) => {
+      const f = e.detail[0];
       if (!f) return;
-      file = f;
+      file = f; img = null; sel = null; preview.replaceChildren(); canvas.width = 0; canvas.height = 0;
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       try {
         await checkDecodable(file);
-        img = await loadImage(file);
+        const loaded = await loadImage(f);
+        if (file !== f) return;
+        img = loaded;
         const maxW = Math.min(900, img.naturalWidth);
         dispScale = maxW / img.naturalWidth;
         canvas.width = Math.round(img.naturalWidth * dispScale);
@@ -384,7 +406,7 @@ const defs = {
         draw();
         sel = null;
         status.set(`Loaded ${img.naturalWidth} × ${img.naturalHeight} px. Drag on the image to select a crop area.`, 'info');
-      } catch (err) { status.set(err.message, 'error'); }
+      } catch (err) { if (file === f) { file = null; img = null; status.set(err.message, 'error'); } }
     });
     function draw() {
       if (!img) return;
@@ -447,6 +469,7 @@ const defs = {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
       if (!sel || sel.w < 4 || sel.h < 4) { status.set('Drag a selection on the image first.', 'warning'); return; }
       status.set('Cropping…', 'info');
+      const selected = file;
       try {
         const sx = sel.x / dispScale, sy = sel.y / dispScale, sw = sel.w / dispScale, sh = sel.h / dispScale;
         const out = document.createElement('canvas');
@@ -454,11 +477,12 @@ const defs = {
         out.height = Math.max(1, Math.round(sh));
         out.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, out.width, out.height);
         const blob = await canvasToBlob(out, 'image/png');
+        if (file !== selected) return;
         preview.replaceChildren(
           h('img', { class: 'img-preview', src: URL.createObjectURL(blob), alt: 'Cropped preview', style: 'margin-top:12px' }),
-          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadBlob(blob, `cropped-${baseName(file.name)}.png`); toast('Download started', 'success'); } }, `Download ${out.width} × ${out.height} PNG`)));
+          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadBlob(blob, `cropped-${baseName(selected.name)}.png`); toast('Download started', 'success'); } }, `Download ${out.width} × ${out.height} PNG`)));
         status.set(`Cropped to ${out.width} × ${out.height} px ✓`, 'success');
-      } catch (e) { status.set(e.message, 'error'); }
+      } catch (e) { if (file === selected) status.set(e.message, 'error'); }
     };
     root.append(zone, h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' }, field({ label: 'Aspect ratio', control: aspect })),
       actionsRow(btn({ label: 'Crop', icon: 'crop', onClick: run })),
@@ -467,12 +491,14 @@ const defs = {
   },
 
   'image-metadata-viewer'(root) {
-    const zone = dropzone({ accept: 'image/jpeg,image/png,image/*', title: 'Choose a JPEG or PNG', sub: 'Parsed locally — the file is never uploaded' });
+    const zone = imageZone({ accept: 'image/jpeg,image/png,image/*', title: 'Choose a JPEG or PNG', sub: 'Parsed locally — the file is never uploaded' });
     const status = statusLine('Everything is decoded in your browser.');
     const out = h('div', { class: 'tool-docs', style: 'margin-top:16px' });
-    zone.querySelector('input[type=file]').addEventListener('change', async (e) => {
-      const f = e.target.files[0];
+    let currentFile = null;
+    zone.addEventListener('iht-files', async (e) => {
+      const f = e.detail[0];
       if (!f) return;
+      currentFile = f;
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       out.replaceChildren();
@@ -481,6 +507,7 @@ const defs = {
         const buf = await readFile(f, 'buffer');
         const meta = parseImageMetadata(buf);
         const img = await loadImage(f);
+        if (currentFile !== f) return;
         const summary = [
           ['File name', f.name], ['File size', fmtBytes(f.size)],
           ['Dimensions', `${img.naturalWidth} × ${img.naturalHeight} px`],
@@ -508,7 +535,7 @@ const defs = {
           out.append(h('section', {}, h('h3', { text: 'PNG chunks', style: 'margin:20px 0 10px' }), table({ headers: ['Chunk', 'Size', 'Purpose'], rows: meta.chunks })));
         }
         status.set(`Analysed ${f.name} locally ✓`, 'success');
-      } catch (err) { status.set(err.message, 'error'); }
+      } catch (err) { if (currentFile === f) status.set(err.message, 'error'); }
     });
     root.append(zone, status, out,
       privacyNote('Metadata is read in your browser. The image is never uploaded — this is a safe way to check what a photo reveals before sharing it.'));

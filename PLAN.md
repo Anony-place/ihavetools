@@ -2,7 +2,7 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-01 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 98 (Batch-1: 94, Batch-2: 98)
+> `main` par merge = auto-deploy) · **Tools:** 118 (58 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
@@ -321,6 +321,36 @@ Full check passed: 182 engine, 68 DOM, 9 chrome, 20 integrity checks and the
 service-worker regression suite. Loan and inflation figures are assumptions,
 not official quotes; work hours exclude payroll rules and DST. Browser/device
 Lighthouse and PWA verification remains pending.
+
+---
+
+## 🚧 BATCH-9 — Working-day planning and image-tool reliability (2026-11-06)
+
+Qualitative market scan: business-day tools often offer deadline calculations,
+custom holidays and regional weekends; image suites highlight local handling and
+size reduction. No search-volume or ranking claims are inferred. Our Date
+Difference already counts weekdays, so do not create a duplicate counter: add a
+Business Day Calculator that supports custom holidays/weekends and date offset,
+while strengthening the existing date and image workflows.
+
+One batch on this branch:
+1. Business Day Calculator: count inclusive dates and add/subtract working days,
+   selectable weekend, explicit user-entered holidays, strict date validation and
+   bounded range; no automatic or claimed official holiday database.
+2. Repair all image-tool upload/dropzone callbacks, stale output and relevant
+   file-lifecycle issues; target the existing compressor UX rather than creating
+   thin duplicate pages. Test both file selection and dropped files.
+3. Fix confirmed Date Difference hours and Date Add timezone display bugs with
+   regression tests; avoid claiming elapsed DST hours as actual time.
+4. Add a guide, FAQs, related links, pure/DOM regression tests and generated
+   pages, run full check, one PR and production verification when ready. GSC and
+   real-browser Lighthouse/PWA audit remain separate and pending.
+
+Implementation ready for review: 118 tools / 58 guides. Holiday rules and
+endpoint conventions are explicit; image picker/drop paths and stale previews
+are tested with simulated canvas/decoders (not real-browser validation). Local
+checks: 185 engine, 71 DOM, 9 site chrome, service worker and 20 integrity.
+PR, CI and production verification remain pending until actually completed.
 
 ---
 

@@ -773,7 +773,7 @@ export const tools = [
     keywords: ['compress image', 'image optimizer', 'reduce image size', 'jpeg', 'png', 'webp', 'file size'],
     aliases: ['compress jpeg', 'compress png', 'reduce image size', 'image optimizer'],
     popularity: 92, featured: true, added: '2026-06-04',
-    steps: 'Drop or choose an image (JPG, PNG or WebP).|Set quality and an optional maximum width or height.|Click Compress, compare sizes, then download.',
+    steps: 'Drop or choose an image (JPG, PNG or WebP).|Set quality and an optional maximum width.|Click Compress, compare sizes, then download.',
     guide: [
       { h: 'Lossy vs lossless, in one minute',
         p: 'Lossy compression (JPEG, WebP at a quality setting) permanently discards fine detail your eyes barely notice — that’s how a 5 MB photo becomes 300 KB. Lossless (PNG) keeps every pixel exact, so files stay large but text, logos and screenshots remain perfectly sharp. Photos → lossy. Graphics with crisp edges or transparency → lossless.' },
@@ -993,7 +993,7 @@ export const tools = [
     popularity: 70, added: '2026-06-12',
     steps: 'Enter two fractions (mixed numbers allowed, e.g. 2 1/2).|Choose the operation.|Read the simplified result, mixed form, decimal and working.' }),
   T({ id: 'time-duration-calculator', name: 'Time Duration Calculator', icon: 'hourglass', engine: 'student', categories: ['student', 'datetime'],
-    related: ["work-hours-calculator","cgpa-calculator","attendance-calculator","electricity-cost-calculator","scientific-calculator","fraction-calculator"],
+    related: ["business-day-calculator","work-hours-calculator","cgpa-calculator","attendance-calculator","electricity-cost-calculator","scientific-calculator"],
     blurb: 'Add or subtract durations like 2h 45m + 30m.',
     description: 'Add or subtract durations in hours, minutes and seconds — and total a list of durations, like a timesheet. Handles borrowing and carrying correctly.',
     keywords: ['time duration', 'add time', 'hours minutes', 'timesheet', 'time math'],
@@ -1026,6 +1026,7 @@ export const tools = [
 
   // ── Date & Time ────────────────────────────────────────────────────────────
   T({ id: 'date-difference', name: 'Date Difference', icon: 'calendar', engine: 'datetime', categories: ['datetime'],
+    related: ["business-day-calculator","time-zone-converter","date-add-calculator","age-calculator","timestamp-converter","work-hours-calculator"],
     blurb: 'Days, weeks, months and weekdays between two dates.',
     description: 'Count the time between two dates in days, weeks, months and years — with business days and weekends counted separately.',
     keywords: ['date difference', 'days between', 'duration', 'business days', 'weekday'],
@@ -1033,6 +1034,7 @@ export const tools = [
     popularity: 82, added: '2026-06-01',
     steps: 'Pick a start date and an end date.|Optionally include the end date in the count.|Read the difference in every useful unit.' }),
   T({ id: 'date-add-calculator', name: 'Date Add / Subtract', icon: 'calendar-plus', engine: 'datetime', categories: ['datetime'],
+    related: ["business-day-calculator","date-difference","time-zone-converter","age-calculator","timestamp-converter","work-hours-calculator"],
     blurb: 'Add or subtract days, weeks, months or years from a date.',
     description: 'Find the date that is N days, weeks, months or years from a start date — before or after. Month-end handling follows standard date arithmetic.',
     keywords: ['add days', 'subtract days', 'date math', 'deadline', 'due date'],
@@ -1967,7 +1969,7 @@ export const tools = [
       { h: 'Use scenarios, not promises', list: ['A constant rate is an assumption, not a CPI forecast.', 'Different goods, housing, healthcare and education may rise at different rates.', 'Try several rates and include tax and investment risk separately when planning savings.'] },
     ] }),
   T({ id: 'work-hours-calculator', name: 'Work Hours Calculator', icon: 'hourglass', engine: 'calculators', categories: ['datetime', 'calculators'],
-    related: ['time-duration-calculator', 'time-converter', 'attendance-calculator', 'profit-margin-calculator'],
+    related: ["business-day-calculator","time-duration-calculator","time-converter","attendance-calculator","profit-margin-calculator"],
     blurb: 'Calculate shift hours after breaks and estimated gross pay.',
     description: 'Calculate work time between clock-in and clock-out, subtract an unpaid break, handle overnight shifts and estimate gross hourly pay.',
     keywords: ['work hours calculator', 'hours worked calculator', 'shift calculator', 'hours and minutes timesheet'], aliases: ['shift hours calculator', 'hours calculator'], popularity: 80, added: '2026-11-06',
@@ -1997,6 +1999,24 @@ export const tools = [
       { h: 'Profit, margin and markup', p: 'Profit = revenue − cost. Margin = profit ÷ revenue × 100; markup = profit ÷ cost × 100. A zero denominator makes the corresponding percentage undefined.' },
       { h: 'Worked example', p: 'An item costing 60 and selling for 100 earns profit of 40. Margin is 40 ÷ 100 = 40%, while markup is 40 ÷ 60 = 66.67%. A selling price below cost produces a loss instead.' },
       { h: 'Avoid overstating profit', list: ['Include direct costs, shipping, fees and other expenses appropriate to your decision.', 'Be consistent about whether your inputs include or exclude tax.', 'This is arithmetic on the supplied amounts, not an accounting or tax determination.'] },
+    ] }),
+  T({ id: 'business-day-calculator', name: 'Business Day Calculator', icon: 'calendar', engine: 'datetime', categories: ['datetime', 'calculators'],
+    related: ['date-difference', 'date-add-calculator', 'work-hours-calculator', 'time-duration-calculator'],
+    blurb: 'Count working days or calculate a deadline with custom holidays.',
+    description: 'Count business days between dates or add and subtract working days with selectable weekends and manually entered holidays.',
+    keywords: ['business day calculator', 'working days calculator', 'add business days', 'working days between dates', 'business day deadline'],
+    aliases: ['working day calculator', 'business days between dates'], popularity: 80, added: '2026-11-06',
+    steps: 'Choose the start date, weekend pattern and any holiday dates.|For a range, choose the end date and count both endpoints.|For a deadline, enter a positive or negative offset and add or subtract working days.',
+    faqs: [
+      { q: 'Are public holidays included automatically?', a: 'No. Enter holiday dates yourself in YYYY-MM-DD format. Holiday rules vary by country, state and employer, so verify your list against an authoritative calendar.' },
+      { q: 'Are start and end dates included?', a: 'Counting includes both dates if they are working days. Adding or subtracting a nonzero number excludes the start date; zero returns the start date even if it is non-working.' },
+      { q: 'Can I change the weekend?', a: 'Yes. Choose Saturday–Sunday, Friday–Saturday, Sunday only or no weekend. Holidays on a weekend are excluded once, not twice.' },
+      { q: 'What are the supported date limits?', a: 'Dates must be between 1900 and 2100. A counting range is limited to 36,600 calendar days, offsets to 10,000 working days and holiday input to 500 dates.' },
+    ],
+    guide: [
+      { h: 'Counting and deadlines use different conventions', p: 'The range count includes both start and end, removing selected weekend days and manually entered holidays. For an offset, start with the next date in the chosen direction; do not count the start date. Negative offsets move backwards, and zero keeps the original date.' },
+      { h: 'Worked example with a holiday', p: 'From Friday 6 November to Friday 13 November 2026 inclusive, the Saturday–Sunday weekend leaves six weekdays. If 11 November is entered as a holiday, five working days remain. Adding five working days to 6 November with that holiday lands on Monday 16 November.' },
+      { h: 'Confirm your calendar', list: ['No public holiday database is loaded: enter the actual days relevant to your jurisdiction and workplace.', 'Some deadlines count the starting day or roll an end date differently; follow the contract or official rule, not a generic convention.', 'Weekend holidays are not double-counted. Duplicate holiday entries are ignored.', 'The calculation uses calendar dates rather than elapsed hours, so daylight-saving clock changes do not affect the result.'] },
     ] }),
 ];
 
