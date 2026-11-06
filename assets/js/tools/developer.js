@@ -597,9 +597,9 @@ const defs = {
       }));
     };
     const gen = () => {
-      const n = Math.max(1, Math.min(500, Math.floor(Number(count.value) || 1)));
-      count.value = String(n);
       try {
+        const n = Number(count.value);
+        if (!count.value.trim() || !Number.isInteger(n) || n < 1 || n > 500) throw new Error('Count must be a whole number between 1 and 500.');
         current = Array.from({ length: n }, () => {
           let u = uuidv4();
           if (noDash.querySelector('input').checked) u = u.replace(/-/g, '');
@@ -608,8 +608,10 @@ const defs = {
         });
         render();
         status.set(`${n} UUID${n === 1 ? '' : 's'} generated with crypto.getRandomValues ✓`, 'success');
-      } catch (e) { status.set(e.message, 'error'); }
+      } catch (e) { current = []; render(); status.set(e.message, 'error'); }
     };
+    const invalidate = () => { current = []; render(); status.set('Settings changed. Generate new UUIDs.', 'info'); };
+    root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
     root.append(
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'How many', control: count, hint: '1–500' }),
@@ -708,7 +710,7 @@ const defs = {
     const flags = ['g', 'i', 'm', 's', 'u'].map((f) => switchChip({ label: f, name: f }));
     const test = textarea({ rows: 7, mono: false, value: 'Contact us at hello@example.com or support@ihavetools.example.', placeholder: 'Test string…' });
     const status = statusLine('Matches update as you type.');
-    const highlight = h('div', { class: 'result-body', style: 'max-height:220px' });
+    const highlight = h('div', { class: 'result-body', tabindex: '0', role: 'region', 'aria-label': 'Match highlights', style: 'max-height:220px' });
     const matchesTable = h('div', {});
     let worker = null, deadline = null, debounce = null, revision = 0;
     const clear = () => {
@@ -772,7 +774,7 @@ const defs = {
         const fmt = (obj) => h('pre', { text: JSON.stringify(obj, null, 2) });
         const panel = (label, obj) => h('section', { class: 'result-panel' },
           h('div', { class: 'result-head' }, h('span', { class: 'result-label', text: label }), h('span', { class: 'spacer' }), copyButton(() => JSON.stringify(obj, null, 2))),
-          h('div', { class: 'result-body' }, fmt(obj)));
+          h('div', { class: 'result-body', tabindex: '0', role: 'region', 'aria-label': 'Result details' }, fmt(obj)));
         detail.append(
           panel('Header', header),
           panel('Payload', payload));

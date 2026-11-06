@@ -147,7 +147,7 @@ const defs = {
     const status = statusLine('Add one name or option per line, then spin. The winner is chosen with crypto.getRandomValues before the wheel animates.');
     const winnerBox = h('div', { class: 'result-panel', style: 'display:none;text-align:center;margin-top:14px', 'aria-live': 'polite' });
     const historyBox = h('div', { style: 'margin-top:12px' });
-    const wheelHost = h('div', { style: 'position:relative;width:min(460px,92vw);margin:18px auto 4px;aspect-ratio:1' },
+    const wheelHost = h('div', { style: 'position:relative;width:min(460px,100%);margin:18px auto 4px;aspect-ratio:1' },
       h('div', { style: 'position:absolute;left:50%;top:-4px;transform:translateX(-50%);width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:24px solid var(--danger);z-index:2;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))', 'aria-hidden': 'true' }));
     const svgHost = h('div', {});
     wheelHost.append(svgHost);

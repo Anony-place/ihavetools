@@ -41,6 +41,12 @@ jobs:
       - name: Link & integrity checks
         run: node scripts/link-check.mjs
 
+      - name: Real Chromium smoke, interaction and accessibility checks
+        run: |
+          CHROMIUM_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROMIUM_PATH"
+          CHROMIUM_PATH="$CHROMIUM_PATH" npm run test:browser
+
       - name: Verify deployment config
         run: |
           test -f firebase.json

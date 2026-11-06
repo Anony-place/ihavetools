@@ -98,7 +98,7 @@ function moveRow(e, dir) {
 const defs = {
   'pdf-organizer'(root) {
     let source = null, file = null, pages = [], revision = 0;
-    const status = statusLine('Choose a PDF to begin.'), list = h('div', { class: 'file-list', 'aria-label': 'PDF pages' });
+    const status = statusLine('Choose a PDF to begin.'), list = h('div', { class: 'file-list', role: 'region', 'aria-label': 'PDF pages' });
     const info = h('p', { class: 'hint' });
     const render = () => {
       list.replaceChildren(...pages.map((p, i) => {

@@ -60,9 +60,10 @@ scripts/
                      about/privacy/terms, 404), sitemap, llms.txt, sprite,
                      search index — all from registry.js
   test-tools.mjs   ← 203 engine tests (pure logic, run in Node)
-  test-dom.mjs     ← 97 DOM tests: loads built pages into jsdom and drives real UIs
-  test-chrome.mjs  ← 9 chrome tests: homepage, search, categories, theme, nav, install
+  test-dom.mjs     ← DOM tests: loads built pages into jsdom and drives real UIs
+  test-chrome.mjs  ← jsdom site-chrome tests: homepage, search, theme, nav, install
   test-sw.mjs      ← service worker lifecycle, offline, privacy and cache-limit regression tests
+  test-browser.mjs ← real Chromium mobile layouts, downloads, sample axe and offline checks
   link-check.mjs   ← 20 integrity checks: dead links, sitemap↔files, SEO meta,
                      performance & trust invariants (no registry in browser…)
 ```
@@ -84,16 +85,21 @@ See **PLAN.md** for the SEO/speed roadmap (what is done, what is next).
 ## Development
 
 ```bash
-npm install          # devDependencies only (jsdom, sharp, pdf-lib, playwright*)
+npm ci               # install locked development dependencies
 npm run build        # regenerate all HTML from the registry
-npm test             # engine tests (202)
-npm run test:dom     # DOM tests against built pages (90)
-npm run test:chrome  # chrome tests (9)
-npm run check        # build + engine/DOM/Chrome, service worker and link checks
+npm test             # engine tests
+npm run test:dom     # DOM tests against built pages
+npm run test:chrome  # jsdom site-chrome tests
+npm run check        # build + engine/DOM/site-chrome, service worker and link checks
+CHROMIUM_PATH=/path/to/chromium npm run test:browser  # real browser (see below)
 ```
 
-\* `playwright` is optional and only used for manual visual checks; the CI and
-all automated tests run on jsdom.
+The browser suite requires a working local Chromium/Chrome and its system libraries.
+It starts an ephemeral localhost server itself. Set `CHROMIUM_PATH` to the
+executable (or install Playwright Chromium separately); CI uses its preinstalled
+Chrome. `FULL_A11Y=1` expands the axe scan from seven representative pages to
+the homepage and all 128 tools in both themes. These automated scans do not
+replace screen-reader, real-device, cross-browser or exhaustive functional testing.
 
 Add a new tool by adding one `T({ ... })` entry to `assets/js/registry.js` and
 a matching def in the right `assets/js/tools/*.js` engine module, then run

@@ -11,6 +11,22 @@
 
 ---
 
+## Consolidated browser verification and remaining reliability plan (2026-11-06)
+
+1. Try to unblock headless Chromium using only permitted, free sources; document
+   dependencies and failures instead of calling jsdom a real-browser test.
+2. If available, exercise all 128 routes in a real browser, plus representative
+   calculations, download payloads, offline/privacy behavior, mobile layout and
+   accessibility. Fix reproducible high-priority problems together with tests.
+3. Independently recheck SEO/deployment, automated engine/DOM/security suites,
+   build outputs and known risky file workflows. Clearly document what has and
+   has not actually been tested, including device and format limitations.
+4. Update audit evidence, ship this as one consolidated PR only after checks pass,
+   verify the Vercel production deployment and report honestly. Do not claim
+   exhaustive 128-tool certification or ranking guarantees.
+
+---
+
 ## Consolidated remaining audit — one branch, one PR (2026-11-06)
 
 **User direction:** stop opening a PR for each small category. Keep remaining

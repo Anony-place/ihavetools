@@ -9,8 +9,38 @@ A mount is **not** proof
 that every input, calculation, file format or browser works. The existing engine
 and DOM suites exercise many representative cases, but are not exhaustive.
 This report records implementation families and known gaps, not 128 individual
-certifications. No real browser, screen reader, device, camera/microphone,
-canvas pixel comparison, or diverse user-file matrix was available.
+certifications. A headless Chromium audit is now available (see below). No
+physical-device, screen-reader, physical camera/microphone or diverse user-file
+matrix was available.
+
+## Real Chromium and accessibility audit — 2026-11-06
+
+- Obtained headless Chromium 153 from the npm distribution and built missing
+  NSPR libraries from Mozilla source; temporary browser/runtime files are not
+  shipped in the site. `scripts/test-browser.mjs` is repeatable with an installed
+  Chromium and checks all 128 tool mounts at both 320px and 390px. The initial
+  run found horizontal page overflow across most routes, plus literal SVG markup
+  rendered in shared copy/download buttons. Grid sizing, long labels, the wheel
+  width, actual icons and accessible copy names were corrected. This measures
+  document overflow at default states, not every generated output or device.
+- Real browser downloads were independently inspected: JSON preserves a large
+  numeric token, QR PNG decodes with jsQR preserving whitespace, canvas output
+  retains dimensions, a two-file PDF merge reloads as two pages, and generated
+  WAV has the expected header. Actual clipboard permissions, audio playback,
+  physical cameras, varied formats and large files were not verified.
+- Axe WCAG 2 A/AA and 2.1 A/AA scans ran on the homepage and all 128 tool pages
+  in both light and dark themes at 390px, with no automated violations on initial
+  states. Fixed low-contrast text, unlabeled inputs, dark controls, focusable
+  scrolling regions, links and nested file-input controls. The file picker was
+  also keyboard-triggered in Chromium. Automated axe checks are not a full
+  accessibility audit; screen readers, dynamic states and other browsers remain.
+- Registered the real service worker manually on localhost to verify a visited
+  tool loads offline, an unvisited tool shows the offline page and query strings
+  are not cached. This is not a real-device PWA installation test.
+- The UUID generator now rejects fractional/out-of-range counts and invalidates
+  old results on settings changes. Shared download buttons report URL creation
+  failures instead of claiming success. Full `npm run check` and npm audit passed;
+  CI runs the shorter representative browser suite with preinstalled Chrome.
 
 ## Consolidated audit — release evidence (PR #36)
 
@@ -49,9 +79,8 @@ canvas pixel comparison, or diverse user-file matrix was available.
   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
 - Current automated evidence: 227 engine and 139 DOM tests, 9 chrome tests,
   service-worker and 20 integrity checks passed; dependency audit found zero
-  vulnerabilities. A headless Chromium launch was attempted but blocked by
-  missing system NSS/NSPR libraries; no real browser or physical-device testing
-  is implied. npm-only temporary browser packages were not added to the project.
+  vulnerabilities. Earlier attempts lacked NSS/NSPR; see the newer Chromium
+  audit above for the subsequent resolution and scope of real-browser coverage.
 
 ## Batch 29 — color tool integrity
 

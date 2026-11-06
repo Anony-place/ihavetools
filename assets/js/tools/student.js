@@ -336,10 +336,10 @@ const defs = {
     const grid = statsGrid();
     const status = statusLine('Tip: use this like a timesheet — add rows, then choose + or − between them.');
     const mkRow = (i) => {
-      const hh = input({ type: 'number', min: 0, step: '1', placeholder: 'h' });
-      const mm = input({ type: 'number', min: 0, max: 59, step: '1', placeholder: 'm' });
-      const ss = input({ type: 'number', min: 0, max: 59, step: '1', placeholder: 's' });
-      const opSel = i === 0 ? null : select({ options: [{ v: '+', t: '+' }, { v: '-', t: '−' }], value: '+' });
+      const hh = input({ type: 'number', min: 0, step: '1', placeholder: 'h', 'aria-label': 'Hours' });
+      const mm = input({ type: 'number', min: 0, max: 59, step: '1', placeholder: 'm', 'aria-label': 'Minutes' });
+      const ss = input({ type: 'number', min: 0, max: 59, step: '1', placeholder: 's', 'aria-label': 'Seconds' });
+      const opSel = i === 0 ? null : select({ options: [{ v: '+', t: '+' }, { v: '-', t: '−' }], value: '+', 'aria-label': 'Add or subtract duration' });
       const row = h('div', { class: 'file-row', dataset: { row: String(i) } },
         opSel ? h('div', { style: 'width:64px' }, opSel) : h('span', { class: 'hint', text: 'Duration' }),
         hh, mm, ss,

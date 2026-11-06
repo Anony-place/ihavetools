@@ -565,7 +565,7 @@ const defs = {
         const p = parseUrlParts(inp.value);
         const kv = (pairs) => h('dl', { class: 'kv-grid' }, pairs.flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { class: 'mono', text: String(v) || '—' })]));
         out.append(
-          h('section', { class: 'result-panel' }, h('div', { class: 'result-head' }, h('span', { class: 'result-label', text: 'Components' })), h('div', { class: 'result-body' },
+          h('section', { class: 'result-panel' }, h('div', { class: 'result-head' }, h('span', { class: 'result-label', text: 'Components' })), h('div', { class: 'result-body', tabindex: '0', role: 'region', 'aria-label': 'Result details' },
             kv([['Protocol', p.protocol], ['Host', p.host], ['Port', p.port], ['Path', p.path], ['Query', p.query || '—'], ['Fragment', p.fragment ? `#${p.fragment}` : '—'], ['Origin', p.origin], ['Last two hostname labels (not registrable domain)', p.domain], ['Last hostname label', p.tld], ['Username', p.username || '—']]))),
           h('section', {},
             h('h3', { text: `Query parameters (${p.params.length})`, style: 'margin:20px 0 10px' }),
