@@ -1316,6 +1316,19 @@ await test('PNG chunks parsed from crafted buffer', () => {
   assert.ok(meta.chunks.some((c) => c[0] === 'IEND'));
 });
 
+await test('image metadata rejects oversized EXIF values and truncated PNG chunks safely', () => {
+  const tiff = Buffer.alloc(26); tiff.write('II',0); tiff.writeUInt16LE(42,2); tiff.writeUInt32LE(8,4); tiff.writeUInt16LE(1,8);
+  tiff.writeUInt16LE(0x010f,10); tiff.writeUInt16LE(2,12); tiff.writeUInt32LE(0xffffffff,14); tiff.writeUInt32LE(8,18);
+  const payload=Buffer.concat([Buffer.from('Exif\0\0'),tiff]); const head=Buffer.from([0xff,0xd8,0xff,0xe1,0,0]); head.writeUInt16BE(payload.length+2,4);
+  const jpg=Buffer.concat([head,payload,Buffer.from([0xff,0xd9])]); const ab=b=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);
+  const parsed=img.parseImageMetadata(ab(jpg)); assert.equal(parsed.exif,null); assert.match(JSON.stringify(parsed.summary),/unreadable/);
+  const png=Buffer.alloc(33); Buffer.from([0x89,0x50,0x4e,0x47,13,10,26,10]).copy(png); png.writeUInt32BE(13,8); png.write('IHDR',12); png.writeUInt32BE(1,16); png.writeUInt32BE(1,20);
+  const broken=Buffer.concat([png, Buffer.from([0xff,0xff,0xff,0xff,0x49,0x44,0x41,0x54])]);
+  const result=img.parseImageMetadata(ab(broken)); assert.match(JSON.stringify(result.summary),/corrupted/); assert.ok(!result.chunks.some(c=>c[0]==='IDAT'));
+  assert.throws(() => img.computeTargetDims(100,100,{width:-1}), /positive whole/);
+  assert.throws(() => img.computeTargetDims(100,100,{width:1.5}), /positive whole/);
+});
+
 console.log('\n── PDF helpers ──');
 await test('range parsing: singles, ranges, mixed, unsorted, reversed', () => {
   assert.deepEqual(pdf.parseRanges('1-3, 7, 11-13', 20), [1, 2, 3, 7, 11, 12, 13]);

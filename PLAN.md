@@ -560,6 +560,17 @@ Continue the audit requested by the user; no new tools or thin pages.
 
 ---
 
+## 🚧 BATCH-18 — Image processing and metadata integrity
+
+1. Audit image dimensions, memory bounds, EXIF/PNG metadata parsing and
+   unsupported or malformed files; avoid unchecked allocations and false claims.
+2. Fix asynchronous output races, failed-download reporting and preview URL
+   lifetime; verify with adversarial fixtures and UI regression tests.
+3. Run full checks and dependency audit; document remaining real-browser and
+   image-fidelity gaps, then ship one PR and verify deployment.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha

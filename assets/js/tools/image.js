@@ -10,9 +10,10 @@ export const MIME_BY_FMT = { jpeg: 'image/jpeg', png: 'image/png', webp: 'image/
 export const EXT_BY_FMT = { jpeg: 'jpg', png: 'png', webp: 'webp' };
 
 export function computeTargetDims(w, h0, { width = null, height = null, percent = null, lock = true } = {}) {
-  if (!w || !h0) throw new Error('The image dimensions could not be read.');
+  if (!Number.isSafeInteger(w) || !Number.isSafeInteger(h0) || w < 1 || h0 < 1) throw new Error('The image dimensions could not be read.');
+  for (const n of [width, height]) if (n != null && (!Number.isSafeInteger(n) || n < 1)) throw new Error('Width and height must be positive whole numbers.');
   if (percent != null) {
-    if (!(percent > 0 && percent <= 1000)) throw new Error('Scale percentage must be between 1 and 1000.');
+    if (!(percent >= 1 && percent <= 1000)) throw new Error('Scale percentage must be between 1 and 1000.');
     return { width: Math.max(1, Math.round(w * percent / 100)), height: Math.max(1, Math.round(h0 * percent / 100)) };
   }
   if (width && height) return { width, height };
@@ -51,15 +52,16 @@ const ORIENTATIONS = { 1: 'Normal', 2: 'Mirrored horizontal', 3: 'Rotated 180°'
 function parseJpeg(buffer) {
   const view = new DataView(buffer);
   const bytes = new Uint8Array(buffer);
-  let exifStart = -1;
+  let exifStart = -1, exifEnd = -1;
   // walk JPEG segments
   let i = 2;
   while (i + 4 < bytes.length) {
     if (bytes[i] !== 0xff) break;
     const marker = bytes[i + 1];
     const size = view.getUint16(i + 2);
-    if (marker === 0xe1 && i + 10 < bytes.length && bytes[i + 4] === 0x45 && bytes[i + 5] === 0x78 && bytes[i + 6] === 0x69 && bytes[i + 7] === 0x66 && bytes[i + 8] === 0x00) {
-      exifStart = i + 10;
+    if (size < 2 || i + 2 + size > bytes.length) break;
+    if (marker === 0xe1 && size >= 8 && i + 10 < bytes.length && bytes[i + 4] === 0x45 && bytes[i + 5] === 0x78 && bytes[i + 6] === 0x69 && bytes[i + 7] === 0x66 && bytes[i + 8] === 0x00 && bytes[i + 9] === 0x00) {
+      exifStart = i + 10; exifEnd = i + 2 + size;
       break;
     }
     if (marker === 0xda) break; // start of scan
@@ -68,20 +70,29 @@ function parseJpeg(buffer) {
   const out = { exif: null, chunks: null };
   if (exifStart === -1) return out;
   try {
-    const little = view.getUint16(exifStart) === 0x4949;
-    const u16 = (off) => view.getUint16(off, little);
-    const u32 = (off) => view.getUint32(off, little);
+    const bounds = (off, len) => { if (!Number.isSafeInteger(off) || !Number.isSafeInteger(len) || off < exifStart || len < 0 || off + len > exifEnd) throw new Error('Invalid EXIF bounds'); };
+    bounds(exifStart, 8);
+    const byteOrder = view.getUint16(exifStart);
+    if (byteOrder !== 0x4949 && byteOrder !== 0x4d4d) throw new Error('Invalid TIFF byte order');
+    const little = byteOrder === 0x4949;
+    const u16 = (off) => { bounds(off, 2); return view.getUint16(off, little); };
+    const u32 = (off) => { bounds(off, 4); return view.getUint32(off, little); };
+    if (u16(exifStart + 2) !== 42) throw new Error('Invalid TIFF header');
     const ifd = (start, tagMap, label) => {
       const entries = {};
       const count = u16(start);
+      bounds(start + 2, count * 12);
       for (let k = 0; k < count; k++) {
         const e = start + 2 + k * 12;
         const tag = u16(e);
         const typ = u16(e + 2);
         const num = u32(e + 4);
-        const sizes = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8 };
-        const total = (sizes[typ] || 1) * num;
+        const sizes = { 2: 1, 3: 2, 4: 4, 5: 8, 10: 8 };
+        if (!tagMap[tag] || !sizes[typ]) continue;
+        if (num > 4096) throw new Error('EXIF value too large');
+        const total = sizes[typ] * num;
         const valOff = total <= 4 ? e + 8 : exifStart + u32(e + 8);
+        bounds(valOff, total);
         let value;
         if (typ === 2) value = new TextDecoder('ascii', { fatal: false }).decode(new Uint8Array(buffer, valOff, num)).replace(/\0.*$/, '').trim();
         else if (typ === 3) value = num === 1 ? u16(valOff) : Array.from({ length: num }, (_, q) => u16(valOff + q * 2));
@@ -89,7 +100,7 @@ function parseJpeg(buffer) {
         else if (typ === 5) value = Array.from({ length: num }, (_, q) => u32(valOff + q * 8) / (u32(valOff + q * 8 + 4) || 1));
         else if (typ === 10) value = Array.from({ length: num }, (_, q) => view.getInt32(valOff + q * 8, little) / (view.getInt32(valOff + q * 8 + 4, little) || 1));
         else value = null; // undefined/unknown types skipped
-        if (value != null && tagMap[tag]) entries[tagMap[tag]] = value;
+        if (value != null && tagMap[tag]) entries[tagMap[tag]] = Array.isArray(value) && value.length === 1 ? value[0] : value;
       }
       return entries;
     };
@@ -98,6 +109,7 @@ function parseJpeg(buffer) {
     let exifEntries = {}, gps = {};
     const sub = (tag, map) => {
       const count = u16(ifd0Off);
+      bounds(ifd0Off + 2, count * 12);
       for (let k = 0; k < count; k++) {
         const e = ifd0Off + 2 + k * 12;
         if (u16(e) === tag) { return ifd(exifStart + u32(e + 8), map, 'sub'); }
@@ -122,17 +134,21 @@ function parsePng(buffer) {
   const summary = [['Format', 'PNG']];
   let pos = 8;
   try {
+    if (bytes.length < 33 || view.getUint32(8) !== 13 || String.fromCharCode(...bytes.slice(12, 16)) !== 'IHDR') throw new Error('Invalid PNG header');
     const w = view.getUint32(16), h = view.getUint32(20);
     const bitDepth = bytes[24];
     const colorType = ({ 0: 'Grayscale', 2: 'RGB', 3: 'Palette', 4: 'Grayscale + alpha', 6: 'RGBA' })[bytes[25]] || 'Unknown';
     summary.push(['Dimensions', `${w} × ${h} px`], ['Bit depth', bitDepth], ['Color type', colorType], ['Interlaced', bytes[28] ? 'Yes (Adam7)' : 'No']);
     while (pos + 8 <= bytes.length) {
+      if (chunks.length >= 10000) throw new Error('Too many PNG chunks');
       const len = view.getUint32(pos);
       const name = String.fromCharCode(...bytes.slice(pos + 4, pos + 8));
+      if (len > bytes.length - pos - 12) throw new Error('Truncated PNG chunk');
       chunks.push([name, `${len.toLocaleString()} B`, CHUNK_INFO[name] || '']);
       if (name === 'IEND') break;
       pos += 12 + len;
     }
+    if (!chunks.some(([name]) => name === 'IEND')) throw new Error('Missing PNG end chunk');
   } catch { summary.push(['Note', 'PNG structure could not be fully read — the file may be corrupted.']); }
   return { summary, chunks: chunks.map(([n, s, d]) => [n, s, d]), exif: null };
 }
@@ -159,11 +175,30 @@ async function canvasToBlob(canvas, mime, quality) {
   });
 }
 function checkDecodable(file, allowed = ['jpeg', 'png', 'webp', 'gif', 'bmp']) {
-  return readFile(file, 'buffer').then((buf) => {
+  if (file.size > 100 * 1024 * 1024) return Promise.reject(new Error('Choose an image no larger than 100 MiB.'));
+  return readFile(file.slice(0, 16), 'buffer').then((buf) => {
     const t = sniffImageType(buf);
     if (!t || !allowed.includes(t)) throw new Error(`“${file.name}” does not look like a supported image${t ? ` (detected: ${t})` : ''}. Supported: JPG, PNG, WebP, GIF, BMP.`);
     return t;
   });
+}
+
+// Limit canvas allocation; browsers vary in their actual limits and may still fail.
+function validateCanvasSize(width, height) {
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1 || width > 16384 || height > 16384 || width * height > 40000000) {
+    throw new Error('Image output must be at most 16,384 pixels per side and 40 million pixels total.');
+  }
+}
+function previewManager(element) {
+  let url = null;
+  return {
+    clear() { element.replaceChildren(); if (url) URL.revokeObjectURL(url); url = null; },
+    show(blob, render) { this.clear(); url = URL.createObjectURL(blob); element.replaceChildren(render(url)); },
+  };
+}
+function downloadImage(blob, name) {
+  const ok = downloadBlob(blob, name);
+  toast(ok ? 'Download started' : 'Could not start the download in this browser.', ok ? 'success' : 'error');
 }
 
 // One common callback for picker and drag/drop; native file inputs cannot be
@@ -185,29 +220,33 @@ const defs = {
     const maxW = input({ type: 'number', min: 1, placeholder: 'original' });
     const status = statusLine('Choose an image to begin.');
     const grid = statsGrid();
-    const preview = h('div', {});
+    const preview = h('div', {}), previews = previewManager(preview);
+    let revision = 0;
     let file = null, lastBlob = null;
     const origHook = (f) => {
-      file = f;
-      lastBlob = null; grid.replaceChildren(); preview.replaceChildren();
+      revision++; file = f;
+      lastBlob = null; grid.replaceChildren(); previews.clear();
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       status.set(`Loaded ${f.name} (${fmtBytes(f.size)}). Adjust options, then Compress.`, 'info');
     };
     zone.addEventListener('iht-files', (e) => { if (e.detail[0]) origHook(e.detail[0]); });
+    [quality, fmtSel, maxW].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; grid.replaceChildren(); previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file) { status.set('Choose an image first.', 'warning'); return; }
       status.set('Compressing…', 'info');
-      const selected = file;
+      const selected = file, token = ++revision;
       try {
         await checkDecodable(selected);
         const img = await loadImage(selected);
-        if (file !== selected) return;
+        if (file !== selected || revision !== token) return;
         let w = img.naturalWidth, h0 = img.naturalHeight;
+        if (maxW.value !== '' && (!Number.isSafeInteger(Number(maxW.value)) || Number(maxW.value) < 1)) throw new Error('Max width must be a positive whole number.');
         if (Number(maxW.value) > 0 && Number(maxW.value) < w) {
           const t = computeTargetDims(w, h0, { width: Math.floor(Number(maxW.value)) });
           w = t.width; h0 = t.height;
         }
+        validateCanvasSize(w, h0);
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h0;
         const ctx = canvas.getContext('2d');
@@ -217,7 +256,7 @@ const defs = {
         if (fmt === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h0); }
         ctx.drawImage(img, 0, 0, w, h0);
         const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : clampQuality(quality.value));
-        if (file !== selected) return;
+        if (file !== selected || revision !== token) return;
         lastBlob = blob;
         const saved = Math.max(0, Math.round((1 - blob.size / file.size) * 100));
         grid.set([
@@ -226,16 +265,15 @@ const defs = {
           { label: 'Saved', value: `${saved}%`, kind: saved > 0 ? 'good' : 'bad' },
           { label: 'Dimensions', value: `${w} × ${h0}` },
         ]);
-        preview.replaceChildren(h('div', {},
-          h('img', { class: 'img-preview', src: URL.createObjectURL(blob), alt: 'Compressed preview', style: 'margin-top:12px' }),
+        previews.show(blob, (url) => h('div', {},
+          h('img', { class: 'img-preview', src: url, alt: 'Compressed preview', style: 'margin-top:12px' }),
           h('div', { style: 'margin-top:10px' },
             h('button', { type: 'button', class: 'btn btn-primary', onclick: () => {
-              downloadBlob(lastBlob, `compressed-${baseName(file.name)}.${EXT_BY_FMT[fmt]}`);
-              toast('Download started', 'success');
+              downloadImage(blob, `compressed-${baseName(selected.name)}.${EXT_BY_FMT[fmt]}`);
             } }, 'Download compressed image'))));
         if (blob.size >= file.size) status.set('Done — but this format/quality did not shrink the file. Try lower quality or JPEG/WebP.', 'warning');
         else status.set(`Compressed ✓ ${fmtBytes(file.size)} → ${fmtBytes(blob.size)} (${saved}% smaller).`, 'success');
-      } catch (e) { if (file === selected) { grid.replaceChildren(); preview.replaceChildren(); status.set(e.message, 'error'); } }
+      } catch (e) { if (file === selected && revision === token) { grid.replaceChildren(); previews.clear(); status.set(e.message, 'error'); } }
     };
     root.append(zone,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
@@ -244,7 +282,7 @@ const defs = {
         field({ label: 'Max width (px)', control: maxW, hint: 'Blank keeps original size' })),
       actionsRow(btn({ label: 'Compress', icon: 'minimize', onClick: run })),
       status, grid, preview,
-      privacyNote('Your image is compressed locally in your browser and is not uploaded to any server.'));
+      privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. JPEG flattens transparency onto white. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
   },
 
   'image-resizer'(root) {
@@ -256,53 +294,58 @@ const defs = {
     const fmtSel = select({ options: [{ v: 'png', t: 'PNG' }, { v: 'jpeg', t: 'JPEG' }, { v: 'webp', t: 'WebP' }], value: 'png' });
     const status = statusLine('Choose an image to begin.');
     const info = h('p', { class: 'hint' });
-    const preview = h('div', {});
+    const preview = h('div', {}), previews = previewManager(preview);
+    let revision = 0, selectionRevision = 0;
     let file = null, img = null, lastBlob = null;
     zone.addEventListener('iht-files', async (e) => {
       const f = e.detail[0];
       if (!f) return;
-      file = f; img = null; lastBlob = null; preview.replaceChildren(); info.textContent = '';
+      const loadToken = ++selectionRevision; revision++; file = f; img = null; lastBlob = null; previews.clear(); info.textContent = '';
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       try {
         await checkDecodable(file);
         const loaded = await loadImage(f);
-        if (file !== f) return;
+        if (file !== f || selectionRevision !== loadToken) return;
         img = loaded;
         wIn.placeholder = String(img.naturalWidth);
         hIn.placeholder = String(img.naturalHeight);
         info.textContent = `Original: ${img.naturalWidth} × ${img.naturalHeight} px.`;
         status.set(`Loaded ${f.name}. Enter target dimensions.`, 'info');
-      } catch (err) { if (file === f) { file = null; img = null; status.set(err.message, 'error'); } }
+      } catch (err) { if (file === f && selectionRevision === loadToken) { file = null; img = null; status.set(err.message, 'error'); } }
     });
     [wIn, hIn].forEach((el) => el.addEventListener('input', () => {
       if (!img || !lock.querySelector('input').checked) return;
       if (el === wIn && Number(wIn.value) > 0) hIn.value = String(Math.round(img.naturalHeight * (Number(wIn.value) / img.naturalWidth)));
       if (el === hIn && Number(hIn.value) > 0) wIn.value = String(Math.round(img.naturalWidth * (Number(hIn.value) / img.naturalHeight)));
     }));
+    [wIn, hIn, pctIn, fmtSel, lock].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
       status.set('Resizing…', 'info');
-      const selected = file, format = fmtSel.value;
+      const selected = file, format = fmtSel.value, token = ++revision;
       try {
+        if (!pctIn.value) for (const field of [wIn, hIn]) if (field.value !== '' && (!Number.isSafeInteger(Number(field.value)) || Number(field.value) < 1)) throw new Error('Width and height must be positive whole numbers.');
         const target = pctIn.value
           ? computeTargetDims(img.naturalWidth, img.naturalHeight, { percent: Number(pctIn.value) })
           : computeTargetDims(img.naturalWidth, img.naturalHeight, { width: Number(wIn.value) || null, height: Number(hIn.value) || null, lock: lock.querySelector('input').checked });
         if (!target.width || !target.height) { status.set('Enter a width, a height, or a scale percentage.', 'warning'); return; }
+        validateCanvasSize(target.width, target.height);
         const canvas = document.createElement('canvas');
         canvas.width = target.width; canvas.height = target.height;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
+        if (format === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, target.width, target.height); }
         ctx.drawImage(img, 0, 0, target.width, target.height);
         const blob = await canvasToBlob(canvas, MIME_BY_FMT[format], 0.92);
-        if (file !== selected) return;
+        if (file !== selected || revision !== token) return;
         lastBlob = blob;
-        preview.replaceChildren(
-          h('img', { class: 'img-preview', src: URL.createObjectURL(blob), alt: 'Resized preview', style: 'margin-top:12px' }),
-          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadBlob(lastBlob, `resized-${baseName(selected.name)}.${EXT_BY_FMT[format]}`); toast('Download started', 'success'); } }, `Download ${target.width} × ${target.height}`)));
+        previews.show(blob, (url) => h('div', {},
+          h('img', { class: 'img-preview', src: url, alt: 'Resized preview', style: 'margin-top:12px' }),
+          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadImage(blob, `resized-${baseName(selected.name)}.${EXT_BY_FMT[format]}`); } }, `Download ${target.width} × ${target.height}`))));
         status.set(`Resized to ${target.width} × ${target.height} px (${fmtBytes(blob.size)}) ✓`, 'success');
-      } catch (e) { preview.replaceChildren(); status.set(e.message, 'error'); }
+      } catch (e) { if (file === selected && revision === token) { previews.clear(); status.set(e.message, 'error'); } }
     };
     root.append(zone, info,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
@@ -313,7 +356,7 @@ const defs = {
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, lock),
       actionsRow(btn({ label: 'Resize', icon: 'crop', onClick: run })),
       status, preview,
-      privacyNote('Resizing happens in your browser — the image is not uploaded.'));
+      privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. JPEG flattens transparency onto white. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
   },
 
   'image-converter'(root, preset = null) {
@@ -326,42 +369,45 @@ const defs = {
     fmtSel.addEventListener('change', () => { bgRow.hidden = fmtSel.value !== 'jpeg'; });
     const status = statusLine('Choose an image to begin.');
     const info = h('p', { class: 'hint' });
-    const preview = h('div', {});
+    const preview = h('div', {}), previews = previewManager(preview);
+    let revision = 0, selectionRevision = 0;
     let file = null, lastBlob = null;
     zone.addEventListener('iht-files', async (e) => {
       const f = e.detail[0];
       if (!f) return;
-      file = f; lastBlob = null; preview.replaceChildren(); info.textContent = '';
+      const loadToken = ++selectionRevision; revision++; file = f; lastBlob = null; previews.clear(); info.textContent = '';
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       try {
         const t = await checkDecodable(f);
-        if (file !== f) return;
+        if (file !== f || selectionRevision !== loadToken) return;
         info.textContent = `Detected format: ${t.toUpperCase()}.`;
         status.set(preset ? `Loaded ${f.name}. Click Convert to ${EXT_BY_FMT[preset].toUpperCase()}.` : `Loaded ${f.name}. Choose the output format.`, 'info');
-      } catch (err) { if (file === f) { file = null; status.set(err.message, 'error'); } }
+      } catch (err) { if (file === f && selectionRevision === loadToken) { file = null; status.set(err.message, 'error'); } }
     });
+    [fmtSel, bgPicker].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file) { status.set('Choose an image first.', 'warning'); return; }
       status.set('Converting…', 'info');
-      const selected = file, format = fmtSel.value;
+      const selected = file, format = fmtSel.value, token = ++revision;
       try {
         await checkDecodable(selected);
         const img = await loadImage(selected);
-        if (file !== selected) return;
+        if (file !== selected || revision !== token) return;
+        validateCanvasSize(img.naturalWidth, img.naturalHeight);
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
         const ctx = canvas.getContext('2d');
         if (format === 'jpeg') { ctx.fillStyle = bgPicker.value; ctx.fillRect(0, 0, canvas.width, canvas.height); }
         ctx.drawImage(img, 0, 0);
         const blob = await canvasToBlob(canvas, MIME_BY_FMT[format], 0.92);
-        if (file !== selected) return;
+        if (file !== selected || revision !== token) return;
         lastBlob = blob;
-        preview.replaceChildren(
-          h('img', { class: 'img-preview', src: URL.createObjectURL(blob), alt: 'Converted preview', style: 'margin-top:12px' }),
-          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadBlob(lastBlob, `${baseName(selected.name)}.${EXT_BY_FMT[format]}`); toast('Download started', 'success'); } }, `Download ${format.toUpperCase()}`)));
+        previews.show(blob, (url) => h('div', {},
+          h('img', { class: 'img-preview', src: url, alt: 'Converted preview', style: 'margin-top:12px' }),
+          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadImage(blob, `${baseName(selected.name)}.${EXT_BY_FMT[format]}`); } }, `Download ${format.toUpperCase()}`))));
         status.set(`Converted ${selected.name} → ${format.toUpperCase()} (${fmtBytes(blob.size)}) ✓`, 'success');
-      } catch (e) { if (file === selected) { preview.replaceChildren(); status.set(e.message, 'error'); } }
+      } catch (e) { if (file === selected && revision === token) { previews.clear(); status.set(e.message, 'error'); } }
     };
     root.append(zone, info,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
@@ -369,7 +415,7 @@ const defs = {
         bgRow),
       actionsRow(btn({ label: preset ? `Convert to ${EXT_BY_FMT[preset].toUpperCase()}` : 'Convert', icon: 'swap', onClick: run })),
       status, preview,
-      privacyNote('Conversion happens in your browser — the file is not uploaded.'));
+      privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation; JPEG flattens transparency onto the chosen background. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
   },
 
   // Preset landing pages — same converter, output format locked.
@@ -385,28 +431,29 @@ const defs = {
     const stage = h('div', { class: 'cropper-stage' });
     const canvas = document.createElement('canvas');
     stage.append(canvas);
-    const preview = h('div', {});
+    const preview = h('div', {}), previews = previewManager(preview);
+    let revision = 0, selectionRevision = 0;
     let file = null, img = null, sel = null, dragging = false, startX = 0, startY = 0;
     let dispScale = 1;
     zone.addEventListener('iht-files', async (e) => {
       const f = e.detail[0];
       if (!f) return;
-      file = f; img = null; sel = null; preview.replaceChildren(); canvas.width = 0; canvas.height = 0;
+      const loadToken = ++selectionRevision; revision++; file = f; img = null; sel = null; previews.clear(); canvas.width = 0; canvas.height = 0;
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       try {
         await checkDecodable(file);
         const loaded = await loadImage(f);
-        if (file !== f) return;
+        if (file !== f || selectionRevision !== loadToken) return;
         img = loaded;
-        const maxW = Math.min(900, img.naturalWidth);
-        dispScale = maxW / img.naturalWidth;
-        canvas.width = Math.round(img.naturalWidth * dispScale);
-        canvas.height = Math.round(img.naturalHeight * dispScale);
+        if (!img.naturalWidth || !img.naturalHeight) throw new Error('Image dimensions could not be read.');
+        dispScale = Math.min(1, 900 / img.naturalWidth, 900 / img.naturalHeight);
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * dispScale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * dispScale));
         draw();
         sel = null;
         status.set(`Loaded ${img.naturalWidth} × ${img.naturalHeight} px. Drag on the image to select a crop area.`, 'info');
-      } catch (err) { if (file === f) { file = null; img = null; status.set(err.message, 'error'); } }
+      } catch (err) { if (file === f && selectionRevision === loadToken) { file = null; img = null; status.set(err.message, 'error'); } }
     });
     function draw() {
       if (!img) return;
@@ -436,6 +483,7 @@ const defs = {
     };
     canvas.addEventListener('pointerdown', (e) => {
       if (!img) return;
+      revision++; previews.clear();
       dragging = true;
       canvas.setPointerCapture(e.pointerId);
       const p = pos(e);
@@ -465,49 +513,52 @@ const defs = {
         draw();
       }
     }, 0)));
+    [aspect].forEach((el) => { for (const type of ['click']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
       if (!sel || sel.w < 4 || sel.h < 4) { status.set('Drag a selection on the image first.', 'warning'); return; }
       status.set('Cropping…', 'info');
-      const selected = file;
+      const selected = file, token = ++revision;
       try {
         const sx = sel.x / dispScale, sy = sel.y / dispScale, sw = sel.w / dispScale, sh = sel.h / dispScale;
         const out = document.createElement('canvas');
-        out.width = Math.max(1, Math.round(sw));
-        out.height = Math.max(1, Math.round(sh));
+        const width = Math.max(1, Math.round(sw)), height = Math.max(1, Math.round(sh));
+        validateCanvasSize(width, height);
+        out.width = width; out.height = height;
         out.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, out.width, out.height);
         const blob = await canvasToBlob(out, 'image/png');
-        if (file !== selected) return;
-        preview.replaceChildren(
-          h('img', { class: 'img-preview', src: URL.createObjectURL(blob), alt: 'Cropped preview', style: 'margin-top:12px' }),
-          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadBlob(blob, `cropped-${baseName(selected.name)}.png`); toast('Download started', 'success'); } }, `Download ${out.width} × ${out.height} PNG`)));
+        if (file !== selected || revision !== token) return;
+        previews.show(blob, (url) => h('div', {},
+          h('img', { class: 'img-preview', src: url, alt: 'Cropped preview', style: 'margin-top:12px' }),
+          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadImage(blob, `cropped-${baseName(selected.name)}.png`); } }, `Download ${out.width} × ${out.height} PNG`))));
         status.set(`Cropped to ${out.width} × ${out.height} px ✓`, 'success');
-      } catch (e) { if (file === selected) status.set(e.message, 'error'); }
+      } catch (e) { if (file === selected && revision === token) status.set(e.message, 'error'); }
     };
     root.append(zone, h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' }, field({ label: 'Aspect ratio', control: aspect })),
       actionsRow(btn({ label: 'Crop', icon: 'crop', onClick: run })),
       status, h('br'), stage, preview,
-      privacyNote('Cropping happens in your browser — the image is not uploaded.'));
+      privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
   },
 
   'image-metadata-viewer'(root) {
     const zone = imageZone({ accept: 'image/jpeg,image/png,image/*', title: 'Choose a JPEG or PNG', sub: 'Parsed locally — the file is never uploaded' });
     const status = statusLine('Everything is decoded in your browser.');
     const out = h('div', { class: 'tool-docs', style: 'margin-top:16px' });
-    let currentFile = null;
+    let currentFile = null, revision = 0;
     zone.addEventListener('iht-files', async (e) => {
       const f = e.detail[0];
       if (!f) return;
-      currentFile = f;
+      const token = ++revision; currentFile = f;
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       out.replaceChildren();
       status.set(`Analysing ${f.name}…`, 'info');
       try {
+        if (f.size > 100 * 1024 * 1024) throw new Error('Choose an image no larger than 100 MiB.');
         const buf = await readFile(f, 'buffer');
         const meta = parseImageMetadata(buf);
         const img = await loadImage(f);
-        if (currentFile !== f) return;
+        if (currentFile !== f || revision !== token) return;
         const summary = [
           ['File name', f.name], ['File size', fmtBytes(f.size)],
           ['Dimensions', `${img.naturalWidth} × ${img.naturalHeight} px`],
@@ -516,6 +567,7 @@ const defs = {
         ];
         out.append(
           h('section', { class: 'result-panel' }, h('div', { class: 'result-head' }, h('span', { class: 'result-label', text: 'Summary' })), h('div', { class: 'result-body' }, table({ headers: ['Property', 'Value'], rows: summary }))));
+        if (meta.summary?.length) out.append(h('section', {}, h('h3', { text: 'Parsed metadata', style: 'margin:20px 0 10px' }), table({ headers: ['Property', 'Value'], rows: meta.summary })));
         if (meta.exif && Object.keys(meta.exif).length) {
           for (const [group, entries] of Object.entries(meta.exif)) {
             if (!entries || !Object.keys(entries).length) continue;
@@ -535,7 +587,7 @@ const defs = {
           out.append(h('section', {}, h('h3', { text: 'PNG chunks', style: 'margin:20px 0 10px' }), table({ headers: ['Chunk', 'Size', 'Purpose'], rows: meta.chunks })));
         }
         status.set(`Analysed ${f.name} locally ✓`, 'success');
-      } catch (err) { if (currentFile === f) status.set(err.message, 'error'); }
+      } catch (err) { if (currentFile === f && revision === token) status.set(err.message, 'error'); }
     });
     root.append(zone, status, out,
       privacyNote('Metadata is read in your browser. The image is never uploaded — this is a safe way to check what a photo reveals before sharing it.'));
