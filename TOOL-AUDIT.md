@@ -3,12 +3,35 @@
 ## Scope and evidence
 
 128 registered routes were inventoried, their engine mappings checked, and all
-128 UIs mounted in jsdom via an automated smoke test. A mount is **not** proof
+128 UIs were smoke-tested in jsdom. The original smoke test missed startup error
+banners; Batch 22 fixes this assertion and all 128 pass the strengthened check.
+A mount is **not** proof
 that every input, calculation, file format or browser works. The existing engine
 and DOM suites exercise many representative cases, but are not exhaustive.
 This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
+
+## Batch 22 — developer and security follow-up
+
+- Fixed a hash-generator startup error (`require_icon` was undefined), which the
+  earlier smoke test had incorrectly reported as a successful mount. Hashing now
+  ignores stale asynchronous results; file input is limited to 100 MiB.
+- Base64 decoding preserves UTF-8 BOM and rejects invalid padding bits; encoding
+  rejects unpaired surrogates. Timestamp units are explicit with documented auto
+  detection and local DST caveats. JWT parsing requires three parts, object JSON
+  and Base64URL characters, flags invalid date claims and copies actual JSON.
+  Decoding never verifies signatures, issuer or validity.
+- Random custom alphabets deduplicate Unicode code points and lengths must be
+  whole numbers. Password strength is a limited heuristic, not measured entropy
+  or proof of security. Estimated crack-time claims were removed.
+- Added engine/DOM regressions, including out-of-order hash results, JWT copying,
+  explicit timestamps and custom alphabets. Automated checks passed: 212 engine,
+  113 DOM, 9 chrome, service worker and 20 integrity checks; npm audit reports
+  zero vulnerabilities. jsdom/mocks are not real-browser or cryptographic audits.
+- Regex evaluation still runs on the main thread: pathological expressions can
+  freeze the page. Isolating it in a terminable worker is a follow-up. Broader
+  browser/device, security and accessibility validation remains outstanding.
 
 ## Confirmed issues repaired in this batch
 

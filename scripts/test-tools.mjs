@@ -296,6 +296,29 @@ await test('garbage input explained', () => {
   assert.throws(() => dev.decodeJwt('a.b.c'), /Base64URL/);
 });
 
+await test('encoding, timestamps and JWT reject misleading or lossy inputs', () => {
+  assert.equal(dev.b64decode('77u/YQ=='), '\uFEFFa');
+  assert.throws(() => dev.b64decode('Zh=='), /padding bits/);
+  assert.throws(() => dev.b64decode('Zg='), /padding/);
+  assert.throws(() => dev.b64encode('\ud800'), /unpaired/);
+  assert.equal(dev.parseTimestamp('1000','milliseconds').toISOString(), '1970-01-01T00:00:01.000Z');
+  assert.equal(dev.parseTimestamp('1000','seconds').toISOString(), '1970-01-01T00:16:40.000Z');
+  assert.throws(()=>dev.parseTimestamp('1000','minutes'),/Choose/);
+  const b64 = s => Buffer.from(s).toString('base64url');
+  assert.throws(()=>dev.decodeJwt(`${b64('{}')}.${b64('{}')}`),/three dot-separated/);
+  assert.throws(()=>dev.decodeJwt(`${b64('{}')}.${b64('{}')}.a.b.c`),/three dot-separated/);
+  assert.throws(()=>dev.decodeJwt(`${b64('null')}.${b64('{}')}.`),/JSON objects/);
+  assert.throws(()=>dev.decodeJwt(`${b64('{}')}.${b64('{"a":1,"a":2}')}.`),/payload/);
+  assert.ok(dev.decodeJwt(`${b64('{}')}.${b64('{"exp":"1000000000"}')}.`).invalidClaims.includes('exp'));
+});
+await test('random alphabet uses Unicode code points and rejects invalid lengths', () => {
+  const rng = {getRandomValues(a){a[0]=1;return a;}};
+  assert.equal(sec.randomFrom('a😀',rng),'😀');
+  assert.equal(sec.buildCharset({custom:'aa😀😀'}), 'a😀');
+  assert.throws(()=>sec.generatePassword(4.5,{},rng),/length/);
+  assert.throws(()=>sec.buildCharset({custom:'\ud800'}),/surrogate/);
+});
+
 console.log('\n── Parser-based formatters ──');
 await test('HTML formatter preserves preformatted content and rejects unsafe minification',async()=>{
  const out=await dev.formatHtml('<pre>  keep\n   me</pre>');assert.ok(out.includes('  keep\n   me'));
