@@ -291,6 +291,39 @@ real-browser/device verification are separate from these automated results.
 
 ---
 
+## BATCH-8 — Loan, inflation, work and business planning (2026-11-06)
+
+Market review is qualitative (not independently verified search-volume data):
+competitor catalogues feature loan prepayment, inflation, work hours and profit
+margin. These cover distinct decisions missing from the 113-tool catalogue.
+Avoid thin pages and do not imply official rates, payroll/legal rules or returns.
+
+Single branch/PR plan:
+1. Loan Prepayment Calculator: compare the remaining loan against a fixed-EMI
+   scenario with optional extra monthly payment and one lump sum; cap the last
+   payment, show interest/time saved and clearly state timing and exclusions.
+2. Inflation Calculator: future cost and purchasing power using a user-supplied
+   constant annual rate and horizon; zero-rate case and no official CPI claim.
+3. Work Hours Calculator: clock-in/out, overnight shift, breaks and optional
+   gross hourly pay; equal times = zero, no payroll or DST assumptions.
+4. Profit Margin Calculator: cost, selling price, profit/loss, margin and markup;
+   handle zero cost, negative profit and zero revenue honestly.
+5. Full UIs, validation, safe share links, guides/FAQs and contextual links;
+   worked examples and boundary-case engine + DOM tests, generated pages, full
+   check, one PR and live deployment verification if checks pass. GSC measurement
+   and the outstanding real-browser Lighthouse/PWA audit remain separate.
+
+Implementation: 117 tools / 57 guides; four working shareable calculators, each
+with at least three inbound related-tool links. Engine tests cover zero-interest,
+partial/capped prepayments, invalid amortization, inflation, overnight breaks,
+losses and undefined ratios; DOM tests exercise all four shared-link examples.
+Full check passed: 182 engine, 68 DOM, 9 chrome, 20 integrity checks and the
+service-worker regression suite. Loan and inflation figures are assumptions,
+not official quotes; work hours exclude payroll rules and DST. Browser/device
+Lighthouse and PWA verification remains pending.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha

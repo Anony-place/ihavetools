@@ -441,6 +441,44 @@ export function fuelCostCalc(distance, mileage, price, trips, people) {
   return { totalDistance, litres, total, perPerson: total / people };
 }
 
+// Batch-8: deterministic estimates, not lender or payroll statements.
+export function loanPrepaymentCalc(principal, annualRate, payment, extra, lump, lumpMonth) {
+  bounded(principal, 0.01, 1e12, 'Outstanding balance'); bounded(annualRate, 0, 100, 'Annual rate');
+  bounded(payment, 0.01, 1e12, 'Monthly payment'); bounded(extra, 0, 1e12, 'Extra monthly payment'); bounded(lump, 0, 1e12, 'Lump sum');
+  if (!Number.isInteger(lumpMonth) || lumpMonth < 1 || lumpMonth > 1200) throw new Error('Lump sum month must be a whole number from 1 to 1200.');
+  const rate = annualRate / 1200;
+  if (payment <= principal * rate) throw new Error('Monthly payment must exceed the first month of interest for the baseline loan.');
+  const simulate = (accelerated) => {
+    let balance = principal, interest = 0, paid = 0, lumpApplied = 0;
+    for (let month = 1; month <= 1200; month++) {
+      const charge = balance * rate; interest += charge; balance += charge;
+      const regular = Math.min(balance, payment + (accelerated ? extra : 0)); balance -= regular; paid += regular;
+      if (accelerated && month === lumpMonth && balance > 0) { lumpApplied = Math.min(balance, lump); balance -= lumpApplied; paid += lumpApplied; }
+      if (balance <= Math.max(1e-9, principal * 1e-14)) return { months: month, interest, paid, lumpApplied };
+    }
+    throw new Error('Loan takes over 1,200 months to repay under these assumptions.');
+  };
+  const baseline = simulate(false), accelerated = simulate(true);
+  return { baseline, accelerated, interestSaved: baseline.interest - accelerated.interest, monthsSaved: baseline.months - accelerated.months };
+}
+export function inflationCalc(amount, rate, years) {
+  bounded(amount, 0, 1e12, 'Amount'); bounded(rate, 0, 100, 'Annual inflation'); bounded(years, 0, 100, 'Years');
+  const factor = Math.pow(1 + rate / 100, years);
+  return { futureCost: amount * factor, purchasingPower: amount / factor, increase: amount * (factor - 1) };
+}
+export function workHoursCalc(start, end, breakMinutes, hourlyRate) {
+  const minutes = (time) => { const m = /^(\d{2}):(\d{2})$/.exec(time); if (!m || +m[1] > 23 || +m[2] > 59) throw new Error('Enter valid start and end times.'); return +m[1] * 60 + +m[2]; };
+  const a = minutes(start), b = minutes(end), gross = b < a ? b + 1440 - a : b - a;
+  if (!Number.isInteger(breakMinutes) || breakMinutes < 0 || breakMinutes > gross) throw new Error('Break minutes must be a whole number no greater than the shift duration.');
+  bounded(hourlyRate, 0, 1e9, 'Hourly rate'); const net = gross - breakMinutes;
+  return { grossMinutes: gross, netMinutes: net, decimalHours: net / 60, pay: net / 60 * hourlyRate, overnight: b < a };
+}
+export function profitMarginCalc(cost, revenue) {
+  bounded(cost, 0, 1e12, 'Cost'); bounded(revenue, 0, 1e12, 'Selling price');
+  const profit = revenue - cost;
+  return { profit, margin: revenue === 0 ? null : profit / revenue * 100, markup: cost === 0 ? null : profit / cost * 100 };
+}
+
 const defs = {
   'percentage-calculator'(root) {
     const mode = segControl({ options: [{ v: 'of', t: 'X% of Y' }, { v: 'what', t: 'X is what % of Y' }, { v: 'change', t: '% change' }], value: 'of', ariaLabel: 'Calculation type' });
@@ -1181,6 +1219,41 @@ const defs = {
     shareState(root, [['basic', basic], ['age', age], ['retire', retire], ['balance', balanceNow], ['growth', growth], ['rate', rate]], run);
   },
 
+  'loan-prepayment-calculator'(root) {
+    const principal = input({ type: 'number', step: 'any', value: '120000' }), rate = input({ type: 'number', step: 'any', value: '0' }), payment = input({ type: 'number', step: 'any', value: '10000' }), extra = input({ type: 'number', step: 'any', value: '1000' }), lump = input({ type: 'number', step: 'any', value: '20000' }), month = input({ type: 'number', step: '1', value: '3' });
+    const grid = statsGrid(), status = statusLine('');
+    const run = () => { try { const r = loanPrepaymentCalc(num(principal), num(rate), num(payment), num(extra), num(lump), num(month));
+      grid.set([{ label: 'Time saved (months)', value: String(r.monthsSaved), kind: 'good' }, { label: 'Interest saved', value: money(r.interestSaved), kind: 'good' }, { label: 'Baseline months', value: String(r.baseline.months) }, { label: 'With prepayment months', value: String(r.accelerated.months) }, { label: 'Baseline interest', value: money(r.baseline.interest) }, { label: 'With prepayment interest', value: money(r.accelerated.interest) }, { label: 'Lump sum applied', value: money(r.accelerated.lumpApplied) }]);
+      status.set('Fixed rate and payment. Interest accrues monthly; extra and lump sum are paid after that month’s interest. Fees, rate changes, tax and lender rounding excluded. Lump sum is capped to the remaining balance.', 'success');
+    } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Outstanding balance', control: principal }), field({ label: 'Annual rate (%)', control: rate }), field({ label: 'Monthly payment', control: payment }), field({ label: 'Extra every month', control: extra }), field({ label: 'One-time prepayment', control: lump }), field({ label: 'Prepayment month', control: month })), actionsRow(btn({ label: 'Calculate prepayment', icon: 'calculator', onClick: run })), grid, status);
+    shareState(root, [['principal', principal], ['rate', rate], ['payment', payment], ['extra', extra], ['lump', lump], ['month', month]], run);
+  },
+  'inflation-calculator'(root) {
+    const amount = input({ type: 'number', step: 'any', value: '100000' }), rate = input({ type: 'number', step: 'any', value: '6' }), years = input({ type: 'number', step: 'any', value: '10' });
+    const grid = statsGrid(), status = statusLine('');
+    const run = () => { try { const r = inflationCalc(num(amount), num(rate), num(years)); grid.set([{ label: 'Equivalent future cost', value: money(r.futureCost) }, { label: 'Increase in cost', value: money(r.increase) }, { label: 'Future money in today’s buying power', value: money(r.purchasingPower) }]); status.set('Constant assumed annual inflation, compounded yearly. Actual inflation varies; this is not an official CPI forecast.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Amount today', control: amount }), field({ label: 'Annual inflation (%)', control: rate }), field({ label: 'Years', control: years })), actionsRow(btn({ label: 'Calculate inflation', icon: 'calculator', onClick: run })), grid, status);
+    shareState(root, [['amount', amount], ['rate', rate], ['years', years]], run);
+  },
+  'work-hours-calculator'(root) {
+    const start = input({ type: 'time', value: '09:00' }), end = input({ type: 'time', value: '17:00' }), pause = input({ type: 'number', step: '1', value: '60' }), hourly = input({ type: 'number', step: 'any', value: '20' });
+    const grid = statsGrid(), status = statusLine('');
+    const run = () => { try { const r = workHoursCalc(start.value, end.value, num(pause), num(hourly)); const clock = `${Math.floor(r.netMinutes / 60)}h ${String(r.netMinutes % 60).padStart(2, '0')}m`;
+      grid.set([{ label: 'Paid time', value: clock, kind: 'good' }, { label: 'Decimal hours', value: r.decimalHours.toFixed(2) }, { label: 'Estimated gross pay', value: money(r.pay) }, { label: 'Shift span', value: `${r.grossMinutes} minutes` }]);
+      status.set(`${r.overnight ? 'End is earlier than start: treated as next day. ' : 'Equal times mean a zero-length shift. '}Uses clock times, not calendar dates or daylight-saving changes. Pay excludes overtime, taxes and other deductions.`, 'success');
+    } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Start time', control: start }), field({ label: 'End time', control: end }), field({ label: 'Unpaid break (minutes)', control: pause }), field({ label: 'Hourly rate (optional; use 0)', control: hourly })), actionsRow(btn({ label: 'Calculate work hours', icon: 'calculator', onClick: run })), grid, status);
+    shareState(root, [['start', start], ['end', end], ['break', pause], ['hourly', hourly]], run);
+  },
+  'profit-margin-calculator'(root) {
+    const cost = input({ type: 'number', step: 'any', value: '60' }), revenue = input({ type: 'number', step: 'any', value: '100' });
+    const grid = statsGrid(), status = statusLine('');
+    const run = () => { try { const r = profitMarginCalc(num(cost), num(revenue)); grid.set([{ label: 'Profit / loss', value: money(r.profit), kind: r.profit < 0 ? 'bad' : 'good' }, { label: 'Profit margin', value: r.margin === null ? 'Undefined (zero sales)' : `${r.margin.toFixed(2)}%` }, { label: 'Markup on cost', value: r.markup === null ? 'Undefined (zero cost)' : `${r.markup.toFixed(2)}%` }]); status.set('Margin divides profit by selling price; markup divides profit by cost. Include all relevant costs yourself; taxes and other expenses are not added automatically.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Total cost', control: cost }), field({ label: 'Selling price / revenue', control: revenue })), actionsRow(btn({ label: 'Calculate profit margin', icon: 'calculator', onClick: run })), grid, status);
+    shareState(root, [['cost', cost], ['revenue', revenue]], run);
+  },
+
   'final-grade-calculator'(root) {
     const current = input({ type: 'number', step: 'any', value: '86' });
     const target = input({ type: 'number', step: 'any', value: '88' });
@@ -1287,4 +1360,4 @@ const defs = {
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc, incomeTaxIndia, rdCalc, cagrCalc, gratuityCalc, npsCalc, epfCalc, hraCalc, finalGradeCalc, savingsGoalCalc, swpCalc, electricityCostCalc, fuelCostCalc };
+export const __test = { pctOf, pctWhat, pctChange, discountCalc, ageCalc, bmiCalc, gstCalc, emiCalc, tipCalc, compoundInterest, simpleInterest, sipCalc, ppfCalc, fdCalc, incomeTaxIndia, rdCalc, cagrCalc, gratuityCalc, npsCalc, epfCalc, hraCalc, finalGradeCalc, savingsGoalCalc, swpCalc, electricityCostCalc, fuelCostCalc, loanPrepaymentCalc, inflationCalc, workHoursCalc, profitMarginCalc };

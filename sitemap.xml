@@ -2,7 +2,7 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://i-have-tools.vercel.app/</loc>
-    <lastmod>2026-11-05</lastmod>
+    <lastmod>2026-11-06</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/pdf/</loc>
@@ -26,7 +26,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/calculators/</loc>
-    <lastmod>2026-11-05</lastmod>
+    <lastmod>2026-11-06</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/converters/</loc>
@@ -58,7 +58,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/datetime/</loc>
-    <lastmod>2026-09-14</lastmod>
+    <lastmod>2026-11-06</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/student/</loc>
@@ -521,15 +521,31 @@
     <lastmod>2026-11-05</lastmod>
   </url>
   <url>
+    <loc>https://i-have-tools.vercel.app/tools/loan-prepayment-calculator/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/inflation-calculator/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/work-hours-calculator/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/profit-margin-calculator/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
     <loc>https://i-have-tools.vercel.app/about/</loc>
-    <lastmod>2026-11-05</lastmod>
+    <lastmod>2026-11-06</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/privacy-policy/</loc>
-    <lastmod>2026-11-05</lastmod>
+    <lastmod>2026-11-06</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/terms/</loc>
-    <lastmod>2026-11-05</lastmod>
+    <lastmod>2026-11-06</lastmod>
   </url>
 </urlset>
