@@ -73,7 +73,7 @@ export function bmiCalc({ cm = null, ft = null, inch = null, kg = null, lb = nul
   return { bmi: Math.round(bmi * 10) / 10, category, cls, healthyMin, healthyMax };
 }
 export function gstCalc({ amount, rate, mode }) {
-  if (!(amount > 0)) throw new Error('Enter an amount greater than zero.');
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 1e12) throw new Error('Enter an amount greater than zero and at most 1 trillion.');
   if (!(rate >= 0 && rate <= 100)) throw new Error('The GST rate must be between 0 and 100.');
   let net, gst;
   if (mode === 'add') { net = amount; gst = (amount * rate) / 100; }
@@ -81,10 +81,11 @@ export function gstCalc({ amount, rate, mode }) {
   return { net, gst, gross: net + gst, cgst: gst / 2, sgst: gst / 2 };
 }
 export function emiCalc(principal, annualRatePct, months) {
-  if (!(principal > 0)) throw new Error('Loan amount must be greater than zero.');
-  if (!(months >= 1)) throw new Error('Tenure must be at least 1 month.');
-  const r = annualRatePct / 12 / 100;
-  const emi = r === 0 ? principal / months : (principal * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
+  if (!Number.isFinite(principal) || principal <= 0 || principal > 1e12) throw new Error('Loan amount must be greater than zero and at most 1 trillion.');
+  if (!Number.isFinite(annualRatePct) || annualRatePct < 0 || annualRatePct > 100) throw new Error('Annual interest rate must be between 0 and 100%.');
+  if (!Number.isInteger(months) || months < 1 || months > 1200) throw new Error('Tenure must be a whole number of months between 1 and 1200.');
+  const r = annualRatePct / 1200;
+  const emi = r === 0 ? principal / months : principal * r / -Math.expm1(-months * Math.log1p(r));
   const total = emi * months;
   // yearly amortization summary
   const years = [];
@@ -110,22 +111,24 @@ export function tipCalc(bill, tipPct, people, { roundTip = false, roundTotal = f
   return { tip, total, perPerson: total / people, tipPerPerson: tip / people };
 }
 export function compoundInterest({ principal, annualRatePct, years, perYear = 12, monthlyContribution = 0, contributionTiming = 'end' }) {
-  if (!(principal >= 0)) throw new Error('Principal cannot be negative.');
-  if (!(years > 0)) throw new Error('Years must be greater than zero.');
+  if (!Number.isFinite(principal) || principal < 0 || principal > 1e12) throw new Error('Principal must be between 0 and 1 trillion.');
+  if (!Number.isFinite(monthlyContribution) || monthlyContribution < 0 || monthlyContribution > 1e12) throw new Error('Monthly contribution must be between 0 and 1 trillion.');
+  if (!Number.isFinite(annualRatePct) || annualRatePct < 0 || annualRatePct > 100) throw new Error('Annual rate must be between 0 and 100%.');
+  const months = Math.round(years * 12);
+  if (!Number.isFinite(years) || months < 1 || months > 1200 || Math.abs(years * 12 - months) > 1e-8) throw new Error('Duration must be a whole number of months, between 1 month and 100 years.');
   if (![1, 2, 4, 12, 52, 365].includes(perYear)) throw new Error('Unsupported compounding frequency.');
-  const periods = Math.round(years * perYear);
-  const r = annualRatePct / 100 / perYear;
-  let balance = principal;
-  const schedule = [];
-  let contributed = principal;
-  for (let p = 1; p <= periods; p++) {
-    if (contributionTiming === 'begin' && monthlyContribution) { balance += monthlyContribution; contributed += monthlyContribution; }
-    balance *= 1 + r;
-    if (contributionTiming === 'end' && monthlyContribution) { balance += monthlyContribution; contributed += monthlyContribution; }
-    if (p % perYear === 0 || p === periods) {
-      schedule.push({ year: Math.ceil(p / perYear), balance, contributed, interest: balance - contributed });
-    }
+  if (!['begin','end'].includes(contributionTiming)) throw new Error('Choose a valid contribution timing.');
+  // Equivalent monthly growth from the nominal rate and selected frequency.
+  // Contributions occur every month, regardless of compounding frequency.
+  const monthlyGrowth = Math.expm1(Math.log1p(annualRatePct / 100 / perYear) * perYear / 12);
+  let balance = principal, contributed = principal; const schedule = [];
+  for (let m = 1; m <= months; m++) {
+    if (contributionTiming === 'begin') { balance += monthlyContribution; contributed += monthlyContribution; }
+    balance *= 1 + monthlyGrowth;
+    if (contributionTiming === 'end') { balance += monthlyContribution; contributed += monthlyContribution; }
+    if (m % 12 === 0 || m === months) schedule.push({ year: m / 12, balance, contributed, interest: balance - contributed });
   }
+  if (!Number.isFinite(balance)) throw new Error('Result is too large to calculate.');
   return { finalBalance: balance, totalContributed: contributed, totalInterest: balance - contributed, schedule };
 }
 export function sipCalc({ monthly, annualRatePct, years }) {
@@ -134,6 +137,8 @@ export function sipCalc({ monthly, annualRatePct, years }) {
   if (!(annualRatePct >= 0)) throw new Error('Expected return cannot be negative.');
   const i = annualRatePct / 12 / 100;
   const n = Math.round(years * 12);
+  if (!Number.isFinite(years) || n < 1 || n > 1200 || Math.abs(years * 12 - n) > 1e-8) throw new Error('Duration must be a whole number of months between 1 and 1200.');
+  if (!Number.isFinite(monthly) || monthly > 1e12 || !Number.isFinite(annualRatePct) || annualRatePct > 100) throw new Error('Use a monthly amount up to 1 trillion and a return of at most 100%.');
   let balance = 0;
   const schedule = [];
   for (let m = 1; m <= n; m++) {
@@ -147,9 +152,9 @@ export function sipCalc({ monthly, annualRatePct, years }) {
 }
 
 export function ppfCalc({ yearlyDeposit, annualRatePct = 7.1, years = 15 }) {
-  if (!(yearlyDeposit > 0)) throw new Error('Yearly deposit must be greater than zero.');
-  if (!(years >= 1)) throw new Error('Duration must be at least 1 year.');
-  if (!(annualRatePct >= 0)) throw new Error('Interest rate cannot be negative.');
+  if (!Number.isFinite(yearlyDeposit) || yearlyDeposit <= 0 || yearlyDeposit > 1e12) throw new Error('Yearly deposit must be greater than zero and at most 1 trillion.');
+  if (!Number.isInteger(years) || years < 1 || years > 50) throw new Error('Duration must be a whole number of years between 1 and 50.');
+  if (!Number.isFinite(annualRatePct) || annualRatePct < 0 || annualRatePct > 100) throw new Error('Interest rate must be between 0% and 100%.');
   const r = annualRatePct / 100;
   let balance = 0;
   const schedule = [];
@@ -176,7 +181,7 @@ export function fdCalc({ principal, annualRatePct, years, perYear = 4 }) {
 export function rdCalc({ monthly, annualRatePct, months }) {
   if (!(monthly > 0)) throw new Error('Monthly deposit must be greater than zero.');
   if (!(annualRatePct >= 0)) throw new Error('Interest rate cannot be negative.');
-  if (!(months >= 3) || months % 3 !== 0) throw new Error('RD tenure must be in whole quarters (3, 6, 9… months) — interest compounds quarterly.');
+  if (!Number.isInteger(months) || months < 3 || months > 1200 || months % 3 !== 0) throw new Error('RD tenure must be in whole quarters from 3 to 1200 months — interest compounds quarterly.');
   // Standard RD closed form with quarterly compounding (deposit at the
   // start of each month): A = P × [((1+i)^n − 1) / (1 − (1+i)^(−1/3))],
   // where i = R/400 is the quarterly rate and n = number of quarters.
@@ -204,7 +209,7 @@ export function cagrCalc({ startValue, endValue, years }) {
 
 export function gratuityCalc({ monthlySalary, years, months = 0 }) {
   if (!(monthlySalary > 0)) throw new Error('Enter the last drawn monthly salary (basic + DA).');
-  if (!(years >= 0) || !(months >= 0 && months <= 11)) throw new Error('Enter service as whole years plus 0–11 months.');
+  if (!Number.isInteger(years) || years < 0 || years > 100 || !Number.isInteger(months) || months < 0 || months > 11) throw new Error('Enter service as whole years (0–100) plus 0–11 whole months.');
   if (years === 0 && months === 0) throw new Error('Service duration must be greater than zero.');
   // Payment of Gratuity Act, 1972: gratuity = (15/26) × last drawn monthly
   // salary (basic + DA) × years of service; a final-year fraction *over*
@@ -343,14 +348,29 @@ function surchargeRate(taxable, regime) {
   if (taxable > 5000000) return 0.10;
   return 0;
 }
+function taxWithSurcharge(income, slabs, regime) {
+  const slab = slabTax(income, slabs).tax;
+  let tax = slab;
+  if (regime === 'new') {
+    if (income <= 1200000) tax -= Math.min(tax, 60000);
+    else tax = Math.min(tax, income - 1200000);
+  } else if (income <= 500000) tax -= Math.min(tax, 12500);
+  const rate = surchargeRate(income, regime);
+  if (!rate) return { tax, surcharge: 0 };
+  const threshold = income > 50000000 && regime === 'old' ? 50000000 : income > 20000000 ? 20000000 : income > 10000000 ? 10000000 : 5000000;
+  const previous = taxWithSurcharge(threshold, slabs, regime);
+  const total = Math.min(tax * (1 + rate), previous.tax + previous.surcharge + income - threshold);
+  return { tax, surcharge: Math.max(0, total - tax) };
+}
 /** India income tax, FY 2025-26 (AY 2026-27), both regimes. Estimates only. */
 export function incomeTaxIndia({ grossSalary = 0, otherIncome = 0, deductionsOld = 0, ageGroup = 'below60' } = {}) {
-  if (!(grossSalary >= 0) || !(otherIncome >= 0) || !(deductionsOld >= 0)) throw new Error('Income and deductions cannot be negative.');
+  if ([grossSalary, otherIncome, deductionsOld].some(v => !Number.isFinite(v) || v < 0 || v > 1e12)) throw new Error('Each income and deduction must be between zero and 1 trillion.');
+  if (!['below60','60to79','80plus'].includes(ageGroup)) throw new Error('Choose a valid age group.');
   const gross = grossSalary + otherIncome;
   if (!(gross > 0)) throw new Error('Enter your salary or other income first.');
 
   // ── New regime (Section 115BAC, FY 2025-26 slabs) ──
-  const stdNew = grossSalary > 0 ? 75000 : 0;
+  const stdNew = Math.min(grossSalary, 75000);
   const taxableNew = Math.max(0, gross - stdNew);
   const newSlabs = [[400000, 0], [800000, 0.05], [1200000, 0.10], [1600000, 0.15], [2000000, 0.20], [2400000, 0.25], [Infinity, 0.30]];
   const n = slabTax(taxableNew, newSlabs);
@@ -359,12 +379,12 @@ export function incomeTaxIndia({ grossSalary = 0, otherIncome = 0, deductionsOld
   taxNew -= rebateNew;
   // Marginal relief: just above ₹12L, tax cannot exceed the income above ₹12L.
   if (taxableNew > 1200000) taxNew = Math.min(taxNew, taxableNew - 1200000);
-  const surNew = taxNew * surchargeRate(taxableNew, 'new');
+  const surNew = taxWithSurcharge(taxableNew, newSlabs, 'new').surcharge;
   const cessNew = (taxNew + surNew) * 0.04;
   const totalNew = taxNew + surNew + cessNew;
 
   // ── Old regime ──
-  const stdOld = grossSalary > 0 ? 50000 : 0;
+  const stdOld = Math.min(grossSalary, 50000);
   const taxableOld = Math.max(0, gross - stdOld - deductionsOld);
   const exempt = ageGroup === '80plus' ? 500000 : ageGroup === '60to79' ? 300000 : 250000;
   const oldSlabs = [[exempt, 0], [500000, 0.05], [1000000, 0.20], [Infinity, 0.30]].filter((s, i, a) => i === 0 || s[0] > a[i - 1][0]);
@@ -372,17 +392,17 @@ export function incomeTaxIndia({ grossSalary = 0, otherIncome = 0, deductionsOld
   let taxOld = o.tax;
   const rebateOld = taxableOld <= 500000 ? Math.min(taxOld, 12500) : 0;
   taxOld -= rebateOld;
-  const surOld = taxOld * surchargeRate(taxableOld, 'old');
+  const surOld = taxWithSurcharge(taxableOld, oldSlabs, 'old').surcharge;
   const cessOld = (taxOld + surOld) * 0.04;
   const totalOld = taxOld + surOld + cessOld;
 
-  const pack = (taxable, rows, slab, rebate, surcharge, cess, total) => ({
-    taxable, rows, slabTax: slab, rebate, surcharge, cess, total,
+  const pack = (taxable, rows, slab, rebate, surcharge, cess, total, marginalRelief = 0) => ({
+    taxable, rows, slabTax: slab, rebate, marginalRelief, surcharge, cess, total,
     effectiveRate: gross > 0 ? (total / gross) * 100 : 0,
   });
   return {
     gross,
-    newRegime: pack(taxableNew, n.rows, n.tax, rebateNew, surNew, cessNew, totalNew),
+    newRegime: pack(taxableNew, n.rows, n.tax, rebateNew, surNew, cessNew, totalNew, Math.max(0, n.tax - rebateNew - taxNew)),
     oldRegime: pack(taxableOld, o.rows, o.tax, rebateOld, surOld, cessOld, totalOld),
     better: totalNew <= totalOld ? 'new' : 'old',
     saving: Math.abs(totalNew - totalOld),
@@ -864,19 +884,19 @@ const defs = {
           { label: 'Final balance', value: money(r.finalBalance), kind: 'good' },
           { label: 'Interest earned', value: money(r.totalInterest), kind: 'warn' },
           { label: 'Total contributed', value: money(r.totalContributed) },
-          { label: 'Growth multiple', value: `${fmtNumber(r.finalBalance / r.totalContributed, 2)}×` },
+          { label: 'Growth multiple', value: r.totalContributed ? `${fmtNumber(r.finalBalance / r.totalContributed, 2)}×` : '—' },
         ]);
         scheduleWrap.replaceChildren(
           h('h3', { text: 'Growth schedule', style: 'margin:20px 0 10px' }),
           table({ headers: ['Year', 'Balance', 'Contributed', 'Interest'], rows: r.schedule.map((s) => [`Y${s.year}`, money(s.balance), money(s.contributed), money(s.interest)]) }));
-        status.set('Projection calculated ✓', 'success');
+        status.set('Contributions are added at the end of each month. Monthly growth is the equivalent rate derived from the selected compounding frequency; results are estimates.', 'info');
       } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
       h('div', { class: 'field-row' },
         field({ label: 'Principal', control: principal }),
         field({ label: 'Annual rate %', control: rate }),
-        field({ label: 'Years', control: years }),
+        field({ label: 'Years', control: years, hint: 'Whole months only; up to 100 years.' }),
         field({ label: 'Compounding', control: freq })),
       field({ label: 'Additional contribution', control: contrib, hint: 'Per month, optional' }),
       actionsRow(btn({ label: 'Calculate growth', icon: 'trending', onClick: run })), grid, scheduleWrap, status);
@@ -1020,6 +1040,7 @@ const defs = {
           ['Taxable income', inr(r.taxable)],
           ...r.rows.map((s) => [`${inr(s.from)} – ${s.to === Infinity ? 'above' : inr(s.to)} @ ${s.rate}%`, inr(s.tax)]),
           ...(r.rebate > 0 ? [['Less: rebate u/s 87A', `− ${inr(r.rebate)}`]] : []),
+          ...(r.marginalRelief > 0 ? [['Less: marginal relief', `− ${inr(r.marginalRelief)}`]] : []),
           ...(r.surcharge > 0 ? [['Add: surcharge', inr(r.surcharge)]] : []),
           ['Add: health & education cess (4%)', inr(r.cess)],
           ['Total tax payable', inr(r.total)],
@@ -1036,11 +1057,11 @@ const defs = {
           { label: 'Saving', value: inr(r.saving), kind: 'good' },
         ]);
         detailWrap.replaceChildren(
-          breakdown('New regime — FY 2025-26 slabs', r.newRegime, 'Includes ₹75,000 standard deduction (salary), 87A rebate up to ₹60,000 (taxable income up to ₹12 lakh) and marginal relief.'),
-          breakdown('Old regime', r.oldRegime, `Includes ₹50,000 standard deduction (salary) plus your deductions of ${inr(num(deductions))}, and 87A rebate up to ₹12,500 (taxable income up to ₹5 lakh).`));
+          breakdown('New regime — FY 2025-26 slabs', r.newRegime, 'Includes up to ₹75,000 standard deduction (limited to salary), 87A rebate up to ₹60,000 (taxable income up to ₹12 lakh) and marginal relief.'),
+          breakdown('Old regime', r.oldRegime, `Includes up to ₹50,000 standard deduction (limited to salary) plus your deductions of ${inr(num(deductions))}, and 87A rebate up to ₹12,500 (taxable income up to ₹5 lakh).`));
         status.set(r.saving < 0.5
           ? 'Both regimes give almost the same tax for these inputs.'
-          : `The ${r.better} regime is cheaper by ${inr(r.saving)} for FY 2025-26. This is an estimate — special-rate incomes (capital gains etc.) are taxed separately.`, 'success');
+          : `The ${r.better} regime is cheaper by ${inr(r.saving)} for FY 2025-26. Resident-individual estimate using ordinary slab-rate income only. Special-rate incomes (capital gains etc.) and other filing rules are not modelled.`, 'success');
       } catch (e) { grid.replaceChildren(); detailWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(

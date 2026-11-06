@@ -276,65 +276,20 @@ await test('garbage input explained', () => {
   assert.throws(() => dev.decodeJwt('a.b.c'), /Base64URL/);
 });
 
-console.log('\n── HTML formatter ──');
-await test('formats nested markup readably', () => {
-  const out = dev.formatHtml('<div><p>Hello <strong>world</strong></p></div>');
-  assert.ok(!out.includes('<body>'), out);
-  assert.match(out, /<div>\n\s+<p>/);
-  assert.match(out, /Hello <strong>world<\/strong><\/p>/, out); // inline kept together
+console.log('\n── Parser-based formatters ──');
+await test('HTML formatter preserves preformatted content and rejects unsafe minification',async()=>{
+ const out=await dev.formatHtml('<pre>  keep\n   me</pre>');assert.ok(out.includes('  keep\n   me'));
+ await assert.rejects(()=>dev.minifyHtml('<p>x</p>'),/unavailable/);
 });
-await test('pre content preserved', () => {
-  const out = dev.formatHtml('<pre>  keep\n   me</pre>');
-  assert.ok(out.includes('  keep'));
+await test('CSS format and minify preserve descendant selectors, strings and calc',async()=>{
+ const css='.a .b { content: "a + b"; width: calc(100% - 2px); }';
+ for(const out of [await dev.formatCss(css),await dev.minifyCss(css)]){assert.match(out,/\.a \.b/);assert.ok(out.includes('"a + b"'));assert.ok(out.includes('calc(100% - 2px)'));}
+ assert.match(await dev.formatCss('/* header */\nbody{color:red}'),/\/\* header \*\//);
 });
-await test('minify removes whitespace between blocks', () => {
-  const out = dev.minifyHtml('<div>\n  <p>x</p>\n</div>');
-  assert.equal(out, '<div><p>x</p></div>');
-});
-await test('attributes preserved', () => {
-  const out = dev.formatHtml('<a href="https://x.y" data-z>link</a>');
-  assert.match(out, /href="https:\/\/x\.y"/);
-  assert.match(out, / data-z/);
-});
-
-console.log('\n── CSS formatter ──');
-await test('formats rules and declarations', () => {
-  const out = dev.formatCss('body{margin:0;color:#333}.a,.b{padding:4px}');
-  assert.match(out, /body \{\n  margin: 0;\n  color: #333;\n\}/);
-  assert.match(out, /\.a, \.b \{/);
-});
-await test('strings with braces survive', () => {
-  const out = dev.formatCss('a::after{content:"}{"}');
-  assert.ok(out.includes('content: "}{"'));
-});
-await test('minify safe', () => {
-  const out = dev.minifyCss('body { margin : 0 ; color : red } /* x */');
-  assert.equal(out, 'body{margin:0;color:red}');
-});
-await test('comments preserved in format', () => {
-  assert.match(dev.formatCss('/* header */\nbody{color:red}'), /\/\* header \*\//);
-});
-
-console.log('\n── JS formatter ──');
-await test('re-indents blocks, keeps semantics', () => {
-  const src = 'function a(){if(x){return 1}else{return 2}}';
-  const out = dev.formatJs(src);
-  assert.match(out, /function a\(\) \{\n  if\(x\) \{\n    return 1\n  \} else \{\n    return 2\n  \}\n\}/, out);
-  // semantic equivalence: re-indenter must not add/remove tokens
-  const squeeze = (s) => s.replace(/\s+/g, '');
-  assert.equal(squeeze(out), squeeze(src));
-});
-await test('strings and templates untouched', () => {
-  const out = dev.formatJs('const s = "a{b}c";const t = `x ${y} z`;', 2);
-  assert.ok(out.includes('"a{b}c"'));
-  assert.ok(out.includes('`x ${y} z`'));
-});
-await test('regex literal not treated as division', () => {
-  const out = dev.formatJs('const r = /a\\/b/g;');
-  assert.ok(out.includes('/a\\/b/g'));
-});
-await test('unterminated string throws useful error', () => {
-  assert.throws(() => dev.formatJs('const s = "abc'), /Unterminated string/);
+await test('JS parser preserves regex, templates and rejects invalid syntax',async()=>{
+ const src='const x = /[{}]/; const s = `a${{x:1}.x}b`;';const out=await dev.formatJs(src);
+ assert.ok(out.includes('/[{}]/'));assert.ok(out.includes('`a${{ x: 1 }.x}b`'));
+ await assert.rejects(()=>dev.formatJs('const s = "abc'),/Unterminated/);
 });
 
 console.log('\n── Text stats ──');
@@ -1068,6 +1023,40 @@ await test('ISO week guide, search and contextual inbound links',()=>{
  const t=registry.getTool('iso-week-calculator'); assert.ok(t?.guide?.length>=3&&t.faqs?.length>=3); assert.ok(registry.searchTools('ISO week number',20).some(x=>x.id===t.id)); assert.ok(registry.tools.filter(x=>x.id!==t.id&&registry.relatedTools(x,6).some(y=>y.id===t.id)).length>=3);
 });
 
+console.log('\n── Batch-15 audit regressions ──');
+await test('monthly contributions stay monthly with each compounding frequency',()=>{
+ for(const perYear of [1,2,4,12,52,365]) { const r=calc.compoundInterest({principal:0,annualRatePct:0,years:1,perYear,monthlyContribution:100});assert.equal(r.totalContributed,1200);assert.equal(r.finalBalance,1200); }
+ const r=calc.compoundInterest({principal:1000,annualRatePct:10,years:2,perYear:1});assert.ok(Math.abs(r.finalBalance-1210)<1e-8);
+ for (const n of [-1,Infinity,101]) assert.throws(()=>calc.compoundInterest({principal:100,annualRatePct:n,years:1}));
+ assert.throws(()=>calc.compoundInterest({principal:0,annualRatePct:10,years:1,monthlyContribution:-1}),/contribution/);
+});
+await test('EMI, SIP, PPF and RD reject invalid or unbounded durations',()=>{
+ assert.throws(()=>calc.emiCalc(1000,-1,12),/rate/);assert.throws(()=>calc.emiCalc(1000,12,1.5),/whole number/);assert.throws(()=>calc.emiCalc(1000,12,1e9),/whole number/);
+ assert.ok(Number.isFinite(calc.emiCalc(1000,1e-9,12).emi));assert.throws(()=>calc.ppfCalc({yearlyDeposit:100,years:1.5}),/whole number/);assert.throws(()=>calc.sipCalc({monthly:100,annualRatePct:10,years:1000000}),/months/);assert.throws(()=>calc.rdCalc({monthly:100,annualRatePct:5,months:1e9}),/quarters/);
+});
+await test('tax standard deduction limited to salary and surcharge has marginal relief',()=>{
+ const r=calc.incomeTaxIndia({grossSalary:1,otherIncome:999999}); assert.equal(r.newRegime.taxable,999999); assert.equal(r.oldRegime.taxable,999999);
+ for(const threshold of [5000000,10000000,20000000,50000000]) {const at=calc.incomeTaxIndia({otherIncome:threshold}), above=calc.incomeTaxIndia({otherIncome:threshold+1});for(const k of ['newRegime','oldRegime']) assert.ok(above[k].total-at[k].total<=1.041,`${k} ${threshold}`);}
+});
+await test('CSV preserves text, rejects duplicate headers and malformed quoted fields',()=>{
+ assert.deepEqual(data.csvToJson('id,flag\n001,true'),[{id:'001',flag:'true'}]);assert.equal(data.csvToJson('id\n1e999',{coerceTypes:true})[0].id,'1e999');
+ assert.throws(()=>data.csvToJson('a,a\n1,2'),/Duplicate/);assert.throws(()=>data.csvToJson(',column_1\n1,2'),/Duplicate/);
+ assert.throws(()=>data.parseCsv('x\n"a"b'),/closing quote/); assert.deepEqual(data.parseCsv('a,b\r1,2').rows,[['1','2']]);
+ assert.throws(()=>data.jsonlToJsonArray('{}\n\n{bad}'),/line 3/);
+ assert.equal(data.jsonToCsv('[{}]',{columns:['toString']}),'toString\n');
+});
+await test('audit: random range boundaries and PNG color-type mapping',()=>{
+ assert.throws(()=>sec.randomInt(NaN),/range/);assert.throws(()=>misc.randomNumbers({min:1,max:4294967297,count:1}),/range/);assert.throws(()=>misc.randomNumbers({min:0,max:Number.MAX_SAFE_INTEGER+1,count:1}),/safe whole/);
+ const b=new Uint8Array(33);b.set([137,80,78,71,13,10,26,10]);const v=new DataView(b.buffer);v.setUint32(8,13);b.set([73,72,68,82],12);v.setUint32(16,1);v.setUint32(20,1);b[24]=8;
+ for(const [kind,label] of [[0,'Grayscale'],[2,'RGB'],[3,'Palette'],[4,'Grayscale + alpha'],[6,'RGBA']]){b[25]=kind;assert.equal(img.parseImageMetadata(b.buffer).summary.find(x=>x[0]==='Color type')[1],label);}
+});
+await test('contrast rejects alpha; fraction arithmetic refuses unsafe integers',()=>{
+ assert.throws(()=>color.contrastRatio(color.hexToRgb('#0000'),color.hexToRgb('#fff')),/opaque/);
+ assert.throws(()=>color.parseColor('rgb(300, 0, 0)'),/RGB channels/);assert.throws(()=>color.parseColor('rgba(0,0,0,2)'),/Alpha/);
+ assert.throws(()=>stu.fractionCalc('9007199254740993','+','1'),/too large/);assert.throws(()=>stu.fractionCalc('100000000','*','100000000'),/too large/);
+ for(let n=1;n<=5;n++) assert.equal(text.lorem({unit:'words',count:n}).split(/\s+/).length,n);
+});
+
 console.log('\n── Data (CSV/JSONL) ──');
 await test('RFC 4180 quoted commas and escaped quotes', () => {
   const rows = data.parseCsv('a,b\n"x,1",2\n"he said ""hi""",3');
@@ -1079,7 +1068,7 @@ await test('embedded newlines inside quotes', () => {
   assert.deepEqual(rows.rows[0], ['line1\nline2', '2']);
 });
 await test('type coercion in csvToJson', () => {
-  const json = data.csvToJson('name,age,active,note\nAda,36,true,"工程, 师"');
+  const json = data.csvToJson('name,age,active,note\nAda,36,true,"工程, 师"', {coerceTypes:true});
   assert.deepEqual(json, [{ name: 'Ada', age: 36, active: true, note: '工程, 师' }]);
 });
 await test('ragged rows rejected with count', () => {

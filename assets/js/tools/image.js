@@ -124,7 +124,7 @@ function parsePng(buffer) {
   try {
     const w = view.getUint32(16), h = view.getUint32(20);
     const bitDepth = bytes[24];
-    const colorType = ['Grayscale', 'RGB', 'Palette', 'Grayscale + alpha', 'RGBA'][bytes[25]];
+    const colorType = ({ 0: 'Grayscale', 2: 'RGB', 3: 'Palette', 4: 'Grayscale + alpha', 6: 'RGBA' })[bytes[25]] || 'Unknown';
     summary.push(['Dimensions', `${w} × ${h} px`], ['Bit depth', bitDepth], ['Color type', colorType], ['Interlaced', bytes[28] ? 'Yes (Adam7)' : 'No']);
     while (pos + 8 <= bytes.length) {
       const len = view.getUint32(pos);

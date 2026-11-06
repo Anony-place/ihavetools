@@ -59,8 +59,8 @@ scripts/
   build.mjs        ← generates every HTML page (home, categories, tools,
                      about/privacy/terms, 404), sitemap, llms.txt, sprite,
                      search index — all from registry.js
-  test-tools.mjs   ← 206 engine tests (pure logic, run in Node)
-  test-dom.mjs     ← 93 DOM tests: loads built pages into jsdom and drives real UIs
+  test-tools.mjs   ← 203 engine tests (pure logic, run in Node)
+  test-dom.mjs     ← 97 DOM tests: loads built pages into jsdom and drives real UIs
   test-chrome.mjs  ← 9 chrome tests: homepage, search, categories, theme, nav, install
   test-sw.mjs      ← service worker lifecycle, offline, privacy and cache-limit regression tests
   link-check.mjs   ← 20 integrity checks: dead links, sitemap↔files, SEO meta,
@@ -108,3 +108,5 @@ and runs the test suites on each push/PR to `main`.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+Tool implementation inventory, audit findings and outstanding verification are in [TOOL-AUDIT.md](TOOL-AUDIT.md).

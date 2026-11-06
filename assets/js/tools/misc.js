@@ -12,9 +12,11 @@ export function rollDice({ dice = 2, sides = 6 }) {
 }
 
 export function randomNumbers({ min, max, count, unique = false, sort = 'none', pad = 0 }) {
-  if (!Number.isInteger(min) || !Number.isInteger(max)) throw new Error('Minimum and maximum must be whole numbers.');
+  if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max)) throw new Error('Minimum and maximum must be safe whole numbers.');
+  if (!Number.isInteger(count) || count < 1 || count > 1000) throw new Error('Choose between 1 and 1000 numbers.');
   if (min > max) throw new Error('Minimum must be less than or equal to maximum.');
   const span = max - min + 1;
+  if (span > 4294967296) throw new Error('The inclusive range must contain at most 4,294,967,296 numbers.');
   if (unique && count > span) throw new Error(`Cannot pick ${count} unique numbers from a range of only ${span}.`);
   const out = [];
   const seen = new Set();

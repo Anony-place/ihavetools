@@ -323,323 +323,27 @@ export function decodeJwt(token) {
   return { header, payload, claims, signature: parts[2] || null, algorithm: header.alg || null };
 }
 
-/* ═══════════════════════════ HTML formatter ═══════════════════════════ */
-const INLINE = new Set(['a','abbr','b','bdi','bdo','br','cite','code','data','dfn','em','i','kbd','mark','q','rp','rt','s','samp','small','span','strong','sub','sup','time','u','var','wbr','img','input','select','option','button','label','del','ins','bdo','picture','source','svg','path','use']);
-const RAW = new Set(['script', 'style', 'pre', 'textarea']);
-
-export function formatHtml(html, indentSize = 2, minify = false) {
-  if (!html.trim()) throw new Error('Nothing to format — the input is empty.');
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const out = [];
-  const IND = ' '.repeat(indentSize);
-  let hasDoctype = false;
-  for (const node of doc.childNodes) {
-    if (node.nodeType === 10) { hasDoctype = true; out.push(minify ? '' : '<!DOCTYPE html>'); }
-  }
-  const serializeAttrs = (el) => [...el.attributes].map((a) => a.value === '' ? ` ${a.name}` : ` ${a.name}="${a.value.replace(/"/g, '&quot;')}"`).join('');
-
-  function walk(node, depth) {
-    if (node.nodeType === 3) { // text
-      const text = node.textContent;
-      if (!text.trim()) { if (minify) return; if (!out.length) return; out.push(''); return; }
-      const clean = minify ? text.replace(/\s+/g, ' ') : text.replace(/\s+/g, ' ').trim();
-      const pad = minify ? '' : IND.repeat(depth);
-      const lines = clean.split('\n');
-      for (const l of lines) if (l.trim() || !minify) out.push(pad + l.trim());
-      return;
-    }
-    if (node.nodeType === 8) { if (!minify) out.push(IND.repeat(depth) + `<!--${node.textContent}-->`); return; }
-    if (node.nodeType !== 1) return;
-    const el = node;
-    const tag = el.tagName.toLowerCase();
-    const open = `<${tag}${serializeAttrs(el)}>`;
-    if (RAW.has(tag)) {
-      const content = el.textContent ?? '';
-      if (minify) out.push(open + content.trim() + `</${tag}>`);
-      else {
-        out.push(IND.repeat(depth) + open);
-        for (const line of content.replace(/\t/g, '    ').split('\n')) out.push(line.trimEnd() || '');
-        out.push(IND.repeat(depth) + `</${tag}>`);
-      }
-      return;
-    }
-    const elementOnly = el.childNodes.length === 0;
-    const childrenInline = [...el.childNodes].every((c) => c.nodeType === 3 || (c.nodeType === 1 && INLINE.has(c.tagName.toLowerCase())));
-    const inlineLen = el.textContent.replace(/\s+/g, ' ').trim().length + tag.length * 2 + serializeAttrs(el).length;
-    const inlineText = childrenInline && !elementOnly && (minify || inlineLen <= 100);
-    if (elementOnly) { out.push((minify ? '' : IND.repeat(depth)) + open + `</${tag}>`); return; }
-    if (inlineText) {
-      const inner = minify
-        ? el.innerHTML.replace(/\s+/g, ' ').trim()
-        : [...el.childNodes].map((c) => c.nodeType === 3 ? c.textContent.replace(/\s+/g, ' ').trim() : c.outerHTML).join(' ').replace(/> </g, '><').trim();
-      out.push((minify ? '' : IND.repeat(depth)) + open + inner + `</${tag}>`);
-      return;
-    }
-    if (!minify) out.push(IND.repeat(depth) + open);
-    else out.push(open);
-    for (const child of el.childNodes) walk(child, minify ? depth : depth + 1);
-    if (!minify) out.push(IND.repeat(depth) + `</${tag}>`);
-    else out.push(`</${tag}>`);
-  }
-  const looksLikeDocument = /<html[\s>]/i.test(html) || /<head[\s>]/i.test(html) || /<body[\s>]/i.test(html);
-  const sourceNodes = looksLikeDocument ? [...doc.documentElement.childNodes] : [...doc.body.childNodes];
-  for (const child of sourceNodes) walk(child, 1);
-  const body = (looksLikeDocument && !minify ? '<!DOCTYPE html>\n' : '') + (minify ? out.join('') : out.join('\n'));
-  return minify ? body : body.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+/* Parser-based formatting is loaded only when a user requests it. */
+async function prettierFormat(source, parser, indent = 2) {
+  if (!source.trim()) throw new Error('Nothing to format — the input is empty.');
+  if (source.length > 1000000) throw new Error('Input is too large; format at most 1 million characters.');
+  const prettier = await import('../../vendor/prettier/standalone.js');
+  let plugins;
+  if (parser === 'babel') plugins = await Promise.all([import('../../vendor/prettier/babel.js'), import('../../vendor/prettier/estree.js')]);
+  else plugins = [await import(parser === 'css' ? '../../vendor/prettier/postcss.js' : '../../vendor/prettier/html.js')];
+  return prettier.format(source, { parser, plugins, tabWidth: indent, htmlWhitespaceSensitivity: 'strict' });
 }
-export function minifyHtml(html) { return formatHtml(html, 2, true); }
-
-/* ═══════════════════════════ CSS formatter ═══════════════════════════ */
-function lexCss(css) {
-  const tokens = [];
-  let i = 0;
-  const n = css.length;
-  while (i < n) {
-    const c = css[i];
-    if (c === '/' && css[i + 1] === '*') {
-      const end = css.indexOf('*/', i + 2);
-      const stop = end === -1 ? n : end + 2;
-      tokens.push({ type: 'comment', value: css.slice(i, stop) });
-      i = stop;
-    } else if (c === '"' || c === "'") {
-      let j = i + 1;
-      while (j < n && css[j] !== c) { if (css[j] === '\\') j++; j++; }
-      tokens.push({ type: 'string', value: css.slice(i, Math.min(j + 1, n)) });
-      i = j + 1;
-    } else if ('{}();:,'.includes(c)) {
-      tokens.push({ type: 'punct', value: c });
-      i++;
-    } else if (/\s/.test(c)) {
-      let j = i;
-      while (j < n && /\s/.test(css[j])) j++;
-      tokens.push({ type: 'ws', value: css.slice(i, j) });
-      i = j;
-    } else {
-      let j = i;
-      while (j < n && !'{}();:,'.includes(css[j]) && !/\s/.test(css[j]) && !(css[j] === '/' && css[j + 1] === '*') && css[j] !== '"' && css[j] !== "'") {
-        if (css[j] === '\\') j++;
-        j++;
-      }
-      tokens.push({ type: 'text', value: css.slice(i, j) });
-      i = j;
-    }
-  }
-  return tokens;
+export const formatHtml = (source, indent = 2) => prettierFormat(source, 'html', indent);
+export async function minifyHtml() { throw new Error('HTML minification is unavailable because whitespace can change page behavior. Use formatting instead.'); }
+export const formatCss = (source, indent = 2) => prettierFormat(source, 'css', indent);
+export async function minifyCss(source) {
+  if (!source.trim()) throw new Error('Nothing to minify — the input is empty.');
+  if (source.length > 1000000) throw new Error('Input is too large; use at most 1 million characters.');
+  const css = await import('../../vendor/css-tree.js');
+  const ast = css.parse(source, { onParseError(error) { throw error; } });
+  return css.generate(ast);
 }
-
-export function formatCss(css, indentSize = 2) {
-  if (!css.trim()) throw new Error('Nothing to format — the input is empty.');
-  const tokens = lexCss(css).filter((t) => t.type !== 'ws');
-  const IND = ' '.repeat(indentSize);
-  const out = [];
-  let depth = 0;
-  let pending = '';   // accumulated selector/declaration text
-  let pendingIsDecl = false;
-  const emitPending = () => {
-    let text = pending.trim();
-    pending = '';
-    if (!text) return;
-    if (text !== '}' && pendingIsDecl && !text.endsWith(';')) text += ';';
-    if (text.startsWith('/*')) { out.push(IND.repeat(depth) + text); return; }
-    if (pendingIsDecl) {
-      // split declarations on top-level ; handled by caller; text may hold "prop: value"
-      out.push(IND.repeat(depth) + text);
-    } else {
-      out.push(IND.repeat(depth) + text);
-    }
-  };
-  const collapseWs = (s) => s.replace(/\s+/g, ' ').replace(/\s*([:;,()])\s*/g, (m, p) => (p === ',' ? ', ' : p)).trim();
-
-  for (let k = 0; k < tokens.length; k++) {
-    const t = tokens[k];
-    if (t.type === 'comment') {
-      if (pending.trim()) { emitPending(); }
-      out.push(IND.repeat(depth) + t.value);
-      continue;
-    }
-    if (t.type === 'punct') {
-      if (t.value === '{') {
-        const sel = collapseWs(pending);
-        pending = '';
-        out.push(IND.repeat(depth) + sel + ' {');
-        depth++;
-        pendingIsDecl = true;
-      } else if (t.value === '}') {
-        if (pending.trim()) emitPending();
-        pendingIsDecl = false;
-        depth = Math.max(0, depth - 1);
-        out.push(IND.repeat(depth) + '}');
-      } else if (t.value === ';') {
-        pendingIsDecl = true;
-        emitPending();
-      } else if (t.value === ':') {
-        pending += ':';
-        if (depth > 0) pendingIsDecl = true;
-      } else if (t.value === ',') {
-        pending += ', ';
-      }
-      continue;
-    }
-    // text/string: accumulate with smart spacing
-    if (pending.endsWith(':')) pending += ' ';
-    pending += t.value;
-  }
-  emitPending();
-  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
-}
-
-export function minifyCss(css) {
-  if (!css.trim()) throw new Error('Nothing to minify — the input is empty.');
-  const tokens = lexCss(css);
-  let out = '';
-  const collapse = (s) => s.replace(/\s+/g, ' ');
-  for (let k = 0; k < tokens.length; k++) {
-    const t = tokens[k];
-    if (t.type === 'ws') { out += ' '; continue; }
-    if (t.type === 'comment') { if (t.value.startsWith('/*!')) out += t.value; continue; }
-    if (t.type === 'punct') { out += t.value; continue; }
-    out += collapse(t.value);
-  }
-  return out
-    .replace(/\s*([{}:;,>~+])\s*/g, '$1')
-    .replace(/;}/g, '}')
-    .replace(/\s{2,}/g, ' ')
-    .replace(/\s+!important/gi, '!important')
-    .trim();
-}
-
-/* ═══════════════════════════ JavaScript formatter ═══════════════════════════ */
-function lexJs(src) {
-  const tokens = [];
-  let i = 0;
-  const n = src.length;
-  const prevSignificant = () => { for (let k = tokens.length - 1; k >= 0; k--) { if (tokens[k].type !== 'nl') return tokens[k]; } return null; };
-  const REGEX_PRECEDERS = new Set(['(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '/', '%', '<', '>', '^', '~', '=>']);
-  const REGEX_KEYWORDS = new Set(['return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void', 'throw', 'case', 'do', 'else', 'yield', 'await']);
-  while (i < n) {
-    const c = src[i];
-    if (c === '\n') { tokens.push({ type: 'nl' }); i++; continue; }
-    if (/\s/.test(c)) { let j = i; while (j < n && /\s/.test(src[j]) && src[j] !== '\n') j++; tokens.push({ type: 'ws' }); i = j; continue; }
-    if (c === '/' && src[i + 1] === '/') { const end = src.indexOf('\n', i); const stop = end === -1 ? n : end; tokens.push({ type: 'comment', value: src.slice(i, stop) }); i = stop; continue; }
-    if (c === '/' && src[i + 1] === '*') { const end = src.indexOf('*/', i + 2); const stop = end === -1 ? n : end + 2; tokens.push({ type: 'comment', value: src.slice(i, stop) }); i = stop; continue; }
-    if (c === '"' || c === "'") {
-      let j = i + 1;
-      while (j < n && src[j] !== c) { if (src[j] === '\\') j++; if (src[j] === '\n') break; j++; }
-      if (src[j] !== c) throw new Error('Unterminated string literal — a closing quote is missing before the end of a line.');
-      tokens.push({ type: 'string', value: src.slice(i, j + 1) });
-      i = j + 1;
-      continue;
-    }
-    if (c === '`') {
-      let j = i + 1, depthStack = [];
-      while (j < n) {
-        if (src[j] === '\\') { j += 2; continue; }
-        if (src[j] === '$' && src[j + 1] === '{') { depthStack.push(true); j += 2; continue; }
-        if (src[j] === '}' && depthStack.length) { depthStack.pop(); j++; continue; }
-        if (src[j] === '`' && !depthStack.length) break;
-        j++;
-      }
-      if (j >= n) throw new Error('Unterminated template literal — a closing backtick is missing.');
-      tokens.push({ type: 'template', value: src.slice(i, j + 1) });
-      i = j + 1;
-      continue;
-    }
-    if (c === '/') {
-      const prev = prevSignificant();
-      const looksLikeRegex = !prev
-        || (prev.type === 'punct' && !['))', ')', ']', '}', '++', '--'].includes(prev.value) && REGEX_PRECEDERS.has(prev.value[0]))
-        || (prev.type === 'word' && REGEX_KEYWORDS.has(prev.value));
-      if (looksLikeRegex) {
-        let j = i + 1, inClass = false;
-        while (j < n) {
-          if (src[j] === '\\') { j += 2; continue; }
-          if (src[j] === '[') inClass = true;
-          else if (src[j] === ']') inClass = false;
-          else if (src[j] === '/' && !inClass) break;
-          else if (src[j] === '\n') throw new Error('Unterminated regular expression literal.');
-          j++;
-        }
-        if (j >= n) throw new Error('Unterminated regular expression literal.');
-        let k = j + 1;
-        while (k < n && /[a-z]/.test(src[k])) k++;
-        tokens.push({ type: 'regex', value: src.slice(i, k) });
-        i = k;
-        continue;
-      }
-      // fall through as punct
-    }
-    if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1] || ''))) {
-      let j = i;
-      while (j < n && /[0-9a-fA-FxXoObBn._]/.test(src[j])) j++;
-      if (/[eE]$/.test(src.slice(i, j)) === false) tokens.push({ type: 'number', value: src.slice(i, j) });
-      else tokens.push({ type: 'number', value: src.slice(i, j) });
-      i = j;
-      continue;
-    }
-    if (/[A-Za-z_$]/.test(c)) {
-      let j = i;
-      while (j < n && /[A-Za-z0-9_$]/.test(src[j])) j++;
-      tokens.push({ type: 'word', value: src.slice(i, j) });
-      i = j;
-      continue;
-    }
-    // punct (multi-char ops)
-    const three = src.slice(i, i + 3);
-    const two = src.slice(i, i + 2);
-    if (['===', '!==', '**=', '<<=', '>>=', '...', '&&=', '||=', '??='].includes(three)) { tokens.push({ type: 'punct', value: three }); i += 3; continue; }
-    if (['=>', '==', '!=', '<=', '>=', '&&', '||', '??', '?.', '++', '--', '+=', '-=', '*=', '/=', '%=', '**', '<<', '>>', '&=', '|=', '^=', '})', ').'].includes(two)) { tokens.push({ type: 'punct', value: two }); i += 2; continue; }
-    tokens.push({ type: 'punct', value: c });
-    i++;
-  }
-  return tokens;
-}
-
-export function formatJs(src, indentSize = 2) {
-  if (!src.trim()) throw new Error('Nothing to format — the input is empty.');
-  const tokens = lexJs(src);
-  const IND = ' '.repeat(indentSize);
-  // Rebuild lines: a new line is emitted where the source had one, or after ; { and before }
-  const lines = [];
-  let line = '';
-  let depth = 0;
-  let pendingIndent = '';
-  const flush = () => {
-    const t = line.replace(/\s+$/, '');
-    lines.push(t ? pendingIndent + t : '');
-    line = '';
-    pendingIndent = IND.repeat(depth);
-  };
-  let prevType = null;
-  for (const t of tokens) {
-    if (t.type === 'nl') { flush(); prevType = 'nl'; continue; }
-    if (t.type === 'ws') { if (line && !line.endsWith(' ') && prevType !== 'nl') line += ' '; continue; }
-    if (t.type === 'punct') {
-      if (t.value === '{') { line = line.replace(/\s*$/, '') + ' {'; depth++; flush(); prevType = 'punct'; continue; }
-      if (t.value === '}') {
-        flush();
-        depth = Math.max(0, depth - 1);
-        pendingIndent = IND.repeat(depth);
-        line = '}';
-        // peek: `} else`, `} catch`, `},`, `};` keep on same line — handled by following tokens appending
-        prevType = 'punct';
-        continue;
-      }
-      if (t.value === ';') { line += ';'; flush(); prevType = 'punct'; continue; }
-      line += t.value;
-      prevType = 'punct';
-      continue;
-    }
-    if (t.type === 'comment' && t.value.startsWith('//')) { if (line.trim()) flush(); lines.push(pendingIndent + t.value); prevType = 'comment'; continue; }
-    const needsSpace = (prevType === 'word' && t.type === 'word')
-      || (/[})\]]$/.test(line) && t.type === 'word')
-      || (t.type === 'template' && /[\w)$]/.test(line.slice(-1)));
-    if (needsSpace && !line.endsWith(' ')) line += ' ';
-    line += t.value;
-    prevType = t.type;
-  }
-  flush();
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
-}
+export const formatJs = (source, indent = 2) => prettierFormat(source, 'babel', indent);
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 /** Structural JSON comparison. Object key order is ignored; arrays compare by index.
@@ -1013,21 +717,23 @@ const defs = {
   'html-formatter'(root) {
     const inp = textarea({ rows: 12, value: '<!DOCTYPE html><html><head><title>Demo</title></head><body><div class="card"><h1>Hello</h1><p>Messy <strong>HTML</strong> to tidy up.</p></div></body></html>', placeholder: 'Paste HTML…' });
     const indent = select({ id: 'htmlindent', options: [{ v: 2, t: '2 spaces' }, { v: 4, t: '4 spaces' }], value: '2' });
-    const status = statusLine('Ready.');
+    const status = statusLine('HTML minification is unavailable because whitespace may affect page behavior. Review formatted output.');
     const out = resultPanel({ label: 'Formatted HTML', download: true, downloadName: 'formatted.html', downloadMime: 'text/html;charset=utf-8' });
-    const run = (mode) => {
+    let revision = 0; inp.addEventListener('input', () => { revision++; out.placeholder(); });
+    const run = async () => {
+      const token = ++revision;
       try {
-        const result = mode === 'minify' ? minifyHtml(inp.value) : formatHtml(inp.value, Number(indent.value));
+        const result = await formatHtml(inp.value, Number(indent.value));
+        if (token !== revision) return;
         out.set(result);
-        status.set(`${mode === 'minify' ? 'Minified' : 'Formatted'} ✓ — ${fmtBytes(new Blob([result]).size)}.`, 'success');
-      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+        status.set(`Formatted ✓ — ${fmtBytes(new Blob([result]).size)}. Review and test the result before use.`, 'success');
+      } catch (e) { if (token === revision) { out.placeholder(); status.set(e.message, 'error'); } }
     };
     root.append(field({ label: 'HTML input', control: inp }),
       actionsRow(
-        btn({ label: 'Format', icon: 'code', onClick: () => run('format') }),
-        btn({ label: 'Minify', variant: 'secondary', icon: 'minimize', onClick: () => run('minify') }),
+        btn({ label: 'Format', icon: 'code', onClick: run }),
         h('span', { style: 'margin-left:auto;display:inline-flex;gap:8px;align-items:center' }, h('label', { for: 'htmlindent', class: 'hint', text: 'Indent' }), indent),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { revision++; inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel);
   },
 
@@ -1035,38 +741,44 @@ const defs = {
     const inp = textarea({ rows: 12, value: ':root{--x:1}body{margin:0;font-family:sans-serif}.card{padding:16px;border:1px solid #eee;border-radius:8px}', placeholder: 'Paste CSS…' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Result', download: true, downloadName: 'styles.css', downloadMime: 'text/css;charset=utf-8' });
-    const run = (mode) => {
+    let revision = 0; inp.addEventListener('input', () => { revision++; out.placeholder(); });
+    const run = async (mode) => {
+      const token = ++revision;
       try {
-        const result = mode === 'minify' ? minifyCss(inp.value) : formatCss(inp.value, 2);
+        const result = mode === 'minify' ? await minifyCss(inp.value) : await formatCss(inp.value, 2);
+        if (token !== revision) return;
         out.set(result);
-        status.set(`${mode === 'minify' ? 'Minified' : 'Formatted'} ✓ — ${fmtBytes(new Blob([result]).size)}.`, 'success');
-      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+        status.set(`${mode === 'minify' ? 'Minified' : 'Formatted'} ✓ — ${fmtBytes(new Blob([result]).size)}. Review and test the result before use.`, 'success');
+      } catch (e) { if (token === revision) { out.placeholder(); status.set(e.message, 'error'); } }
     };
     root.append(field({ label: 'CSS input', control: inp }),
       actionsRow(
         btn({ label: 'Format', icon: 'code', onClick: () => run('format') }),
         btn({ label: 'Minify', variant: 'secondary', icon: 'minimize', onClick: () => run('minify') }),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { revision++; inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel);
   },
 
   'js-formatter'(root) {
     const inp = textarea({ rows: 12, value: 'function add(a,b){if(!a||!b){return 0}\nreturn a+b}// demo', placeholder: 'Paste JavaScript…' });
     const indent = select({ id: 'jsindent', options: [{ v: 2, t: '2 spaces' }, { v: 4, t: '4 spaces' }], value: '2' });
-    const status = statusLine('Re-indents code; strings, templates, comments and regex literals are preserved exactly.');
+    const status = statusLine('Parser-based formatting; review and test the output before use.');
     const out = resultPanel({ label: 'Formatted JavaScript', download: true, downloadName: 'formatted.js', downloadMime: 'text/javascript;charset=utf-8' });
-    const run = () => {
+    let revision = 0; inp.addEventListener('input', () => { revision++; out.placeholder(); });
+    const run = async () => {
+      const token = ++revision;
       try {
-        const result = formatJs(inp.value, Number(indent.value));
+        const result = await formatJs(inp.value, Number(indent.value));
+        if (token !== revision) return;
         out.set(result);
         status.set('Formatted ✓ — review before saving: exotic syntax may need manual touch-up.', 'success');
-      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+      } catch (e) { if (token === revision) { out.placeholder(); status.set(e.message, 'error'); } }
     };
     root.append(field({ label: 'JavaScript input', control: inp }),
       actionsRow(
         btn({ label: 'Format', icon: 'code', onClick: run }),
         h('span', { style: 'margin-left:auto;display:inline-flex;gap:8px;align-items:center' }, h('label', { for: 'jsindent', class: 'hint', text: 'Indent' }), indent),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { revision++; inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel);
   },
 
