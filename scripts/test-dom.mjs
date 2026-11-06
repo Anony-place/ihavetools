@@ -1099,6 +1099,16 @@ await domTest('JSON format and minify preserve exact source tokens and clear sta
   fields[1].value='{"a":1}'; fire(fields[1],'input'); assert.ok(!app.querySelector('.result-panel').dataset.has);
 });
 
+await domTest('finance UI avoids misleading GST labels, stale outputs and rounded people/years', async () => {
+  let app=await loadToolPage('gst-calculator','calculators'); let fields=app.querySelectorAll('input[type=number]'); fields[0].value='1180';
+  click(btnByLabel(app,'Remove GST')); click(btnByLabel(app,'Calculate GST'));
+  const cards=[...app.querySelectorAll('.stat-card')].map(x=>x.textContent); assert.ok(cards.some(x=>/1,000.00.*Base \(net\)/.test(x)), cards.join('|')); assert.ok(cards.some(x=>/1,180.00.*Total \(gross\)/.test(x)),cards.join('|')); assert.match(statusText(document),/IGST/);
+  fields[0].value='1000'; fire(fields[0],'input'); assert.equal(app.querySelectorAll('.stat-card').length,0);
+  app=await loadToolPage('rd-calculator','calculators'); fields=app.querySelectorAll('input[type=number]'); fields[2].value='1.5'; click(btnByLabel(app,'Calculate RD')); assert.match(statusText(document),/whole number/); assert.equal(app.querySelectorAll('.stat-card').length,0);
+  app=await loadToolPage('tip-calculator','calculators'); fields=app.querySelectorAll('input[type=number]'); fields[0].value='100'; fields[2].value='2.5'; click(btnByLabel(app,'Calculate tip')); assert.match(statusText(document),/whole number/);
+  app=await loadToolPage('simple-interest-calculator','calculators'); fields=app.querySelectorAll('input[type=number]'); fields[1].value=''; click(btnByLabel(app,'Calculate interest')); assert.match(statusText(document),/rate/); assert.doesNotMatch(app.textContent,/NaN/);
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);

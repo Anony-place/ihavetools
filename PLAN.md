@@ -593,6 +593,17 @@ Continue the audit requested by the user; no new tools or thin pages.
 
 ---
 
+## 🚧 BATCH-21 — Financial calculator integrity
+
+1. Audit savings, withdrawal, loan and investment formulas and input boundaries;
+   verify representative scenarios against independently calculated results.
+2. Fix confirmed incorrect outputs and stale UI states, disclose assumptions and
+   numerical limits, and add targeted engine and UI regression tests.
+3. Run the complete checks and dependency audit, update TOOL-AUDIT.md with
+   evidence and remaining gaps, then ship one PR and verify production.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha
