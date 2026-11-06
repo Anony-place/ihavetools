@@ -1062,6 +1062,31 @@ await domTest('contrast checker rejects alpha and clears stale result',async()=>
  const app=await loadToolPage('color-contrast-checker','color');const fields=app.querySelectorAll('input[type=text]');fields[0].value='#0000';fire(fields[0],'input');assert.match(app.textContent,/requires opaque colors/);assert.doesNotMatch(app.textContent,/Contrast ratio/);
 });
 
+await domTest('CSV file reads cannot overwrite newer input and stale conversions clear', async () => {
+  const app = await loadToolPage('csv-to-json','data'); await new Promise(r => setTimeout(r,30));
+  const input=app.querySelector('textarea'); click(btnByLabel(app,'Convert to JSON')); assert.match(resultText(document),/Ada/);
+  input.value='id\nnew'; fire(input,'input'); assert.doesNotMatch(resultText(document),/Ada/);
+  const saved=global.FileReader, pending=[];
+  global.FileReader=class {readAsText(f){pending.push({reader:this,file:f});}};
+  try {
+    const drop=name=>{const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[new File(['x'],name,{type:'text/csv'})]}}); app.querySelector('.dropzone').dispatchEvent(e);};
+    drop('old.csv'); drop('new.csv'); assert.equal(pending.length,2);
+    pending[1].reader.result='id\nsecond'; pending[1].reader.onload(); await new Promise(r=>setTimeout(r,10));
+    pending[0].reader.result='id\nfirst'; pending[0].reader.onload(); await new Promise(r=>setTimeout(r,10));
+    assert.equal(input.value,'id\nsecond'); assert.match(resultText(document),/second/); assert.doesNotMatch(resultText(document),/first/);
+    drop('third.csv'); input.value='id\ntyped'; fire(input,'input'); pending[2].reader.result='id\nstale'; pending[2].reader.onload(); await new Promise(r=>setTimeout(r,10));
+    assert.equal(input.value,'id\ntyped'); assert.doesNotMatch(resultText(document),/second|stale/);
+  } finally { global.FileReader=saved; }
+});
+await domTest('JSON converters clear stale output after editing and reject duplicate keys', async () => {
+  for (const id of ['json-to-csv','json-lines-converter']) {
+    const app=await loadToolPage(id,'data'); const input=app.querySelector('textarea'); const button=btnByLabel(app,id==='json-to-csv'?'Convert to CSV':'JSONL → Array');
+    click(button); assert.ok(app.querySelector('.result-panel').dataset.has);
+    input.value=id==='json-to-csv'?'[{"a":1,"a":2}]':'{"a":1,"a":2}'; fire(input,'input'); assert.ok(!app.querySelector('.result-panel').dataset.has);
+    click(button); assert.match(statusText(document),/Duplicate JSON object keys/); assert.ok(!app.querySelector('.result-panel').dataset.has);
+  }
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);
