@@ -32,9 +32,9 @@ Do not claim that the 128-tool audit is certified merely because smoke tests pas
    where relevant; do not promise search rankings or treat GSC impressions alone
    as success. Avoid new paid services.
 4. Update TOOL-AUDIT.md with evidence and limitations, run full build/check,
-   dependency audit and diff review. Keep the requested PR open for consolidated
-   follow-up work; wait for CI/preview and verify production when it is eventually
-   merged. Do not imply the entire audit is complete.
+   dependency audit and diff review. The user requested release: after CI and
+   preview pass, merge this consolidated PR once and verify production. Do not
+   imply that unavailable real-device tests or the entire audit are complete.
 
 ---
 

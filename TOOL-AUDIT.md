@@ -12,13 +12,13 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
-## Consolidated audit — in progress, not yet deployed
+## Consolidated audit — release evidence (PR #36)
 
 - Unit converter inputs that underflow to zero are rejected instead of reporting
   zero. Roman number input requires decimal whole-number notation rather than
   silently accepting JavaScript hexadecimal, decimal fractions or exponent syntax.
-  DOM regressions cover invalid and valid inputs. This is an initial subset of
-  the consolidated plan, not completion or certification of all tool families.
+  DOM regressions cover invalid and valid inputs. This is not certification of
+  all tool families.
 - Date/time UIs now clear stale results after edits. Time-zone “Now” uses the
   selected source zone rather than the device zone, to minute precision. Historic
   offsets containing seconds are shown without truncating the resulting instant;
@@ -49,7 +49,9 @@ canvas pixel comparison, or diverse user-file matrix was available.
   https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
 - Current automated evidence: 227 engine and 139 DOM tests, 9 chrome tests,
   service-worker and 20 integrity checks passed; dependency audit found zero
-  vulnerabilities. No real browser or physical-device testing is implied.
+  vulnerabilities. A headless Chromium launch was attempted but blocked by
+  missing system NSS/NSPR libraries; no real browser or physical-device testing
+  is implied. npm-only temporary browser packages were not added to the project.
 
 ## Batch 29 — color tool integrity
 
