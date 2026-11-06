@@ -797,7 +797,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -1268,8 +1268,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 113);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 53);
+  assert.equal(registry.tools.length, 117);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 57);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
@@ -1431,6 +1431,39 @@ await test('batch-7 pages have guides, search coverage and three inbound links',
     const tool = registry.getTool(id); assert.ok(tool.guide.length >= 3 && tool.faqs.length >= 3);
     assert.ok(registry.searchTools(tool.name, 20).some(t => t.id === id));
     assert.ok(registry.tools.filter(t => t.id !== id && registry.relatedTools(t, 6).some(r => r.id === id)).length >= 3);
+  }
+});
+
+console.log('\n── Batch-8 planning tools ──');
+await test('loan prepayment compares baseline and respects timing and caps', () => {
+  const zero = calc.loanPrepaymentCalc(120000, 0, 10000, 1000, 20000, 3);
+  assert.equal(zero.baseline.months, 12); assert.equal(zero.accelerated.months, 10); assert.equal(zero.interestSaved, 0); assert.equal(zero.accelerated.lumpApplied, 20000);
+  const r = calc.loanPrepaymentCalc(1000, 12, 510, 10, 0, 1);
+  assert.equal(r.baseline.months, 2); assert.ok(Math.abs(r.baseline.interest - 15) < 1e-10); assert.ok(Math.abs(r.accelerated.interest - 14.9) < 1e-10);
+  assert.equal(calc.loanPrepaymentCalc(1000, 0, 100, 0, 5000, 1).accelerated.lumpApplied, 900);
+  assert.equal(calc.loanPrepaymentCalc(1000, 0, 1000, 0, 100, 5).accelerated.lumpApplied, 0);
+  assert.throws(() => calc.loanPrepaymentCalc(1000, 12, 10, 0, 0, 1), /exceed/);
+  assert.throws(() => calc.loanPrepaymentCalc(1000, 0, 100, 0, 0, 1.5), /whole number/);
+});
+await test('inflation factors and zero rates follow the worked example', () => {
+  const r = calc.inflationCalc(100000, 6, 10); assert.ok(Math.abs(r.futureCost - 179084.76965428545) < 1e-8); assert.ok(Math.abs(r.purchasingPower - 55839.47769151179) < 1e-8);
+  assert.equal(calc.inflationCalc(100, 0, 10).futureCost, 100); assert.equal(calc.inflationCalc(100, 6, 0).purchasingPower, 100);
+  assert.throws(() => calc.inflationCalc(100, -1, 10));
+});
+await test('work hours handle midnight, breaks and equal times', () => {
+  assert.equal(calc.workHoursCalc('09:00','17:00',60,20).pay,140);
+  const night = calc.workHoursCalc('22:00','06:00',30,20); assert.equal(night.netMinutes,450); assert.equal(night.pay,150); assert.equal(night.overnight,true);
+  assert.equal(calc.workHoursCalc('09:00','09:00',0,0).netMinutes,0);
+  assert.throws(() => calc.workHoursCalc('09:00','09:30',31,20), /Break/); assert.throws(() => calc.workHoursCalc('25:00','09:00',0,0));
+});
+await test('profit, margin and markup handle loss and zero denominators', () => {
+  const r = calc.profitMarginCalc(60,100); assert.equal(r.profit,40); assert.equal(r.margin,40); assert.ok(Math.abs(r.markup - 200/3) < 1e-10);
+  assert.equal(calc.profitMarginCalc(100,50).margin,-100); assert.equal(calc.profitMarginCalc(0,100).markup,null); assert.equal(calc.profitMarginCalc(100,0).margin,null); assert.throws(() => calc.profitMarginCalc(-1,100));
+});
+await test('batch-8 new pages have guides and contextual links', () => {
+  for (const id of ['loan-prepayment-calculator','inflation-calculator','work-hours-calculator','profit-margin-calculator']) {
+    const t=registry.getTool(id); assert.ok(t?.guide?.length >= 3 && t.faqs?.length >= 3); assert.ok(registry.searchTools(t.name,20).some(x=>x.id===id));
+    assert.ok(registry.tools.filter(x=>x.id!==id && registry.relatedTools(x,6).some(y=>y.id===id)).length >= 3, id);
   }
 });
 

@@ -772,6 +772,19 @@ await domTest('Image to PDF keeps duplicate filenames distinct and updates remov
   assert.match(app.textContent, /2 BTotal size/);
 });
 
+console.log('\n── Batch-8 UIs ──');
+for (const [id, query, expected] of [
+  ['loan-prepayment-calculator', '?principal=120000&rate=0&payment=10000&extra=1000&lump=20000&month=3', /2Time saved.*12Baseline months.*10With prepayment months/s],
+  ['inflation-calculator', '?amount=100000&rate=6&years=10', /179,084\.77.*55,839\.48/s],
+  ['work-hours-calculator', '?start=22%3A00&end=06%3A00&break=30&hourly=20', /7h 30m.*7\.50.*150\.00/s],
+  ['profit-margin-calculator', '?cost=60&revenue=100', /40\.00.*40\.00%.*66\.67%/s],
+]) {
+  await domTest(`${id}: shared example and invalid input`, async () => {
+    const app = await loadToolPage(id, 'calculators', query); assert.match(app.textContent, expected);
+    app.querySelector('input').value = ''; click(btnByLabel(app, 'Calculate')); assert.match(app.textContent, /must be|valid/i);
+  });
+}
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);
