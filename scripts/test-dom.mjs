@@ -1029,6 +1029,23 @@ await domTest('image tools accept picker and drop, clear stale results, and refu
   } finally { global.Image=originalImage; URL.createObjectURL=originalCreate; URL.revokeObjectURL=originalRevoke; canvas.getContext=getContext; canvas.toBlob=toBlob; }
 });
 
+await domTest('image resizer invalidates stale encodes, revokes previews and bounds dimensions', async () => {
+  const originalImage=global.Image, originalCreate=URL.createObjectURL, originalRevoke=URL.revokeObjectURL;
+  const canvas=window.HTMLCanvasElement.prototype, getContext=canvas.getContext, toBlob=canvas.toBlob; let callbacks=[], created=0, revoked=[];
+  global.Image=class {constructor(){this.naturalWidth=800;this.naturalHeight=600;} set src(v){queueMicrotask(()=>this.onload());}};
+  URL.createObjectURL=()=>`blob:test-${++created}`; URL.revokeObjectURL=url=>revoked.push(url);
+  canvas.getContext=()=>({drawImage(){},fillRect(){}}); canvas.toBlob=(cb,mime)=>callbacks.push(()=>cb(new Blob(['output'],{type:mime})));
+  try {
+    const app=await loadToolPage('image-resizer','image'); const good=new File([new Uint8Array([255,216,255,217])],'first.jpg',{type:'image/jpeg'});
+    const drop=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(drop,'dataTransfer',{value:{files:[good]}}); app.querySelector('.dropzone').dispatchEvent(drop); await new Promise(r=>setTimeout(r,30));
+    const width=app.querySelector('input[type=number]'); width.value='400'; fire(width,'input'); click(btnByLabel(app,'Resize')); assert.equal(callbacks.length,1);
+    width.value='200'; fire(width,'input'); callbacks.shift()(); await new Promise(r=>setTimeout(r,10)); assert.equal(app.querySelector('.img-preview'),null);
+    click(btnByLabel(app,'Resize')); callbacks.shift()(); await new Promise(r=>setTimeout(r,10)); assert.ok(app.querySelector('.img-preview')); const previewUrl=app.querySelector('.img-preview').getAttribute('src');
+    width.value='300'; fire(width,'input'); assert.equal(app.querySelector('.img-preview'),null); assert.ok(revoked.includes(previewUrl));
+    width.value='20000'; fire(width,'input'); click(btnByLabel(app,'Resize')); assert.match(app.textContent,/16,384 pixels/); assert.equal(callbacks.length,0);
+  } finally {global.Image=originalImage; URL.createObjectURL=originalCreate; URL.revokeObjectURL=originalRevoke; canvas.getContext=getContext; canvas.toBlob=toBlob;}
+});
+
 console.log('\n── All registered tool UI mount smoke test ──');
 await domTest('all 128 registered tools mount in jsdom',async()=>{
  const {tools}=await import('../assets/js/registry.js'); const issues=[];

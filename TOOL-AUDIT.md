@@ -303,3 +303,23 @@ PDF-lib has real generated-PDF tests for some operations; diverse documents, att
   list changes, plus an object-URL failure test. Real browser dialogs, memory
   limits, varied PDF structures, actual image rendering and accessibility remain
   unverified; these tests do not certify every document or all 128 tools.
+
+## Batch-18 image processing audit
+
+- EXIF TIFF values now have APP1-bound checks and bounded counts before decoding;
+  single rational values render as scalars. PNG parsing checks chunk bounds and
+  limits chunk lists. These are partial metadata readers, not validators: CRCs,
+  all tags and metadata formats are not verified. Malformed fixtures exercise
+  oversized counts and truncated chunks.
+- Compressor, resizer, converter and cropper invalidate stale async encodes on
+  selection/settings changes and revoke replaced preview URLs. Resizer rejects
+  invalid dimensions and JPEG output uses a white transparency background.
+  Image inputs are limited to 100 MiB and canvas outputs to 16,384 pixels per
+  side / 40 million total; actual device limits can be lower. Decoding can still
+  consume significant memory before output limits apply.
+- A jsdom test with mocked canvas checks delayed encoding, preview URL cleanup,
+  and dimension bounds; this does **not** verify actual pixels or browser codecs.
+  Canvas output can discard metadata and animation; this is now disclosed.
+  Real image pixel fidelity, orientation behavior, accessibility, and a broad
+  corpus of malformed/valid images remain unverified. Full 128-tool coverage is
+  still an open audit, not a certification.
