@@ -797,7 +797,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator', 'business-day-calculator', 'budget-calculator', 'emergency-fund-calculator', 'debt-to-income-calculator', 'break-even-calculator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator', 'business-day-calculator', 'budget-calculator', 'emergency-fund-calculator', 'debt-to-income-calculator', 'break-even-calculator', 'average-calculator', 'ratio-calculator', 'gcd-lcm-calculator', 'weighted-average-calculator'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -920,7 +920,7 @@ await test('average statistics', () => {
   assert.ok(Math.abs(s.mean - 5.5) < 1e-9);
   assert.equal(s.median, 5.5); // middle two of 10 sorted values are 5 and 6
   assert.equal(s.mode, 8);
-  assert.equal(s.modeCount, 3); // tie between 8/2/4 — no strict mode reported... actually 8,2,4 each ×2; our impl picks first max
+  assert.equal(s.modeCount, 3); // 8 appears three times
 });
 await test('median even/odd', () => {
   assert.equal(math.averageStats([1, 2, 100]).median, 2);
@@ -941,6 +941,32 @@ await test('ratio simplify & solve', () => {
 });
 await test('number parser rejects junk with detail', () => {
   assert.throws(() => math.parseNumbers('1, 2, abc'), /not valid numbers?.*abc/);
+});
+
+console.log('\n── Batch-12 math accuracy ──');
+await test('average reports ties and correct sample and population spread',()=>{
+ const s=math.averageStats([1,2,2,3,5]); assert.equal(s.mean,2.6); assert.deepEqual(s.modes,[2]); assert.ok(Math.abs(s.populationVariance-1.84)<1e-12); assert.equal(s.sampleVariance,2.3);
+ assert.deepEqual(math.averageStats([5,5,2,2,1]).modes,[2,5]); assert.deepEqual(math.averageStats([1,2,3]).modes,[]);
+ const single=math.averageStats([9]); assert.equal(single.populationSD,0); assert.equal(single.sampleVariance,null); assert.equal(single.sampleSD,null);
+ assert.throws(()=>math.parseNumbers('0x10'),/not valid/); assert.throws(()=>math.parseNumbers('1e309'),/not valid/); assert.throws(()=>math.parseNumbers('2e12'),/trillion/); assert.throws(()=>math.parseNumbers('1 '.repeat(10001)),/10,000/);
+});
+await test('ratio uses exact decimal reduction and solves with zero and large values',()=>{
+ assert.deepEqual(math.ratioCalc('0.3','0.1').simplified,[3,1]); assert.deepEqual(math.ratioCalc('0.000001','1000000000').simplified,[1,1000000000000000]);
+ assert.deepEqual(math.ratioCalc('1.5','0.75').simplified,[2,1]); assert.equal(math.ratioSolve('16','9','1920'),1080); assert.equal(math.ratioSolve('1','2','0'),0);
+ for(const v of ['0','-1','1.0000001','1e3','1000000001','x']) assert.throws(()=>math.ratioCalc(v,'1'));
+ assert.throws(()=>math.ratioSolve('1','2','-1'));
+});
+await test('GCD and LCM bound factor work and reject overflow instead of rounding',()=>{
+ assert.equal(math.gcdList([-12,18,30]),6); assert.equal(math.lcmList([-12,18,30]),180); assert.deepEqual(math.primeFactors(-60),[2,2,3,5]); assert.deepEqual(math.primeFactors(1),[]);
+ assert.throws(()=>math.gcdList([0,1]),/non-zero/); assert.throws(()=>math.gcdList([1,1000000001]),/billion/); assert.throws(()=>math.lcmList([999999937,999999929]),/safe integer/); assert.throws(()=>math.primeFactors(1e15));
+});
+await test('weighted averages validate pairs and weights',()=>{
+ const r=math.weightedAverage('80, 3\n90, 2'); assert.equal(r.weightedSum,420); assert.equal(r.totalWeight,5); assert.equal(r.average,84);
+ assert.equal(math.weightedAverage('-5 1\n10 2').average,5); assert.equal(math.weightedAverage('9,0\n10,2').average,10);
+ for(const input of ['', '1 0\n2 0', '1 -1', '1,2,3', '1 abc', '1 1000000001', '1 1\n'.repeat(1001)]) assert.throws(()=>math.weightedAverage(input));
+});
+await test('math guides and weighted average search and inbound links',()=>{
+ for(const id of ['average-calculator','ratio-calculator','gcd-lcm-calculator','weighted-average-calculator']) { const t=registry.getTool(id); assert.ok(t?.guide?.length>=3 && t.faqs?.length>=3); assert.ok(registry.searchTools(t.name,20).some(x=>x.id===id)); assert.ok(registry.tools.filter(x=>x.id!==id && registry.relatedTools(x,6).some(y=>y.id===id)).length>=3,id); }
 });
 
 console.log('\n── Date & Time ──');
@@ -1268,8 +1294,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 122);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 62);
+  assert.equal(registry.tools.length, 123);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 66);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

@@ -531,6 +531,27 @@ await domTest('gcd-lcm-calculator: GCD/LCM with prime factors', async () => {
   assert.match(app.textContent, /Prime factorisation/);
 });
 
+console.log('\n── Batch-12 math UIs ──');
+await domTest('average shows ties, sample spread, and clears errors',async()=>{
+ const app=await loadToolPage('average-calculator','math'),inp=app.querySelector('textarea'); inp.value='1 2 2 3 3'; click(btnByLabel(app,'Calculate'));
+ assert.match(app.textContent,/2, 3 ×2Mode/); assert.match(app.textContent,/0\.56Population variance/); assert.match(app.textContent,/0\.7Sample variance/);
+ inp.value='7';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/Undefined \(need 2 values\)Sample variance/);
+ inp.value='1 abc';click(btnByLabel(app,'Calculate')); assert.match(app.textContent,/not valid numbers/); assert.doesNotMatch(app.textContent,/Sample variance/);
+});
+await domTest('ratio UI shows proportion and exact decimal simplification, then clears errors',async()=>{
+ const app=await loadToolPage('ratio-calculator','math'),[a,b,c]=app.querySelectorAll('input'); a.value='0.3';b.value='0.1';c.value='12';click(btnByLabel(app,'Simplify'));
+ assert.match(app.textContent,/3 : 1Simplified/); assert.match(app.textContent,/x = 4/);
+ c.value='-3';click(btnByLabel(app,'Simplify'));assert.match(app.textContent,/Third value/);assert.doesNotMatch(app.textContent,/x = 4/);
+});
+await domTest('GCD LCM reports unsafe overflow and clears factor table',async()=>{
+ const app=await loadToolPage('gcd-lcm-calculator','math'),inp=app.querySelector('input');inp.value='12,18,30';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/180LCM/);
+ inp.value='999999937,999999929';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/safe integer/);assert.doesNotMatch(app.textContent,/Prime factorisation/);
+});
+await domTest('weighted average worked example and invalid weights',async()=>{
+ const app=await loadToolPage('weighted-average-calculator','math');click(btnByLabel(app,'Calculate weighted'));assert.match(app.textContent,/84Weighted average.*5Total weight.*420Sum of value/s);
+ app.querySelector('textarea').value='80, 0\n90, 0';click(btnByLabel(app,'Calculate weighted'));assert.match(app.textContent,/greater than zero/);assert.doesNotMatch(app.textContent,/84Weighted average/);
+});
+
 /* ═════════════════ Date & Time ═════════════════ */
 console.log('\n── Date & Time UIs ──');
 await domTest('date-difference: business days + weeks', async () => {

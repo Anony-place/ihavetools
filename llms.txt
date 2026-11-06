@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 122 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 123 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -87,9 +87,9 @@
 - [Scientific Calculator](https://i-have-tools.vercel.app/tools/scientific-calculator/): Full expression calculator with functions, history and keyboard support.
 - [Fraction Calculator](https://i-have-tools.vercel.app/tools/fraction-calculator/): Add, subtract, multiply and divide fractions — simplified.
 - [Time Duration Calculator](https://i-have-tools.vercel.app/tools/time-duration-calculator/): Add or subtract durations like 2h 45m + 30m.
-- [Average Calculator](https://i-have-tools.vercel.app/tools/average-calculator/): Mean, median, mode, range and more from a list of numbers.
+- [Average Calculator](https://i-have-tools.vercel.app/tools/average-calculator/): Mean, median, modes and standard deviation from a list of numbers.
 - [Ratio Calculator](https://i-have-tools.vercel.app/tools/ratio-calculator/): Simplify ratios and solve for the missing value.
-- [GCD & LCM Calculator](https://i-have-tools.vercel.app/tools/gcd-lcm-calculator/): Greatest common divisor and least common multiple, with steps.
+- [GCD & LCM Calculator](https://i-have-tools.vercel.app/tools/gcd-lcm-calculator/): Greatest common divisor and least common multiple, with prime factors.
 - [Date Difference](https://i-have-tools.vercel.app/tools/date-difference/): Days, weeks, months and weekdays between two dates.
 - [Date Add / Subtract](https://i-have-tools.vercel.app/tools/date-add-calculator/): Add or subtract days, weeks, months or years from a date.
 - [Time Zone Converter](https://i-have-tools.vercel.app/tools/time-zone-converter/): Convert a time between any two IANA time zones.
@@ -143,6 +143,7 @@
 - [Emergency Fund Calculator](https://i-have-tools.vercel.app/tools/emergency-fund-calculator/): Estimate an emergency savings target and the gap remaining.
 - [Debt-to-Income Ratio Calculator](https://i-have-tools.vercel.app/tools/debt-to-income-calculator/): Compare monthly debt payments with gross monthly income.
 - [Break-Even Calculator](https://i-have-tools.vercel.app/tools/break-even-calculator/): Find whole-unit sales needed to cover fixed and variable costs.
+- [Weighted Average Calculator](https://i-have-tools.vercel.app/tools/weighted-average-calculator/): Calculate a weighted mean from values and their weights.
 
 ## About this site
 - [About](https://i-have-tools.vercel.app/about/)

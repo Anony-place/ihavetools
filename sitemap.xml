@@ -54,7 +54,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/math/</loc>
-    <lastmod>2026-11-03</lastmod>
+    <lastmod>2026-11-06</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/datetime/</loc>
@@ -62,7 +62,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/student/</loc>
-    <lastmod>2026-11-05</lastmod>
+    <lastmod>2026-11-06</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/misc/</loc>
@@ -554,6 +554,10 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/tools/break-even-calculator/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/weighted-average-calculator/</loc>
     <lastmod>2026-11-06</lastmod>
   </url>
   <url>

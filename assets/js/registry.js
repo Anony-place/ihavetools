@@ -377,7 +377,7 @@ export const tools = [
 
   // ── Calculators ────────────────────────────────────────────────────────────
   T({ id: 'percentage-calculator', name: 'Percentage Calculator', icon: 'percent', engine: 'calculators', categories: ['calculators', 'math', 'student'],
-    related: ["break-even-calculator","profit-margin-calculator","cgpa-calculator","attendance-calculator","percentage-change","final-grade-calculator"],
+    related: ["weighted-average-calculator","break-even-calculator","profit-margin-calculator","cgpa-calculator","attendance-calculator","percentage-change"],
     blurb: 'Three percentage calculations in one tool, with worked formulas.',
     description: 'Calculate X% of a number, what percent one number is of another, or the percentage change between two values — with the formula shown for each.',
     keywords: ['percentage', 'percent of', 'percent change', 'percent calculator', 'discount math'],
@@ -979,6 +979,7 @@ export const tools = [
 
   // ── Student ────────────────────────────────────────────────────────────────
   T({ id: 'scientific-calculator', name: 'Scientific Calculator', icon: 'calculator', engine: 'student', categories: ['student', 'math'],
+    related: ["gcd-lcm-calculator","cgpa-calculator","fraction-calculator","percentage-calculator","average-calculator","weighted-average-calculator"],
     blurb: 'Full expression calculator with functions, history and keyboard support.',
     description: 'Evaluate mathematical expressions with parentheses, powers, roots, trigonometry, logarithms and constants — with degree/radian modes and a calculation history.',
     keywords: ['scientific calculator', 'trigonometry', 'logarithm', 'sqrt', 'sin cos tan', 'expression'],
@@ -986,6 +987,7 @@ export const tools = [
     popularity: 84, added: '2026-06-12',
     steps: 'Type an expression or use the keypad.|Toggle DEG/RAD for trigonometric functions.|Press = (or Enter) to evaluate; review your history.' }),
   T({ id: 'fraction-calculator', name: 'Fraction Calculator', icon: 'divide', engine: 'student', categories: ['student', 'math'],
+    related: ["gcd-lcm-calculator","cgpa-calculator","scientific-calculator","percentage-calculator","average-calculator","weighted-average-calculator"],
     blurb: 'Add, subtract, multiply and divide fractions — simplified.',
     description: 'Calculate with fractions and mixed numbers. Results are simplified automatically and shown as a fraction, mixed number and decimal, with the worked steps.',
     keywords: ['fraction', 'mixed number', 'simplify', 'lcd', 'numerator', 'denominator'],
@@ -1003,26 +1005,49 @@ export const tools = [
 
   // ── Math ───────────────────────────────────────────────────────────────────
   T({ id: 'average-calculator', name: 'Average Calculator', icon: 'sigma', engine: 'math', categories: ['math', 'student'],
-    blurb: 'Mean, median, mode, range and more from a list of numbers.',
-    description: 'Enter numbers to get the mean, median, mode, range, sum and count — with values sorted and outliers visible at a glance.',
-    keywords: ['average', 'mean', 'median', 'mode', 'range', 'statistics', 'sum'],
-    aliases: ['mean calculator', 'median calculator', 'mode calculator'],
-    popularity: 77, added: '2026-06-13',
-    steps: 'Paste or type numbers, separated by commas, spaces or newlines.|Click Calculate.|Read mean, median, mode, range, sum and count.' }),
+    related: ['weighted-average-calculator','ratio-calculator','gcd-lcm-calculator','percentage-calculator','cgpa-calculator','final-grade-calculator'],
+    blurb: 'Mean, median, modes and standard deviation from a list of numbers.',
+    description: 'Calculate mean, median, tied modes, range, sample and population standard deviation and variance for a list of numbers.',
+    keywords: ['average', 'mean', 'median', 'mode', 'range', 'standard deviation', 'variance', 'statistics', 'sum'], aliases: ['mean calculator', 'median calculator', 'mode calculator'], popularity: 77, added: '2026-06-13',
+    steps: 'Enter numbers separated by commas, spaces, semicolons or newlines.|Click Calculate.|Review central values, spread and sorted data.',
+    faqs: [
+      {q:'What is the difference between sample and population standard deviation?',a:'Population variance divides squared deviations by n; sample variance divides by n − 1. The standard deviation is the square root of its variance. Sample variance is undefined for one value.'},
+      {q:'Can there be more than one mode?',a:'Yes. The tool lists all values tied for the highest frequency when that frequency exceeds one; if all values are unique it reports no mode. The first 20 tied modes are shown.'},
+      {q:'What are the input limits?',a:'Enter 1 to 10,000 values between −1 trillion and 1 trillion. Decimal and scientific notation are supported. Calculations use floating-point numbers and results are rounded for display.'},
+      {q:'Does the tool identify outliers automatically?',a:'No. It sorts values and displays their range, but does not classify outliers or compute quartiles.'}
+    ], guide: [
+      {h:'Center and spread',p:'Mean is the sum divided by count. Median is the middle sorted value (or the mean of the two middle values). Modes are the most frequent values when at least one repeats. Range is maximum minus minimum.'},
+      {h:'Worked example',p:'For 1, 2, 2, 3, 5 the sum is 13, mean 2.6, median 2, mode 2 and range 4. The squared deviations sum to 9.2: population variance is 1.84 and sample variance is 2.3.'},
+      {h:'Choose the right denominator',list:['Population variance divides by n when the data describe the whole population.', 'Sample variance divides by n − 1 when estimating spread from a sample; one observation is insufficient.', 'Results use floating-point arithmetic and are rounded for display. Do not infer outliers from the sorted list alone.']}
+    ] }),
   T({ id: 'ratio-calculator', name: 'Ratio Calculator', icon: 'ratio', engine: 'math', categories: ['math'],
-    blurb: 'Simplify ratios and solve for the missing value.',
-    description: 'Simplify a:b ratios to lowest terms, and solve proportions like a:b = c:x for the missing value — with the decimal factor shown.',
-    keywords: ['ratio', 'proportion', 'simplify ratio', 'equivalent ratio', 'scale'],
-    aliases: ['simplify ratio', 'proportion calculator', 'aspect ratio math'],
-    popularity: 66, added: '2026-06-13',
-    steps: 'Enter a ratio like 1920:1080.|Click Simplify, or enter a third value to solve the missing term.|Read the simplified ratio, decimals and the missing value.' }),
+    related:['average-calculator','weighted-average-calculator','gcd-lcm-calculator','percentage-calculator','fraction-calculator','percentage-change'],
+    blurb: 'Simplify ratios and solve for the missing value.', description: 'Reduce positive decimal ratios exactly and solve proportions like a:b = c:x, with decimal results.',
+    keywords: ['ratio', 'proportion', 'simplify ratio', 'equivalent ratio', 'scale'], aliases: ['simplify ratio', 'proportion calculator', 'aspect ratio math'], popularity: 66, added: '2026-06-13',
+    steps: 'Enter positive a and b.|Optionally enter c in a:b = c:x.|Read the simplified ratio and the calculated x.',
+    faqs:[
+      {q:'How do I simplify decimal ratios?',a:'The tool converts decimal inputs to scaled integers and divides both by their greatest common divisor. For example 0.3:0.1 becomes 3:1.'},
+      {q:'How is the missing term calculated?',a:'For a:b = c:x, x = b × c ÷ a. The known ratio values a and b must be positive; c may be zero.'},
+      {q:'What inputs are supported?',a:'Use non-negative ordinary decimals up to 1 billion, with at most six digits after the decimal point. a and b must be greater than zero. Scientific notation and negative values are not accepted.'}
+    ], guide:[
+      {h:'Simplify without floating-point remainders',p:'Scale the entered decimals to whole numbers, then divide both by their greatest common divisor. This preserves their decimal ratio without treating binary floating-point remainders as exact.'},
+      {h:'Worked examples',p:'1920:1080 simplifies to 16:9. For 16:9 = 1920:x, x = 9 × 1920 ÷ 16 = 1080. The decimal ratio 0.3:0.1 simplifies to 3:1.'},
+      {h:'Limits and rounding',list:['Use decimal points, not decimal commas, and no more than six digits after the decimal point.', 'a and b must be positive; c may be zero. Each input is at most 1 billion.', 'The simplified integer ratio is exact for supported inputs; the displayed decimal and solved term are rounded floating-point results.']}
+    ] }),
   T({ id: 'gcd-lcm-calculator', name: 'GCD & LCM Calculator', icon: 'grid', engine: 'math', categories: ['math'],
-    blurb: 'Greatest common divisor and least common multiple, with steps.',
-    description: 'Compute the GCD and LCM of two or more integers using the Euclidean algorithm, with the prime-factor explanation shown.',
-    keywords: ['gcd', 'lcm', 'hcf', 'greatest common factor', 'least common multiple', 'euclidean'],
-    aliases: ['hcf calculator', 'greatest common divisor', 'least common multiple'],
-    popularity: 58, added: '2026-06-13',
-    steps: 'Enter two or more whole numbers, separated by commas.|Click Calculate.|Read the GCD and LCM with the prime factorisation of each input.' }),
+    related:['ratio-calculator','average-calculator','weighted-average-calculator','fraction-calculator','scientific-calculator'],
+    blurb: 'Greatest common divisor and least common multiple, with prime factors.', description: 'Find the GCD and LCM of non-zero integers and see prime factors for each absolute value.',
+    keywords:['gcd','lcm','hcf','greatest common factor','least common multiple','euclidean'], aliases:['hcf calculator','greatest common divisor','least common multiple'], popularity:58, added:'2026-06-13',
+    steps:'Enter 2 to 100 non-zero integers separated by commas or spaces.|Click Calculate.|Read the GCD, LCM and prime factors.',
+    faqs:[
+      {q:'How do GCD and LCM differ?',a:'The GCD is the largest positive integer dividing all inputs. The LCM is the smallest positive integer divisible by all inputs.'},
+      {q:'Are negative numbers supported?',a:'Yes. The GCD, LCM and prime factors use each input’s absolute value. Zero is not accepted by this tool.'},
+      {q:'What are the limits?',a:'Enter 2–100 non-zero integers, each with absolute value at most 1 billion. The LCM must fit in the exact safe integer range up to 9,007,199,254,740,991.'}
+    ], guide:[
+      {h:'GCD and LCM from factors',p:'The GCD collects common prime factors at the smallest powers. The LCM uses each prime factor at its largest power. For negative inputs the same calculation uses absolute values.'},
+      {h:'Worked example',p:'12 = 2² × 3, 18 = 2 × 3² and 30 = 2 × 3 × 5. Their GCD is 2 × 3 = 6 and their LCM is 2² × 3² × 5 = 180.'},
+      {h:'Limits',list:['Zero is intentionally excluded; one has no prime factors and is displayed as 1.', 'Each input is bounded to keep prime factorisation responsive.', 'If the LCM exceeds the exact safe integer range, an error is shown rather than a rounded result.']}
+    ] }),
 
   // ── Date & Time ────────────────────────────────────────────────────────────
   T({ id: 'date-difference', name: 'Date Difference', icon: 'calendar', engine: 'datetime', categories: ['datetime'],
@@ -1682,7 +1707,7 @@ export const tools = [
       ] },
     ] }),
   T({ id: 'cgpa-calculator', name: 'CGPA Calculator', icon: 'graduation', engine: 'student', categories: ['student', 'calculators', 'math'],
-    related: ['final-grade-calculator', 'attendance-calculator', 'percentage-calculator', 'scientific-calculator', 'fraction-calculator', 'average-calculator', 'percentage-change'],
+    related: ["weighted-average-calculator","final-grade-calculator","attendance-calculator","percentage-calculator","scientific-calculator","fraction-calculator"],
     blurb: 'Convert CGPA to percentage and calculate credit-weighted SGPA.',
     description: 'Convert CGPA to percentage, percentage back to CGPA, or calculate SGPA from subject grade points and credits. Choose the common ×9.5 rule or enter your institution’s own scale and multiplier.',
     keywords: ['cgpa calculator', 'cgpa to percentage', 'percentage to cgpa', 'sgpa calculator', 'cgpa converter'],
@@ -1820,7 +1845,7 @@ export const tools = [
       ] },
     ] }),
   T({ id: 'final-grade-calculator', name: 'Final Grade Calculator', icon: 'graduation', engine: 'calculators', categories: ['student', 'calculators'],
-    related: ['cgpa-calculator', 'attendance-calculator', 'average-calculator', 'percentage-calculator'],
+    related: ["weighted-average-calculator","cgpa-calculator","attendance-calculator","average-calculator","percentage-calculator"],
     blurb: 'Find the exam score needed to reach your target course grade.',
     description: 'Calculate the final exam score needed for a target grade, check whether it is achievable, and explore a what-if final score.',
     keywords: ['final grade calculator', 'final exam grade needed', 'exam score calculator', 'target grade'], aliases: ['what grade do i need on my final', 'final exam calculator'], popularity: 79, added: '2026-11-05',
@@ -2077,6 +2102,21 @@ export const tools = [
       {h:'Contribution covers fixed costs',p:'Contribution per unit is selling price minus variable cost. With positive contribution, fixed costs divided by contribution gives the theoretical threshold; round up to a whole saleable unit.'},
       {h:'Worked example',p:'With fixed costs of 10,000, a selling price of 100 and variable cost of 60, contribution is 40 per unit. The business needs 250 units and sales of 25,000 to cover those costs under the model.'},
       {h:'Check the assumptions',list:['Include relevant shipping, transaction fees, material costs and other variable costs per unit.', 'Use fixed costs for the same period and a consistent treatment of tax.', 'This is a single-product constant-price model; demand, capacity and changing costs may alter real results.']}
+    ] }),
+  T({id:'weighted-average-calculator',name:'Weighted Average Calculator',icon:'sigma',engine:'math',categories:['math','student'],
+    related:['average-calculator','final-grade-calculator','cgpa-calculator','percentage-calculator','ratio-calculator'],
+    blurb:'Calculate a weighted mean from values and their weights.', description:'Calculate a weighted average from value and weight pairs, with a contribution table and total weight.',
+    keywords:['weighted average calculator','weighted mean calculator','weighted grade calculator','weighted average formula'], aliases:['weighted mean calculator'], popularity:74, added:'2026-11-06',
+    steps:'Enter one value and weight pair per line.|Click Calculate weighted average.|Check the weighted sum, total weight and average.',
+    faqs:[
+      {q:'How do I calculate a weighted average?',a:'Multiply each value by its weight, add those products and divide by the sum of the weights.'},
+      {q:'Do weights have to add up to 100?',a:'No. Any non-negative relative weights work, provided at least one is positive.'},
+      {q:'Can a value or weight be negative?',a:'Values can be negative; weights cannot. A zero weight contributes nothing, and the total weight must be positive.'},
+      {q:'What are the limits?',a:'Enter at most 1,000 pairs, with values from −1 trillion to 1 trillion and weights from zero to 1 billion. Results use floating-point arithmetic and are rounded for display.'}
+    ], guide:[
+      {h:'Weighted mean formula',p:'Weighted mean = Σ(value × weight) ÷ Σ(weight). Larger weights have greater influence. Weights may be counts, credit hours or percentages; use the same meaning consistently.'},
+      {h:'Worked example',p:'For scores 80 and 90 with weights 3 and 2, the weighted sum is 80 × 3 + 90 × 2 = 420. Total weight is 5, so the weighted average is 84.'},
+      {h:'Avoid common mistakes',list:['Do not average the weights; divide the weighted sum by their total.', 'Use a non-negative weight for each value and at least one positive weight.', 'The result is arithmetic, not a course policy: confirm how your institution applies credits, rounding and exclusions.']}
     ] }),
 ];
 
