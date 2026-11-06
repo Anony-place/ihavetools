@@ -377,7 +377,7 @@ export const tools = [
 
   // ── Calculators ────────────────────────────────────────────────────────────
   T({ id: 'percentage-calculator', name: 'Percentage Calculator', icon: 'percent', engine: 'calculators', categories: ['calculators', 'math', 'student'],
-    related: ["profit-margin-calculator","cgpa-calculator","attendance-calculator","percentage-change","final-grade-calculator","scientific-calculator"],
+    related: ["break-even-calculator","profit-margin-calculator","cgpa-calculator","attendance-calculator","percentage-change","final-grade-calculator"],
     blurb: 'Three percentage calculations in one tool, with worked formulas.',
     description: 'Calculate X% of a number, what percent one number is of another, or the percentage change between two values — with the formula shown for each.',
     keywords: ['percentage', 'percent of', 'percent change', 'percent calculator', 'discount math'],
@@ -512,7 +512,7 @@ export const tools = [
       ] },
     ] }),
   T({ id: 'gst-calculator', name: 'GST Calculator', icon: 'receipt', engine: 'calculators', categories: ['calculators'],
-    related: ["profit-margin-calculator","nps-calculator","sip-calculator","percentage-calculator","income-tax-calculator","ppf-calculator"],
+    related: ["break-even-calculator","profit-margin-calculator","nps-calculator","sip-calculator","percentage-calculator","income-tax-calculator"],
     blurb: 'Add or remove GST at any rate, with CGST/SGST split.',
     description: 'Add GST to a base price or extract it from a GST-inclusive price, at any rate. Shows the tax amount and the intra-state CGST/SGST split.',
     keywords: ['gst', 'tax', 'cgst', 'sgst', 'inclusive', 'exclusive', 'india tax'],
@@ -544,7 +544,7 @@ export const tools = [
         p: 'Sell within your own state and an 18% tax prints on the invoice as CGST 9% + SGST 9% (this tool shows that split). Sell to another state and it prints as IGST 18%. The total tax — and this calculator’s result — is identical; only which government receives it differs.' },
     ] }),
   T({ id: 'emi-calculator', name: 'EMI Calculator', icon: 'bank', engine: 'calculators', categories: ['calculators'],
-    related: ["loan-prepayment-calculator","nps-calculator","sip-calculator","percentage-calculator","income-tax-calculator","ppf-calculator"],
+    related: ["debt-to-income-calculator","loan-prepayment-calculator","nps-calculator","sip-calculator","percentage-calculator","income-tax-calculator"],
     blurb: 'Monthly EMI, total interest and repayment for any loan.',
     description: 'Calculate the equated monthly instalment for a loan from principal, annual interest rate and tenure — plus total interest and a year-by-year balance table.',
     keywords: ['emi', 'loan', 'mortgage', 'instalment', 'interest', 'repayment', 'amortization'],
@@ -1836,7 +1836,7 @@ export const tools = [
       { h: 'Read the result carefully', list: ['A required score below zero means even zero on the exam reaches the target.', 'Above 100% means the target is out of reach under the stated assumptions.', 'If the final sits inside a test category or replaces a dropped score, this simple separate-weight model does not apply.', 'Letter grades, rounding and extra credit depend on your institution; use its actual threshold.'] },
     ] }),
   T({ id: 'savings-goal-calculator', name: 'Savings Goal Calculator', icon: 'bank', engine: 'calculators', categories: ['calculators'],
-    related: ["inflation-calculator","sip-calculator","lumpsum-calculator","compound-interest-calculator","swp-calculator","rd-calculator"],
+    related: ["emergency-fund-calculator","budget-calculator","inflation-calculator","sip-calculator","lumpsum-calculator","compound-interest-calculator"],
     blurb: 'Estimate the monthly contribution needed to reach a savings goal.',
     description: 'Plan monthly savings for a target using your current balance, timeline and an editable assumed return, with growth and contribution breakdown.',
     keywords: ['savings goal calculator', 'monthly savings calculator', 'savings target planner', 'goal investment calculator'], aliases: ['savings target calculator', 'monthly savings needed'], popularity: 78, added: '2026-11-05',
@@ -1852,7 +1852,7 @@ export const tools = [
       { h: 'Use projections responsibly', list: ['Try a zero-return case as well as a positive return; investment returns are not guaranteed.', 'Include a buffer for inflation, tax and costs that the calculation does not model.', 'Money needed soon may require a different risk level from a long-term goal.', 'The calculator uses end-of-month deposits; deposits at the beginning of the month can produce a different result.'] },
     ] }),
   T({ id: 'swp-calculator', name: 'SWP Calculator', icon: 'trending', engine: 'calculators', categories: ['calculators'],
-    related: ["inflation-calculator","nps-calculator","savings-goal-calculator","sip-calculator","lumpsum-calculator","compound-interest-calculator"],
+    related: ["emergency-fund-calculator","inflation-calculator","nps-calculator","savings-goal-calculator","sip-calculator","lumpsum-calculator"],
     blurb: 'Project monthly withdrawals and see when a corpus runs out.',
     description: 'Estimate systematic withdrawal plan cash flow, investment growth, remaining corpus and the month of depletion with a configurable return.',
     keywords: ['swp calculator', 'systematic withdrawal plan calculator', 'monthly withdrawal calculator', 'retirement corpus withdrawal'], aliases: ['systematic withdrawal calculator', 'withdrawal plan calculator'], popularity: 79, added: '2026-11-05',
@@ -1936,7 +1936,7 @@ export const tools = [
       { h: 'Understand the boundaries', list: ['A moved array item is not detected as a move; each changed index is reported.', 'Duplicate object keys are resolved by JSON.parse, with the last value winning.', 'JavaScript numbers cannot exactly represent every large integer or decimal; do not use this to audit exact high-precision numbers.', 'Inputs are limited to one million characters each, with limits of 100,000 visited nodes and 1,000 differences to protect the browser. Long displayed values are shortened.'] },
     ] }),
   T({ id: 'loan-prepayment-calculator', name: 'Loan Prepayment Calculator', icon: 'bank', engine: 'calculators', categories: ['calculators'],
-    related: ['emi-calculator', 'compound-interest-calculator', 'savings-goal-calculator', 'inflation-calculator'],
+    related: ["debt-to-income-calculator","emi-calculator","compound-interest-calculator","savings-goal-calculator","inflation-calculator"],
     blurb: 'Compare loan repayment time and interest with extra payments.',
     description: 'Estimate interest and time saved by making extra monthly payments and a one-time prepayment on an existing fixed-rate loan.',
     keywords: ['loan prepayment calculator', 'emi prepayment calculator', 'home loan part payment calculator', 'loan interest saved'], aliases: ['loan part payment calculator', 'extra payment calculator'], popularity: 81, added: '2026-11-06',
@@ -1953,7 +1953,7 @@ export const tools = [
       { h: 'Before prepaying', list: ['Check whether the lender reduces EMI or tenure, uses daily interest, or applies fees.', 'The estimate excludes variable rates, taxes, insurance and lender-specific rounding.', 'Keep an emergency reserve and compare other financial priorities before using cash for a prepayment.', 'Copying a share link includes entered figures in its URL; share it only when appropriate.'] },
     ] }),
   T({ id: 'inflation-calculator', name: 'Inflation Calculator', icon: 'trending', engine: 'calculators', categories: ['calculators'],
-    related: ['savings-goal-calculator', 'compound-interest-calculator', 'sip-calculator', 'swp-calculator', 'loan-prepayment-calculator'],
+    related: ["emergency-fund-calculator","budget-calculator","savings-goal-calculator","compound-interest-calculator","sip-calculator","swp-calculator"],
     blurb: 'Estimate future costs and the purchasing power of money.',
     description: 'Calculate a future equivalent cost and inflation-adjusted purchasing power using a chosen constant annual inflation assumption.',
     keywords: ['inflation calculator', 'future cost calculator', 'purchasing power calculator', 'inflation impact'], aliases: ['inflation rate calculator', 'future value of money'], popularity: 80, added: '2026-11-06',
@@ -1969,7 +1969,7 @@ export const tools = [
       { h: 'Use scenarios, not promises', list: ['A constant rate is an assumption, not a CPI forecast.', 'Different goods, housing, healthcare and education may rise at different rates.', 'Try several rates and include tax and investment risk separately when planning savings.'] },
     ] }),
   T({ id: 'work-hours-calculator', name: 'Work Hours Calculator', icon: 'hourglass', engine: 'calculators', categories: ['datetime', 'calculators'],
-    related: ["business-day-calculator","time-duration-calculator","time-converter","attendance-calculator","profit-margin-calculator"],
+    related: ["debt-to-income-calculator","budget-calculator","business-day-calculator","time-duration-calculator","time-converter","attendance-calculator"],
     blurb: 'Calculate shift hours after breaks and estimated gross pay.',
     description: 'Calculate work time between clock-in and clock-out, subtract an unpaid break, handle overnight shifts and estimate gross hourly pay.',
     keywords: ['work hours calculator', 'hours worked calculator', 'shift calculator', 'hours and minutes timesheet'], aliases: ['shift hours calculator', 'hours calculator'], popularity: 80, added: '2026-11-06',
@@ -1985,7 +1985,7 @@ export const tools = [
       { h: 'Payroll is more than clock arithmetic', list: ['Enter only unpaid breaks; your employer’s rules control which breaks are paid.', 'The tool does not calculate overtime, different shift rates or legal entitlements.', 'There is no date or time-zone input, so daylight-saving transitions are not modeled.', 'A share link contains the entered times and rate; avoid sharing private details unintentionally.'] },
     ] }),
   T({ id: 'profit-margin-calculator', name: 'Profit Margin Calculator', icon: 'calculator', engine: 'calculators', categories: ['calculators'],
-    related: ['percentage-calculator', 'gst-calculator', 'discount-calculator', 'work-hours-calculator'],
+    related: ["break-even-calculator","percentage-calculator","gst-calculator","discount-calculator","work-hours-calculator"],
     blurb: 'Calculate profit or loss, margin and markup from cost and sales.',
     description: 'Calculate profit or loss, profit margin on sales and markup on cost, including clear handling of zero cost or revenue.',
     keywords: ['profit margin calculator', 'markup calculator', 'profit percentage calculator', 'gross margin calculator'], aliases: ['profit calculator', 'margin and markup calculator'], popularity: 80, added: '2026-11-06',
@@ -2017,6 +2017,66 @@ export const tools = [
       { h: 'Counting and deadlines use different conventions', p: 'The range count includes both start and end, removing selected weekend days and manually entered holidays. For an offset, start with the next date in the chosen direction; do not count the start date. Negative offsets move backwards, and zero keeps the original date.' },
       { h: 'Worked example with a holiday', p: 'From Friday 6 November to Friday 13 November 2026 inclusive, the Saturday–Sunday weekend leaves six weekdays. If 11 November is entered as a holiday, five working days remain. Adding five working days to 6 November with that holiday lands on Monday 16 November.' },
       { h: 'Confirm your calendar', list: ['No public holiday database is loaded: enter the actual days relevant to your jurisdiction and workplace.', 'Some deadlines count the starting day or roll an end date differently; follow the contract or official rule, not a generic convention.', 'Weekend holidays are not double-counted. Duplicate holiday entries are ignored.', 'The calculation uses calendar dates rather than elapsed hours, so daylight-saving clock changes do not affect the result.'] },
+    ] }),
+  T({ id: 'budget-calculator', name: '50/30/20 Budget Calculator', icon: 'calculator', engine: 'calculators', categories: ['calculators'],
+    related: ['emergency-fund-calculator','savings-goal-calculator','debt-to-income-calculator','work-hours-calculator'],
+    blurb: 'Compare your spending and saving with 50/30/20 budget targets.', description: 'Split take-home income into 50% needs, 30% wants and 20% savings and compare with your actual monthly amounts.',
+    keywords: ['50 30 20 budget calculator','budget planner','monthly budget calculator'], aliases: ['50 30 20 calculator'], popularity: 78, added: '2026-11-06',
+    steps: 'Enter monthly take-home income.|Enter actual needs, wants and savings or extra debt payments.|Compare targets and check the unallocated or overspent amount.',
+    faqs: [
+      {q:'Should I use gross or take-home pay?',a:'Use take-home income after tax and payroll deductions, in the same currency for all amounts.'},
+      {q:'Where do debt payments go?',a:'Minimum required payments can be treated as needs; extra debt repayment may count toward the savings allocation. Do not count any payment in both.'},
+      {q:'What does a negative remainder mean?',a:'Your entered actual amounts exceed take-home income. Review the categories and avoid double counting.'},
+      {q:'Is 50/30/20 right for everyone?',a:'It is a starting guideline, not a rule or personalized advice. Housing costs, income, debt and other needs can require a different split.'}
+    ], guide: [
+      {h:'How the rule works',p:'Use after-tax monthly income. Multiply by 0.50 for needs, 0.30 for wants and 0.20 for savings and extra debt repayment. Compare these targets with actual amounts; the tool does not classify transactions for you.'},
+      {h:'Worked monthly example',p:'With take-home income of 50,000, targets are 25,000 for needs, 15,000 for wants and 10,000 for savings. Actual amounts of 24,000, 16,000 and 8,000 leave 2,000 unallocated.'},
+      {h:'Make the plan useful',list:['Include recurring bills and minimum loan payments in needs if appropriate.', 'Count an expense only once. Allocate irregular annual costs as monthly averages if useful.', 'Adjust targets to reflect your actual circumstances rather than treating this split as a requirement.']}
+    ] }),
+  T({ id:'emergency-fund-calculator', name:'Emergency Fund Calculator', icon:'calculator', engine:'calculators', categories:['calculators'],
+    related:['budget-calculator','savings-goal-calculator','inflation-calculator','loan-prepayment-calculator'],
+    blurb:'Estimate an emergency savings target and the gap remaining.', description:'Calculate an emergency fund target from essential monthly expenses, savings already set aside and a monthly contribution.',
+    keywords:['emergency fund calculator','emergency savings calculator','rainy day fund'], aliases:['emergency savings planner'], popularity:77, added:'2026-11-06',
+    steps:'Enter essential monthly expenses and your target months.|Enter the emergency savings you already have.|Enter your planned monthly contribution and review the target and timeline.',
+    faqs:[
+      {q:'How is the target calculated?',a:'Multiply essential monthly expenses by the selected number of months. Subtract current emergency savings to find the remaining gap.'},
+      {q:'Does the time estimate include interest?',a:'No. It assumes the same contribution at the end of every month, with no interest, withdrawals, inflation or changes in expenses.'},
+      {q:'What if I already have enough saved?',a:'The gap and months to goal are zero; the amount above target is shown separately.'},
+      {q:'What target should I choose?',a:'There is no universal target. Consider your household, stability, obligations and access to other resources.'}
+    ], guide:[
+      {h:'Set a target for essential expenses',p:'Estimate monthly necessities such as housing, food, utilities and required payments. Multiply by a number of months appropriate to your situation; the tool does not choose that number for you.'},
+      {h:'Worked example',p:'At 25,000 per month for six months, the target is 150,000. If 50,000 is already saved, the gap is 100,000. At 10,000 per month, the gap takes 10 months to fill, ignoring interest and withdrawals.'},
+      {h:'Keep assumptions realistic',list:['Use only money genuinely available for emergencies as current savings.', 'The timeline uses fixed contributions and rounds up to a whole month.', 'A zero contribution cannot close a positive gap. Inflation and changing expenses are not modeled.']}
+    ] }),
+  T({ id:'debt-to-income-calculator', name:'Debt-to-Income Ratio Calculator', icon:'calculator', engine:'calculators', categories:['calculators'],
+    related:['budget-calculator','loan-prepayment-calculator','emi-calculator','emergency-fund-calculator'],
+    blurb:'Compare monthly debt payments with gross monthly income.', description:'Calculate your debt-to-income ratio using gross monthly income and total monthly debt payments.',
+    keywords:['debt to income calculator','dti calculator','debt income ratio'], aliases:['DTI calculator'], popularity:76, added:'2026-11-06',
+    steps:'Enter gross income per month before taxes.|Enter total relevant monthly debt payments.|Read the ratio and the income left before other costs.',
+    faqs:[
+      {q:'What is the DTI formula?',a:'Divide monthly debt payments by gross monthly income and multiply by 100.'},
+      {q:'Should income be before or after tax?',a:'Use gross income before taxes and deductions. Convert annual income to a consistent monthly amount first.'},
+      {q:'Does this predict loan approval?',a:'No. Lenders use their own definitions, income verification, thresholds and other eligibility criteria.'},
+      {q:'Is income minus debt my disposable income?',a:'No. Taxes, living expenses, insurance and other outgoings are not deducted.'}
+    ], guide:[
+      {h:'Calculate the ratio',p:'Add relevant required monthly debt payments, divide the total by gross monthly income and multiply by 100. Include housing or other obligations only as appropriate to the lender or purpose of your estimate.'},
+      {h:'Worked example',p:'Gross monthly income of 100,000 and debt payments of 35,000 give 35,000 ÷ 100,000 × 100 = 35%. The 65,000 difference is before tax and other spending, not take-home pay.'},
+      {h:'Understand the limits',list:['Use matching monthly amounts and the same currency.', 'This is an arithmetic ratio, not an approval decision or credit score.', 'Different lenders and jurisdictions can count payments and income differently.']}
+    ] }),
+  T({ id:'break-even-calculator', name:'Break-Even Calculator', icon:'calculator', engine:'calculators', categories:['calculators'],
+    related:['profit-margin-calculator','budget-calculator','percentage-calculator','gst-calculator'],
+    blurb:'Find whole-unit sales needed to cover fixed and variable costs.', description:'Estimate the break-even number of units and sales revenue using fixed costs, selling price and variable cost per unit.',
+    keywords:['break even calculator','break even point calculator','break even units'], aliases:['break even point calculator'], popularity:77, added:'2026-11-06',
+    steps:'Enter fixed costs for the period.|Enter selling price and variable cost per unit.|Read contribution and the whole units needed to break even.',
+    faqs:[
+      {q:'How are break-even units calculated?',a:'Divide fixed costs by price minus variable cost per unit, then round up to whole units, provided the contribution is positive.'},
+      {q:'What if price is less than variable cost?',a:'Every positive sale loses money before fixed costs; selling more cannot cover positive fixed costs under these assumptions.'},
+      {q:'What if price equals variable cost?',a:'Sales contribute nothing toward fixed costs. If fixed costs are also zero, every sales volume breaks even; otherwise there is no break-even sales volume.'},
+      {q:'Are taxes and changing costs included?',a:'Only if you include them in your inputs. Price and variable cost are assumed constant per unit and fixed costs constant for the period.'}
+    ], guide:[
+      {h:'Contribution covers fixed costs',p:'Contribution per unit is selling price minus variable cost. With positive contribution, fixed costs divided by contribution gives the theoretical threshold; round up to a whole saleable unit.'},
+      {h:'Worked example',p:'With fixed costs of 10,000, a selling price of 100 and variable cost of 60, contribution is 40 per unit. The business needs 250 units and sales of 25,000 to cover those costs under the model.'},
+      {h:'Check the assumptions',list:['Include relevant shipping, transaction fees, material costs and other variable costs per unit.', 'Use fixed costs for the same period and a consistent treatment of tax.', 'This is a single-product constant-price model; demand, capacity and changing costs may alter real results.']}
     ] }),
 ];
 

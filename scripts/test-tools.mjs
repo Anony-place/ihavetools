@@ -797,7 +797,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator', 'business-day-calculator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator', 'business-day-calculator', 'budget-calculator', 'emergency-fund-calculator', 'debt-to-income-calculator', 'break-even-calculator'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -1268,8 +1268,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 118);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 58);
+  assert.equal(registry.tools.length, 122);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 62);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
@@ -1465,6 +1465,28 @@ await test('batch-8 new pages have guides and contextual links', () => {
     const t=registry.getTool(id); assert.ok(t?.guide?.length >= 3 && t.faqs?.length >= 3); assert.ok(registry.searchTools(t.name,20).some(x=>x.id===id));
     assert.ok(registry.tools.filter(x=>x.id!==id && registry.relatedTools(x,6).some(y=>y.id===id)).length >= 3, id);
   }
+});
+
+console.log('\n── Batch-10 planning tools ──');
+await test('50/30/20 targets and actuals including overspend',()=>{
+ const r=calc.budget503020(50000,24000,16000,8000); assert.equal(r.needsTarget,25000); assert.equal(r.wantsTarget,15000); assert.equal(r.savingsTarget,10000); assert.equal(r.remaining,2000);
+ assert.equal(calc.budget503020(100,100,100,0).remaining,-100); assert.throws(()=>calc.budget503020(0,0,0,0)); assert.throws(()=>calc.budget503020(100,-1,0,0));
+});
+await test('emergency fund target, already funded, zero and decimal contributions',()=>{
+ const r=calc.emergencyFund(25000,6,50000,10000); assert.equal(r.target,150000); assert.equal(r.gap,100000); assert.equal(r.monthsToGoal,10);
+ assert.equal(calc.emergencyFund(100,3,400,0).surplus,100); assert.equal(calc.emergencyFund(100,3,400,0).monthsToGoal,0); assert.equal(calc.emergencyFund(100,3,0,0).monthsToGoal,null);
+ assert.equal(calc.emergencyFund(0.3,1,0.1,0.1).monthsToGoal,2); assert.throws(()=>calc.emergencyFund(1,0,0,0)); assert.throws(()=>calc.emergencyFund(Infinity,6,0,1));
+});
+await test('debt-to-income handles zero debt and debt exceeding income',()=>{
+ assert.equal(calc.debtToIncome(100000,35000).ratio,35); assert.equal(calc.debtToIncome(100,0).ratio,0); assert.equal(calc.debtToIncome(100,200).incomeAfterDebts,-100); assert.throws(()=>calc.debtToIncome(0,1)); assert.throws(()=>calc.debtToIncome(100,-1));
+});
+await test('break-even handles rounding, no contribution, zero fixed and limits',()=>{
+ const r=calc.breakEven(10000,100,60); assert.equal(r.units,250); assert.equal(r.revenue,25000); assert.equal(calc.breakEven(101,10,3).units,15);
+ assert.equal(calc.breakEven(0.2,0.3,0.1).units,1); assert.equal(calc.breakEven(100,10,10).units,null); assert.equal(calc.breakEven(0,10,11).units,null); assert.equal(calc.breakEven(0,10,2).units,0);
+ assert.throws(()=>calc.breakEven(1e12,1,0)); assert.throws(()=>calc.breakEven(-1,10,1));
+});
+await test('batch-10 tools have guides, search and inbound related links',()=>{
+ for (const id of ['budget-calculator','emergency-fund-calculator','debt-to-income-calculator','break-even-calculator']) {const t=registry.getTool(id); assert.ok(t?.guide?.length>=3 && t.faqs?.length>=3); assert.ok(registry.searchTools(t.name,20).some(x=>x.id===id)); assert.ok(registry.tools.filter(x=>x.id!==id && registry.relatedTools(x,6).some(y=>y.id===id)).length>=3,id);}
 });
 
 console.log('\n── Batch-9 calendar and image reliability ──');
