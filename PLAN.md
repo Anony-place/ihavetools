@@ -2,7 +2,7 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-01 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 122 (62 guides)
+> `main` par merge = auto-deploy) · **Tools:** 123 (66 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
@@ -380,7 +380,7 @@ PR #16 merged; CI passed and Vercel production READY/PROMOTED.
 
 ---
 
-## 🚧 BATCH-11 — Privacy-first sharing and trust audit (2026-11-06)
+## ✅ BATCH-11 — Privacy-first sharing and trust audit (2026-11-06)
 
 OWASP and CWE-598 document query parameters leaking to logs and browser history;
 this matters for financial and health calculators. Current automatic URL sync
@@ -408,8 +408,39 @@ One complete batch:
 Implemented: opt-in fragment sharing across 36 calculator interfaces; clean
 page-link copy; legacy compatibility and disclosure; Vercel and YouTube CDN
 privacy corrections; v4 worker refresh and JS revalidation. Local checks pass:
-190 engine, 81 DOM, 9 chrome, service worker and 20 integrity. CI, PR and
-production verification remain pending until actually complete.
+190 engine, 81 DOM, 9 chrome, service worker and 20 integrity. PR #17
+merged; production READY/PROMOTED and live privacy pages verified.
+
+---
+
+## 🚧 BATCH-12 — Math & statistics reliability (2026-11-06)
+
+Market scan of public calculator directories shows average/statistics, ratios,
+and weighted averages as common workflows (qualitative only, not search-volume
+proof). We already have average and ratio pages: improve those instead of
+creating thin duplicate statistics/ratio pages. Audit found ratio solving builds
+rows but never displays them; floating-point GCD gives misleading decimals;
+mode ignores ties; unbounded prime factoring risks locking the browser.
+
+One planned batch:
+1. Upgrade Average Calculator with tied modes, sample and population variance
+   and standard deviation, bounded inputs and documented numeric limitations.
+2. Repair Ratio Calculator's actual proportion result and decimal simplification
+   using exact scaled integer arithmetic; clearly define accepted inputs.
+3. Bound GCD/LCM inputs and factorisation, detect unsafe LCM overflow and clear
+   stale results on errors; explicitly state limits rather than silently round.
+4. Add distinct Weighted Average Calculator (value/weight pairs, non-negative
+   weights), original examples, guides and FAQs for all four math workflows,
+   useful related links and no duplicate pages. Add pure and UI tests covering
+   ties, singleton, decimal boundaries, errors, overflow, and stale results.
+5. Build generated pages, run full checks, one PR, CI and production verification.
+   GSC measurement and real-browser/device audits remain separate pending tasks.
+
+Implementation complete locally: 123 tools / 66 guides; four math guides,
+weighted-average tool, tied modes and sample/population spread, exact decimal
+ratio simplification, visible proportion output and bounded integer factoring.
+Local checks: 195 engine, 85 DOM, 9 chrome, worker suite and 20 integrity.
+CI, PR and production verification remain pending until actually complete.
 
 ---
 
