@@ -2,7 +2,49 @@
 // iHaveTools — Date & Time tools: date-difference, date-add-calculator,
 // time-zone-converter (uses the browser's built-in IANA tz database via Intl)
 // =============================================================================
-import { h, field, input, select, switchChip, btn, actionsRow, statusLine, statsGrid, toast, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, btn, actionsRow, statusLine, statsGrid, toast, mountTool } from '../ui.js';
+
+// Business days use calendar dates in UTC, avoiding local DST shifts.
+const DAY_MS = 86400000;
+const WEEKENDS = { sat_sun: [0, 6], fri_sat: [5, 6], sun: [0], none: [] };
+export function parseCalendarDate(text) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw new Error('Use a valid date in YYYY-MM-DD format.');
+  const year = Number(text.slice(0, 4));
+  if (year < 1900 || year > 2100) throw new Error('Dates must be between 1900 and 2100.');
+  const timestamp = Date.parse(`${text}T00:00:00Z`);
+  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== text) throw new Error(`Invalid date: ${text}.`);
+  return timestamp;
+}
+export function localDateISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+function businessRules(weekend, holidays) {
+  if (!Object.hasOwn(WEEKENDS, weekend)) throw new Error('Choose a valid weekend.');
+  const parts = String(holidays || '').split(/[\s,;]+/).filter(Boolean);
+  if (parts.length > 500) throw new Error('Enter no more than 500 holiday dates.');
+  const holidayDays = new Set(parts.map(parseCalendarDate));
+  return (day) => !WEEKENDS[weekend].includes(new Date(day).getUTCDay()) && !holidayDays.has(day);
+}
+export function countBusinessDays(start, end, weekend = 'sat_sun', holidays = '') {
+  const first = parseCalendarDate(start), last = parseCalendarDate(end), isWorking = businessRules(weekend, holidays);
+  if (last < first) throw new Error('End date must be on or after the start date.');
+  const days = (last - first) / DAY_MS + 1;
+  if (days > 36600) throw new Error('Date range must be at most 36,600 days.');
+  let working = 0;
+  for (let day = first; day <= last; day += DAY_MS) if (isWorking(day)) working++;
+  return { working, nonWorking: days - working, calendarDays: days };
+}
+export function addBusinessDays(start, amount, weekend = 'sat_sun', holidays = '') {
+  let day = parseCalendarDate(start); const isWorking = businessRules(weekend, holidays);
+  if (!Number.isInteger(amount) || Math.abs(amount) > 10000) throw new Error('Working days must be a whole number between -10000 and 10000.');
+  let remaining = Math.abs(amount), steps = 0, direction = Math.sign(amount);
+  while (remaining) {
+    day += direction * DAY_MS;
+    if (++steps > 36600 || day < parseCalendarDate('1900-01-01') || day > parseCalendarDate('2100-12-31')) throw new Error('The result is outside the supported date range.');
+    if (isWorking(day)) remaining--;
+  }
+  return new Date(day).toISOString().slice(0, 10);
+}
 
 export function dateDiff(startStr, endStr, includeEnd = false) {
   const parse = (s, label) => {
@@ -107,6 +149,18 @@ export const TIME_ZONES = (() => {
 })();
 
 const defs = {
+  'business-day-calculator'(root) {
+    const today = new Date(), nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7);
+    const start = input({ type: 'date', value: localDateISO(today) }), end = input({ type: 'date', value: localDateISO(nextWeek) });
+    const amount = input({ type: 'number', step: '1', value: '5' });
+    const weekend = select({ options: [{ v: 'sat_sun', t: 'Saturday and Sunday' }, { v: 'fri_sat', t: 'Friday and Saturday' }, { v: 'sun', t: 'Sunday only' }, { v: 'none', t: 'No weekend' }], value: 'sat_sun' });
+    const holidays = textarea({ rows: 3, placeholder: 'YYYY-MM-DD, one date per line (optional)' });
+    const grid = statsGrid(), status = statusLine('Enter holidays manually; no holidays are automatically applied.');
+    const runCount = () => { try { const r = countBusinessDays(start.value, end.value, weekend.value, holidays.value); grid.set([{ label: 'Working days (inclusive)', value: String(r.working), kind: 'good' }, { label: 'Non-working days', value: String(r.nonWorking) }, { label: 'Calendar days (inclusive)', value: String(r.calendarDays) }]); status.set('Both start and end are included. Weekend holidays are not subtracted twice. No holiday calendar is loaded automatically.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    const runAdd = () => { try { if (!amount.value.trim()) throw new Error('Enter a whole number of working days.'); const result = addBusinessDays(start.value, Number(amount.value), weekend.value, holidays.value); grid.set([{ label: 'Resulting date', value: result, kind: 'good' }, { label: 'Offset (working days)', value: amount.value }]); status.set('The start date is excluded for nonzero offsets; negative values subtract. Zero returns the start date. Verify the holiday list for your region.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Start date', control: start }), field({ label: 'End date (for counting)', control: end }), field({ label: 'Weekend', control: weekend }), field({ label: 'Working days to add (negative to subtract)', control: amount })), field({ label: 'Holidays (YYYY-MM-DD)', control: holidays, hint: 'Optional: separate dates with commas or new lines. No automatic holidays.' }), actionsRow(btn({ label: 'Count working days', icon: 'calendar', onClick: runCount }), btn({ label: 'Add / subtract working days', icon: 'calendar-plus', onClick: runAdd })), grid, status);
+  },
+
   'date-difference'(root) {
     const start = input({ type: 'date', value: new Date().toISOString().slice(0, 10) });
     const end = input({ type: 'date', value: new Date(Date.now() + 86400000).toISOString().slice(0, 10) });
@@ -122,9 +176,9 @@ const defs = {
           { label: 'Weeks', value: `${r.weeks.toLocaleString()}w ${r.remainderDays}d` },
           { label: 'Business days', value: r.businessDays.toLocaleString() },
           { label: 'Weekend days', value: r.weekendDays.toLocaleString() },
-          { label: 'Hours', value: (r.hours * (includeEnd.querySelector('input').checked ? 24 : 24)).toLocaleString() },
+          { label: 'Hours', value: r.hours.toLocaleString() },
         ]);
-        status.set(r.reversed ? 'Note: the end date is before the start date — the count is shown as a magnitude.' : 'Calculated ✓', 'info');
+        status.set(r.reversed ? 'End date precedes start; counts are shown as a magnitude. Hours are 24 per calendar day, not elapsed DST-adjusted hours.' : 'Hours are 24 per calendar day, not elapsed DST-adjusted hours.', 'info');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(h('div', { class: 'field-row', style: 'align-items:end' },
@@ -147,7 +201,7 @@ const defs = {
         const d = dateAdd(start.value, Math.abs(Number(amount.value) || 0), unit.value, dir.value);
         grid.set([
           { label: 'Resulting date', value: d.toLocaleDateString(undefined, { dateStyle: 'full' }), kind: 'good' },
-          { label: 'ISO', value: d.toISOString().slice(0, 10) },
+          { label: 'ISO', value: localDateISO(d) },
           { label: 'Weekday', value: d.toLocaleDateString(undefined, { weekday: 'long' }) },
           { label: 'Unix (s)', value: String(Math.floor(d.getTime() / 1000)) },
         ]);
@@ -201,4 +255,4 @@ const defs = {
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { dateDiff, dateAdd, convertTimeZone, zoneOffset, TIME_ZONES };
+export const __test = { dateDiff, dateAdd, convertTimeZone, zoneOffset, TIME_ZONES, countBusinessDays, addBusinessDays, parseCalendarDate, localDateISO };

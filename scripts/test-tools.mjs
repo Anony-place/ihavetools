@@ -797,7 +797,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator', 'business-day-calculator'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -1268,8 +1268,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 117);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 57);
+  assert.equal(registry.tools.length, 118);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 58);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
@@ -1465,6 +1465,34 @@ await test('batch-8 new pages have guides and contextual links', () => {
     const t=registry.getTool(id); assert.ok(t?.guide?.length >= 3 && t.faqs?.length >= 3); assert.ok(registry.searchTools(t.name,20).some(x=>x.id===id));
     assert.ok(registry.tools.filter(x=>x.id!==id && registry.relatedTools(x,6).some(y=>y.id===id)).length >= 3, id);
   }
+});
+
+console.log('\n── Batch-9 calendar and image reliability ──');
+await test('business days honor inclusive range, weekends and manually supplied holidays', () => {
+  assert.deepEqual(dt.countBusinessDays('2026-11-06','2026-11-13','sat_sun','2026-11-11'), { working: 5, nonWorking: 3, calendarDays: 8 });
+  assert.equal(dt.countBusinessDays('2026-11-06','2026-11-06','sat_sun','').working,1);
+  assert.equal(dt.countBusinessDays('2026-11-07','2026-11-08','sat_sun','2026-11-07,2026-11-07').working,0);
+  assert.equal(dt.countBusinessDays('2026-11-06','2026-11-08','fri_sat','').working,1);
+  assert.equal(dt.addBusinessDays('2026-11-06',5,'sat_sun','2026-11-11'),'2026-11-16');
+  assert.equal(dt.addBusinessDays('2026-11-09',-1),'2026-11-06');
+  assert.equal(dt.addBusinessDays('2026-11-07',0),'2026-11-07');
+  assert.equal(dt.addBusinessDays('2024-02-28',1,'none'),'2024-02-29');
+  assert.throws(() => dt.countBusinessDays('2024-02-30','2024-03-01'), /Invalid date/);
+  assert.throws(() => dt.countBusinessDays('2026-11-10','2026-11-01'), /on or after/);
+  assert.throws(() => dt.addBusinessDays('2026-11-06',1.5), /whole number/);
+  assert.throws(() => dt.addBusinessDays('2100-12-31',1,'none'), /outside/);
+});
+await test('local date output is not shifted by UTC offset', async () => {
+  const { execFileSync } = await import('node:child_process');
+  for (const tz of ['Asia/Kolkata', 'America/Los_Angeles']) {
+    const code = `import { dateAdd, localDateISO } from './assets/js/tools/datetime.js'; console.log(localDateISO(dateAdd('2024-01-31', 1, 'months', 'add')))`;
+    assert.equal(execFileSync(process.execPath, ['--input-type=module','-e',code], { cwd: process.cwd(), env: { ...process.env, TZ: tz }, encoding: 'utf8' }).trim(), '2024-02-29');
+  }
+});
+await test('business day catalogue entry is discoverable with contextual links', () => {
+  const t=registry.getTool('business-day-calculator'); assert.ok(t?.guide?.length >= 3 && t.faqs?.length >= 3);
+  assert.ok(registry.searchTools('business day calculator',20).some(x=>x.id===t.id));
+  assert.ok(registry.tools.filter(x=>x.id!==t.id && registry.relatedTools(x,6).some(y=>y.id===t.id)).length >= 3);
 });
 
 console.log('\n── Registry ↔ data consistency ──');

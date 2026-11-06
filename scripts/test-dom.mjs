@@ -785,6 +785,46 @@ for (const [id, query, expected] of [
   });
 }
 
+console.log('\n── Batch-9 UIs ──');
+await domTest('business day UI counts holiday and computes next working day', async () => {
+  const app = await loadToolPage('business-day-calculator', 'datetime');
+  const dates = app.querySelectorAll('input[type=date]'); dates[0].value='2026-11-06'; dates[1].value='2026-11-13';
+  app.querySelector('textarea').value='2026-11-11';
+  click(btnByLabel(app, 'Count working days')); assert.match(app.textContent,/5Working days \(inclusive\)/);
+  click(btnByLabel(app, 'Add / subtract working days')); assert.match(app.textContent,/2026-11-16Resulting date/);
+  app.querySelector('textarea').value='2026-02-30'; click(btnByLabel(app, 'Count working days')); assert.match(app.textContent,/Invalid date/);
+});
+await domTest('date difference displays 24 hours for one day', async () => {
+  const app = await loadToolPage('date-difference', 'datetime'); const dates=app.querySelectorAll('input[type=date]');
+  dates[0].value='2024-01-01'; dates[1].value='2024-01-02'; click(btnByLabel(app,'Calculate difference'));
+  assert.match(app.textContent,/24Hours/); assert.doesNotMatch(app.textContent,/576Hours/);
+});
+await domTest('image tools accept picker and drop, clear stale results, and refuse unsupported encoders', async () => {
+  const originalImage=global.Image, originalCreate=URL.createObjectURL, originalRevoke=URL.revokeObjectURL;
+  const canvas=window.HTMLCanvasElement.prototype, getContext=canvas.getContext, toBlob=canvas.toBlob;
+  class FakeImage { constructor(){this.naturalWidth=800; this.naturalHeight=600;} set src(_v){queueMicrotask(()=>this.onload());} }
+  global.Image=FakeImage; URL.createObjectURL=()=> 'blob:test'; URL.revokeObjectURL=()=>{};
+  canvas.getContext=()=>({ drawImage(){}, fillRect(){}, clearRect(){}, strokeRect(){} });
+  canvas.toBlob=function(cb,mime){ cb(new Blob(['output'],{type:mime})); };
+  try {
+    const good = new File([new Uint8Array([255,216,255,217])], 'first.jpg', {type:'image/jpeg'});
+    const bad = new File(['bad'], 'bad.jpg', {type:'image/jpeg'});
+    const app = await loadToolPage('image-compressor','image'); let zone=app.querySelector('.dropzone');
+    const drop=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(drop,'dataTransfer',{value:{files:[good]}}); zone.dispatchEvent(drop);
+    assert.match(app.textContent,/Loaded first.jpg/); click(btnByLabel(app,'Compress')); await new Promise(r=>setTimeout(r,30));
+    assert.ok(app.querySelector('.img-preview'), app.textContent);
+    const picker=zone.querySelector('input[type=file]'); Object.defineProperty(picker,'files',{configurable:true,value:[bad]}); fire(picker,'change');
+    assert.equal(app.querySelector('.img-preview'),null,'new file clears stale preview'); click(btnByLabel(app,'Compress')); await new Promise(r=>setTimeout(r,30)); assert.match(app.textContent,/does not look like/);
+    Object.defineProperty(picker,'files',{configurable:true,value:[good]}); fire(picker,'change');
+    canvas.toBlob=(cb)=>cb(new Blob(['x'],{type:'image/png'})); click(btnByLabel(app,'Compress')); await new Promise(r=>setTimeout(r,30)); assert.match(app.textContent,/does not support encoding/);
+    canvas.toBlob=function(cb,mime){ cb(new Blob(['output'],{type:mime})); };
+    for (const id of ['image-resizer','image-converter','image-cropper','image-metadata-viewer']) {
+      const target=await loadToolPage(id,'image'); zone=target.querySelector('.dropzone'); const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[good]}}); zone.dispatchEvent(e); await new Promise(r=>setTimeout(r,30));
+      assert.match(target.textContent,/Loaded|Analysed/,`${id}: ${target.textContent}`);
+    }
+  } finally { global.Image=originalImage; URL.createObjectURL=originalCreate; URL.revokeObjectURL=originalRevoke; canvas.getContext=getContext; canvas.toBlob=toBlob; }
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);
