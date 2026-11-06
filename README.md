@@ -1,6 +1,6 @@
 # iHaveTools
 
-**118 free online tools. No sign-up or file uploads.** Every tool runs
+**122 free online tools. No sign-up or file uploads.** Every tool runs
 entirely in your browser — your files and text never leave your device.
 
 **Live site:** https://i-have-tools.vercel.app/ (Vercel, auto-deployed from `main` on every merge)
@@ -58,8 +58,8 @@ scripts/
   build.mjs        ← generates every HTML page (home, categories, tools,
                      about/privacy/terms, 404), sitemap, llms.txt, sprite,
                      search index — all from registry.js
-  test-tools.mjs   ← 185 engine tests (pure logic, run in Node)
-  test-dom.mjs     ← 71 DOM tests: loads built pages into jsdom and drives real UIs
+  test-tools.mjs   ← 190 engine tests (pure logic, run in Node)
+  test-dom.mjs     ← 76 DOM tests: loads built pages into jsdom and drives real UIs
   test-chrome.mjs  ← 9 chrome tests: homepage, search, categories, theme, nav, install
   test-sw.mjs      ← service worker lifecycle, offline, privacy and cache-limit regression tests
   link-check.mjs   ← 20 integrity checks: dead links, sitemap↔files, SEO meta,
@@ -84,8 +84,8 @@ See **PLAN.md** for the SEO/speed roadmap (what is done, what is next).
 ```bash
 npm install          # devDependencies only (jsdom, sharp, pdf-lib, playwright*)
 npm run build        # regenerate all HTML from the registry
-npm test             # engine tests (185)
-npm run test:dom     # DOM tests against built pages (71)
+npm test             # engine tests (190)
+npm run test:dom     # DOM tests against built pages (76)
 npm run test:chrome  # chrome tests (9)
 npm run check        # build + engine/DOM/Chrome, service worker and link checks
 ```

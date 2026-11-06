@@ -2,7 +2,7 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-01 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 118 (58 guides)
+> `main` par merge = auto-deploy) · **Tools:** 122 (62 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
@@ -324,7 +324,7 @@ Lighthouse and PWA verification remains pending.
 
 ---
 
-## 🚧 BATCH-9 — Working-day planning and image-tool reliability (2026-11-06)
+## ✅ BATCH-9 — Working-day planning and image-tool reliability (2026-11-06)
 
 Qualitative market scan: business-day tools often offer deadline calculations,
 custom holidays and regional weekends; image suites highlight local handling and
@@ -350,7 +350,33 @@ Implementation ready for review: 118 tools / 58 guides. Holiday rules and
 endpoint conventions are explicit; image picker/drop paths and stale previews
 are tested with simulated canvas/decoders (not real-browser validation). Local
 checks: 185 engine, 71 DOM, 9 site chrome, service worker and 20 integrity.
-PR, CI and production verification remain pending until actually completed.
+PR #15 merged; production READY/PROMOTED and live page verified.
+
+---
+
+## 🚧 BATCH-10 — Everyday money and small-business planning (2026-11-06)
+
+Market scan of calculator directories (PrintSheetLab and MJK Tools) shows
+budget, emergency fund, debt-to-income and break-even workflows. This is
+qualitative competitor evidence, not verified demand or search-volume data.
+Avoid duplicating Profit Margin or Loan Prepayment: each new tool answers a
+distinct question. One batch on the current branch:
+
+1. Build four currency-neutral calculators: 50/30/20 budget targets plus actual
+   comparison, emergency fund target and gap, gross debt-to-income ratio, and
+   unit-sales break-even with no-contribution handling. Explicitly document
+   assumptions; no approval, savings or financial-advice promises.
+2. Add distinct original guides, verified examples, FAQs, cross-links, sharing
+   and prefilled URL state, with bounded and validated inputs and safe rendering.
+3. Add engine edge cases and interactive DOM/share tests, regenerate static
+   content, update counts, run all checks, review the diff, then one PR with CI
+   and production verification. No paid services; real-browser audit and GSC
+   follow-up remain separate pending tasks.
+
+Implementation ready for review: four tools, 122 tools / 62 guides. Share
+links expose entered amounts in the URL, so each UI warns users. All local
+checks pass: 190 engine, 76 DOM, 9 chrome, service worker and 20 integrity.
+PR/CI and production verification pending until actually completed.
 
 ---
 

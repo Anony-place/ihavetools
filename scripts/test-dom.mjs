@@ -785,6 +785,22 @@ for (const [id, query, expected] of [
   });
 }
 
+console.log('\n── Batch-10 UIs ──');
+for (const [id, query, expected] of [
+ ['budget-calculator','?income=50000&needs=24000&wants=16000&savings=8000',/25,000\.00Needs target.*15,000\.00Wants target.*10,000\.00Savings target.*2,000\.00Unallocated/s],
+ ['emergency-fund-calculator','?monthly=25000&months=6&saved=50000&contribution=10000',/150,000\.00Fund target.*100,000\.00Still needed.*10Months to reach goal/s],
+ ['debt-to-income-calculator','?income=100000&debts=35000',/35\.00%Debt-to-income ratio.*65,000\.00Income less debt/s],
+ ['break-even-calculator','?fixed=10000&price=100&variable=60',/40\.00Contribution per unit.*250Break-even whole units.*25,000\.00Sales/s],
+]) { await domTest(`${id}: shared result, edit and invalid input`,async()=>{
+ const app=await loadToolPage(id,'calculators',query); assert.match(app.textContent,expected);
+ const first=app.querySelector('input'); first.value=''; click(btnByLabel(app,'Calculate')); assert.match(app.textContent,/must be|valid/i); assert.doesNotMatch(app.textContent,expected);
+ first.value=id==='debt-to-income-calculator'?'100000':'100'; fire(first,'input'); click(btnByLabel(app,'Calculate')); await new Promise(r=>setTimeout(r,10)); assert.equal(new URL(window.location.href).searchParams.get(first===app.querySelector('input') ? (id==='budget-calculator'||id==='debt-to-income-calculator'?'income':id==='emergency-fund-calculator'?'monthly':'fixed'):'none'), first.value);
+}); }
+await domTest('break even communicates non-positive contribution edge cases',async()=>{
+ const app=await loadToolPage('break-even-calculator','calculators','?fixed=0&price=10&variable=10'); assert.match(app.textContent,/Every sales volume breaks even/);
+ const ins=app.querySelectorAll('input'); ins[0].value='100'; click(btnByLabel(app,'Calculate')); assert.match(app.textContent,/Not attainable/);
+});
+
 console.log('\n── Batch-9 UIs ──');
 await domTest('business day UI counts holiday and computes next working day', async () => {
   const app = await loadToolPage('business-day-calculator', 'datetime');
