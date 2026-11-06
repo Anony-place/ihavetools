@@ -97,6 +97,7 @@ export function encodeWav(channels, sampleRate) {
 /** Slice an AudioBuffer-like {sampleRate, numberOfChannels, getChannelData} between two times. */
 export function sliceBuffer(buf, startSec, endSec) {
   const sr = buf.sampleRate;
+  if (!Number.isFinite(startSec) || !Number.isFinite(endSec) || startSec < 0 || endSec <= startSec || endSec > buf.length / sr) throw new Error('Choose a valid range within the audio duration; end must be after start.');
   const s0 = Math.max(0, Math.round(startSec * sr));
   const s1 = Math.min(buf.length, Math.round(endSec * sr));
   if (s1 <= s0) throw new Error('The selected range is too short.');
@@ -111,82 +112,60 @@ function fourcc(dv, off) { return String.fromCharCode(dv.getUint8(off), dv.getUi
 
 /** Parse the interesting parts of an MP4/MOV file. Pure — throws readable errors. */
 export function parseMp4(bytes) {
-  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (bytes.byteLength < 12) throw new Error('File is too small to be an MP4.');
-  const topBoxes = [];
-  let off = 0;
-  const total = bytes.byteLength;
-  let ftyp = null, mvhd = null, tracks = [];
-  const readBox = (start, end, depth, path) => {
-    if (end - start < 8) return;
-    let size = dv.getUint32(start);
-    const type = fourcc(dv, start + 4);
-    let header = 8;
-    if (size === 1) { // 64-bit size
-      if (end - start < 16) return;
-      size = Number(dv.getBigUint64(start + 8)) ;
-      header = 16;
-    } else if (size === 0) size = end - start;
-    if (size < header || start + size > end) return;
-    const body = start + header;
-    if (depth === 0) topBoxes.push({ type, size });
-    if (type === 'ftyp' && !ftyp) ftyp = fourcc(dv, body, 0);
-    if (['moov', 'trak', 'mdia', 'minf', 'stbl'].includes(type) && depth < 6) {
-      // walk children
-      let c = body;
-      while (c + 8 <= start + size) {
-        const declaredChild = dv.getUint32(c);
-        readBox(c, start + size, depth + 1, path + '/' + type);
-        if (declaredChild < 8) break; // size 0/1 or corrupt — stop this level
-        c += declaredChild;
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength < 8) throw new Error('File is too small to be an MP4.');
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), total = bytes.byteLength;
+  const topBoxes = [], tracks = [], warnings = []; let ftyp = null, mvhd = null, boxCount = 0;
+  const containers = new Set(['moov', 'trak', 'mdia', 'minf', 'stbl']);
+  const read64 = (offset, isDuration = false) => {
+    const v = dv.getBigUint64(offset);
+    if (isDuration && v === 0xffffffffffffffffn) return null;
+    if (v > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('MP4 contains a size or duration too large to inspect safely.');
+    return Number(v);
+  };
+  const walk = (start, end, depth, track = null) => {
+    if (depth > 6) throw new Error('MP4 box nesting exceeds the supported limit.');
+    for (let pos = start; pos < end;) {
+      if (++boxCount > 50000) throw new Error('MP4 contains too many boxes to inspect.');
+      if (end - pos < 8) throw new Error('MP4 is truncated or has an incomplete box header.');
+      const declared = dv.getUint32(pos), type = fourcc(dv, pos + 4);
+      let header = 8, size = declared;
+      if (declared === 1) { if (end-pos < 16) throw new Error('MP4 has a truncated extended box header.'); header = 16; size = read64(pos+8); }
+      else if (declared === 0) size = end-pos;
+      if (size < header || size > end-pos) throw new Error(`MP4 box “${type}” has an invalid or truncated size.`);
+      const body=pos+header, limit=pos+size, available=limit-body;
+      const need = (n) => { if (available < n) throw new Error(`MP4 box “${type}” is truncated.`); };
+      if (depth === 0) topBoxes.push({type,size});
+      if (type === 'ftyp' && !ftyp) {need(4);ftyp=fourcc(dv,body);}
+      if (type === 'trak') { track={}; tracks.push(track); }
+      if (type === 'mvhd' && !mvhd) {
+        need(4); const v=dv.getUint8(body); if(v!==0 && v!==1) throw new Error('Unsupported MP4 movie header version.');
+        need(v===1 ? 32 : 20); const duration=v===1 ? read64(body+24, true) : dv.getUint32(body+16);
+        mvhd={timescale:dv.getUint32(body+(v===1?20:12)),duration:duration === 0xffffffff && v === 0 ? null : duration};
       }
-    }
-    if (type === 'mvhd' && !mvhd) {
-      const version = dv.getUint8(body);
-      if (version === 1) {
-        mvhd = { timescale: dv.getUint32(body + 20), duration: Number(dv.getBigUint64(body + 24)) };
-      } else {
-        mvhd = { timescale: dv.getUint32(body + 12), duration: dv.getUint32(body + 16) };
+      if (type === 'tkhd' && track) {
+        need(4);const v=dv.getUint8(body);if(v!==0 && v!==1) throw new Error('Unsupported MP4 track header version.');
+        const base=body+(v===1?88:76);need((v===1?88:76)+8);
+        Object.assign(track,{id:dv.getUint32(body+(v===1?20:12)),width:dv.getUint32(base)/65536,height:dv.getUint32(base+4)/65536});
       }
-    }
-    if (type === 'tkhd') {
-      const version = dv.getUint8(body);
-      // v0 body: 76 bytes before width; v1 uses 64-bit times (+8 bytes × 2 + 4+4 for the extra time fields)
-      const base = body + (version === 1 ? 88 : 76);
-      if (base + 8 <= start + size) {
-        tracks.push({
-          id: dv.getUint32(body + (version === 1 ? 20 : 12)),
-          width: dv.getUint32(base) / 65536,
-          height: dv.getUint32(base + 4) / 65536,
-        });
+      if (type === 'mdhd' && track) {
+        need(4);const v=dv.getUint8(body);if(v!==0 && v!==1) throw new Error('Unsupported MP4 media header version.');
+        need(v===1 ? 32 : 20); track.timescale=dv.getUint32(body+(v===1?20:12));
+        const duration=v===1 ? read64(body+24, true) : dv.getUint32(body+16);track.duration=duration===0xffffffff && v===0 ? null : duration;
       }
-    }
-    if (type === 'mdhd') {
-      const version = dv.getUint8(body);
-      const t = tracks[tracks.length - 1];
-      if (t && !t.timescale) {
-        if (version === 1) { t.timescale = dv.getUint32(body + 20); t.duration = Number(dv.getBigUint64(body + 24)); }
-        else { t.timescale = dv.getUint32(body + 12); t.duration = dv.getUint32(body + 16); }
+      if (type === 'hdlr' && track) {need(12);track.handler=fourcc(dv,body+8);}
+      if (type === 'stsd' && track) {
+        need(8);const entries=dv.getUint32(body+4);
+        if(entries) {need(16); const entrySize=dv.getUint32(body+8);if(entrySize<8 || entrySize>available-8) throw new Error('MP4 sample description is truncated.');track.codec=fourcc(dv,body+12);}
       }
-    }
-    if (type === 'stsd') {
-      const t = tracks[tracks.length - 1];
-      if (t && !t.codec) {
-        // stsd: version/flags(4) entryCount(4) then first entry: size(4) format(4)
-        t.codec = fourcc(dv, body + 12);
-      }
+      if (containers.has(type)) walk(body,limit,depth+1,track);
+      pos=limit;
     }
   };
-  try {
-    while (off + 8 <= total) {
-      const declared = dv.getUint32(off);
-      readBox(off, total, 0, '');
-      if (declared < 8) break; // 64-bit/corrupt/zero sizes: stop after this box
-      off += declared;
-    }
-  } catch { /* truncated file — report what we found */ }
-  if (!topBoxes.length) throw new Error('This does not look like an MP4/MOV file (no boxes found). Use a video file like .mp4 or .mov.');
-  return { ftyp, mvhd, tracks, topBoxes, size: total };
+  walk(0,total,0);
+  if (!topBoxes.some(b => ['ftyp','moov'].includes(b.type))) throw new Error('This does not look like an MP4/MOV file (no file type or movie box found).');
+  if (!topBoxes.some(b=>b.type==='moov')) warnings.push('Movie metadata box not found; track details may be unavailable.');
+  if (topBoxes.some(b=>b.type==='moof')) warnings.push('Fragmented MP4: duration and track metadata may be incomplete.');
+  return {ftyp,mvhd,tracks,topBoxes,size:total,warnings};
 }
 
 function secFmt(sec) {
@@ -198,6 +177,7 @@ function secFmt(sec) {
 
 /** Decode a file with the browser's audio decoder. Lazily creates/closes an AudioContext. */
 async function decodeAudio(file, status) {
+  if (file.size > 100 * 1024 * 1024) throw new Error('Choose a file no larger than 100 MiB.');
   const bytes = await readFile(file, 'buffer');
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) throw new Error('This browser cannot decode audio (no Web Audio support).');
@@ -206,6 +186,7 @@ async function decodeAudio(file, status) {
     const buf = await new Promise((resolve, reject) => {
       ctx.decodeAudioData(bytes, resolve, () => reject(new Error('The browser could not decode this file’s audio. It may be an unsupported format, DRM-protected, or have no audio track.')));
     });
+    if (buf.length * buf.numberOfChannels > 30000000) throw new Error('Decoded audio is too large; use a shorter or lower-channel file (maximum 30 million total samples).');
     return buf;
   } finally { ctx.close().catch(() => {}); }
 }
@@ -278,19 +259,22 @@ const defs = {
 
   /* ---------- Audio trimmer ---------- */
   'audio-trimmer'(root) {
-    let audio = null;
+    let audio = null, revision = 0;
     const info = statsGrid();
     const start = input({ type: 'number', min: 0, step: '0.01', value: '0' });
     const end = input({ type: 'number', min: 0, step: '0.01', value: '0' });
-    const status = statusLine('Drop an audio file to get started. Decoding happens in your browser.');
+    const status = statusLine('Drop an audio file to get started. Decoding happens in your browser. Files up to 100 MiB and 30 million decoded samples are supported.');
     const zone = dropzone({
       accept: 'audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac',
       title: 'Choose an audio file or drop it here',
       sub: 'MP3, WAV, OGG, M4A… — decoded locally by your browser, never uploaded',
       onFiles: async ([file]) => {
+        const token = ++revision; audio = null; info.replaceChildren();
         try {
           status.set(`Decoding “${file.name}” (${fmtBytes(file.size)})…`);
-          audio = await decodeAudio(file, status);
+          const decoded = await decodeAudio(file, status);
+          if (token !== revision) return;
+          audio = decoded;
           info.set([
             { label: 'Duration', value: secFmt(audio.duration), kind: 'good' },
             { label: 'Channels', value: audio.numberOfChannels === 1 ? 'Mono' : audio.numberOfChannels === 2 ? 'Stereo' : String(audio.numberOfChannels) },
@@ -298,15 +282,15 @@ const defs = {
             { label: 'File', value: fmtBytes(file.size) },
           ]);
           start.value = '0';
-          end.value = audio.duration.toFixed(2);
+          end.value = String(audio.duration);
           status.set(`Loaded “${file.name}”. Choose the part to keep, then export.`, 'success');
-        } catch (e) { info.replaceChildren(); status.set(e.message, 'error'); }
+        } catch (e) { if (token === revision) { audio = null; info.replaceChildren(); status.set(e.message, 'error'); } }
       },
     });
     const playBtn = btn({ label: 'Play selection', variant: 'secondary', icon: 'zap', onClick: () => {
       try {
         if (!audio) { status.set('Load an audio file first.', 'error'); return; }
-        const sel = sliceBuffer(audio, Number(start.value) || 0, Number(end.value) || audio.duration);
+        const sel = sliceBuffer(audio, start.value === '' ? NaN : Number(start.value), end.value === '' ? NaN : Number(end.value));
         const Ctx = window.AudioContext || window.webkitAudioContext;
         const ctx = new Ctx();
         const buf = ctx.createBuffer(sel.channels.length, sel.channels[0].length, sel.sampleRate);
@@ -326,7 +310,7 @@ const defs = {
         btn({ label: 'Export WAV of selection', icon: 'download', onClick: () => {
           try {
             if (!audio) { status.set('Load an audio file first.', 'error'); return; }
-            const sel = sliceBuffer(audio, Number(start.value) || 0, Number(end.value) || audio.duration);
+            const sel = sliceBuffer(audio, start.value === '' ? NaN : Number(start.value), end.value === '' ? NaN : Number(end.value));
             const wav = encodeWav(sel.channels, sel.sampleRate);
             const a = document.createElement('a');
             a.href = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
@@ -342,12 +326,12 @@ const defs = {
 
   /* ---------- Audio speed & volume changer ---------- */
   'audio-speed-changer'(root) {
-    let audio = null;
+    let audio = null, revision = 0;
     const info = statsGrid();
     const speed = input({ type: 'range', min: '25', max: '400', step: '5', value: '100' });
     const gain = input({ type: 'range', min: '10', max: '300', step: '5', value: '100' });
     const speedOut = h('span', { class: 'hint', text: '1.00× — output 0:00' });
-    const status = statusLine('Drop an audio file, pick a speed and volume, then export a WAV.');
+    const status = statusLine('Drop an audio file (up to 100 MiB and 30 million decoded samples), pick a speed and volume, then export a WAV.');
     const update = () => {
       const f = (Number(speed.value) || 100) / 100;
       const g = (Number(gain.value) || 100) / 100;
@@ -361,9 +345,12 @@ const defs = {
       title: 'Choose an audio file or drop it here',
       sub: 'Speed and volume are applied locally — nothing is uploaded',
       onFiles: async ([file]) => {
+        const token = ++revision; audio = null; info.replaceChildren();
         try {
           status.set(`Decoding “${file.name}”…`);
-          audio = await decodeAudio(file, status);
+          const decoded = await decodeAudio(file, status);
+          if (token !== revision) return;
+          audio = decoded;
           info.set([
             { label: 'Original duration', value: secFmt(audio.duration) },
             { label: 'Channels', value: String(audio.numberOfChannels) },
@@ -372,7 +359,7 @@ const defs = {
           ]);
           update();
           status.set(`Loaded “${file.name}”.`, 'success');
-        } catch (e) { info.replaceChildren(); status.set(e.message, 'error'); }
+        } catch (e) { if (token === revision) { audio = null; info.replaceChildren(); status.set(e.message, 'error'); } }
       },
     });
     root.append(
@@ -386,6 +373,7 @@ const defs = {
           if (!audio) { status.set('Load an audio file first.', 'error'); return; }
           const f = (Number(speed.value) || 100) / 100;
           const g = (Number(gain.value) || 100) / 100;
+          if (Math.floor(audio.length / f) * audio.numberOfChannels > 30000000) throw new Error('The slowed output is too large; use a shorter audio file or a faster speed.');
           const chans = [];
           for (let c = 0; c < audio.numberOfChannels; c++) chans.push(applyGain(resampleLinear(audio.getChannelData(c), f), g));
           const wav = encodeWav(chans, audio.sampleRate);
@@ -402,19 +390,22 @@ const defs = {
 
   /* ---------- Extract audio from video ---------- */
   'extract-audio'(root) {
-    let audio = null;
+    let audio = null, revision = 0;
     let srcName = 'video';
     const info = statsGrid();
-    const status = statusLine('Drop a video — if your browser can decode its audio track, you can export it as WAV.');
+    const status = statusLine('Drop a video up to 100 MiB — if your browser can decode its audio track (up to 30 million samples), you can export it as WAV.');
     const zone = dropzone({
       accept: 'video/*,.mp4,.webm,.mov,.m4v,.mkv',
       title: 'Choose a video file or drop it here',
       sub: 'The audio track is decoded locally by your browser — the video is never uploaded',
       onFiles: async ([file]) => {
+        const token = ++revision; audio = null; info.replaceChildren();
         try {
           status.set(`Reading “${file.name}” (${fmtBytes(file.size)})…`);
           srcName = file.name.replace(/\.[^.]+$/, '');
-          audio = await decodeAudio(file, status);
+          const decoded = await decodeAudio(file, status);
+          if (token !== revision) return;
+          audio = decoded;
           info.set([
             { label: 'Audio duration', value: secFmt(audio.duration), kind: 'good' },
             { label: 'Channels', value: audio.numberOfChannels === 2 ? 'Stereo' : String(audio.numberOfChannels) },
@@ -422,7 +413,7 @@ const defs = {
             { label: 'File', value: fmtBytes(file.size) },
           ]);
           status.set(`Audio track decoded from “${file.name}”. Export it as WAV below.`, 'success');
-        } catch (e) { info.replaceChildren(); audio = null; status.set(e.message, 'error'); }
+        } catch (e) { if (token === revision) { info.replaceChildren(); audio = null; status.set(e.message, 'error'); } }
       },
     });
     root.append(
@@ -446,6 +437,7 @@ const defs = {
 
   /* ---------- MP4 inspector ---------- */
   'mp4-inspector'(root) {
+    let revision = 0;
     const info = statsGrid();
     const boxes = table({ headers: ['Box', 'Size'], rows: [], caption: 'Top-level boxes' });
     const status = statusLine('Drop an MP4/M4V/MOV file to read its structure — parsed locally, no upload.');
@@ -454,25 +446,28 @@ const defs = {
       title: 'Choose an MP4/MOV file or drop it here',
       sub: 'Parsed byte-by-byte in your browser — nothing is uploaded',
       onFiles: async ([file]) => {
+        const token = ++revision; info.replaceChildren(); boxes.update([]);
         try {
+          if (file.size > 100 * 1024 * 1024) throw new Error('Choose a file no larger than 100 MiB.');
           status.set(`Parsing “${file.name}”…`);
           const bytes = new Uint8Array(await readFile(file, 'buffer'));
+          if (token !== revision) return;
           const p = parseMp4(bytes);
-          const duration = p.mvhd && p.mvhd.timescale ? p.mvhd.duration / p.mvhd.timescale : null;
+          const duration = p.mvhd && p.mvhd.timescale && p.mvhd.duration != null ? p.mvhd.duration / p.mvhd.timescale : null;
           const kbps = duration ? Math.round((file.size * 8) / duration / 1000) : null;
           const vTrack = p.tracks.find((t) => t.width > 0);
           const codec = p.tracks.map((t) => t.codec).filter(Boolean);
           info.set([
             { label: 'Duration', value: secFmt(duration), kind: 'good' },
-            { label: 'Video', value: vTrack ? `${vTrack.width}×${vTrack.height}` : 'no video track' },
+            { label: 'Video', value: vTrack ? `${vTrack.width}×${vTrack.height}` : 'not available' },
             { label: 'Codecs', value: codec.length ? codec.join(', ') : '—' },
             { label: 'Avg bitrate', value: kbps ? `${kbps.toLocaleString()} kbps` : '—' },
             { label: 'Brand', value: p.ftyp || '—' },
             { label: 'File size', value: fmtBytes(file.size) },
           ]);
           boxes.update(p.topBoxes.slice(0, 20).map((b) => [b.type, fmtBytes(b.size)]));
-          status.set(`Parsed ${p.topBoxes.length} top-level boxes, ${p.tracks.length} track${p.tracks.length === 1 ? '' : 's'}.`, 'success');
-        } catch (e) { info.replaceChildren(); boxes.update([]); status.set(e.message, 'error'); }
+          status.set(`Parsed ${p.topBoxes.length} top-level boxes, ${p.tracks.length} track${p.tracks.length === 1 ? '' : 's'}. ${p.warnings.join(' ')} Only the first sample description per track is shown.`, p.warnings.length ? 'warning' : 'success');
+        } catch (e) { if (token === revision) { info.replaceChildren(); boxes.update([]); status.set(e.message, 'error'); } }
       },
     });
     root.append(zone, info, boxes, status,

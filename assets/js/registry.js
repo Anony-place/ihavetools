@@ -233,7 +233,7 @@ export const tools = [
 
   T({ id: 'mp4-inspector', name: 'MP4 Inspector', icon: 'film', engine: 'audio', categories: ['video'],
     blurb: 'Inspect supported MP4 boxes and available track metadata.',
-    description: 'Inspect MP4, M4V and MOV files without uploading them: best-effort duration, track dimensions, codecs, overall average bitrate, brand and top-level boxes. Some files or box layouts may not be fully parsed.',
+    description: 'Inspect MP4, M4V and MOV files without uploading them: best-effort duration, track dimensions, codecs, overall average bitrate, brand and top-level boxes. Some files or box layouts may not be fully parsed. Files are limited to 100 MiB.',
     keywords: ['mp4 info', 'video metadata', 'mp4 inspector', 'codec check', 'video bitrate', 'mp4 boxes'],
     aliases: ['video info', 'mp4 metadata', 'codec checker', 'video details'],
     popularity: 52, added: '2026-09-19',

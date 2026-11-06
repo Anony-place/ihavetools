@@ -528,7 +528,24 @@ Audit inventory and limitations: `TOOL-AUDIT.md`. All 128 UIs mounted in
 jsdom; this is not per-tool certification. Confirmed high-impact calculation,
 CSV, code-formatting and other bugs fixed. HTML minify disabled for safety.
 Real-browser/file matrix and deeper per-tool validation remain open.
-PR, CI and production verification remain pending.
+PR #21 merged, CI passed and production promoted; deeper audit remains open.
+
+---
+
+## 🚧 BATCH-16 — Deeper A-to-Z audit: media, PDFs and data integrity
+
+Continue the audit requested by the user; no new tools or thin pages.
+1. Investigate MP4 box parsing, bounds/extended-size handling and track isolation;
+   test against independently generated real media where feasible and malformed
+   synthetic fixtures. Never treat partial output as verified metadata.
+2. Exercise actual generated PDF bytes through merge/split/rotate/organize UI
+   paths; test file selection, empty/malformed inputs and preservation limits.
+3. Audit image and audio validation, binary signatures, metadata and async/stale
+   output problems. Add targeted fixes and honest format/codec limitations.
+4. Investigate remaining high-impact data/finance issues as time permits, record
+   per-tool evidence, explicit unverified coverage and follow-up in TOOL-AUDIT.md.
+5. Full tests, security audit, one PR, CI, and deployment verification. Browser,
+   device, screen-reader and exhaustive file format verification remain distinct.
 
 ---
 
