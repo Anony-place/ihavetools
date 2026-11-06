@@ -18,7 +18,11 @@ export function synthesizeSamples({ freq = 440, wave = 'sine', seconds = 2, samp
   if (!(freq >= 1 && freq <= 20000)) throw new Error('Frequency must be between 1 and 20000 Hz.');
   if (!(volume >= 0 && volume <= 1)) throw new Error('Volume must be between 0 and 100%.');
   if (!(seconds >= 0.01 && seconds <= 60)) throw new Error('Duration must be between 0.01 and 60 seconds.');
+  if (!Number.isInteger(sampleRate) || sampleRate < 1 || sampleRate > 384000) throw new Error('Sample rate must be a whole number between 1 and 384000 Hz.');
+  if (freq > sampleRate / 2) throw new Error('Frequency must not exceed half the sample rate (Nyquist limit).');
+  if (!['sine', 'square', 'sawtooth', 'triangle'].includes(wave)) throw new Error('Choose a valid waveform.');
   const n = Math.max(1, Math.round(seconds * sampleRate));
+  if (n > 30000000) throw new Error('Generated audio exceeds 30 million samples.');
   const out = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const t = i / sampleRate;
@@ -44,7 +48,8 @@ export function synthesizeSamples({ freq = 440, wave = 'sine', seconds = 2, samp
 
 /** Change playback speed by linear resampling (pitch shifts, like “speed” in players). */
 export function resampleLinear(data, rate) {
-  if (!(rate > 0)) throw new Error('Speed must be greater than 0.');
+  if (!Number.isFinite(rate) || rate <= 0) throw new Error('Speed must be finite and greater than 0.');
+  if (!data.length || data.length / rate > 30000000) throw new Error('Audio is empty or output exceeds 30 million samples.');
   if (rate === 1) return data.slice();
   const outLen = Math.max(1, Math.floor(data.length / rate));
   const out = new Float32Array(outLen);
@@ -61,7 +66,7 @@ export function resampleLinear(data, rate) {
 
 /** Multiply samples by a gain, hard-clamped to [-1, 1] to avoid clipping. */
 export function applyGain(data, gain) {
-  if (!(gain >= 0)) throw new Error('Volume factor must be positive.');
+  if (!Number.isFinite(gain) || gain < 0) throw new Error('Volume factor must be finite and non-negative.');
   const out = new Float32Array(data.length);
   for (let i = 0; i < data.length; i++) out[i] = Math.max(-1, Math.min(1, data[i] * gain));
   return out;
@@ -70,8 +75,11 @@ export function applyGain(data, gain) {
 /** Encode planar channel data into a 16-bit PCM WAV ArrayBuffer. Pure. */
 export function encodeWav(channels, sampleRate) {
   const nCh = channels.length;
-  if (!nCh) throw new Error('No audio data to encode.');
+  if (!nCh || nCh > 32) throw new Error('Audio must have between 1 and 32 channels.');
+  if (!Number.isInteger(sampleRate) || sampleRate < 1 || sampleRate > 384000) throw new Error('Invalid WAV sample rate.');
   const n = channels[0].length;
+  if (!n || n * nCh > 30000000) throw new Error('Audio is empty or exceeds 30 million total samples.');
+  if (channels.some(ch => ch.length !== n)) throw new Error('All audio channels must have the same length.');
   const bytesPerSample = 2;
   const dataSize = n * nCh * bytesPerSample;
   const buf = new ArrayBuffer(44 + dataSize);
@@ -86,7 +94,9 @@ export function encodeWav(channels, sampleRate) {
   let off = 44;
   for (let i = 0; i < n; i++) {
     for (let c = 0; c < nCh; c++) {
-      const s = Math.max(-1, Math.min(1, channels[c][i] || 0));
+      const sample = channels[c][i];
+      if (!Number.isFinite(sample)) throw new Error('Audio contains an invalid sample.');
+      const s = Math.max(-1, Math.min(1, sample));
       dv.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
       off += 2;
     }
@@ -195,7 +205,8 @@ async function decodeAudio(file, status) {
 const defs = {
   /* ---------- Tone generator ---------- */
   'tone-generator'(root) {
-    let wave = 'sine';
+    let wave = 'sine', revision = 0, ctx = null, activeSource = null;
+    const stopPlaying = () => { if (activeSource) { try { activeSource.stop(); } catch {} activeSource = null; } };
     const freq = input({ type: 'number', min: 1, max: 20000, step: '1', value: '440' });
     const slider = input({ type: 'range', min: '20', max: '2000', step: '1', value: '440' });
     const vol = input({ type: 'range', min: '0', max: '100', step: '1', value: '60' });
@@ -205,7 +216,10 @@ const defs = {
     slider.addEventListener('input', () => { freq.value = slider.value; });
     freq.addEventListener('input', () => { const v = Number(freq.value); if (v >= 20 && v <= 2000) slider.value = String(v); });
     const build = () => {
-      const samples = synthesizeSamples({ freq: Number(freq.value) || 440, wave, seconds: Number(dur.value) || 2, volume: (Number(vol.value) || 0) / 100 });
+      if (!freq.value.trim() || !dur.value.trim()) throw new Error('Enter a frequency and duration.');
+      const hz = Number(freq.value), seconds = Number(dur.value);
+      if (!Number.isFinite(seconds) || seconds < 0.1 || seconds > 60) throw new Error('Duration must be between 0.1 and 60 seconds.');
+      const samples = synthesizeSamples({ freq: hz, wave, seconds, volume: Number(vol.value) / 100 });
       const wav = encodeWav([samples], 44100);
       grid.set([
         { label: 'Frequency', value: `${freq.value} Hz` },
@@ -215,12 +229,14 @@ const defs = {
       ]);
       return wav;
     };
-    let ctx = null;
+    const invalidate = () => { revision++; stopPlaying(); grid.replaceChildren(); status.set('Settings changed. Play or download again.', 'info'); };
+    root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
+    window.addEventListener('pagehide', () => { revision++; stopPlaying(); if (ctx) { ctx.close().catch(() => {}); ctx = null; } });
     root.append(
       h('div', { class: 'field-row' },
         field({ label: 'Waveform', control: segControl({
           options: [{ v: 'sine', t: 'Sine' }, { v: 'square', t: 'Square' }, { v: 'sawtooth', t: 'Sawtooth' }, { v: 'triangle', t: 'Triangle' }],
-          value: 'sine', onChange: (v) => { wave = v; },
+          value: 'sine', onChange: (v) => { wave = v; invalidate(); },
         }) }),
         field({ label: 'Frequency (Hz, 1–20000)', hint: 'A4 = 440 Hz. Middle C ≈ 261.6 Hz.', control: freq }),
         field({ label: 'Duration (seconds, 0.1–60)', control: dur })),
@@ -230,17 +246,26 @@ const defs = {
       grid,
       actionsRow(
         btn({ label: 'Play tone', icon: 'zap', onClick: () => {
+          const token = ++revision; stopPlaying();
           try {
             const wav = build();
             const Ctx = window.AudioContext || window.webkitAudioContext;
             if (!Ctx) { status.set('This browser cannot play audio. You can still download the WAV.', 'error'); return; }
             ctx = ctx || new Ctx();
-            ctx.decodeAudioData(wav, (buf) => {
-              const src = ctx.createBufferSource();
-              src.buffer = buf; src.connect(ctx.destination); src.start();
-              status.set(`Playing ${freq.value} Hz ${wave} for ${dur.value} s…`, 'success');
-            }, () => status.set('Playback failed — try downloading the WAV instead.', 'error'));
-          } catch (e) { status.set(e.message, 'error'); }
+            const playContext = ctx, description = `${freq.value} Hz ${wave} for ${dur.value} s`;
+            status.set('Preparing audio…', 'info');
+            playContext.decodeAudioData(wav, (buf) => {
+              if (token !== revision) return;
+              try {
+                const src = playContext.createBufferSource();
+                activeSource = src;
+                src.buffer = buf; src.connect(playContext.destination);
+                src.onended = () => { if (activeSource === src) activeSource = null; };
+                src.start();
+                status.set(`Playing ${description}…`, 'success');
+              } catch (e) { if (token === revision) status.set(e.message, 'error'); }
+            }, () => { if (token === revision) status.set('Playback failed — try downloading the WAV instead.', 'error'); });
+          } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
         } }),
         btn({ label: 'Download WAV', variant: 'secondary', icon: 'download', onClick: () => {
           try {
@@ -250,8 +275,8 @@ const defs = {
             a.download = `tone-${freq.value}hz-${wave}.wav`;
             a.click();
             setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-            status.set(`WAV downloaded — ${fmtBytes(wav.byteLength)}.`, 'success');
-          } catch (e) { status.set(e.message, 'error'); }
+            status.set(`WAV download requested — ${fmtBytes(wav.byteLength)}.`, 'success');
+          } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
         } })),
       status, privacyNote('The tone is generated mathematically in your browser. Nothing is recorded or sent anywhere.'));
     try { build(); } catch { /* keep the empty grid if defaults are invalid */ }
@@ -345,7 +370,7 @@ const defs = {
       title: 'Choose an audio file or drop it here',
       sub: 'Speed and volume are applied locally — nothing is uploaded',
       onFiles: async ([file]) => {
-        const token = ++revision; audio = null; info.replaceChildren();
+        const token = ++revision; audio = null; info.replaceChildren(); update();
         try {
           status.set(`Decoding “${file.name}”…`);
           const decoded = await decodeAudio(file, status);
@@ -359,14 +384,14 @@ const defs = {
           ]);
           update();
           status.set(`Loaded “${file.name}”.`, 'success');
-        } catch (e) { if (token === revision) { audio = null; info.replaceChildren(); status.set(e.message, 'error'); } }
+        } catch (e) { if (token === revision) { audio = null; info.replaceChildren(); update(); status.set(e.message, 'error'); } }
       },
     });
     root.append(
       zone, info,
       h('div', { class: 'field-row' },
-        field({ label: 'Speed (0.25×–4×)', hint: 'Higher speed raises the pitch, like fast-forward.', control: speed }),
-        field({ label: 'Volume (10%–300%)', hint: 'Above 100% the output is limited to avoid clipping.', control: gain })),
+        field({ label: 'Speed (0.25×–4×)', hint: 'Higher speed raises pitch; linear resampling has no anti-alias filter and may reduce fidelity.', control: speed }),
+        field({ label: 'Volume (10%–300%)', hint: 'Above 100%, peaks beyond full scale are hard-clipped and may distort.', control: gain })),
       h('p', { class: 'hint', text: '' }, speedOut),
       actionsRow(btn({ label: 'Export WAV', icon: 'download', onClick: () => {
         try {

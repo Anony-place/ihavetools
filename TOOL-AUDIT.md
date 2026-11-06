@@ -12,6 +12,47 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
+## Consolidated audit — release evidence (PR #36)
+
+- Unit converter inputs that underflow to zero are rejected instead of reporting
+  zero. Roman number input requires decimal whole-number notation rather than
+  silently accepting JavaScript hexadecimal, decimal fractions or exponent syntax.
+  DOM regressions cover invalid and valid inputs. This is not certification of
+  all tool families.
+- Date/time UIs now clear stale results after edits. Time-zone “Now” uses the
+  selected source zone rather than the device zone, to minute precision. Historic
+  offsets containing seconds are shown without truncating the resulting instant;
+  calculations still rely on the browser's time-zone database. Date-add's Unix
+  value is explicitly identified as local start-of-day. Reference:
+  https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat/formatToParts
+- Data conversion applies limits to pasted CSV and JSONL as well as files: CSV
+  text 1 million characters, 10,000 rows including header, 256 columns, 250,000
+  cells; CSV-to-JSON and pretty JSONL-to-array results have conservative
+  10-million-character expansion guards. JSON-to-CSV has 10,000 rows / 256
+  columns / 250,000 cells. JSONL has 1 million input characters and 10,000
+  lines or array records. Limits prevent some expansions but do not guarantee
+  responsiveness on every device. CSV spreadsheet formula execution remains a
+  risk; conversion does not sanitize or preserve all JSON types.
+- Tone generation no longer silently substitutes defaults for blank or zero
+  frequency/duration. Editing settings invalidates pending playback and stops the
+  previous source; pagehide closes its AudioContext. Downloads report requests,
+  not guaranteed saves. WAV encoding checks channel lengths, samples and limits;
+  speed processing discloses hard clipping and linear resampling without an
+  anti-alias filter. Tests use mocked Web Audio, not physical playback, actual
+  browser codec compatibility, saved-file dialogs or perceptual quality. See
+  https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode
+- Line deduplication/sorting recognize CR, LF and CRLF; output uses LF. The
+  internal shuffle uses Fisher–Yates rather than a random sort comparator (and
+  is not a cryptographic draw). Title case handles leading whitespace without
+  copying the full preceding text for every word. Locale and language-specific
+  title-case and sorting conventions remain approximate. Comparator guidance:
+  https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
+- Current automated evidence: 227 engine and 139 DOM tests, 9 chrome tests,
+  service-worker and 20 integrity checks passed; dependency audit found zero
+  vulnerabilities. A headless Chromium launch was attempted but blocked by
+  missing system NSS/NSPR libraries; no real browser or physical-device testing
+  is implied. npm-only temporary browser packages were not added to the project.
+
 ## Batch 29 — color tool integrity
 
 - HEX/RGB/HSL converter retains alpha in generated formats, preview and copy;

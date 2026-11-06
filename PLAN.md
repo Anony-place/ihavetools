@@ -11,6 +11,33 @@
 
 ---
 
+## Consolidated remaining audit — one branch, one PR (2026-11-06)
+
+**User direction:** stop opening a PR for each small category. Keep remaining
+work consolidated. The user requested a PR for the current in-progress changes;
+further work can continue on this branch while that PR remains open. Prior batch
+plans below are history, not a reason to create another PR for each category.
+Do not claim that the 128-tool audit is certified merely because smoke tests pass.
+
+1. Inventory unresolved accuracy, input-validation, stale-result and resource
+   risks across converters, text/data, developer/security, finance/student,
+   date/time, color, SEO, random and media/PDF families. Prioritize silent data
+   loss, wrong calculations and unsafe outputs; fix confirmed defects together.
+2. Expand automated independent-reference and boundary tests across families;
+   cover UI invalidation and asynchronous race cases. Test real files, outputs
+   and actual browser APIs where this environment supports them; explicitly log
+   which browsers/devices, file types and accessibility checks remain unverified.
+3. Review cross-cutting privacy, accessibility, offline behavior, metadata,
+   internal links and site performance claims. Research current official guidance
+   where relevant; do not promise search rankings or treat GSC impressions alone
+   as success. Avoid new paid services.
+4. Update TOOL-AUDIT.md with evidence and limitations, run full build/check,
+   dependency audit and diff review. The user requested release: after CI and
+   preview pass, merge this consolidated PR once and verify production. Do not
+   imply that unavailable real-device tests or the entire audit are complete.
+
+---
+
 ## Batch 28 plan — student and math calculator accuracy
 
 1. Audit scientific calculator mode/parser, fractions, duration, attendance and

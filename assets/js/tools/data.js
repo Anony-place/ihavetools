@@ -6,17 +6,28 @@
 import { parseConversionJson } from './developer.js';
 import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, readFile, mountTool } from '../ui.js';
 
+// Bounds apply to pasted input as well as uploaded text. They are deliberately
+// independent of file size because small sparse inputs can expand dramatically.
+const MAX_TEXT = 1_000_000, MAX_ROWS = 10_000, MAX_COLUMNS = 256, MAX_CELLS = 250_000, MAX_OUTPUT = 10_000_000;
+
 /* ═══════════════════════════ RFC 4180 CSV parser ═══════════════════════════ */
 export function parseCsv(text, { delimiter = ',', headerRow = true } = {}) {
+  if (text.length > MAX_TEXT) throw new Error('CSV input exceeds 1,000,000 characters.');
   if (text.startsWith('\uFEFF')) text = text.slice(1); // UTF-8 BOM, not a header character
   const rows = [];
   let row = [];
   let fieldBuf = '';
   let inQuotes = false, closedQuote = false;
-  let i = 0;
+  let i = 0, cells = 0;
   const n = text.length;
-  const endField = () => { row.push(fieldBuf); fieldBuf = ''; closedQuote = false; };
-  const endRow = () => { endField(); rows.push(row); row = []; };
+  const endField = () => {
+    if (row.length >= MAX_COLUMNS || ++cells > MAX_CELLS) throw new Error('CSV exceeds the limit of 256 columns or 250,000 cells.');
+    row.push(fieldBuf); fieldBuf = ''; closedQuote = false;
+  };
+  const endRow = () => {
+    if (rows.length >= MAX_ROWS) throw new Error('CSV exceeds the limit of 10,000 rows, including the header.');
+    endField(); rows.push(row); row = [];
+  };
   if (!text.length) throw new Error('Paste some CSV text first.');
   if (![';', ',', '\t', '|'].includes(delimiter)) throw new Error('Choose a valid delimiter.');
   while (i < n) {
@@ -51,6 +62,16 @@ export function parseCsv(text, { delimiter = ',', headerRow = true } = {}) {
 
 export function csvToJson(text, opts = {}) {
   const { headers, rows } = parseCsv(text, opts);
+  // Estimate pretty JSON size before multiplying long header names across rows.
+  const keySizes = headers.map(h => JSON.stringify(h).length);
+  let estimate = 2;
+  for (const row of rows) {
+    estimate += 8;
+    for (let i = 0; i < headers.length; i++) {
+      estimate += keySizes[i] + JSON.stringify(opts.coerceTypes ? coerce(row[i]) : row[i]).length + 10;
+      if (estimate > MAX_OUTPUT) throw new Error('Converted JSON would exceed the 10,000,000 character output limit.');
+    }
+  }
   return rows.map((r) => Object.fromEntries(headers.map((hd, k) => [hd, opts.coerceTypes ? coerce(r[k] ?? '') : (r[k] ?? '')])));
 }
 function coerce(v) {
@@ -73,11 +94,13 @@ export function jsonToCsv(jsonText, { delimiter = ',', columns = null, includeHe
   const data = parseConversionJson(jsonText);
   if (!Array.isArray(data)) throw new Error('The JSON must be an array of objects — wrap single objects in an array.');
   if (!data.length) throw new Error('The array is empty — there is nothing to convert.');
+  if (data.length > MAX_ROWS) throw new Error('JSON array exceeds the limit of 10,000 rows.');
   const objs = data.map((row, i) => {
     if (row === null || typeof row !== 'object' || Array.isArray(row)) throw new Error(`Row ${i + 1} is not an object. Flatten nested structures first.`);
     return row;
   });
   let headers = columns && columns.length ? columns : [...new Set(objs.flatMap((o) => Object.keys(o)))];
+  if (headers.length > MAX_COLUMNS || headers.length * objs.length > MAX_CELLS) throw new Error('CSV output exceeds the limit of 256 columns or 250,000 cells.');
   if (!headers.length) throw new Error('No columns found — the objects have no keys.');
   if (new Set(headers).size !== headers.length) throw new Error('Duplicate selected columns would repeat data. Choose unique columns.');
   const cell = (v) => {
@@ -94,7 +117,9 @@ export function jsonToCsv(jsonText, { delimiter = ',', columns = null, includeHe
 
 /* ═══════════════════════════ JSON Lines ═══════════════════════════ */
 export function jsonlToJsonArray(text) {
+  if (text.length > MAX_TEXT) throw new Error('JSON Lines input exceeds 1,000,000 characters.');
   const lines = text.split(/\r?\n/);
+  if (lines.length > MAX_ROWS + 1 || (lines.length === MAX_ROWS + 1 && lines.at(-1) !== '')) throw new Error('JSON Lines input exceeds 10,000 lines.');
   if (!lines.some(l => l.trim())) throw new Error('Paste some JSON Lines first.');
   const out = [];
   const errors = [];
@@ -114,7 +139,32 @@ export function jsonArrayToJsonl(text) {
   const data = parseConversionJson(text);
   if (!Array.isArray(data)) throw new Error('The JSON must be an array — JSON Lines is one value per line, so an array converts to multiple lines.');
   if (!data.length) throw new Error('An empty array has no JSON Lines records to output.');
+  if (data.length > MAX_ROWS) throw new Error('JSON array exceeds 10,000 records.');
   return data.map((o) => JSON.stringify(o)).join('\n') + '\n';
+}
+
+// Bound formatted output before JSON.stringify allocates indentation. Inputs have
+// already passed depth and size checks; this prevents many deep JSONL records
+// from expanding into an unexpectedly huge pretty-printed result.
+export function prettyJsonBounded(value) {
+  const stack = [{ value, depth: 0 }];
+  let estimate = 2;
+  while (stack.length) {
+    const item = stack.pop(), v = item.value;
+    estimate += item.depth * 2 + 8;
+    if (v && typeof v === 'object') {
+      if (Array.isArray(v)) {
+        for (const entry of v) stack.push({ value: entry, depth: item.depth + 1 });
+      } else {
+        for (const [key, entry] of Object.entries(v)) {
+          estimate += JSON.stringify(key).length + 4;
+          stack.push({ value: entry, depth: item.depth + 1 });
+        }
+      }
+    } else estimate += JSON.stringify(v).length;
+    if (estimate > MAX_OUTPUT) throw new Error('Formatted JSON would exceed the 10,000,000 character output limit.');
+  }
+  return JSON.stringify(value, null, 2);
 }
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
@@ -146,7 +196,7 @@ const defs = {
         field({ label: 'Options', control: header }),
         field({ label: 'Value types', control: coerceTypes, hint: 'Default preserves all CSV values as text, including leading zeroes.' })),
       actionsRow(btn({ label: 'Convert to JSON', icon: 'table', onClick: run })),
-      status, h('p', { class: 'hint', text: 'Blank headers get generated names. Header whitespace is preserved; a leading UTF-8 BOM is removed. Type inference can round decimals and change text. File uploads are limited to 10 MiB.' }), h('br'), out.panel);
+      status, h('p', { class: 'hint', text: 'Blank headers get generated names. Header whitespace is preserved; a leading UTF-8 BOM is removed. Type inference can round decimals and change text. CSV text is limited to 1,000,000 characters, 10,000 rows, 256 columns and 250,000 cells; uploads to 10 MiB.' }), h('br'), out.panel);
     import('../ui.js').then(({ dropzone }) => {
       zoneWrap.append(dropzone({
         accept: '.csv,text/csv,text/plain', title: '…or drop a .csv file', sub: 'Read locally — never uploaded',
@@ -187,7 +237,7 @@ const defs = {
         field({ label: 'Delimiter', control: delim }),
         field({ label: 'Columns', control: cols, hint: 'Optional — order included columns' })),
       actionsRow(btn({ label: 'Convert to CSV', icon: 'table', onClick: run })),
-      status, h('p', { class: 'hint', text: 'Missing, null and empty-string values all become empty cells; nested values become JSON text. Decimal numbers may round; use strings for exact values. Quoting does not prevent spreadsheet formulas.' }), h('br'), out.panel);
+      status, h('p', { class: 'hint', text: 'Missing, null and empty-string values all become empty cells; nested values become JSON text. Decimal numbers may round; use strings for exact values. Quoting does not prevent spreadsheet formulas. Limit: 10,000 rows, 256 columns, 250,000 cells.' }), h('br'), out.panel);
   },
 
   'json-lines-converter'(root) {
@@ -204,7 +254,7 @@ const defs = {
         } else {
           out.panel.querySelector('.result-body pre').style.whiteSpace = 'pre-wrap';
           const arr = jsonlToJsonArray(inp.value);
-          out.set(JSON.stringify(arr, null, 2));
+          out.set(prettyJsonBounded(arr));
           status.set(`${arr.length} records parsed ✓`, 'success');
         }
       } catch (e) {
@@ -217,7 +267,7 @@ const defs = {
       actionsRow(
         btn({ label: 'Array → JSONL', icon: 'brackets', onClick: () => runTo('to-jsonl') }),
         btn({ label: 'JSONL → Array', variant: 'secondary', icon: 'braces', onClick: () => runTo('to-json') })),
-      status, h('p', { class: 'hint', text: 'Duplicate object keys and unsafe integers are rejected. Decimal numbers use binary floating-point and may round; use strings for exact values.' }), h('br'), out.panel);
+      status, h('p', { class: 'hint', text: 'Duplicate object keys and unsafe integers are rejected. Decimal numbers use binary floating-point and may round; use strings for exact values. Limit: 1,000,000 input characters, 10,000 lines or records and 10,000,000 formatted output characters.' }), h('br'), out.panel);
   },
 };
 
