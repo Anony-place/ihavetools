@@ -1109,6 +1109,25 @@ await test('JSONL both directions with per-line errors', () => {
   catch (e) { assert.match(e.message, /line 2/); }
 });
 
+await test('data conversion rejects duplicate keys and dangerous numeric values', () => {
+  for (const text of ['[{"id":9007199254740993}]', '[{"n":1e400}]', '[{"n":1e-400}]', '[{"n":-0}]', '[{"a":1,"\\u0061":2}]', '[{"nested":{"x":1,"x":2}}]']) {
+    assert.throws(() => data.jsonToCsv(text), /Duplicate|safe numeric|zero/);
+    assert.throws(() => data.jsonArrayToJsonl(text), /Duplicate|safe numeric|zero/);
+  }
+  assert.throws(() => data.jsonlToJsonArray('{}\n{"n":9007199254740993}'), /line 2.*safe numeric/);
+  assert.equal(data.jsonToCsv('[{"n":"9007199254740993","x":"1e400"}]'), 'n,x\n9007199254740993,1e400');
+  assert.equal(data.jsonToCsv('[{"n":9007199254740991}]'), 'n\n9007199254740991');
+  assert.throws(() => data.jsonToCsv('[{"a":1}]', {columns:['a','a']}), /Duplicate/);
+  assert.throws(() => data.jsonToCsv('[{"a":1}]', {delimiter:'?'}), /delimiter/);
+  assert.throws(() => data.jsonArrayToJsonl('[]'), /empty array/);
+  assert.ok(dev.validateJson('{"a":1,"\\u0061":2}').duplicateKeys.length);
+});
+await test('CSV preserves header whitespace and handles BOM and unsafe inferred numbers', () => {
+  assert.deepEqual(data.csvToJson('\uFEFF name ,name\n a ,b'), [{' name ':' a ',name:'b'}]);
+  assert.deepEqual(data.parseCsv('   ',{headerRow:false}).rows,[['   ']]);
+  for (const v of ['1e400','1e-400','1e16','-0']) assert.equal(data.csvToJson(`id\n${v}`,{coerceTypes:true})[0].id,v);
+});
+
 console.log('\n── Misc ──');
 await test('random numbers respect range/count/unique/sort', () => {
   const nums = misc.randomNumbers({ min: 1, max: 10, count: 5, unique: true, sort: 'asc' });

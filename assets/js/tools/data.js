@@ -3,10 +3,12 @@
 // Includes an RFC 4180-compliant CSV parser (quotes, escaped quotes,
 // embedded commas/newlines) — no naive splitting.
 // =============================================================================
+import { validateJson } from './developer.js';
 import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, readFile, mountTool } from '../ui.js';
 
 /* ═══════════════════════════ RFC 4180 CSV parser ═══════════════════════════ */
 export function parseCsv(text, { delimiter = ',', headerRow = true } = {}) {
+  if (text.startsWith('\uFEFF')) text = text.slice(1); // UTF-8 BOM, not a header character
   const rows = [];
   let row = [];
   let fieldBuf = '';
@@ -15,7 +17,7 @@ export function parseCsv(text, { delimiter = ',', headerRow = true } = {}) {
   const n = text.length;
   const endField = () => { row.push(fieldBuf); fieldBuf = ''; closedQuote = false; };
   const endRow = () => { endField(); rows.push(row); row = []; };
-  if (!text.trim()) throw new Error('Paste some CSV text first.');
+  if (!text.length) throw new Error('Paste some CSV text first.');
   if (![';', ',', '\t', '|'].includes(delimiter)) throw new Error('Choose a valid delimiter.');
   while (i < n) {
     const c = text[i];
@@ -42,7 +44,7 @@ export function parseCsv(text, { delimiter = ',', headerRow = true } = {}) {
   const ragged = rows.filter((r) => r.length !== width).length;
   if (ragged) throw new Error(`${ragged} row${ragged === 1 ? ' has' : 's have'} a different number of columns than the widest row (${width}). Check for missing delimiters.`);
   if (!headerRow) return { headers: rows[0].map((_, k) => `column_${k + 1}`), rows };
-  const headers = rows[0].map((hd, k) => hd.trim() || `column_${k + 1}`);
+  const headers = rows[0].map((hd, k) => hd === '' ? `column_${k + 1}` : hd);
   if (new Set(headers).size !== headers.length) throw new Error('Duplicate column headers would overwrite data. Give every column a unique header.');
   return { headers, rows: rows.slice(1) };
 }
@@ -57,16 +59,39 @@ function coerce(v) {
   if (t === 'true') return true;
   if (t === 'false') return false;
   if (t === 'null') return null;
-  if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(t) && t.length < 16 && Number.isFinite(Number(t))) return Number(t);
+  if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(t) && t.length < 16) {
+    const n = Number(t), significand = t.split(/[eE]/)[0];
+    if (Number.isFinite(n) && (!Number.isInteger(n) || Number.isSafeInteger(n)) && !(n === 0 && /[1-9]/.test(significand)) && !Object.is(n, -0)) return n;
+  }
   return v;
 }
 export function csvToJsonString(text, opts = {}) { return JSON.stringify(csvToJson(text, opts), null, 2); }
 
+// Reject conversions that JSON.parse/stringify would silently corrupt. Decimal
+// numbers still use binary floating-point; callers must disclose rounding.
+function parseConversionJson(text) {
+  let parsed;
+  try { parsed = JSON.parse(text); } catch (e) { throw new Error(`Invalid JSON: ${e.message}`); }
+  let validation;
+  try { validation = validateJson(text); } catch { throw new Error('JSON is too deeply nested to inspect safely.'); }
+  if (!validation.ok) throw new Error(`Invalid JSON: ${validation.message}`);
+  if (validation.duplicateKeys.length) throw new Error('Duplicate JSON object keys would overwrite values. Use unique keys.');
+  const tokens = /"(?:\\.|[^"\\])*"|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
+  for (const match of text.matchAll(tokens)) {
+    const token = match[0];
+    if (token[0] === '"') continue;
+    const n = Number(token);
+    if (!Number.isFinite(n) || (Number.isInteger(n) && !Number.isSafeInteger(n))) throw new Error('JSON contains a number outside the safe numeric range. Use a quoted string to preserve it.');
+    const significand = token.split(/[eE]/)[0];
+    if ((n === 0 && /[1-9]/.test(significand)) || Object.is(n, -0)) throw new Error('JSON contains a number that would become zero or lose its negative-zero sign. Use a quoted string to preserve it.');
+  }
+  return parsed;
+}
+
 /* ═══════════════════════════ JSON → CSV ═══════════════════════════ */
 export function jsonToCsv(jsonText, { delimiter = ',', columns = null, includeHeader = true } = {}) {
-  let data;
-  try { data = JSON.parse(jsonText); }
-  catch (e) { throw new Error(`Invalid JSON: ${e.message}`); }
+  if (![';', ',', '\t', '|'].includes(delimiter)) throw new Error('Choose a valid delimiter.');
+  const data = parseConversionJson(jsonText);
   if (!Array.isArray(data)) throw new Error('The JSON must be an array of objects — wrap single objects in an array.');
   if (!data.length) throw new Error('The array is empty — there is nothing to convert.');
   const objs = data.map((row, i) => {
@@ -75,6 +100,7 @@ export function jsonToCsv(jsonText, { delimiter = ',', columns = null, includeHe
   });
   let headers = columns && columns.length ? columns : [...new Set(objs.flatMap((o) => Object.keys(o)))];
   if (!headers.length) throw new Error('No columns found — the objects have no keys.');
+  if (new Set(headers).size !== headers.length) throw new Error('Duplicate selected columns would repeat data. Choose unique columns.');
   const cell = (v) => {
     if (v == null) return '';
     const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
@@ -95,7 +121,7 @@ export function jsonlToJsonArray(text) {
   const errors = [];
   lines.forEach((line, idx) => {
     if (!line.trim()) return;
-    try { out.push(JSON.parse(line)); }
+    try { out.push(parseConversionJson(line)); }
     catch (e) { errors.push({ line: idx + 1, message: e.message }); }
   });
   if (errors.length) {
@@ -106,10 +132,9 @@ export function jsonlToJsonArray(text) {
   return out;
 }
 export function jsonArrayToJsonl(text) {
-  let data;
-  try { data = JSON.parse(text); }
-  catch (e) { throw new Error(`Invalid JSON: ${e.message}`); }
+  const data = parseConversionJson(text);
   if (!Array.isArray(data)) throw new Error('The JSON must be an array — JSON Lines is one value per line, so an array converts to multiple lines.');
+  if (!data.length) throw new Error('An empty array has no JSON Lines records to output.');
   return data.map((o) => JSON.stringify(o)).join('\n') + '\n';
 }
 
@@ -123,7 +148,11 @@ const defs = {
     const status = statusLine('Quoted fields, escaped quotes ("") and multi-line values are all handled.');
     const out = resultPanel({ label: 'JSON', download: true, downloadName: 'data.json', downloadMime: 'application/json;charset=utf-8' });
     const zoneWrap = h('div', {});
+    let revision = 0;
+    const invalidate = () => { revision++; out.placeholder(); status.set('Input or options changed. Convert again.', 'info'); };
+    [inp, delim, header, coerceTypes].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     const run = () => {
+      revision++;
       try {
         const json = csvToJsonString(inp.value, { delimiter: delim.value, headerRow: header.querySelector('input').checked, coerceTypes: coerceTypes.querySelector('input').checked });
         out.set(json);
@@ -138,13 +167,19 @@ const defs = {
         field({ label: 'Options', control: header }),
         field({ label: 'Value types', control: coerceTypes, hint: 'Default preserves all CSV values as text, including leading zeroes.' })),
       actionsRow(btn({ label: 'Convert to JSON', icon: 'table', onClick: run })),
-      status, h('br'), out.panel);
+      status, h('p', { class: 'hint', text: 'Blank headers get generated names. Header whitespace is preserved; a leading UTF-8 BOM is removed. Type inference can round decimals and change text. File uploads are limited to 10 MiB.' }), h('br'), out.panel);
     import('../ui.js').then(({ dropzone }) => {
       zoneWrap.append(dropzone({
         accept: '.csv,text/csv,text/plain', title: '…or drop a .csv file', sub: 'Read locally — never uploaded',
         onFiles: async (files) => {
-          try { inp.value = await readFile(files[0], 'text'); run(); }
-          catch (e) { status.set(e.message, 'error'); }
+          const token = ++revision; out.placeholder();
+          try {
+            if (files[0].size > 10 * 1024 * 1024) throw new Error('Choose a CSV file no larger than 10 MiB.');
+            status.set('Reading CSV locally…', 'info');
+            const text = await readFile(files[0], 'text');
+            if (token !== revision) return;
+            inp.value = text; run();
+          } catch (e) { if (token === revision) { out.placeholder(); status.set(e.message, 'error'); } }
         },
       }));
     });
@@ -156,6 +191,8 @@ const defs = {
     const cols = input({ type: 'text', placeholder: 'e.g. name, city (blank = all columns)' });
     const status = statusLine('CSV quoting does not prevent spreadsheet formula execution. Treat untrusted cells as text when opening in spreadsheet software.');
     const out = resultPanel({ label: 'CSV', download: true, downloadName: 'data.csv', downloadMime: 'text/csv;charset=utf-8' });
+    const invalidate = () => { out.placeholder(); status.set('Input or options changed. Convert again.', 'info'); };
+    [inp, delim, cols].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     const run = () => {
       try {
         const csv = jsonToCsv(inp.value, {
@@ -171,13 +208,14 @@ const defs = {
         field({ label: 'Delimiter', control: delim }),
         field({ label: 'Columns', control: cols, hint: 'Optional — order included columns' })),
       actionsRow(btn({ label: 'Convert to CSV', icon: 'table', onClick: run })),
-      status, h('br'), out.panel);
+      status, h('p', { class: 'hint', text: 'Missing, null and empty-string values all become empty cells; nested values become JSON text. Decimal numbers may round; use strings for exact values. Quoting does not prevent spreadsheet formulas.' }), h('br'), out.panel);
   },
 
   'json-lines-converter'(root) {
     const inp = textarea({ rows: 10, value: '{"name":"Ada","year":1815}\n{"name":"Grace","year":1906}', placeholder: 'Paste JSON or JSON Lines…' });
     const status = statusLine('JSONL is one JSON value per line — the format of choice for logs and streaming data.');
     const out = resultPanel({ label: 'Result', download: true, downloadName: 'converted.txt' });
+    inp.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Convert again.', 'info'); });
     const runTo = (dir) => {
       try {
         if (dir === 'to-jsonl') {
@@ -193,14 +231,14 @@ const defs = {
       } catch (e) {
         out.placeholder();
         status.set(e.message, 'error');
-        if (e.lineErrors) out.set(h('div', {}, e.lineErrors.map((le) => h('p', { class: 'status-line error', text: `Line ${le.line}: ${le.message}` }))));
+        // Do not put errors in the downloadable result panel.
       }
     };
     root.append(field({ label: 'Input (JSON array or JSON Lines)', control: inp }),
       actionsRow(
         btn({ label: 'Array → JSONL', icon: 'brackets', onClick: () => runTo('to-jsonl') }),
         btn({ label: 'JSONL → Array', variant: 'secondary', icon: 'braces', onClick: () => runTo('to-json') })),
-      status, h('br'), out.panel);
+      status, h('p', { class: 'hint', text: 'Duplicate object keys and unsafe integers are rejected. Decimal numbers use binary floating-point and may round; use strings for exact values.' }), h('br'), out.panel);
   },
 };
 

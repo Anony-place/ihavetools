@@ -81,7 +81,7 @@ export function validateJson(text) {
       const s = parseString();
       if (!s.ok) return s;
       let key;
-      try { key = JSON.parse(text.slice(s.valueStart, s.valueEnd)); }
+      try { key = JSON.parse(text.slice(s.valueStart - 1, s.valueEnd + 1)); }
       catch { key = text.slice(s.valueStart, s.valueEnd); }
       const fullKey = [...path, key].join('.');
       if (seen.has(key)) dupKeys.push(fullKey);

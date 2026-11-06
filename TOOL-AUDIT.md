@@ -323,3 +323,24 @@ PDF-lib has real generated-PDF tests for some operations; diverse documents, att
   Real image pixel fidelity, orientation behavior, accessibility, and a broad
   corpus of malformed/valid images remain unverified. Full 128-tool coverage is
   still an open audit, not a certification.
+
+## Batch-19 data conversion integrity
+
+- CSV headers retain whitespace instead of being silently trimmed. Empty headers
+  still receive generated column names, a leading BOM is treated as an encoding
+  marker, and duplicate names are rejected. Type inference remains opt-in and
+  preserves unsafe integers, overflow/underflow and negative zero as text; other
+  decimal values may still round or change representation.
+- JSON-to-CSV and JSON/JSONL conversion now reject duplicate object keys (even
+  escaped equivalents), unsafe integer numbers, numeric overflow/underflow and
+  negative zero instead of silently overwriting or changing them. Exact decimal
+  representation is not guaranteed: JSON numbers use JavaScript binary floating
+  point; use strings for exact values. JSON-to-CSV maps null, missing and empty
+  strings to the same empty cell, and serializes nested values as text. CSV is
+  not a lossless general JSON format. An empty array is rejected for JSONL export.
+- Input edits clear old conversion outputs; CSV file reads are revision-guarded
+  against later selections, edits and manual conversions. File input is capped
+  at 10 MiB. Automated tests include malformed/duplicate inputs, numeric
+  boundaries and mocked out-of-order file reads. Spreadsheet formula injection
+  remains a user risk, and full fidelity across spreadsheet programs, huge
+  pasted inputs, browsers and all 128 tools is not certified.

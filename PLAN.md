@@ -571,6 +571,17 @@ Continue the audit requested by the user; no new tools or thin pages.
 
 ---
 
+## 🚧 BATCH-19 — Data conversion integrity audit
+
+1. Audit CSV, JSON and JSONL edge cases for silent data loss, unsafe numeric
+   conversion, duplicate keys and stale async file input.
+2. Add targeted rejection or explicit disclosures where lossless conversion is
+   not possible; test malformed inputs, numeric boundaries and UI race paths.
+3. Run full checks and dependency audit, update TOOL-AUDIT.md with honest limits,
+   then ship a single PR and verify production deployment.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha
