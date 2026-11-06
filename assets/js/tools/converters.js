@@ -1,5 +1,5 @@
 // =============================================================================
-// iHaveTools — Unit converters (one engine, eight tools)
+// iHaveTools — Unit converters (shared engine)
 // length, weight, temperature, time, speed, data-storage, area, volume
 // =============================================================================
 import { h, field, input, select, segControl, btn, actionsRow, resultPanel, statusLine, table, fmtNumber, mountTool } from '../ui.js';
@@ -63,20 +63,48 @@ export const UNIT_SETS = {
       'UK fluid ounce': 0.0284130625, 'UK pint': 0.56826125, 'UK gallon': 4.54609,
     },
   },
+  pressure: { base: 'pascal', units: {
+    'pascal (Pa)': 1, 'kilopascal (kPa)': 1000, 'megapascal (MPa)': 1e6, 'bar': 100000,
+    'standard atmosphere (atm)': 101325, 'psi': 6894.757293168, 'torr': 101325/760,
+  } },
+  energy: { base: 'joule', units: {
+    'joule (J)': 1, 'kilojoule (kJ)': 1000, 'megajoule (MJ)': 1e6,
+    'watt-hour (Wh)': 3600, 'kilowatt-hour (kWh)': 3600000,
+    'calorie (thermochemical)': 4.184, 'kilocalorie (thermochemical)': 4184,
+    'BTU (international table)': 1055.05585262,
+  } },
+  power: { base: 'watt', units: {
+    'watt (W)': 1, 'kilowatt (kW)': 1000, 'megawatt (MW)': 1e6,
+    'horsepower (mechanical)': 745.6998715822702, 'horsepower (metric)': 735.49875,
+  } },
+  fuel: { base: 'kilometres per litre', special: 'fuel', units: {
+    'kilometres/litre (km/L)': 1, 'miles/US gallon (mpg US)': 1.609344/3.785411784,
+    'miles/UK gallon (mpg UK)': 1.609344/4.54609, 'litres/100 km (L/100 km)': 'reciprocal',
+  } },
 };
 
 export function convert(value, from, to, set = 'length') {
   const s = UNIT_SETS[set];
-  if (!Number.isFinite(value)) throw new Error('Enter a valid number to convert.');
-  if (!s.units[from]) throw new Error(`Unknown unit “${from}”.`);
-  if (!s.units[to]) throw new Error(`Unknown unit “${to}”.`);
-  if (s.special) {
-    const toC = { C: (v) => v, F: (v) => (v - 32) * 5 / 9, K: (v) => v - 273.15, R: (v) => (v - 491.67) * 5 / 9 }[s.units[from]](value);
-    if (toC < -273.15) throw new Error('That temperature is below absolute zero (−273.15 °C) — nothing can be colder.');
-    const out = { C: (c) => c, F: (c) => c * 9 / 5 + 32, K: (c) => c + 273.15, R: (c) => (c + 273.15) * 9 / 5 }[s.units[to]](toC);
-    return out;
-  }
-  return (value * s.units[from]) / s.units[to];
+  if (!s) throw new Error('Unknown conversion category.');
+  if (!Number.isFinite(value) || Math.abs(value)>1e100 || (value!==0 && Math.abs(value)<1e-100)) throw new Error('Enter a valid number: finite, with magnitude between 1e-100 and 1e100, or zero.');
+  if (!Object.hasOwn(s.units, from)) throw new Error(`Unknown unit “${from}”.`);
+  if (!Object.hasOwn(s.units, to)) throw new Error(`Unknown unit “${to}”.`);
+  let out;
+  if (s.special === 'fuel') {
+    if (value <= 0) throw new Error('Fuel economy must be greater than zero.');
+    const kmPerL = s.units[from] === 'reciprocal' ? 100 / value : value * s.units[from];
+    out = s.units[to] === 'reciprocal' ? 100 / kmPerL : kmPerL / s.units[to];
+  } else if (s.special) {
+    const min = { C: -273.15, F: -459.67, K: 0, R: 0 }[s.units[from]];
+    if (value < min) throw new Error('That temperature is below absolute zero (−273.15 °C).');
+    const c = Math.max(-273.15, { C: (v) => v, F: (v) => (v - 32) * 5 / 9, K: (v) => v - 273.15, R: (v) => (v - 491.67) * 5 / 9 }[s.units[from]](value));
+    if (from === to) out = value;
+    else if (s.units[from] === 'K' && s.units[to] === 'R') out = value * 9 / 5;
+    else if (s.units[from] === 'R' && s.units[to] === 'K') out = value * 5 / 9;
+    else out = { C: (v) => v, F: (v) => v * 9 / 5 + 32, K: (v) => v + 273.15, R: (v) => (v + 273.15) * 9 / 5 }[s.units[to]](c);
+  } else out = value * (s.units[from] / s.units[to]);
+  if (!Number.isFinite(out) || (out === 0 && value !== 0 && !s.special)) throw new Error('Result is outside the supported numeric range.');
+  return out;
 }
 
 /* ═══════════════════ Roman numerals (1–3999, strict standard form) ═══════════════════ */
@@ -102,7 +130,13 @@ export function fromRoman(str) {
   return total;
 }
 
-/* UI: one generic builder used by all eight converter pages */
+// Avoid displaying a nonzero conversion as zero in either the result or table.
+export function formatConversion(value, digits = 8) {
+  if (value !== 0 && (Math.abs(value) < 1e-6 || Math.abs(value) >= 1e15)) return value.toExponential(digits);
+  return fmtNumber(value, digits);
+}
+
+/* UI: generic builder used by unit converter pages */
 function converterUI(root, setId, defaults) {
   const s = UNIT_SETS[setId];
   const unitNames = Object.keys(s.units);
@@ -116,19 +150,17 @@ function converterUI(root, setId, defaults) {
     try {
       const v = parseFloat(value.value);
       const result = convert(v, from.value, to.value, setId);
-      const pretty = Math.abs(result) >= 1e15 || (Math.abs(result) < 1e-9 && result !== 0)
-        ? result.toExponential(8)
-        : fmtNumber(result, Math.abs(result) >= 1 ? 8 : 12);
+      const pretty = formatConversion(result, 8);
       out.set(h('div', {},
         h('p', { style: 'font-size:1.5rem;font-weight:750;letter-spacing:-0.02em;margin:0 0 4px;font-variant-numeric:tabular-nums', text: `${pretty} ${to.value}` }),
-        h('p', { class: 'hint', style: 'margin:0', text: `${fmtNumber(v)} ${from.value} = ${pretty} ${to.value}` })));
-      status.set('Converted ✓', 'success');
+        h('p', { class: 'hint', style: 'margin:0', text: `${formatConversion(v, 8)} ${from.value} = ${pretty} ${to.value}` })));
+      status.set('Converted ✓ — results are rounded for display; floating-point arithmetic is approximate.', 'success');
       // table of all units
       allWrap.replaceChildren(
         h('h3', { text: `Equal to…`, style: 'margin:18px 0 10px' }),
         table({ headers: ['Unit', 'Value'], rows: unitNames.filter((u) => u !== from.value).map((u) => {
           const r = convert(v, from.value, u, setId);
-          return [u, Math.abs(r) >= 1e15 || (Math.abs(r) < 1e-9 && r !== 0) ? r.toExponential(6) : fmtNumber(r, 8)];
+          return [u, formatConversion(r, 8)];
         }) }));
     } catch (e) { out.placeholder(); allWrap.replaceChildren(); status.set(e.message, 'error'); }
   };
@@ -136,7 +168,7 @@ function converterUI(root, setId, defaults) {
   [value, from, to].forEach((el) => el.addEventListener('input', render));
   [from, to].forEach((el) => el.addEventListener('change', render));
   root.append(
-    field({ label: 'Value', control: value }),
+    field({ label: 'Value', control: value, hint: setId === 'fuel' ? 'Positive values only; finite magnitude 1e-100 to 1e100.' : 'Finite values: magnitude 1e-100 to 1e100, or zero.' }),
     h('div', { class: 'field-row', style: 'align-items:end' },
       field({ label: 'From', control: from }),
       h('div', { class: 'field', style: 'max-width:56px;justify-content:flex-end' }, btn({ label: '⇄', variant: 'secondary', title: 'Swap units', onClick: swap })),
@@ -155,6 +187,10 @@ const defs = {
   'data-storage-converter': (root) => converterUI(root, 'data', { value: '1', from: 'gigabyte (GB)', to: 'megabyte (MB)' }),
   'area-converter': (root) => converterUI(root, 'area', { value: '1', from: 'hectare', to: 'acre' }),
   'volume-converter': (root) => converterUI(root, 'volume', { value: '1', from: 'US gallon', to: 'litre' }),
+  'pressure-converter': (root) => converterUI(root, 'pressure', { value:'1', from:'bar', to:'psi' }),
+  'energy-converter': (root) => converterUI(root, 'energy', { value:'1', from:'kilowatt-hour (kWh)', to:'megajoule (MJ)' }),
+  'power-converter': (root) => converterUI(root, 'power', { value:'1', from:'horsepower (mechanical)', to:'kilowatt (kW)' }),
+  'fuel-economy-converter': (root) => converterUI(root, 'fuel', { value:'30', from:'miles/US gallon (mpg US)', to:'litres/100 km (L/100 km)' }),
   'roman-numeral-converter'(root) {
     const mode = segControl({ options: [{ v: 'to-roman', t: 'Number → Roman' }, { v: 'to-number', t: 'Roman → Number' }], value: 'to-roman', ariaLabel: 'Direction' });
     const val = input({ type: 'text', placeholder: 'e.g. 2026', value: '2026' });
