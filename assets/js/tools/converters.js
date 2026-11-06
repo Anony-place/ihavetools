@@ -148,7 +148,10 @@ function converterUI(root, setId, defaults) {
   const allWrap = h('div', {});
   const render = () => {
     try {
-      const v = parseFloat(value.value);
+      const raw = value.value.trim();
+      if (!raw || value.validity.badInput) throw new Error('Enter a valid number.');
+      const v = Number(raw);
+      if (v === 0 && /[1-9]/.test(raw.split(/[eE]/)[0])) throw new Error('Input is too small to represent; enter a valid number within the supported range.');
       const result = convert(v, from.value, to.value, setId);
       const pretty = formatConversion(result, 8);
       out.set(h('div', {},
@@ -199,7 +202,9 @@ const defs = {
     const run = () => {
       try {
         if (mode.getValue() === 'to-roman') {
-          const n = Number(val.value);
+          const raw = val.value.trim();
+          if (!/^[0-9]+$/.test(raw)) throw new Error('Enter a whole decimal number between 1 and 3999.');
+          const n = Number(raw);
           const r = toRoman(n);
           out.set(h('p', { style: 'font-size:1.6rem;font-weight:750;letter-spacing:0.04em;margin:0', text: r }));
           status.set(`${n} in Roman numerals ✓`, 'success');

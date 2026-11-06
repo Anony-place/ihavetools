@@ -82,14 +82,23 @@ export function convertTimeZone({ dateStr, timeStr, fromTz, toTz }) {
   if (candidates.length>1) throw new Error('That local time occurs twice in the selected source time zone (clock transition); choose an unambiguous time.');
   const ts = candidates[0];
   const d = new Date(ts);
-  const fmt = (tz) => new Intl.DateTimeFormat('en-US', { timeZone: tz, dateStyle: 'full', timeStyle: 'short' }).format(d);
+  // Historic IANA offsets may include seconds; never silently truncate them.
+  const secondsNeeded = d.getUTCSeconds() !== 0 || [fromTz, toTz].some(tz => !Number.isInteger(zoneOffset(tz, d)));
+  const fmt = (tz) => new Intl.DateTimeFormat('en-US', { timeZone: tz, dateStyle: 'full', timeStyle: secondsNeeded ? 'medium' : 'short' }).format(d);
   const off = (tz) => {
     const mins = zoneOffset(tz, d);
     const sign = mins < 0 ? '-' : '+';
     const seconds = Math.round(Math.abs(mins)*60), hh=Math.floor(seconds/3600), mm=Math.floor(seconds%3600/60), ss=seconds%60;
     return `UTC${sign}${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${ss ? `:${String(ss).padStart(2,'0')}` : ''}`;
   };
-  return { from: { text: fmt(fromTz), offset: off(fromTz) }, to: { text: fmt(toTz), offset: off(toTz) }, utc: `${d.toISOString().slice(0, 16)} UTC` };
+  return { from: { text: fmt(fromTz), offset: off(fromTz) }, to: { text: fmt(toTz), offset: off(toTz) }, utc: `${d.toISOString().slice(0, d.getUTCSeconds() ? 19 : 16)} UTC` };
+}
+
+// Produce wall-clock fields in the selected source zone, not the browser zone.
+export function wallTimeAt(timeZone, instant = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  const parts = Object.fromEntries(formatter.formatToParts(instant).filter(p => p.type !== 'literal').map(p => [p.type, p.value]));
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
 }
 
 export const TIME_ZONES = (() => {
@@ -114,6 +123,7 @@ const defs = {
   'iso-week-calculator'(root) {
     const date = input({ type:'date', value: localDateISO(new Date()) }), grid=statsGrid(), status=statusLine('');
     const run=()=>{try{const r=isoWeek(date.value);grid.set([{label:'ISO week',value:`${r.year}-W${String(r.week).padStart(2,'0')}`,kind:'good'},{label:'ISO weekday (Monday = 1)',value:String(r.weekday)},{label:'Week starts Monday',value:r.monday},{label:'Week ends Sunday',value:r.sunday}]);status.set('ISO weeks run Monday to Sunday. Week 1 contains January 4; the week-year can differ from the calendar year.', 'info');}catch(e){grid.replaceChildren();status.set(e.message,'error');}};
+    root.addEventListener('input', () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });
     root.append(field({label:'Date',control:date,hint:'Supported dates: 1900–2100.'}),actionsRow(btn({label:'Calculate ISO week',icon:'calendar',onClick:run})),grid,status);
   },
   'business-day-calculator'(root) {
@@ -125,6 +135,8 @@ const defs = {
     const grid = statsGrid(), status = statusLine('Enter holidays manually; no holidays are automatically applied.');
     const runCount = () => { try { const r = countBusinessDays(start.value, end.value, weekend.value, holidays.value); grid.set([{ label: 'Working days (inclusive)', value: String(r.working), kind: 'good' }, { label: 'Non-working days', value: String(r.nonWorking) }, { label: 'Calendar days (inclusive)', value: String(r.calendarDays) }]); status.set('Both start and end are included. Weekend holidays are not subtracted twice. No holiday calendar is loaded automatically.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
     const runAdd = () => { try { if (!amount.value.trim()) throw new Error('Enter a whole number of working days.'); const result = addBusinessDays(start.value, Number(amount.value), weekend.value, holidays.value); grid.set([{ label: 'Resulting date', value: result, kind: 'good' }, { label: 'Offset (working days)', value: amount.value }]); status.set('The start date is excluded for nonzero offsets; negative values subtract. Zero returns the start date. Verify the holiday list for your region.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
+    root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
     root.append(h('div', { class: 'field-row' }, field({ label: 'Start date', control: start }), field({ label: 'End date (for counting)', control: end }), field({ label: 'Weekend', control: weekend }), field({ label: 'Working days to add (negative to subtract)', control: amount })), field({ label: 'Holidays (YYYY-MM-DD)', control: holidays, hint: 'Optional: separate dates with commas or new lines. No automatic holidays.' }), actionsRow(btn({ label: 'Count working days', icon: 'calendar', onClick: runCount }), btn({ label: 'Add / subtract working days', icon: 'calendar-plus', onClick: runAdd })), grid, status);
   },
 
@@ -149,6 +161,8 @@ const defs = {
         status.set(`${r.reversed ? 'Dates were reversed; the earlier date is counted first. ' : ''}The calendar breakdown excludes the end date; the include-end switch affects day, week, weekday and hour totals only. Hours use 24 per calendar day, not DST-adjusted elapsed time.`, 'info');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
+    const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
+    root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
     root.append(h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Start date', control: start }),
         field({ label: 'End date', control: end })),
@@ -173,9 +187,11 @@ const defs = {
           { label: 'Weekday', value: d.toLocaleDateString(undefined, { weekday: 'long' }) },
           { label: 'Unix (s)', value: String(Math.floor(d.getTime() / 1000)) },
         ]);
-        status.set('Calculated ✓ — month-end dates are clamped to the last valid day (Jan 31 + 1 month = Feb 28/29).', 'success');
+        status.set('Calculated ✓ — month-end dates are clamped (Jan 31 + 1 month = Feb 28/29). Unix seconds represent the start of the resulting date in your browser’s local time zone, not UTC midnight.', 'success');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
+    const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
+    root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
     root.append(field({ label: 'Start date', control: start }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Amount', control: amount }),
@@ -205,6 +221,8 @@ const defs = {
         status.set('Converted ✓', 'success');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
+    const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Convert again.', 'info'); };
+    root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
     root.append(h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Date', control: dateIn }),
         field({ label: 'Time', control: timeIn }),
@@ -212,15 +230,17 @@ const defs = {
         field({ label: 'To zone', control: toTz })),
       actionsRow(btn({ label: 'Convert', icon: 'globe', onClick: run }),
         btn({ label: 'Now', variant: 'secondary', onClick: () => {
-          const n = new Date();
-          dateIn.value = localDateISO(n);
-          timeIn.value = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
-          run();
+          try {
+            const nowInSource = wallTimeAt(fromTz.value);
+            dateIn.value = nowInSource.date;
+            timeIn.value = nowInSource.time;
+            run();
+          } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
         } })),
-      grid, status);
+      grid, status, h('p', { class: 'hint', text: 'Now uses the selected source time zone and rounds down to the minute. Time-zone rules depend on your browser’s database.' }));
     run();
   },
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { dateDiff, dateAdd, convertTimeZone, zoneOffset, TIME_ZONES, countBusinessDays, addBusinessDays, parseCalendarDate, localDateISO };
+export const __test = { dateDiff, dateAdd, convertTimeZone, zoneOffset, TIME_ZONES, wallTimeAt, countBusinessDays, addBusinessDays, parseCalendarDate, localDateISO };

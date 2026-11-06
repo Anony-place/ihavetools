@@ -724,6 +724,13 @@ await test('random string generator charset presets valid', () => {
   for (const bad of 'Il1O0o'.split('')) assert.ok(!noLook.includes(bad), `lookalike ${bad} leaked`);
 });
 
+await test('historical timezone seconds are not silently truncated', () => {
+ const src=dt.convertTimeZone({dateStr:'1900-01-01',timeStr:'12:00',fromTz:'Africa/Lagos',toTz:'UTC'});
+ assert.equal(src.from.offset,'UTC+00:13:35');assert.equal(src.utc,'1900-01-01T11:46:25 UTC');assert.match(src.to.text,/11:46:25/);
+ const dest=dt.convertTimeZone({dateStr:'1900-01-01',timeStr:'12:00',fromTz:'UTC',toTz:'Africa/Lagos'});assert.match(dest.to.text,/12:13:35/);
+ assert.deepEqual(dt.wallTimeAt('Asia/Kolkata',new Date('2024-01-01T00:00:59Z')),{date:'2024-01-01',time:'05:30'});
+});
+
 console.log('\n── Color ──');
 await test('hex/rgb/hsl conversions exact', () => {
   const rgb = color.hexToRgb('#4f46e5');
@@ -1255,6 +1262,20 @@ await test('custom delimiters', () => {
   const tsv = data.parseCsv('a\tb\n1\t2', { delimiter: '\t' });
   assert.deepEqual(tsv.rows[0], ['1', '2']);
 });
+await test('data converters bound input and output expansion', () => {
+ assert.throws(()=>data.parseCsv('x'.repeat(1_000_001)),/1,000,000/);
+ assert.throws(()=>data.parseCsv(Array(257).fill('x').join(','),{headerRow:false}),/256 columns/);
+ assert.throws(()=>data.parseCsv('x\n'.repeat(10_001),{headerRow:false}),/10,000 rows/);
+ assert.throws(()=>data.csvToJson('k'.repeat(5000)+'\n'+'v\n'.repeat(2100)),/output limit/);
+ const many=Array.from({length:1000},()=>Object.fromEntries(Array.from({length:251},(_,i)=>['k'+i,1])));
+ assert.throws(()=>data.jsonToCsv(JSON.stringify(many)),/250,000 cells|1,000,000/);
+ assert.throws(()=>data.jsonlToJsonArray('0\n'.repeat(10001)),/10,000 lines/);
+ assert.throws(()=>data.jsonArrayToJsonl(JSON.stringify(Array(10001).fill(0))),/10,000 records/);
+ assert.equal(data.jsonlToJsonArray('0\n'.repeat(10000)).length,10000);
+ const deep=JSON.parse('['.repeat(200)+'0'+']'.repeat(200));assert.throws(()=>data.prettyJsonBounded(Array(500).fill(deep)),/output limit/);
+ assert.equal(data.prettyJsonBounded([{a:1}]),JSON.stringify([{a:1}],null,2));
+});
+
 await test('jsonToCsv escapes correctly', () => {
   const csv = data.jsonToCsv('[{"n":"a,b","v":"say \\"hi\\""},{"n":"line\\nbreak","v":null}]');
   const lines = csv.split('\n');

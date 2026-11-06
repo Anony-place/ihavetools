@@ -482,6 +482,17 @@ await domTest('random-string-generator: bulk output with preset', async () => {
 
 /* ═════════════════ Color ═════════════════ */
 console.log('\n── Color tool UIs ──');
+await domTest('unit converters reject numeric underflow instead of showing zero', async () => {
+ const app=await loadToolPage('length-converter','converters'); const v=app.querySelector('input[type=number]');
+ v.value='1e-999';fire(v,'input');assert.match(app.textContent,/too small to represent/);assert.doesNotMatch(app.textContent,/Equal to…/);
+ v.value='0e-999';fire(v,'input');assert.match(app.textContent,/Equal to…/);
+});
+await domTest('roman converter requires decimal whole number input', async () => {
+ const app=await loadToolPage('roman-numeral-converter','converters');const v=app.querySelector('input[type=text]');
+ for(const text of ['0x10','1e2','1.0']){v.value=text;fire(v,'input');assert.match(app.textContent,/whole decimal number/);assert.doesNotMatch(resultText(document),/^(XVI|C|I)$/);}
+ v.value='100';fire(v,'input');assert.equal(resultText(document).trim(),'C');
+});
+
 await domTest('hex-rgb-converter: bidirectional sync', async () => {
   const app = await loadToolPage('hex-rgb-converter', 'color');
   const inputs = app.querySelectorAll('input.mono');
@@ -626,6 +637,19 @@ await domTest('time-zone-converter: NY → London winter offset', async () => {
 
 /* ═════════════════ Data ═════════════════ */
 console.log('\n── Data tool UIs ──');
+await domTest('date tools clear results when their inputs or options change', async () => {
+ for (const [id,button] of [['iso-week-calculator','Calculate ISO week'],['business-day-calculator','Count working days'],['date-difference','Calculate difference'],['date-add-calculator','Calculate'],['time-zone-converter','Convert']]) {
+  const app=await loadToolPage(id,'datetime');click(btnByLabel(app,button));assert.ok(app.querySelectorAll('.stat-card').length,id+' should display results');
+  const date=app.querySelector('input[type=date]');date.value='2024-01-01';fire(date,'input');assert.equal(app.querySelectorAll('.stat-card').length,0,id+' should clear stale output');
+ }
+});
+await domTest('timezone Now uses selected source zone, not browser timezone', async () => {
+ const app=await loadToolPage('time-zone-converter','datetime');const [from,to]=app.querySelectorAll('select');from.value='Asia/Kolkata';fire(from,'change');to.value='UTC';fire(to,'change');
+ const wall=() => {const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;};
+ const before=wall();click(btnByLabel(app,'Now'));const after=wall();const got=app.querySelector('input[type=date]').value+'T'+app.querySelector('input[type=time]').value;
+ assert.ok([before,after].includes(got));assert.match(app.textContent,/Now uses the selected source/);
+});
+
 await domTest('csv-to-json: quoted values convert correctly', async () => {
   const app = await loadToolPage('csv-to-json', 'data');
   click(btnByLabel(app, 'Convert to JSON'));
@@ -633,6 +657,10 @@ await domTest('csv-to-json: quoted values convert correctly', async () => {
   assert.match(out, /"role": "Admiral, USN"/);
   assert.match(statusText(document), /2 records converted/);
 });
+await domTest('CSV refuses pasted inputs beyond documented bounds', async () => {
+ const app=await loadToolPage('csv-to-json','data');const v=app.querySelector('textarea');v.value='x'.repeat(1_000_001);fire(v,'input');click(btnByLabel(app,'Convert to JSON'));assert.match(statusText(document),/1,000,000 characters/);assert.doesNotMatch(resultText(document),/"x"/);
+});
+
 await domTest('json-to-csv: round trips', async () => {
   const app = await loadToolPage('json-to-csv', 'data');
   click(btnByLabel(app, 'Convert to CSV'));

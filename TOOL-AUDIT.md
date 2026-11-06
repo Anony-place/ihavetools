@@ -12,6 +12,31 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
+## Consolidated audit — in progress, not yet deployed
+
+- Unit converter inputs that underflow to zero are rejected instead of reporting
+  zero. Roman number input requires decimal whole-number notation rather than
+  silently accepting JavaScript hexadecimal, decimal fractions or exponent syntax.
+  DOM regressions cover invalid and valid inputs. This is an initial subset of
+  the consolidated plan, not completion or certification of all tool families.
+- Date/time UIs now clear stale results after edits. Time-zone “Now” uses the
+  selected source zone rather than the device zone, to minute precision. Historic
+  offsets containing seconds are shown without truncating the resulting instant;
+  calculations still rely on the browser's time-zone database. Date-add's Unix
+  value is explicitly identified as local start-of-day. Reference:
+  https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat/formatToParts
+- Data conversion applies limits to pasted CSV and JSONL as well as files: CSV
+  text 1 million characters, 10,000 rows including header, 256 columns, 250,000
+  cells; CSV-to-JSON and pretty JSONL-to-array results have conservative
+  10-million-character expansion guards. JSON-to-CSV has 10,000 rows / 256
+  columns / 250,000 cells. JSONL has 1 million input characters and 10,000
+  lines or array records. Limits prevent some expansions but do not guarantee
+  responsiveness on every device. CSV spreadsheet formula execution remains a
+  risk; conversion does not sanitize or preserve all JSON types.
+- Current automated evidence: 225 engine and 138 DOM tests, 9 chrome tests,
+  service-worker and 20 integrity checks passed; dependency audit found zero
+  vulnerabilities. No real browser or physical-device testing is implied.
+
 ## Batch 29 — color tool integrity
 
 - HEX/RGB/HSL converter retains alpha in generated formats, preview and copy;
