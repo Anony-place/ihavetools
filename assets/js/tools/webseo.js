@@ -634,7 +634,7 @@ const defs = {
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
     root.append(field({ label: 'YouTube video URL or ID', control: inp }),
       actionsRow(btn({ label: 'Get thumbnails', icon: 'film', onClick: run })), status, out,
-      privacyNote('Thumbnails load straight from YouTube’s public image CDN (i.ytimg.com) to your browser — nothing is uploaded or stored by iHaveTools. Respect the creator’s copyright when re-using a thumbnail.'));
+      privacyNote('Thumbnails load from YouTube’s image CDN (i.ytimg.com), which receives the video ID and your IP address. Respect the creator’s copyright when re-using a thumbnail.'));
   },
 
   'qr-code-generator'(root) {

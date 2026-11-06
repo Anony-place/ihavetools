@@ -6,7 +6,7 @@
 // ppf-calculator, fd-calculator, income-tax-calculator, rd-calculator,
 // cagr-calculator, gratuity-calculator, lumpsum-calculator, nps-calculator,
 // epf-calculator, hra-calculator
-// Every def ends with shareState(...) so results are shareable as URL links.
+// Shareable calculators offer an opt-in link containing the entered values.
 // =============================================================================
 import { h, field, input, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool, shareState } from '../ui.js';
 
@@ -508,8 +508,6 @@ export function breakEven(fixed, price, variable) {
   return { contribution, units, revenue: units * price };
 }
 
-const sharePrivacyNote = () => h('p', { class: 'hint', text: 'Your input values are included in the page URL after calculation. Anyone with a copied link can see them; avoid sharing sensitive amounts.' });
-
 const defs = {
   'budget-calculator'(root) {
     const income = input({ type: 'number', step: 'any', value: '50000' }), needs = input({ type: 'number', step: 'any', value: '24000' }), wants = input({ type: 'number', step: 'any', value: '16000' }), savings = input({ type: 'number', step: 'any', value: '8000' });
@@ -519,26 +517,26 @@ const defs = {
       detail.replaceChildren(table({ headers:['Category','Target','Actual','Actual minus target'], rows: [['Needs',r.needsTarget,num(needs)],['Wants',r.wantsTarget,num(wants)],['Savings and extra debt',r.savingsTarget,num(savings)]].map(([label,target,actual])=>[label,money(target),money(actual),money(actual-target)]) }));
       status.set('Use monthly take-home income. Minimum debt payments can be needs; extra debt repayment may be in savings. Avoid counting the same payment twice. This is a guideline, not financial advice.', 'info');
     } catch (e) { grid.replaceChildren(); detail.replaceChildren(); status.set(e.message,'error'); } };
-    root.append(h('div',{class:'field-row'},field({label:'Monthly take-home income',control:income}),field({label:'Actual needs',control:needs}),field({label:'Actual wants',control:wants}),field({label:'Actual savings and extra debt',control:savings})),actionsRow(btn({label:'Calculate budget',icon:'calculator',onClick:run})),grid,detail,status,sharePrivacyNote());
+    root.append(h('div',{class:'field-row'},field({label:'Monthly take-home income',control:income}),field({label:'Actual needs',control:needs}),field({label:'Actual wants',control:wants}),field({label:'Actual savings and extra debt',control:savings})),actionsRow(btn({label:'Calculate budget',icon:'calculator',onClick:run})),grid,detail,status);
     shareState(root,[['income',income],['needs',needs],['wants',wants],['savings',savings]],run);
   },
   'emergency-fund-calculator'(root) {
     const monthly=input({type:'number',step:'any',value:'25000'}), months=input({type:'number',step:'any',value:'6'}), saved=input({type:'number',step:'any',value:'50000'}), contribution=input({type:'number',step:'any',value:'10000'});
     const grid=statsGrid(), status=statusLine('');
     const run=()=>{ try { const r=emergencyFund(num(monthly),num(months),num(saved),num(contribution)); grid.set([{label:'Fund target',value:money(r.target)},{label:'Still needed',value:money(r.gap),kind:'good'},{label:'Above target',value:money(r.surplus)},{label:'Months to reach goal',value:r.monthsToGoal === null ? 'Not reachable at zero contribution' : String(r.monthsToGoal)}]); status.set('Uses essential expenses and fixed end-of-month contributions; excludes interest, inflation, withdrawals and unexpected changes. Choose a target appropriate to your circumstances.', 'info'); } catch(e){grid.replaceChildren(); status.set(e.message,'error');} };
-    root.append(h('div',{class:'field-row'},field({label:'Essential expenses per month',control:monthly}),field({label:'Target months',control:months}),field({label:'Current emergency savings',control:saved}),field({label:'Monthly contribution',control:contribution})),actionsRow(btn({label:'Calculate emergency fund',icon:'calculator',onClick:run})),grid,status,sharePrivacyNote());
+    root.append(h('div',{class:'field-row'},field({label:'Essential expenses per month',control:monthly}),field({label:'Target months',control:months}),field({label:'Current emergency savings',control:saved}),field({label:'Monthly contribution',control:contribution})),actionsRow(btn({label:'Calculate emergency fund',icon:'calculator',onClick:run})),grid,status);
     shareState(root,[['monthly',monthly],['months',months],['saved',saved],['contribution',contribution]],run);
   },
   'debt-to-income-calculator'(root) {
     const income=input({type:'number',step:'any',value:'100000'}),debts=input({type:'number',step:'any',value:'35000'}),grid=statsGrid(),status=statusLine('');
     const run=()=>{try {const r=debtToIncome(num(income),num(debts));grid.set([{label:'Debt-to-income ratio',value:`${r.ratio.toFixed(2)}%`},{label:'Income less debt payments',value:money(r.incomeAfterDebts)}]);status.set('Based on gross monthly income, before tax. Include relevant minimum monthly debt payments yourself. This is not disposable income, a lender decision or an eligibility guarantee.', 'info');}catch(e){grid.replaceChildren();status.set(e.message,'error');}};
-    root.append(h('div',{class:'field-row'},field({label:'Gross monthly income',control:income}),field({label:'Monthly debt payments',control:debts})),actionsRow(btn({label:'Calculate debt ratio',icon:'calculator',onClick:run})),grid,status,sharePrivacyNote());
+    root.append(h('div',{class:'field-row'},field({label:'Gross monthly income',control:income}),field({label:'Monthly debt payments',control:debts})),actionsRow(btn({label:'Calculate debt ratio',icon:'calculator',onClick:run})),grid,status);
     shareState(root,[['income',income],['debts',debts]],run);
   },
   'break-even-calculator'(root) {
     const fixed=input({type:'number',step:'any',value:'10000'}),price=input({type:'number',step:'any',value:'100'}),variable=input({type:'number',step:'any',value:'60'}),grid=statsGrid(),status=statusLine('');
     const run=()=>{try{const r=breakEven(num(fixed),num(price),num(variable));grid.set([{label:'Contribution per unit',value:money(r.contribution)},{label:'Break-even whole units',value:r.units === null ? (num(fixed) === 0 && r.contribution === 0 ? 'Every sales volume breaks even' : num(fixed) === 0 ? 'Zero units only' : 'Not attainable') : r.units.toLocaleString('en-US')},{label:'Sales at break-even units',value:r.revenue === null ? 'Not applicable' : money(r.revenue)}]);status.set(r.units === null ? 'Price must exceed variable cost to cover fixed costs through sales. With zero fixed costs and zero contribution every sales volume breaks even; negative contribution loses money on positive sales.' : 'Uses a constant selling price and variable cost per unit. Rounded up to whole units; taxes and any omitted costs are excluded.',r.units === null ? 'warning' : 'info');}catch(e){grid.replaceChildren();status.set(e.message,'error');}};
-    root.append(h('div',{class:'field-row'},field({label:'Fixed costs for period',control:fixed}),field({label:'Selling price per unit',control:price}),field({label:'Variable cost per unit',control:variable})),actionsRow(btn({label:'Calculate break-even',icon:'calculator',onClick:run})),grid,status,sharePrivacyNote());
+    root.append(h('div',{class:'field-row'},field({label:'Fixed costs for period',control:fixed}),field({label:'Selling price per unit',control:price}),field({label:'Variable cost per unit',control:variable})),actionsRow(btn({label:'Calculate break-even',icon:'calculator',onClick:run})),grid,status);
     shareState(root,[['fixed',fixed],['price',price],['variable',variable]],run);
   },
 

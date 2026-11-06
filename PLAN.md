@@ -354,7 +354,7 @@ PR #15 merged; production READY/PROMOTED and live page verified.
 
 ---
 
-## 🚧 BATCH-10 — Everyday money and small-business planning (2026-11-06)
+## ✅ BATCH-10 — Everyday money and small-business planning (2026-11-06)
 
 Market scan of calculator directories (PrintSheetLab and MJK Tools) shows
 budget, emergency fund, debt-to-income and break-even workflows. This is
@@ -376,7 +376,40 @@ distinct question. One batch on the current branch:
 Implementation ready for review: four tools, 122 tools / 62 guides. Share
 links expose entered amounts in the URL, so each UI warns users. All local
 checks pass: 190 engine, 76 DOM, 9 chrome, service worker and 20 integrity.
-PR/CI and production verification pending until actually completed.
+PR #16 merged; CI passed and Vercel production READY/PROMOTED.
+
+---
+
+## 🚧 BATCH-11 — Privacy-first sharing and trust audit (2026-11-06)
+
+OWASP and CWE-598 document query parameters leaking to logs and browser history;
+this matters for financial and health calculators. Current automatic URL sync
+and broad "never stored" statements are inconsistent. Fix the whole workflow,
+not just the four newest tools. Preserve legacy shared-query links without
+claiming client-side cleanup can undo requests already made.
+
+One complete batch:
+1. Stop automatically placing calculator inputs in the address bar. Make the
+   header Copy link copy a clean tool URL. Offer an explicit calculator action
+   to generate/copy a link with inputs in a URL fragment, with an accessible
+   manual-copy fallback and a warning that links/history/clipboard are not
+   private. Fragments are not sent in HTTP requests, but are not secret.
+2. Parse legacy query links and new fragment links; scrub recognised legacy
+   query inputs from the address bar after reading while preserving unrelated
+   parameters and page anchors. No promise to erase prior hosting logs/history.
+3. Audit generated privacy/FAQ/about/README text and storage disclosures,
+   including favourites/recent lists, Vercel hosting and request logging. Do not
+   claim all inputs can never leave a device. Keep file-processing claims scoped.
+4. Test all shareState clients, privacy warnings, query compatibility, safe
+   links, clipboard failure, stale outputs, caching and static consistency.
+   Regenerate, run full checks, one PR, CI and production verification. Real
+   browser, accessibility/device and Lighthouse checks remain separate.
+
+Implemented: opt-in fragment sharing across 36 calculator interfaces; clean
+page-link copy; legacy compatibility and disclosure; Vercel and YouTube CDN
+privacy corrections; v4 worker refresh and JS revalidation. Local checks pass:
+190 engine, 81 DOM, 9 chrome, service worker and 20 integrity. CI, PR and
+production verification remain pending until actually complete.
 
 ---
 

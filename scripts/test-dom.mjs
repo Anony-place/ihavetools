@@ -256,7 +256,7 @@ await domTest('tool page: records recently used and the favourite star persists'
   assert.deepEqual(JSON.parse(localStorage.getItem('iht-favourites')), [], 'second click must remove the favourite');
   assert.equal(star.getAttribute('aria-pressed'), 'false');
 });
-await domTest('sip-calculator: a shared link pre-fills inputs, auto-runs, and URL stays in sync', async () => {
+await domTest('sip-calculator: legacy link pre-fills and clears recognised query values', async () => {
   const app = await loadToolPage('sip-calculator', 'calculators', '?monthly=5000&rate=12&years=10');
   const [monthly, rate, years] = app.querySelectorAll('input');
   assert.equal(monthly.value, '5000', 'shared link must pre-fill the monthly amount');
@@ -267,7 +267,7 @@ await domTest('sip-calculator: a shared link pre-fills inputs, auto-runs, and UR
   monthly.value = '7000';
   click(btnByLabel(app, 'Calculate SIP'));
   await new Promise((r) => setTimeout(r, 20));
-  assert.match(document.defaultView.location.search, /monthly=7000/, 'recalculating must sync the URL so Copy link shares the latest result');
+  assert.equal(document.defaultView.location.search, '', 'recalculating must not put values in the URL');
 });
 await domTest('batch-3 GSC upgrades compute in the real UIs', async () => {
   let app = await loadToolPage('percentage-change', 'calculators');
@@ -785,6 +785,43 @@ for (const [id, query, expected] of [
   });
 }
 
+console.log('\n── Batch-11 privacy and sharing ──');
+await domTest('opt-in share copies fragment only, round trips inputs and clears stale generated links', async () => {
+  const originalClipboard=Object.getOwnPropertyDescriptor(navigator,'clipboard'); const oldSecure=Object.getOwnPropertyDescriptor(window,'isSecureContext'); let copied;
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}}); Object.defineProperty(window,'isSecureContext',{configurable:true,value:true});
+  try {
+    let app=await loadToolPage('budget-calculator','calculators'); const income=app.querySelector('input'); income.value='43000'; fire(income,'input'); click(btnByLabel(app,'Calculate budget'));
+    assert.equal(location.search,''); assert.equal(location.hash,'');
+    click(btnByLabel(app,'Copy link with inputs')); await new Promise(r=>setTimeout(r,10));
+    const u=new URL(copied); assert.equal(u.search,''); assert.ok(u.hash.startsWith('#iht=')); assert.match(decodeURIComponent(u.hash),/income=43000/);
+    assert.equal(app.querySelector('[aria-label="Generated link with inputs"]').value,copied);
+    income.value='44000'; fire(income,'input'); assert.equal(app.querySelector('[aria-label="Generated link with inputs"]').value,'');
+    app=await loadToolPage('budget-calculator','calculators',u.hash); assert.equal(app.querySelector('input').value,'43000'); assert.match(app.textContent,/21,500\.00Needs target/);
+  } finally { if(originalClipboard)Object.defineProperty(navigator,'clipboard',originalClipboard);else delete navigator.clipboard; if(oldSecure)Object.defineProperty(window,'isSecureContext',oldSecure);else delete window.isSecureContext; }
+});
+await domTest('legacy query is scrubbed without losing unrelated parameters and anchors', async()=>{
+ const app=await loadToolPage('budget-calculator','calculators','?income=50000&needs=24000&campaign=example#main');
+ assert.equal(app.querySelector('input').value,'50000'); assert.equal(location.search,'?campaign=example'); assert.equal(location.hash,'#main');
+ assert.match(app.textContent,/25,000\.00Needs target/);
+});
+await domTest('share link clipboard failure provides a selectable fallback',async()=>{
+ const old=Object.getOwnPropertyDescriptor(window,'isSecureContext'); Object.defineProperty(window,'isSecureContext',{configurable:true,value:false});
+ try {const app=await loadToolPage('debt-to-income-calculator','calculators'); click(btnByLabel(app,'Copy link with inputs')); await new Promise(r=>setTimeout(r,10));
+ assert.match(app.textContent,/Clipboard unavailable/); const out=app.querySelector('[aria-label="Generated link with inputs"]'); assert.ok(out.value.includes('#iht=')); assert.equal(out.readOnly,true); assert.equal(out.closest('[hidden]'),null);
+ } finally {if(old)Object.defineProperty(window,'isSecureContext',old);else delete window.isSecureContext;}
+});
+await domTest('header copy page link excludes query and fragment',async()=>{
+ await loadToolPage('word-counter','text','?private=value#fragment'); let copied=''; const old=Object.getOwnPropertyDescriptor(navigator,'clipboard');
+ Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>copied=text}});
+ try { const site=await import(`../assets/js/site.js?sharetest=${Math.random()}`); site.initShare(); click(document.querySelector('[data-copy-link]')); await new Promise(r=>setTimeout(r,10)); const u=new URL(copied); assert.equal(u.search,''); assert.equal(u.hash,''); }
+ finally {if(old)Object.defineProperty(navigator,'clipboard',old);else delete navigator.clipboard;}
+});
+await domTest('all calculator share clients expose explicit disclosure and no auto URL updates',async()=>{
+ const {tools}=await import('../assets/js/registry.js');
+ const clients=['budget-calculator','emergency-fund-calculator','debt-to-income-calculator','break-even-calculator','percentage-calculator','percentage-change','discount-calculator','age-calculator','bmi-calculator','gst-calculator','emi-calculator','tip-calculator','compound-interest-calculator','simple-interest-calculator','sip-calculator','ppf-calculator','fd-calculator','income-tax-calculator','rd-calculator','cagr-calculator','gratuity-calculator','lumpsum-calculator','nps-calculator','epf-calculator','loan-prepayment-calculator','inflation-calculator','work-hours-calculator','profit-margin-calculator','final-grade-calculator','savings-goal-calculator','swp-calculator','electricity-cost-calculator','fuel-cost-calculator','hra-calculator','cgpa-calculator','attendance-calculator'];
+ for(const id of clients) { const t=tools.find(x=>x.id===id); const app=await loadToolPage(id,t.engine); assert.ok(btnByLabel(app,'Copy link with inputs'),id); assert.match(app.textContent,/Anyone with it can see them/,id); assert.equal(location.search,'',id); }
+});
+
 console.log('\n── Batch-10 UIs ──');
 for (const [id, query, expected] of [
  ['budget-calculator','?income=50000&needs=24000&wants=16000&savings=8000',/25,000\.00Needs target.*15,000\.00Wants target.*10,000\.00Savings target.*2,000\.00Unallocated/s],
@@ -794,7 +831,7 @@ for (const [id, query, expected] of [
 ]) { await domTest(`${id}: shared result, edit and invalid input`,async()=>{
  const app=await loadToolPage(id,'calculators',query); assert.match(app.textContent,expected);
  const first=app.querySelector('input'); first.value=''; click(btnByLabel(app,'Calculate')); assert.match(app.textContent,/must be|valid/i); assert.doesNotMatch(app.textContent,expected);
- first.value=id==='debt-to-income-calculator'?'100000':'100'; fire(first,'input'); click(btnByLabel(app,'Calculate')); await new Promise(r=>setTimeout(r,10)); assert.equal(new URL(window.location.href).searchParams.get(first===app.querySelector('input') ? (id==='budget-calculator'||id==='debt-to-income-calculator'?'income':id==='emergency-fund-calculator'?'monthly':'fixed'):'none'), first.value);
+ first.value=id==='debt-to-income-calculator'?'100000':'100'; fire(first,'input'); click(btnByLabel(app,'Calculate')); await new Promise(r=>setTimeout(r,10)); assert.equal(new URL(window.location.href).search, '', 'inputs should not be auto-synced');
 }); }
 await domTest('break even communicates non-positive contribution edge cases',async()=>{
  const app=await loadToolPage('break-even-calculator','calculators','?fixed=0&price=10&variable=10'); assert.match(app.textContent,/Every sales volume breaks even/);
