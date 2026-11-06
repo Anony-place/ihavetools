@@ -12,6 +12,26 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
+## Batch 28 — student and math calculator accuracy
+
+- Scientific calculator now starts in the displayed DEG mode, accepts scientific
+  notation and displayed multiplication/division/minus symbols, guards expression
+  size/depth, and clears stale results on input/mode changes. Floating-point
+  arithmetic and 12-digit history/display rounding still apply.
+- Attendance rejects fractional/blank counts and uses scaled integer arithmetic
+  for target boundaries (1–100%, up to 6 decimals); very large required counts
+  outside the safe integer range are rejected. Institutional attendance rules,
+  excused absences, and future schedule details are not modeled.
+- Duration rows require whole non-negative values with minute/second ranges and
+  row/hour limits. GPA calculations reject incomplete or invalid subject rows;
+  institutional grading and conversion formulas vary. Reference example of
+  institution-specific grading: https://registrar.utexas.edu/students/grades/gpa
+- Student and mathematics results are invalidated on relevant edits, subject or
+  row changes. Extremely small non-zero numeric inputs that underflow to zero are
+  rejected. Regression tests include brute-force small attendance cases, decimal
+  boundaries, DEG/RAD, scientific notation, invalid durations and incomplete GPA
+  rows. Real-browser usability and broad formula certification remain outstanding.
+
 ## Batch 27 — interactive random and typing tools
 
 - Random number generation validates whole inputs and uses sparse partial

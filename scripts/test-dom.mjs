@@ -1252,6 +1252,19 @@ await domTest('spin wheel locks list during draw and invalidates winner after ed
  entries.value=Array(101).fill('Entry').join('\n'); fire(entries,'input'); click(spin); assert.match(statusText(document),/100 entries/);
 });
 
+await domTest('scientific angle default, exponent notation and stale results', async () => {
+ const app=await loadToolPage('scientific-calculator','student'), inp=app.querySelector('input[type=text]'); inp.value='sin(30)'; click(btnByLabel(app,'Calculate')); assert.match(app.textContent,/0\.5Result/);
+ click(btnByLabel(app,'RAD')); assert.doesNotMatch(app.textContent,/0\.5Result/); inp.value='1e+21/1e20'; fire(inp,'input'); click(btnByLabel(app,'Calculate')); assert.match(app.textContent,/10Result/);
+});
+await domTest('student calculators reject fractional or missing inputs and clear results', async () => {
+ let app=await loadToolPage('attendance-calculator','student'); const fields=app.querySelectorAll('input[type=number]'); fields[0].value='1'; fields[1].value='0'; fields[2].value='50.000001'; click(btnByLabel(app,'Calculate attendance')); assert.match(app.textContent,/2Attend next classes/); fields[0].value='2.5'; fire(fields[0],'input'); assert.doesNotMatch(app.textContent,/Attend next classes/); click(btnByLabel(app,'Calculate attendance')); assert.match(statusText(document),/whole number/);
+ app=await loadToolPage('cgpa-calculator','student'); click(btnByLabel(app,'Calculate SGPA')); assert.match(app.textContent,/SGPA \/ weighted GPA/); const rows=app.querySelectorAll('.file-list .file-row'); rows[0].querySelector('input').value=''; fire(rows[0].querySelector('input'),'input'); assert.doesNotMatch(app.textContent,/SGPA \/ weighted GPA/); click(btnByLabel(app,'Calculate SGPA')); assert.match(app.textContent,/Subject 1: enter a valid/);
+ app=await loadToolPage('time-duration-calculator','student'); const numbers=app.querySelectorAll('input[type=number]'); numbers[1].value='60'; click(btnByLabel(app,'Calculate total')); assert.match(statusText(document),/0–59/); numbers[1].value='59'; fire(numbers[1],'input'); click(btnByLabel(app,'Calculate total')); assert.match(app.textContent,/00:59:00/); numbers[1].value='1'; fire(numbers[1],'input'); assert.doesNotMatch(app.textContent,/00:59:00/);
+});
+await domTest('math results are invalidated after changing input', async () => {
+ for (const [id,initial,label] of [['average-calculator','1,2,3','Calculate'],['gcd-lcm-calculator','12,18','Calculate GCD'],['weighted-average-calculator','80,3\n90,2','Calculate weighted']]) {const app=await loadToolPage(id,'math'), inp=app.querySelector('textarea,input[type=text]'); inp.value=initial; click(btnByLabel(app,label)); assert.ok(app.querySelector('.stat-card')); inp.value='4'; fire(inp,'input'); assert.equal(app.querySelector('.stat-card'),null);}
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);

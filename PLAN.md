@@ -11,6 +11,20 @@
 
 ---
 
+## Batch 28 plan — student and math calculator accuracy
+
+1. Audit scientific calculator mode/parser, fractions, duration, attendance and
+   credit-weighted GPA, including invalid and boundary inputs.
+2. Fix wrong default angle, scientific-notation reuse, bounds, attendance rounding,
+   silent fractional inputs, incomplete GPA rows and stale result displays.
+3. Add independent numeric references and UI regressions, including near-boundary
+   attendance, exact grading inputs, clock-style durations and calculator modes.
+4. Document limitations, rebuild, run full checks and dependency audit, then one
+   CI-verified PR and production verification. Financial/educational results remain
+   estimates governed by the user's institution.
+
+---
+
 ## Batch 27 plan — interactive random and typing tools
 
 1. Audit random number/dice input validation, unbiased sampling, display and stale
