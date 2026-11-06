@@ -15,7 +15,7 @@ export function randomInt(max, rng = globalThis.crypto) {
   do { rng.getRandomValues(buf); v = buf[0]; } while (v >= limit);
   return v % max;
 }
-export function randomFrom(chars, rng) { return chars[randomInt(chars.length, rng)]; }
+export function randomFrom(chars, rng) { const alphabet = Array.from(chars); return alphabet[randomInt(alphabet.length, rng)]; }
 
 export const CHARSETS = {
   upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -33,11 +33,13 @@ export function buildCharset({ upper = true, lower = true, digits = true, symbol
   if (excludeLookalikes) s = [...s].filter((c) => !CHARSETS.lookalikes.includes(c)).join('');
   if (custom) s = custom;
   if (!s) throw new Error('Select at least one character set (or provide a custom alphabet).');
+  if (s.length > 4096) throw new Error('Alphabet must be at most 4096 UTF-16 code units.');
+  if (Array.from(s).some(c => c.length === 1 && c.charCodeAt(0) >= 0xd800 && c.charCodeAt(0) <= 0xdfff)) throw new Error('The alphabet contains an unpaired Unicode surrogate.');
   return [...new Set([...s])].join('');
 }
 
 export function generatePassword(length, charset, rng) {
-  if (!(length >= 4 && length <= 256)) throw new Error('Password length must be between 4 and 256.');
+  if (!Number.isInteger(length) || length < 4 || length > 256) throw new Error('Password length must be between 4 and 256.');
   const chars = buildCharset(charset);
   return Array.from({ length }, () => randomFrom(chars, rng)).join('');
 }
@@ -57,7 +59,7 @@ export function analyzePassword(pw) {
   let bits = pw.length * Math.log2(pool || 1);
   const issues = [];
   const lower = pw.toLowerCase();
-  const contained = [...COMMON].find((c) => c.length >= 6 && lower.includes(c));
+  const contained = [...COMMON].map(c => c.toLowerCase()).find((c) => c.length >= 6 && lower.includes(c));
   if (contained) { bits = Math.min(bits, 8); issues.push(`It contains the common password “${contained}” — dictionary attacks try these first, regardless of what surrounds them.`); }
   if (pw.length < 8) issues.push('Shorter than 8 characters — length is the strongest predictor of strength. Aim for 14+.');
   if (/^(.)\1+$/.test(pw)) { bits = Math.min(bits, 6); issues.push('All characters are identical.'); }
@@ -65,10 +67,6 @@ export function analyzePassword(pw) {
   if (/(.)\1{2,}/.test(pw)) { bits *= 0.85; issues.push('Contains a repeated character run (like “aaa” or “111”).'); }
   if (/^(19|20)\d{2}$/.test(pw) || /(19|20)\d{2}$/.test(pw)) issues.push('Ends with what looks like a year — dates are among the first patterns attackers try.');
   if (/^[A-Z][a-z]+\d+[!@#$]?$/.test(pw)) { bits *= 0.7; issues.push('Matches the very common “Word + digits + symbol” pattern.'); }
-  const guesses = Math.pow(2, Math.min(bits, 128));
-  const guessesPerSec = 1e10; // offline attack on a strong hash
-  const seconds = guesses / guessesPerSec;
-  const crackTime = humanSeconds(seconds);
   let verdict, cls;
   if (bits < 28) { verdict = 'Very weak'; cls = 'bad'; }
   else if (bits < 40) { verdict = 'Weak'; cls = 'bad'; }
@@ -80,20 +78,9 @@ export function analyzePassword(pw) {
   if (!/\d/.test(pw)) advice.push('Add digits.');
   if (!/[^A-Za-z0-9]/.test(pw)) advice.push('Add symbols.');
   if (!/[A-Z]/.test(pw) || !/[a-z]/.test(pw)) advice.push('Mix upper and lower case.');
-  if (!issues.length && !advice.length) advice.push('Nothing to fix — just never reuse this password on another site.');
-  return { bits, verdict, cls, crackTime, issues, advice, pool };
+  if (!issues.length && !advice.length) advice.push('No listed pattern detected; this does not prove the password is strong. Use a unique random password and a password manager.');
+  return { bits, verdict, cls, issues, advice, pool };
 }
-function humanSeconds(s) {
-  if (!Number.isFinite(s)) return 'beyond estimation';
-  if (s < 1) return 'instantly';
-  const units = [['second', 1], ['minute', 60], ['hour', 3600], ['day', 86400], ['month', 2629800], ['year', 31557600], ['thousand years', 31557600e3], ['million years', 31557600e6], ['billion years', 31557600e9]];
-  let out = 'instantly';
-  for (const [name, size] of units) {
-    if (s >= size) out = `${fmtCompact(s / size)} ${name}${s / size >= 2 ? 's' : ''}`;
-  }
-  return out;
-}
-const fmtCompact = (n) => n >= 1e12 ? n.toExponential(1).replace('e+', '×10^') : n.toLocaleString('en-US', { maximumFractionDigits: 1 });
 
 const defs = {
   'password-generator'(root) {
@@ -111,16 +98,18 @@ const defs = {
       const opts = {};
       sets.forEach((c) => { opts[c.querySelector('input').name] = c.querySelector('input').checked; });
       try {
-        const pw = generatePassword(Math.max(4, Math.min(256, Number(length.value) || 20)), { ...opts, excludeLookalikes: noLook.querySelector('input').checked });
+        const pw = generatePassword(Number(length.value), { ...opts, excludeLookalikes: noLook.querySelector('input').checked });
         out.set(pw);
-        const cs = buildCharset({ ...opts, excludeLookalikes: noLook.querySelector('input').checked }).length;
+        const cs = Array.from(buildCharset({ ...opts, excludeLookalikes: noLook.querySelector('input').checked })).length;
         const bits = passwordEntropyBits(pw.length, cs);
         meter.replaceChildren(
           h('div', { class: 'strength-meter' }, h('div', { style: `width:${Math.min(100, (bits / 128) * 100)}%;background:${bits >= 75 ? 'var(--success)' : bits >= 50 ? 'var(--warning)' : 'var(--danger)'}` })),
-          h('p', { class: 'status-line info', text: `Entropy: ${bits.toFixed(0)} bits (${bits >= 75 ? 'excellent' : bits >= 50 ? 'decent — go longer for critical accounts' : 'too weak for real accounts'}) · Alphabet size: ${cs} · Crack estimate: ${analyzePassword(pw).crackTime}` }));
+          h('p', { class: 'status-line info', text: `Entropy: ${bits.toFixed(0)} bits (${bits >= 75 ? 'excellent' : bits >= 50 ? 'decent — go longer for critical accounts' : 'too weak for real accounts'}) · Alphabet size: ${cs} · Assumes independent uniform random characters` }));
         status.set(`Generated a ${pw.length}-character password locally ✓`, 'success');
-      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+      } catch (e) { out.placeholder(); meter.replaceChildren(); status.set(e.message, 'error'); }
     };
+    root.addEventListener('input', () => { out.placeholder(); meter.replaceChildren(); status.set('Settings changed. Generate a new password.', 'info'); });
+    root.addEventListener('change', () => { out.placeholder(); meter.replaceChildren(); status.set('Settings changed. Generate a new password.', 'info'); });
     root.append(
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Length (4–256)', control: length }),
@@ -145,16 +134,15 @@ const defs = {
       meter.firstChild.style.width = `${Math.min(100, (r.bits / 100) * 100)}%`;
       meter.firstChild.style.background = r.cls === 'good' ? 'var(--success)' : r.cls === 'warn' ? 'var(--warning)' : 'var(--danger)';
       grid.set([
-        { label: 'Verdict', value: r.verdict, kind: r.cls },
-        { label: 'Entropy', value: `${r.bits.toFixed(0)} bits` },
+        { label: 'Heuristic verdict', value: r.verdict, kind: r.cls },
+        { label: 'Heuristic score (not entropy)', value: `${r.bits.toFixed(0)}` },
         { label: 'Length', value: `${pw.value.length}` },
-        { label: 'Crack time*', value: r.crackTime, kind: r.cls },
       ]);
       details.replaceChildren(
         ...(r.issues.length ? [h('div', { class: 'error-banner' }, h('div', {}, h('strong', { text: 'Weaknesses detected' }), ...r.issues.map((i) => h('div', { text: `• ${i}` }))))] : []),
         h('h3', { text: 'How to make it stronger', style: 'margin:14px 0 6px' }),
         h('ul', { style: 'margin:0;padding-left:20px;color:var(--text-2);font-size:.93rem' }, r.advice.map((a) => h('li', { text: a }))),
-        h('p', { class: 'hint', style: 'margin-top:10px', text: '*Crack time assumes an offline attack against a strong hash at 10 billion guesses per second. Against weak hashes or online forms, times shrink dramatically.' }));
+        h('p', { class: 'hint', style: 'margin-top:10px', text: 'This simple pattern heuristic cannot determine real entropy, predict crack time, detect breaches, or guarantee safety. Use unique randomly generated passwords and MFA.' }));
       status.set('Analysed locally ✓', 'success');
     };
     pw.addEventListener('input', render);
@@ -176,7 +164,7 @@ const defs = {
     const listWrap = h('div', { class: 'file-list' });
     let current = [];
     const PRESETS = {
-      alnum: buildCharset({}), hex: '0123456789abcdef', base58: '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz',
+      alnum: buildCharset({ symbols: false }), hex: '0123456789abcdef', base58: '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz',
       digits: '0123456789', letters: buildCharset({ digits: false, symbols: false }), all: buildCharset({ symbols: true }),
     };
     const render = () => {
@@ -187,16 +175,18 @@ const defs = {
     };
     const gen = () => {
       try {
-        const n = Math.max(1, Math.min(100, Number(count.value) || 1));
-        const len = Math.max(1, Math.min(256, Number(length.value) || 1));
-        count.value = String(n); length.value = String(len);
-        const charset = preset.value === 'custom' ? custom.value : PRESETS[preset.value];
-        if (!charset) throw new Error('Type a custom alphabet first.');
+        const n = Number(count.value), len = Number(length.value);
+        if (!Number.isInteger(n) || n < 1 || n > 100 || !Number.isInteger(len) || len < 1 || len > 256) throw new Error('Count and length must be whole numbers within the displayed limits.');
+        const raw = preset.value === 'custom' ? custom.value : PRESETS[preset.value];
+        if (!raw) throw new Error('Type a custom alphabet first.');
+        const charset = buildCharset({custom: raw});
         current = Array.from({ length: n }, () => Array.from({ length: len }, () => randomFrom(charset)).join(''));
         render();
-        status.set(`${n} strings of ${len} characters · entropy per string ≈ ${(len * Math.log2(charset.length)).toFixed(0)} bits`, 'success');
-      } catch (e) { status.set(e.message, 'error'); }
+        status.set(`${n} strings of ${len} characters · entropy per string ≈ ${(len * Math.log2(Array.from(charset).length)).toFixed(0)} bits`, 'success');
+      } catch (e) { current = []; render(); status.set(e.message, 'error'); }
     };
+    root.addEventListener('input', () => { current = []; render(); status.set('Settings changed. Generate new strings.', 'info'); });
+    root.addEventListener('change', () => { current = []; render(); status.set('Settings changed. Generate new strings.', 'info'); });
     root.append(
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'How many (1–100)', control: count }),

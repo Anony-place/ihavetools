@@ -196,6 +196,7 @@ export function parseConversionJson(text) {
 const B64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
 
 export function b64encode(text, urlSafe = false) {
+  for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); if (c >= 0xd800 && c <= 0xdbff) { if (i + 1 >= text.length || text.charCodeAt(i + 1) < 0xdc00 || text.charCodeAt(i + 1) > 0xdfff) throw new Error('Input contains an unpaired UTF-16 surrogate.'); i++; } else if (c >= 0xdc00 && c <= 0xdfff) throw new Error('Input contains an unpaired UTF-16 surrogate.'); }
   const bytes = new TextEncoder().encode(text);
   let bin = '';
   const CHUNK = 0x8000;
@@ -212,13 +213,15 @@ export function b64decode(text) {
     const bad = [...s].findIndex((ch) => !/[A-Za-z0-9+/=]/.test(ch));
     throw new Error(`This is not valid Base64: unexpected character "${s[bad] ?? '?'}" at position ${bad + 1}.`);
   }
+  if (s.includes('=') && s.length % 4 !== 0) throw new Error('This is not valid Base64: incomplete padding.');
   while (s.length % 4) s += '=';
   if (s.length % 4 !== 0) throw new Error('This is not valid Base64: its length is not a multiple of 4.');
   let bin;
   try { bin = atob(s); } catch { throw new Error('This is not valid Base64: the padding or character sequence is malformed.'); }
+  if (btoa(bin).replace(/=+$/, '') !== s.replace(/=+$/, '')) throw new Error('This is not valid Base64: non-zero padding bits.');
   const bytes = new Uint8Array(bin.length);
   for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
-  try { return new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+  try { return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); }
   catch { throw new Error('The Base64 decoded to bytes that are not valid UTF-8 text. If this was binary data, use a file tool instead.'); }
 }
 
@@ -285,13 +288,13 @@ export function groupDigits(str, size = 4) {
 }
 
 /* ═══════════════════════════ Timestamps ═══════════════════════════ */
-export function parseTimestamp(raw) {
+export function parseTimestamp(raw, unit = 'auto') {
   const s = String(raw).trim();
   if (!/^-?\d+$/.test(s)) throw new Error('A Unix timestamp is a whole number of seconds or milliseconds, like 1735689600 or 1735689600000.');
   let num = Number(s);
   if (!Number.isSafeInteger(num)) throw new Error('That number is too large to be a valid timestamp.');
-  if (Math.abs(num) >= 1e12) num = num; // ms
-  else num = num * 1000;
+  if (!['auto','seconds','milliseconds'].includes(unit)) throw new Error('Choose seconds, milliseconds or auto-detect.');
+  if (unit === 'seconds' || (unit === 'auto' && Math.abs(num) < 1e12)) num *= 1000;
   const d = new Date(num);
   if (Number.isNaN(d.getTime()) || Math.abs(num) > 8.64e15) throw new Error('That number is outside the range JavaScript dates support (year ~275760).');
   return d;
@@ -369,17 +372,21 @@ export function decodeJwt(token) {
   const t = token.trim();
   if (!t) throw new Error('Paste a JWT to decode.');
   const parts = t.split('.');
-  if (parts.length < 2) throw new Error('A JWT has three dot-separated parts (header.payload.signature). This token has fewer than two.');
+  if (parts.length !== 3) throw new Error('A JWT has three dot-separated parts (header.payload.signature). Encrypted five-part tokens are not supported.');
+  if (!/^[A-Za-z0-9_-]+$/.test(parts[0]) || !/^[A-Za-z0-9_-]+$/.test(parts[1]) || !/^[A-Za-z0-9_-]*$/.test(parts[2])) throw new Error('JWT parts must use the unpadded Base64URL alphabet.');
   let header, payload;
-  try { header = JSON.parse(b64urlToText(parts[0])); } catch { throw new Error('The header (first part) is not valid Base64URL-encoded JSON.'); }
-  try { payload = JSON.parse(b64urlToText(parts[1])); } catch { throw new Error('The payload (second part) is not valid Base64URL-encoded JSON.'); }
-  const claims = {};
+  try { header = parseConversionJson(b64urlToText(parts[0])); } catch { throw new Error('The header (first part) is not valid Base64URL-encoded JSON.'); }
+  try { payload = parseConversionJson(b64urlToText(parts[1])); } catch { throw new Error('The payload (second part) is not valid Base64URL-encoded JSON.'); }
+  if (!header || typeof header !== 'object' || Array.isArray(header) || !payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('JWT header and payload must be JSON objects.');
+  const claims = {}, invalidClaims = [];
   for (const key of ['iat', 'nbf', 'exp']) {
-    if (payload[key] !== undefined && Number.isFinite(Number(payload[key]))) {
-      claims[key] = { ts: Number(payload[key]) * 1000, text: new Date(Number(payload[key]) * 1000).toUTCString() };
+    if (payload[key] !== undefined) {
+      const ts = payload[key] * 1000;
+      if (typeof payload[key] !== 'number' || !Number.isFinite(ts) || !Number.isFinite(new Date(ts).getTime())) invalidClaims.push(key);
+      else claims[key] = { ts, text: new Date(ts).toUTCString() };
     }
   }
-  return { header, payload, claims, signature: parts[2] || null, algorithm: header.alg || null };
+  return { header, payload, claims, invalidClaims, signature: parts[2] || null, algorithm: header.alg || null };
 }
 
 /* Parser-based formatting is loaded only when a user requests it. */
@@ -553,6 +560,8 @@ const defs = {
         status.set(`${mode === 'encode' ? 'Encoded' : 'Decoded'} ✓ (${result.length.toLocaleString()} characters).`, 'success');
       } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
     };
+    root.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Run the conversion again.', 'info'); });
+    root.addEventListener('change', () => { out.placeholder(); status.set('Settings changed. Run the conversion again.', 'info'); });
     root.append(field({ label: 'Input', control: inp }),
       actionsRow(
         btn({ label: 'Encode → Base64', icon: 'arrow-right', onClick: () => run('encode') }),
@@ -578,6 +587,9 @@ const defs = {
         status.set(`${dir === 'encode' ? 'Encoded' : 'Decoded'} ✓`, 'success');
       } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
     };
+    mode.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { out.placeholder(); status.set('Scope changed. Run the conversion again.', 'info'); }));
+    root.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Run the conversion again.', 'info'); });
+    root.addEventListener('change', () => { out.placeholder(); status.set('Settings changed. Run the conversion again.', 'info'); });
     root.append(field({ label: 'Input', control: inp }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Scope', control: mode }),
@@ -631,6 +643,7 @@ const defs = {
   'timestamp-converter'(root) {
     const ts = input({ type: 'text', inputmode: 'numeric', placeholder: 'e.g. 1735689600' });
     const dateIn = input({ type: 'datetime-local' });
+    const unit = select({ options: [{v:'auto',t:'Auto-detect'}, {v:'seconds',t:'Seconds'}, {v:'milliseconds',t:'Milliseconds'}], value:'auto' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Conversion', copy: true });
     const showDate = (d) => {
@@ -638,18 +651,27 @@ const defs = {
       out.set(`ISO 8601 (UTC): ${p.iso}\nUTC:            ${p.utc}\nLocal:          ${p.local}\nUnix seconds:      ${p.seconds}\nUnix milliseconds: ${p.ms}\nRelative:       ${p.relative}`);
       status.set('Converted ✓', 'success');
     };
+    root.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Run the conversion again.', 'info'); });
+    root.addEventListener('change', () => { out.placeholder(); status.set('Settings changed. Run the conversion again.', 'info'); });
     root.append(
-      field({ label: 'Unix timestamp', control: ts, hint: 'Seconds or milliseconds — auto-detected' }),
+      field({ label: 'Unix timestamp', control: ts }),
+      field({ label: 'Timestamp unit', control: unit, hint: 'Auto uses milliseconds for absolute values ≥ 1 trillion; choose a unit explicitly for ambiguous dates.' }),
       actionsRow(btn({ label: 'Convert to date', icon: 'clock', onClick: () => {
-        try { showDate(parseTimestamp(ts.value)); }
+        try { showDate(parseTimestamp(ts.value, unit.value)); }
         catch (e) { out.placeholder(); status.set(e.message, 'error'); }
       } }),
-        btn({ label: 'Now', variant: 'secondary', onClick: () => { ts.value = String(Math.floor(Date.now() / 1000)); showDate(new Date()); } })),
+        btn({ label: 'Now', variant: 'secondary', onClick: () => { const now = new Date(); unit.value = 'milliseconds'; ts.value = String(now.getTime()); showDate(now); } })),
       h('div', { class: 'field-row', style: 'align-items:end; margin-top:6px' },
         field({ label: '…or pick a date', control: dateIn }),
         field({ label: ' ', control: btn({ label: 'Convert to timestamp', variant: 'secondary', icon: 'calendar', onClick: () => {
-          if (!dateIn.value) { status.set('Pick a date first.', 'warning'); return; }
-          showDate(new Date(dateIn.value));
+          try {
+            if (!dateIn.value) throw new Error('Pick a date first.');
+            const date = new Date(dateIn.value);
+            if (!Number.isFinite(date.getTime())) throw new Error('This date cannot be interpreted by your browser.');
+            const local = `${String(date.getFullYear()).padStart(4, '0')}-${String(date.getMonth()+1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+            if (!dateIn.value.startsWith(local)) throw new Error('This local time does not exist in your timezone. Choose another time.');
+            showDate(date); status.set('Interpreted in your browser local timezone; repeated daylight-saving times are ambiguous.', 'info');
+          } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
         } }) })),
       status, h('br'), out.panel);
   },
@@ -661,14 +683,18 @@ const defs = {
     const zone = h('div');
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Digest', copy: true });
-    const compute = async (buffer, sourceDesc) => {
+    let revision = 0;
+    const invalidate = () => { revision++; out.placeholder(); status.set('Input or settings changed. Hash again.', 'info'); };
+    [inp, algo, enc].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
+    const compute = async (buffer, sourceDesc, token = ++revision) => {
+      const a = algo.value, encoding = enc.value;
+      out.placeholder(); status.set(`Computing ${a}…`, 'info');
       try {
-        const a = algo.value;
         const bytes = await digest(a, buffer);
-        const hex = toHex(bytes);
-        out.set(enc.value === 'hex' ? hex : toB64(bytes));
+        if (token !== revision) return;
+        out.set(encoding === 'hex' ? toHex(bytes) : toB64(bytes));
         status.set(`${a} of ${sourceDesc} ✓`, 'success');
-      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+      } catch (e) { if (token === revision) { out.placeholder(); status.set(e.message, 'error'); } }
     };
     root.append(
       h('div', { class: 'field-row', style: 'align-items:end' },
@@ -681,15 +707,17 @@ const defs = {
       status, h('br'), out.panel,
       h('div', { style: 'margin-top:18px' },
         h('h3', { text: '…or hash a file' }),
-        h('div', { class: 'field' }, h('span', { class: 'hint', text: 'Useful for verifying downloads. The file is read locally.' })),
+        h('div', { class: 'field' }, h('span', { class: 'hint', text: 'Useful for verifying downloads. Files up to 100 MiB are read locally into memory.' })),
         zone));
     zone.append(h('div', { style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' },
-      h('label', { class: 'btn btn-secondary', style: 'cursor:pointer' }, h('span', { html: require_icon('file'), style: 'display:inline-flex' }), 'Choose file',
+      h('label', { class: 'btn btn-secondary', style: 'cursor:pointer' }, 'Choose file',
         h('input', { type: 'file', style: 'display:none', onchange: (e) => {
           const f = e.target.files[0];
           if (!f) return;
+          const token = ++revision; out.placeholder();
+          if (f.size > 100 * 1024 * 1024) { status.set('Choose a file no larger than 100 MiB.', 'error'); return; }
           status.set(`Reading ${f.name} (${fmtBytes(f.size)})…`, 'info');
-          readFile(f, 'buffer').then((buf) => compute(buf, f.name)).catch((err) => status.set(err.message, 'error'));
+          readFile(f, 'buffer').then((buf) => { if (token === revision) compute(buf, f.name, token); }).catch((err) => { if (token === revision) { out.placeholder(); status.set(err.message, 'error'); } });
         } }))));
   },
 
@@ -750,25 +778,26 @@ const defs = {
     const inp = textarea({ rows: 6, placeholder: 'Paste a JWT — it looks like eyJhbGciOi…' });
     const status = statusLine('Ready.');
     const detail = h('div', { class: 'tool-docs', style: 'gap:14px' });
+    inp.addEventListener('input', () => { detail.replaceChildren(); status.set('Input changed. Decode again.', 'info'); });
     const run = () => {
       detail.replaceChildren();
       try {
-        const { header, payload, claims, signature, algorithm } = decodeJwt(inp.value);
+        const { header, payload, claims, invalidClaims, signature, algorithm } = decodeJwt(inp.value);
         const fmt = (obj) => h('pre', { text: JSON.stringify(obj, null, 2) });
-        const panel = (label, node) => h('section', { class: 'result-panel' },
-          h('div', { class: 'result-head' }, h('span', { class: 'result-label', text: label }), h('span', { class: 'spacer' }), copyButton(() => JSON.stringify(node ?? {}, null, 2))),
-          h('div', { class: 'result-body' }, node));
+        const panel = (label, obj) => h('section', { class: 'result-panel' },
+          h('div', { class: 'result-head' }, h('span', { class: 'result-label', text: label }), h('span', { class: 'spacer' }), copyButton(() => JSON.stringify(obj, null, 2))),
+          h('div', { class: 'result-body' }, fmt(obj)));
         detail.append(
-          panel('Header', fmt(header)),
-          panel('Payload', fmt(payload)));
+          panel('Header', header),
+          panel('Payload', payload));
         const expInfo = claims.exp
           ? (claims.exp.ts > Date.now()
-            ? h('p', { class: 'status-line success', text: `Token expires: ${claims.exp.text} (valid for ${relTime(new Date(claims.exp.ts))}).` })
-            : h('p', { class: 'status-line error', text: `Token EXPIRED: ${claims.exp.text} (${relTime(new Date(claims.exp.ts))}).` }))
-          : h('p', { class: 'status-line info', text: 'No exp (expiry) claim found.' });
+            ? h('p', { class: 'status-line success', text: `Unverified claim expires: ${claims.exp.text} (${relTime(new Date(claims.exp.ts))}).` })
+            : h('p', { class: 'status-line error', text: `Unverified expiry claim is in the past: ${claims.exp.text} (${relTime(new Date(claims.exp.ts))}).` }))
+          : h('p', { class: 'status-line info', text: invalidClaims.includes('exp') ? 'The expiry claim is not a valid numeric date.' : 'No exp (expiry) claim found.' });
         detail.append(h('div', {},
           expInfo,
-          h('p', { class: 'status-line info', text: `Algorithm: ${algorithm || 'not specified'}. Signature: ${signature ? 'present (not verified — decoding only).' : 'missing (unsigned token).'}` })),
+          h('p', { class: 'status-line info', text: `Algorithm: ${algorithm || 'not specified'}. Signature: ${signature ? 'present (not verified — decoding only).' : 'empty (not verified).'}` })),
           h('p', { class: 'hint', text: 'Decoding only verifies structure, not authenticity. Signature verification requires the secret or public key and should happen on a server.' }));
         status.set('Decoded ✓', 'success');
       } catch (e) { status.set(e.message, 'error'); }

@@ -1049,7 +1049,7 @@ await domTest('image resizer invalidates stale encodes, revokes previews and bou
 console.log('\n── All registered tool UI mount smoke test ──');
 await domTest('all 128 registered tools mount in jsdom',async()=>{
  const {tools}=await import('../assets/js/registry.js'); const issues=[];
- for (const tool of tools) {try {await loadToolPage(tool.id,tool.engine);} catch(e){issues.push(`${tool.id}: ${e.message}`);}}
+ for (const tool of tools) {try {const app=await loadToolPage(tool.id,tool.engine); assert.doesNotMatch(app.textContent,/Something went wrong while starting this tool\.|This tool could not load\./);} catch(e){issues.push(`${tool.id}: ${e.message}`);}}
  assert.deepEqual(issues,[]);
 });
 await domTest('compound interest always contributes monthly for yearly compounding',async()=>{
@@ -1107,6 +1107,31 @@ await domTest('finance UI avoids misleading GST labels, stale outputs and rounde
   app=await loadToolPage('rd-calculator','calculators'); fields=app.querySelectorAll('input[type=number]'); fields[2].value='1.5'; click(btnByLabel(app,'Calculate RD')); assert.match(statusText(document),/whole number/); assert.equal(app.querySelectorAll('.stat-card').length,0);
   app=await loadToolPage('tip-calculator','calculators'); fields=app.querySelectorAll('input[type=number]'); fields[0].value='100'; fields[2].value='2.5'; click(btnByLabel(app,'Calculate tip')); assert.match(statusText(document),/whole number/);
   app=await loadToolPage('simple-interest-calculator','calculators'); fields=app.querySelectorAll('input[type=number]'); fields[1].value=''; click(btnByLabel(app,'Calculate interest')); assert.match(statusText(document),/rate/); assert.doesNotMatch(app.textContent,/NaN/);
+});
+
+await domTest('hash results ignore stale asynchronous digests', async () => {
+  const previous=Object.getOwnPropertyDescriptor(global,'crypto'); const pending=[];
+  Object.defineProperty(global,'crypto',{configurable:true,value:{subtle:{digest:(algo,buffer)=>new Promise(resolve=>pending.push({algo,buffer,resolve}))}}});
+  try { const app=await loadToolPage('hash-generator','developer'), text=app.querySelector('textarea');
+    text.value='first'; click(btnByLabel(app,'Hash text')); text.value='second'; fire(text,'input'); click(btnByLabel(app,'Hash text'));
+    assert.equal(pending.length,2); pending[1].resolve(new Uint8Array([2]).buffer); await new Promise(r=>setTimeout(r,10));
+    pending[0].resolve(new Uint8Array([1]).buffer); await new Promise(r=>setTimeout(r,10)); assert.equal(resultText(document),'02');
+    text.value='third'; fire(text,'input'); assert.ok(!app.querySelector('.result-panel').dataset.has);
+  } finally { if(previous) Object.defineProperty(global,'crypto',previous); else delete global.crypto; }
+});
+await domTest('timestamp explicit milliseconds and JWT payload copy are correct', async () => {
+  let app=await loadToolPage('timestamp-converter','developer'); app.querySelector('input[type=text]').value='1000'; app.querySelector('select').value='milliseconds'; click(btnByLabel(app,'Convert to date')); assert.match(resultText(document),/1970-01-01T00:00:01.000Z/);
+  app=await loadToolPage('jwt-decoder','developer'); const header=Buffer.from('{"alg":"none"}').toString('base64url'), payload=Buffer.from('{"sub":"abc"}').toString('base64url'); app.querySelector('textarea').value=`${header}.${payload}.`; click(btnByLabel(app,'Decode'));
+  let copied=''; const oldClip=Object.getOwnPropertyDescriptor(navigator,'clipboard'), oldSecure=window.isSecureContext;
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{copied=text;}}}); window.isSecureContext=true;
+  try { const panels=app.querySelectorAll('.result-panel'); click(btnByLabel(panels[1],'Copy')); await new Promise(r=>setTimeout(r,10)); assert.deepEqual(JSON.parse(copied),{sub:'abc'}); }
+  finally { if(oldClip) Object.defineProperty(navigator,'clipboard',oldClip); else delete navigator.clipboard; window.isSecureContext=oldSecure; }
+});
+await domTest('random strings deduplicate custom alphabets and clear outputs on invalid input', async () => {
+  const app=await loadToolPage('random-string-generator','security'); const inputs=app.querySelectorAll('input[type=number]'), sel=app.querySelector('select'); inputs[0].value='2'; inputs[1].value='8'; sel.value='custom'; fire(sel,'change');
+  const custom=app.querySelector('input[type=text]'); custom.value='😀😀'; fire(custom,'input'); click(btnByLabel(app,'Generate'));
+  assert.equal(app.querySelectorAll('.file-row').length,2); for(const code of app.querySelectorAll('.file-row code')) assert.equal(code.textContent,'😀'.repeat(8)); assert.match(statusText(document),/0 bits/);
+  inputs[0].value='1.5'; fire(inputs[0],'input'); click(btnByLabel(app,'Generate')); assert.match(statusText(document),/whole numbers/); assert.equal(app.querySelectorAll('.file-row').length,0);
 });
 
 /* ═════════════════ summary ═════════════════ */

@@ -604,6 +604,17 @@ Continue the audit requested by the user; no new tools or thin pages.
 
 ---
 
+## 🚧 BATCH-22 — Developer and security tool reliability
+
+1. Audit Base64, URL encoding, timestamps, JWT, hashing and password tools for
+   silent data corruption, misleading claims, edge cases and async races.
+2. Repair confirmed issues, document assumptions, and add independent vectors
+   and targeted UI regressions; avoid claiming exhaustive security validation.
+3. Run all checks and dependency audit, update TOOL-AUDIT.md, ship one PR and
+   verify its production deployment.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha

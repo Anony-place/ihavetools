@@ -71,7 +71,7 @@
 - [Power Converter](https://i-have-tools.vercel.app/tools/power-converter/): Convert watts, kilowatts and mechanical or metric horsepower.
 - [Fuel Economy Converter](https://i-have-tools.vercel.app/tools/fuel-economy-converter/): Convert km/L, L/100 km and US or UK mpg.
 - [Password Generator](https://i-have-tools.vercel.app/tools/password-generator/): Strong random passwords with entropy readout — all local.
-- [Password Strength Checker](https://i-have-tools.vercel.app/tools/password-strength-checker/): Entropy, crack-time estimates and weakness checks — locally.
+- [Password Strength Checker](https://i-have-tools.vercel.app/tools/password-strength-checker/): Check selected password patterns locally; not a strength guarantee.
 - [Random String Generator](https://i-have-tools.vercel.app/tools/random-string-generator/): Bulk random strings and keys from your browser’s CSPRNG.
 - [Image Compressor](https://i-have-tools.vercel.app/tools/image-compressor/): Shrink JPG, PNG and WebP in your browser — no uploads.
 - [Image Resizer](https://i-have-tools.vercel.app/tools/image-resizer/): Resize images to exact pixels, keeping the aspect ratio.
