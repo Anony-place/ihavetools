@@ -806,6 +806,29 @@ for (const [id, query, expected] of [
   });
 }
 
+console.log('\n── Batch-13 calendar UIs ──');
+await domTest('age shared link respects leap policy and clears stale results',async()=>{
+ const app=await loadToolPage('age-calculator','calculators','?dob=2000-02-29&at=2023-02-28&leap=mar1'); assert.match(app.textContent,/22y 11m 27dAge/); assert.match(app.textContent,/2023-03-01Next birthday/);
+ const sel=app.querySelector('select'); sel.value='feb28'; click(btnByLabel(app,'Calculate age')); assert.match(app.textContent,/23y 0m 0dAge/); assert.match(app.textContent,/TodayBirthday today/);
+ app.querySelector('input[type=date]').value=''; click(btnByLabel(app,'Calculate age')); assert.doesNotMatch(app.textContent,/23y 0m 0dAge/); assert.match(app.textContent,/Pick a date of birth/);
+});
+await domTest('date difference month end and include end show consistent counts',async()=>{
+ const app=await loadToolPage('date-difference','datetime'); const dates=app.querySelectorAll('input[type=date]'); dates[0].value='2024-01-31'; dates[1].value='2024-03-01'; click(btnByLabel(app,'Calculate difference')); assert.match(app.textContent,/30Total days.*0y 1m 1dCalendar/s);
+ app.querySelector('.switch input').checked=true;click(btnByLabel(app,'Calculate difference'));assert.match(app.textContent,/31Total days.*0y 1m 1dCalendar/s);assert.match(app.textContent,/calendar breakdown excludes the end date/);
+});
+await domTest('date add rejects fractional amount and clears output',async()=>{
+ const app=await loadToolPage('date-add-calculator','datetime');app.querySelector('input[type=date]').value='2024-01-31'; app.querySelector('input[type=number]').value='1'; app.querySelector('select').value='months';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/2024-02-29ISO/);
+ app.querySelector('input[type=number]').value='1.5';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/whole number/);assert.doesNotMatch(app.textContent,/2024-02-29ISO/);
+});
+await domTest('time zone UI reports missing and ambiguous local times',async()=>{
+ const app=await loadToolPage('time-zone-converter','datetime'); const date=app.querySelector('input[type=date]'),time=app.querySelector('input[type=time]'),[from,to]=app.querySelectorAll('select'); from.value='America/New_York';to.value='UTC';date.value='2024-03-10';time.value='02:30';click(btnByLabel(app,'Convert'));assert.match(app.textContent,/does not exist/);
+ date.value='2024-11-03';time.value='01:30';click(btnByLabel(app,'Convert'));assert.match(app.textContent,/occurs twice/);
+});
+await domTest('ISO week UI returns the right week-year around New Year',async()=>{
+ const app=await loadToolPage('iso-week-calculator','datetime');app.querySelector('input[type=date]').value='2021-01-01';click(btnByLabel(app,'Calculate ISO'));assert.match(app.textContent,/2020-W53ISO week.*2020-12-28Week starts Monday.*2021-01-03Week ends Sunday/s);
+ app.querySelector('input[type=date]').value='';click(btnByLabel(app,'Calculate ISO'));assert.match(app.textContent,/valid date/);assert.doesNotMatch(app.textContent,/2020-W53ISO week/);
+});
+
 console.log('\n── Batch-11 privacy and sharing ──');
 await domTest('opt-in share copies fragment only, round trips inputs and clears stale generated links', async () => {
   const originalClipboard=Object.getOwnPropertyDescriptor(navigator,'clipboard'); const oldSecure=Object.getOwnPropertyDescriptor(window,'isSecureContext'); let copied;

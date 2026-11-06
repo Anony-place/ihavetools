@@ -459,20 +459,21 @@ export const tools = [
         p: 'A shop that buys at ₹600 and marks up 25% prices at ₹750; a “20% off” sale on ₹750 brings it to ₹600 — back to cost, not below. Markup is calculated on cost, discount on selling price, so equal percentages do not cancel out: +25% then −20% returns exactly to the start (as does any +x% followed by −x÷(1+x)%). Knowing this pair makes both sale tags and salary-hike percentages much easier to read.' },
     ] }),
   T({ id: 'age-calculator', name: 'Age Calculator', icon: 'cake', engine: 'calculators', categories: ['calculators', 'datetime'],
+    related: ["iso-week-calculator","work-hours-calculator","business-day-calculator","sip-calculator","percentage-calculator","income-tax-calculator"],
     blurb: 'Exact age in years, months and days — plus the next birthday.',
     description: 'Calculate an exact age from a date of birth in years, months and days, total days lived, and a countdown to the next birthday.',
     keywords: ['age', 'date of birth', 'birthday', 'how old am i', 'age calculator'],
     aliases: ['how old am i', 'birthday calculator', 'dob calculator'],
     popularity: 88, added: '2026-06-01',
-    steps: 'Pick your date of birth.|Optionally set an “age at date” other than today.|Read your exact age, total days and next-birthday countdown.',
+    steps: 'Pick your date of birth.|Optionally set an “age at date” other than today.|Read your calendar age, total days and next-birthday countdown.',
     faqs: [
       { q: 'Can I calculate age on a specific date, not just today?', a: 'Yes — set the optional “age at date” field. This is what exam and job forms mean by “age as on 1 January”: your completed years/months/days on that exact date, which can decide eligibility.' },
-      { q: 'Why does my exact age in months/days sometimes look one day off?', a: 'Because months have different lengths. Exact age counts completed years, then completed months, then the leftover days — borrowing days from the previous month when needed. Leap years (an extra day every 4 years) are counted in your total days.' },
-      { q: 'I was born on 29 February. When do I officially get older?', a: 'It depends on the form and country — many treat 1 March as the birthday in non-leap years, others use 28 February. For eligibility forms, use whichever date the form’s rules specify; your total completed years still increase once every year.' },
+      { q: 'Why does my exact age in months/days sometimes look one day off?', a: 'Because months have different lengths. Exact age counts completed years, then completed months, then the leftover days — clamping a month-end anniversary to the last day when needed. Gregorian leap years are counted in total days.' },
+      { q: 'I was born on 29 February. When do I officially get older?', a: 'It depends on the form and country — many treat 1 March as the birthday in non-leap years, others use 28 February. Select February 28 or March 1 in the tool. For eligibility, check the relevant authority’s rule; this calculator does not determine legal age.' },
     ],
     guide: [
       { h: 'How exact age is calculated',
-        p: 'Your age is counted in completed units: full years first, then full months since your last birthday-month, then the remaining days. When the current day-of-month is smaller than your birth day, days are “borrowed” from the previous month — which is why the result depends on whether that month had 28, 30 or 31 days. This tool also adds everything up into total days, weeks and hours, and counts down to your next birthday.' },
+        p: 'Your age is counted in completed units: full years first, then full months since your last birthday-month, then the remaining days. The calculator counts months from the latest birthday, clamping to the last day of a shorter target month, then counts remaining calendar days. Other conventions can give a different breakdown. This tool also adds everything up into total days, weeks and hours, and counts down to your next birthday.' },
       { h: 'Where exact age actually matters', list: [
         'School admissions: many boards require a child to be a certain age “as on” a cut-off date (often 31 December or 31 March) — a few days can shift the admission year.',
         'Government exams and jobs: eligibility is checked against a fixed “age as on” date printed in the notification, not the day you fill the form.',
@@ -480,7 +481,7 @@ export const tools = [
         'Forms that ask for age in years-months-days rather than just a date of birth — copy the breakdown straight from the result above.',
       ] },
       { h: 'Leap years and your total days',
-        p: 'Every February 29 you have lived through adds an extra day to your total. Someone born on 29 February 2000, for example, has lived 9,741 days by 31 October 2026 (26 years, 8 months, 2 days) — including 6 leap days since their birth. It’s also why two people with the same age in years can differ by a day in total days lived.' },
+        p: 'Every February 29 you have lived through adds an extra day to your total. Someone born on 29 February 2000, for example, has lived 9,741 days by 31 October 2026 (26 years, 8 months, 3 days) — counting leap days in the calendar interval. It’s also why two people with the same age in years can differ by a day in total days lived.' },
     ] }),
   T({ id: 'bmi-calculator', name: 'BMI Calculator', icon: 'activity', engine: 'calculators', categories: ['calculators'],
     blurb: 'Body Mass Index in metric or imperial, with WHO categories.',
@@ -995,7 +996,7 @@ export const tools = [
     popularity: 70, added: '2026-06-12',
     steps: 'Enter two fractions (mixed numbers allowed, e.g. 2 1/2).|Choose the operation.|Read the simplified result, mixed form, decimal and working.' }),
   T({ id: 'time-duration-calculator', name: 'Time Duration Calculator', icon: 'hourglass', engine: 'student', categories: ['student', 'datetime'],
-    related: ["business-day-calculator","work-hours-calculator","cgpa-calculator","attendance-calculator","electricity-cost-calculator","scientific-calculator"],
+    related: ["iso-week-calculator","business-day-calculator","work-hours-calculator","cgpa-calculator","attendance-calculator","electricity-cost-calculator"],
     blurb: 'Add or subtract durations like 2h 45m + 30m.',
     description: 'Add or subtract durations in hours, minutes and seconds — and total a list of durations, like a timesheet. Handles borrowing and carrying correctly.',
     keywords: ['time duration', 'add time', 'hours minutes', 'timesheet', 'time math'],
@@ -1050,29 +1051,52 @@ export const tools = [
     ] }),
 
   // ── Date & Time ────────────────────────────────────────────────────────────
-  T({ id: 'date-difference', name: 'Date Difference', icon: 'calendar', engine: 'datetime', categories: ['datetime'],
-    related: ["business-day-calculator","time-zone-converter","date-add-calculator","age-calculator","timestamp-converter","work-hours-calculator"],
-    blurb: 'Days, weeks, months and weekdays between two dates.',
-    description: 'Count the time between two dates in days, weeks, months and years — with business days and weekends counted separately.',
-    keywords: ['date difference', 'days between', 'duration', 'business days', 'weekday'],
-    aliases: ['days between dates', 'date duration', 'days calculator'],
-    popularity: 82, added: '2026-06-01',
-    steps: 'Pick a start date and an end date.|Optionally include the end date in the count.|Read the difference in every useful unit.' }),
-  T({ id: 'date-add-calculator', name: 'Date Add / Subtract', icon: 'calendar-plus', engine: 'datetime', categories: ['datetime'],
-    related: ["business-day-calculator","date-difference","time-zone-converter","age-calculator","timestamp-converter","work-hours-calculator"],
-    blurb: 'Add or subtract days, weeks, months or years from a date.',
-    description: 'Find the date that is N days, weeks, months or years from a start date — before or after. Month-end handling follows standard date arithmetic.',
-    keywords: ['add days', 'subtract days', 'date math', 'deadline', 'due date'],
-    aliases: ['add days to date', 'date plus days', 'deadline calculator'],
-    popularity: 64, added: '2026-09-14',
-    steps: 'Pick a start date.|Enter the amount and unit to add or subtract.|Read the resulting date and weekday.' }),
+  T({ id:'date-difference', name:'Date Difference', icon:'calendar', engine:'datetime', categories:['datetime'],
+    related:['iso-week-calculator','business-day-calculator','date-add-calculator','age-calculator','time-zone-converter','work-hours-calculator'],
+    blurb:'Days, weeks, calendar difference and weekdays between two dates.', description:'Count calendar days and weekdays between dates, with an optional inclusive end day and a year-month-day breakdown.',
+    keywords:['date difference','days between','duration','business days','weekday'], aliases:['days between dates','date duration','days calculator'], popularity:82, added:'2026-06-01',
+    steps:'Pick a start date and an end date.|Optionally include the end day in totals.|Read calendar difference, weekdays, weeks and days.',
+    faqs:[
+      {q:'What does include the end day change?',a:'It adds one to the day count and affects week, weekday, weekend and hour totals. The calendar years-months-days breakdown always excludes the end date.'},
+      {q:'What if dates are reversed?',a:'The calculator sorts the dates and reports the magnitude; the earlier date is the start for weekday counting.'},
+      {q:'Does this count public holidays?',a:'No. Business days exclude Saturday and Sunday only. Use the Business Day Calculator to enter holidays manually.'},
+      {q:'Are the hours actual elapsed hours?',a:'No. Hours are 24 times the number of calendar days. Time zones, daylight-saving clock changes and time of day are not included.'}
+    ],guide:[
+      {h:'Day counts and calendar breakdown',p:'The day total counts from the earlier date up to but excluding the later date, unless include-end is selected. The calendar breakdown always counts completed years first, then months from the last anniversary, then remaining calendar days; a month-end anniversary is clamped to the last day of the target month.'},
+      {h:'Worked month-end example',p:'From 31 January to 1 March 2024 is 30 calendar days. The year-month-day breakdown is 0 years, 1 month and 1 day: one month after January 31 is February 29, then one day remains. Including the end day makes the total 31 days but does not change the calendar breakdown.'},
+      {h:'Weekdays and limitations',list:['Weekdays are Monday through Friday and do not exclude holidays.', 'Reversed dates are treated as an absolute interval.', 'A date-only hour figure assumes 24 hours per calendar day, not actual time elapsed across clock changes.', 'Supported input dates are 1900 through 2100. Different month-counting conventions can yield different breakdowns.']}
+    ] }),
+  T({ id:'date-add-calculator', name:'Date Add / Subtract', icon:'calendar-plus', engine:'datetime', categories:['datetime'],
+    related:['iso-week-calculator','business-day-calculator','date-difference','age-calculator','time-zone-converter','work-hours-calculator'],
+    blurb:'Add or subtract days, weeks, months or years from a date.', description:'Add or subtract whole calendar days, weeks, months or years from a date with month-end clamping.',
+    keywords:['add days','subtract days','date math','deadline','due date'], aliases:['add days to date','date plus days','deadline calculator'], popularity:64, added:'2026-09-14',
+    steps:'Pick a start date.|Enter a positive whole amount, unit and direction.|Read the resulting date and weekday.',
+    faqs:[
+      {q:'How are month-end dates handled?',a:'When the target month lacks the original day, the result is clamped to its final day. January 31 plus one month is February 28 or 29.'},
+      {q:'Can I use fractional or negative amounts?',a:'No. Enter a positive whole number and choose Add or Subtract. The supported amount is 1 to 100,000 and dates must remain in 1900–2100.'},
+      {q:'Does adding one year preserve February 29?',a:'If the target year is not a leap year, February 29 is clamped to February 28.'},
+      {q:'What does Unix seconds mean here?',a:'It represents the browser’s local start of that date, not UTC midnight. Time-zone rules can shift or skip local midnight; if an entire local date is skipped, the tool reports an error.'}
+    ],guide:[
+      {h:'Calendar rather than business days',p:'Adding days or weeks moves through every calendar date, including weekends and holidays. For working days with manual holidays, use the Business Day Calculator.'},
+      {h:'Month-end example',p:'31 January 2024 plus one month is 29 February 2024, because February has 29 days that year. The same calculation in 2023 ends on 28 February.'},
+      {h:'Check the convention',list:['Enter a positive whole number and select the direction.', 'Month and year operations clamp once to the target month; adding and then subtracting may not recover the original date.', 'Input and result dates must be between 1900 and 2100. Unix seconds use the browser’s local midnight.']}
+    ] }),
   T({ id: 'time-zone-converter', name: 'Time Zone Converter', icon: 'globe', engine: 'datetime', categories: ['datetime', 'developer'],
     blurb: 'Convert a time between any two IANA time zones.',
     description: 'Convert a specific time between time zones using your browser’s built-in IANA database — accurate daylight-saving handling included.',
     keywords: ['time zone', 'timezone', 'utc', 'gmt', 'convert time', 'meeting planner', 'dst'],
     aliases: ['timezone converter', 'utc converter', 'gmt converter'],
     popularity: 68, added: '2026-09-14',
-    steps: 'Pick a date and time, and its time zone.|Choose the target time zone.|Read the converted time with the UTC offset for both zones.' }),
+    steps: 'Pick a date and time, and its time zone.|Choose the target time zone.|Read the converted time with the UTC offset for both zones.',
+    faqs:[
+      {q:'What happens during a spring clock change?',a:'If the chosen local time does not exist because the clock jumps forward, the tool reports an error. Choose an unambiguous local time.'},
+      {q:'What happens when a local time occurs twice?',a:'The tool reports an ambiguous time rather than guessing an occurrence. Choose an unambiguous time; it does not offer an earlier/later occurrence selector.'},
+      {q:'Where do time-zone rules come from?',a:'The conversion uses your browser’s Intl time-zone database. Historical rules and future changes depend on the browser and system version.'}
+    ],guide:[
+      {h:'Converting wall time',p:'Choose the local date and time in the source zone. The tool resolves that wall time to an instant, then displays it in the target zone using the browser’s time-zone data.'},
+      {h:'Worked example',p:'On 15 January 2024, noon in New York (UTC−05:00) is 17:00 in London (UTC+00:00). Seasonal offsets can differ on other dates.'},
+      {h:'Clock changes and limits',list:['A time skipped by a forward clock change does not exist and is rejected.', 'A time repeated by a backward change has two possible instants and is rejected rather than silently guessed.', 'Dates are limited to 1900–2100. Browser time-zone data may not reflect the latest changes; verify important appointments independently.']}
+    ] }),
 
   // ── Data ───────────────────────────────────────────────────────────────────
   T({ id: 'csv-to-json', name: 'CSV to JSON', icon: 'table', engine: 'data', categories: ['data', 'developer'],
@@ -2026,7 +2050,7 @@ export const tools = [
       { h: 'Avoid overstating profit', list: ['Include direct costs, shipping, fees and other expenses appropriate to your decision.', 'Be consistent about whether your inputs include or exclude tax.', 'This is arithmetic on the supplied amounts, not an accounting or tax determination.'] },
     ] }),
   T({ id: 'business-day-calculator', name: 'Business Day Calculator', icon: 'calendar', engine: 'datetime', categories: ['datetime', 'calculators'],
-    related: ['date-difference', 'date-add-calculator', 'work-hours-calculator', 'time-duration-calculator'],
+    related: ["iso-week-calculator","date-difference","date-add-calculator","work-hours-calculator","time-duration-calculator"],
     blurb: 'Count working days or calculate a deadline with custom holidays.',
     description: 'Count business days between dates or add and subtract working days with selectable weekends and manually entered holidays.',
     keywords: ['business day calculator', 'working days calculator', 'add business days', 'working days between dates', 'business day deadline'],
@@ -2117,6 +2141,21 @@ export const tools = [
       {h:'Weighted mean formula',p:'Weighted mean = Σ(value × weight) ÷ Σ(weight). Larger weights have greater influence. Weights may be counts, credit hours or percentages; use the same meaning consistently.'},
       {h:'Worked example',p:'For scores 80 and 90 with weights 3 and 2, the weighted sum is 80 × 3 + 90 × 2 = 420. Total weight is 5, so the weighted average is 84.'},
       {h:'Avoid common mistakes',list:['Do not average the weights; divide the weighted sum by their total.', 'Use a non-negative weight for each value and at least one positive weight.', 'The result is arithmetic, not a course policy: confirm how your institution applies credits, rounding and exclusions.']}
+    ] }),
+  T({ id:'iso-week-calculator', name:'ISO Week Number Calculator', icon:'calendar', engine:'datetime', categories:['datetime','calculators'],
+    related:['date-difference','date-add-calculator','business-day-calculator','age-calculator','time-zone-converter'],
+    blurb:'Find an ISO week number, week-year and Monday-to-Sunday dates.', description:'Find the ISO 8601 week number, week-based year and Monday-to-Sunday range for a date.',
+    keywords:['iso week number calculator','week number','iso week date','what week of the year'], aliases:['week number calculator','ISO week calculator'], popularity:72, added:'2026-11-06',
+    steps:'Choose a date from 1900 to 2100.|Click Calculate ISO week.|Read the week-year, week number and Monday-to-Sunday range.',
+    faqs:[
+      {q:'What is an ISO week?',a:'An ISO week runs Monday through Sunday. Week 1 is the week containing January 4, equivalently the first Thursday of the year.'},
+      {q:'Can the ISO week-year differ from the calendar year?',a:'Yes. Early January can belong to the previous week-year and late December can belong to the next week-year.'},
+      {q:'Does every year have 52 ISO weeks?',a:'No. ISO week-years can have 52 or 53 weeks, depending on the calendar.'},
+      {q:'What date range is supported?',a:'Input dates are limited to 1900 through 2100. The displayed Monday or Sunday can fall just outside that range.'}
+    ],guide:[
+      {h:'How ISO weeks work',p:'ISO week 1 contains January 4 and begins on a Monday. The ISO week-year is the calendar year of that week’s Thursday. Weekdays are numbered Monday 1 through Sunday 7.'},
+      {h:'Year-boundary example',p:'1 January 2021 was a Friday in ISO week 2020-W53. That week ran from Monday 28 December 2020 to Sunday 3 January 2021.'},
+      {h:'Use the right week convention',list:['ISO weeks are not the same as Sunday-start week numbering used by some calendars.', 'A date near New Year may have a different calendar year and ISO week-year.', 'No holidays or time-of-day settings are applied.']}
     ] }),
 ];
 

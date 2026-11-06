@@ -2,7 +2,7 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-01 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 123 (66 guides)
+> `main` par merge = auto-deploy) · **Tools:** 124 (70 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
@@ -413,7 +413,7 @@ merged; production READY/PROMOTED and live privacy pages verified.
 
 ---
 
-## 🚧 BATCH-12 — Math & statistics reliability (2026-11-06)
+## ✅ BATCH-12 — Math & statistics reliability (2026-11-06)
 
 Market scan of public calculator directories shows average/statistics, ratios,
 and weighted averages as common workflows (qualitative only, not search-volume
@@ -440,7 +440,38 @@ Implementation complete locally: 123 tools / 66 guides; four math guides,
 weighted-average tool, tied modes and sample/population spread, exact decimal
 ratio simplification, visible proportion output and bounded integer factoring.
 Local checks: 195 engine, 85 DOM, 9 chrome, worker suite and 20 integrity.
-CI, PR and production verification remain pending until actually complete.
+PR #18 merged; production READY/PROMOTED and live pages verified.
+
+---
+
+## 🚧 BATCH-13 — Calendar and date reliability (2026-11-06)
+
+Market scan shows age, deadline and ISO-week workflows; this is qualitative,
+not search-volume evidence. Existing age and date-difference pages can produce
+negative day components at month ends, age totals use local elapsed milliseconds
+across DST, and leap-day birthdays silently roll to March. Improve those pages
+rather than publishing duplicate age/countdown pages.
+
+One planned batch:
+1. Share strict, bounded Gregorian calendar-date arithmetic with timezone-safe
+   day counts and explicit month-end rules. Fix age breakdown, birthday display,
+   and selectable February 29 convention without claiming legal eligibility.
+2. Repair Date Difference month-end/inclusive explanations and Date Add input
+   validation, non-integer handling and local-date defaults, preserving historical
+   share links and disclosing that date-derived hours are not elapsed time.
+3. Add a distinct ISO Week Number Calculator with ISO week-year, Monday/Sunday
+   dates and accurate year-boundary handling; guides, FAQs and related links.
+4. Engine and DOM tests for leap dates, DST zones, boundaries, inclusive/reverse
+   counts, malformed input, legacy sharing, plus generated pages and docs.
+   Time Zone Converter rejects nonexistent and ambiguous wall times rather than
+   silently selecting an instant, and defaults to the local calendar date. Full
+   check, one PR, CI and production verification; GSC and real-device tests remain
+   separate pending tasks.
+
+Implemented: 124 tools / 70 guides; explicit leap-day choices, date-only UTC
+arithmetic, ISO weeks, stricter date-add validation, and DST gap/overlap errors.
+Full local check: 202 engine, 90 DOM, 9 chrome, worker suite and 20 integrity.
+PR, CI and production verification remain pending until actually complete.
 
 ---
 
