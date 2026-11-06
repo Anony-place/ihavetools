@@ -549,6 +549,17 @@ Continue the audit requested by the user; no new tools or thin pages.
 
 ---
 
+## 🚧 BATCH-17 — PDF integrity and asynchronous workflow audit
+
+1. Review single-file inspect/export and multi-file output workflows for races,
+   stale selections, changing options and misleading download status.
+2. Fix confirmed defects, disclose document-preservation and download limits,
+   and test actual output PDFs plus delayed-selection and failure paths.
+3. Run full build, automated checks and dependency audit. Record what remains
+   unverified in TOOL-AUDIT.md; ship one coherent PR and verify production.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha

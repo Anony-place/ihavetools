@@ -13,7 +13,7 @@ export function loadPdfLib() {
   libPromise = new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = '/assets/vendor/pdf-lib.min.js';
-    s.onload = () => window.PDFLib ? resolve(window.PDFLib) : reject(new Error('The PDF library loaded but did not initialise.'));
+    s.onload = () => { if (window.PDFLib) resolve(window.PDFLib); else { libPromise = null; reject(new Error('The PDF library loaded but did not initialise.')); } };
     s.onerror = () => { libPromise = null; reject(new Error('Could not load the PDF engine. Check your connection and try again.')); };
     document.head.append(s);
   });
@@ -82,8 +82,8 @@ function pdfFilesRow(file, onRemove = () => {}) {
     h('span', { class: 'fr-name', text: file.name }),
     h('span', { class: 'fr-size', text: fmtBytes(file.size) }),
     h('span', { class: 'fr-actions' },
-      h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Move up', onclick: (e) => moveRow(e, -1) }, '↑'),
-      h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Move down', onclick: (e) => moveRow(e, 1) }, '↓'),
+      h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Move up', onclick: (e) => { moveRow(e, -1); onRemove(); } }, '↑'),
+      h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Move down', onclick: (e) => { moveRow(e, 1); onRemove(); } }, '↓'),
       h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Remove', onclick: () => { row.remove(); onRemove(); } }, '✕')));
   row.file = file;
   return row;
@@ -105,15 +105,15 @@ const defs = {
         const row = h('div', { class: 'file-row' },
           h('span', { class: 'fr-name', text: `Original page ${p.index + 1} · output position ${i + 1} · extra rotation ${p.rotation}°` }),
           h('span', { class: 'fr-actions' },
-            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Move page ${p.index + 1} up`, disabled: i === 0, onclick: () => { [pages[i - 1], pages[i]] = [pages[i], pages[i - 1]]; render(); status.set(`Page ${p.index + 1} moved to position ${i}.`, 'info'); list.querySelector(`[aria-label="${i === 1 ? 'Move page ' + (p.index + 1) + ' down' : 'Move page ' + (p.index + 1) + ' up'}"]`)?.focus(); } }, '↑'),
-            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Move page ${p.index + 1} down`, disabled: i === pages.length - 1, onclick: () => { [pages[i + 1], pages[i]] = [pages[i], pages[i + 1]]; render(); status.set(`Page ${p.index + 1} moved to position ${i + 2}.`, 'info'); list.querySelector(`[aria-label="${i === pages.length - 2 ? 'Move page ' + (p.index + 1) + ' up' : 'Move page ' + (p.index + 1) + ' down'}"]`)?.focus(); } }, '↓'),
-            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Rotate page ${p.index + 1} clockwise`, onclick: () => { p.rotation = (p.rotation + 90) % 360; render(); status.set(`Page ${p.index + 1}: extra rotation ${p.rotation} degrees.`, 'info'); list.querySelector(`[aria-label="Rotate page ${p.index + 1} clockwise"]`)?.focus(); } }, '↻'),
-            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Remove page ${p.index + 1}`, onclick: () => { pages.splice(i, 1); render(); status.set(`Removed page ${p.index + 1}.`, 'info'); const next = pages[Math.min(i, pages.length - 1)]; if (next) list.querySelector(`[aria-label="Remove page ${next.index + 1}"]`)?.focus(); } }, '✕')));
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Move page ${p.index + 1} up`, disabled: i === 0, onclick: () => { revision++; [pages[i - 1], pages[i]] = [pages[i], pages[i - 1]]; render(); status.set(`Page ${p.index + 1} moved to position ${i}.`, 'info'); list.querySelector(`[aria-label="${i === 1 ? 'Move page ' + (p.index + 1) + ' down' : 'Move page ' + (p.index + 1) + ' up'}"]`)?.focus(); } }, '↑'),
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Move page ${p.index + 1} down`, disabled: i === pages.length - 1, onclick: () => { revision++; [pages[i + 1], pages[i]] = [pages[i], pages[i + 1]]; render(); status.set(`Page ${p.index + 1} moved to position ${i + 2}.`, 'info'); list.querySelector(`[aria-label="${i === pages.length - 2 ? 'Move page ' + (p.index + 1) + ' up' : 'Move page ' + (p.index + 1) + ' down'}"]`)?.focus(); } }, '↓'),
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Rotate page ${p.index + 1} clockwise`, onclick: () => { revision++; p.rotation = (p.rotation + 90) % 360; render(); status.set(`Page ${p.index + 1}: extra rotation ${p.rotation} degrees.`, 'info'); list.querySelector(`[aria-label="Rotate page ${p.index + 1} clockwise"]`)?.focus(); } }, '↻'),
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Remove page ${p.index + 1}`, onclick: () => { revision++; pages.splice(i, 1); render(); status.set(`Removed page ${p.index + 1}.`, 'info'); const next = pages[Math.min(i, pages.length - 1)]; if (next) list.querySelector(`[aria-label="Remove page ${next.index + 1}"]`)?.focus(); } }, '✕')));
         return row;
       }));
       info.textContent = `${pages.length} page${pages.length === 1 ? '' : 's'} selected. Page numbers refer to the original PDF; no visual thumbnails are shown.`;
     };
-    const reset = () => { if (!source) return; pages = Array.from({ length: source.getPageCount() }, (_, index) => ({ index, rotation: 0 })); render(); status.set('Original page order restored.', 'info'); };
+    const reset = () => { if (!source) return; revision++; pages = Array.from({ length: source.getPageCount() }, (_, index) => ({ index, rotation: 0 })); render(); status.set('Original page order restored.', 'info'); };
     const zone = makeZone(false, async ([chosen]) => {
       const token = ++revision; source = null; file = null; pages = []; list.replaceChildren(); info.textContent = '';
       status.set(`Reading ${chosen.name} locally…`, 'info');
@@ -142,7 +142,7 @@ const defs = {
 
   'pdf-rotate'(root) {
     const zone = makeZone(false, (files) => {
-      file = files[0];
+      file = files[0]; revision++; operation++; grid.replaceChildren();
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(file), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       pageCount = null;
@@ -155,49 +155,57 @@ const defs = {
     const status = statusLine('Choose a PDF to begin.');
     const info = h('p', { class: 'hint' });
     const grid = statsGrid();
-    let file = null, pageCount = null;
-    const inspect = async () => {
+    let file = null, pageCount = null, revision = 0, operation = 0;
+    const inspect = async (token = ++operation) => {
+      const chosen = file, version = revision;
+      const current = () => version === revision && token === operation;
       if (!file) { status.set('Choose a PDF first.', 'warning'); return null; }
       try {
         const PDFLib = await loadPdfLib();
-        const bytes = await readFile(file, 'buffer');
+        const bytes = await readFile(chosen, 'buffer');
         const doc = await PDFLib.PDFDocument.load(bytes);
+        if (!current()) return null;
         pageCount = doc.getPageCount();
-        info.textContent = `“${file.name}” has ${pageCount} pages${doc.isEncrypted ? ' · ⚠ this document is encrypted' : ''}.`;
+        info.textContent = `“${chosen.name}” has ${pageCount} pages${doc.isEncrypted ? ' · ⚠ this document is encrypted' : ''}.`;
         return pageCount;
       } catch (e) {
-        status.set(/encrypt/i.test(String(e)) ? `“${file.name}” is password-protected and cannot be processed.` : `“${file.name}” could not be read as a PDF — it may be corrupted.`, 'error');
+        if (!current()) return null;
+        status.set(/encrypt/i.test(String(e)) ? `“${chosen.name}” is password-protected and cannot be processed.` : `“${chosen.name}” could not be read as a PDF — it may be corrupted.`, 'error');
         return null;
       }
     };
     const run = async () => {
       if (!file) { status.set('Choose a PDF first.', 'warning'); return; }
+      const chosen = file, version = revision, token = ++operation;
+      const current = () => version === revision && token === operation;
+      const selection = ranges.value;
+      const rotation = Number(angle.getValue()), selectedScope = scope.getValue();
       status.set('Loading the PDF engine…', 'info');
-      const count = pageCount ?? await inspect();
-      if (count == null) return;
+      const count = pageCount ?? await inspect(token);
+      if (count == null || !current()) return;
       try {
         const PDFLib = await loadPdfLib();
-        const degrees = PDFLib.degrees(Number(angle.getValue()));
         let targets;
-        if (scope.getValue() === 'all') targets = Array.from({ length: count }, (_, k) => k + 1);
-        else targets = parseRanges(ranges.value, count);
-        const bytes = await readFile(file, 'buffer');
+        if (selectedScope === 'all') targets = Array.from({ length: count }, (_, k) => k + 1);
+        else targets = parseRanges(selection, count);
+        const bytes = await readFile(chosen, 'buffer');
         const doc = await PDFLib.PDFDocument.load(bytes);
         for (const pageNumber of targets) {
           const page = doc.getPage(pageNumber - 1);
           const current = page.getRotation().angle || 0;
-          page.setRotation(PDFLib.degrees((current + Number(angle.getValue())) % 360));
+          page.setRotation(PDFLib.degrees((current + rotation) % 360));
         }
         const outBytes = await doc.save();
+        if (!current()) return;
         const blob = new Blob([outBytes], { type: 'application/pdf' });
-        downloadBlob(blob, `rotated-${file.name.replace(/\.pdf$/i, '')}.pdf`);
+        if (!downloadBlob(blob, `rotated-${chosen.name.replace(/\.pdf$/i, '')}.pdf`)) throw new Error('Could not start the download in this browser.');
         grid.set([
           { label: 'Pages rotated', value: String(targets.length), kind: 'good' },
-          { label: 'Angle', value: `${angle.getValue()}°` },
+          { label: 'Angle', value: `${rotation}°` },
           { label: 'Output size', value: fmtBytes(blob.size) },
         ]);
-        status.set(`Rotated ${targets.length} page${targets.length === 1 ? '' : 's'} by ${angle.getValue()}° — download started ✓`, 'success');
-      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+        status.set(`Rotated ${targets.length} page${targets.length === 1 ? '' : 's'} by ${rotation}° — download started ✓`, 'success');
+      } catch (e) { if (current()) { grid.replaceChildren(); status.set(e.message, 'error'); } }
     };
     root.append(zone, info,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
@@ -205,13 +213,14 @@ const defs = {
         field({ label: 'Apply to', control: scope }),
         field({ label: 'Pages (if range)', control: ranges, hint: 'Only used in range mode' })),
       actionsRow(
-        btn({ label: 'Inspect PDF', variant: 'secondary', icon: 'info', onClick: inspect }),
+        btn({ label: 'Inspect PDF', variant: 'secondary', icon: 'info', onClick: () => inspect() }),
         btn({ label: 'Rotate PDF', icon: 'refresh', onClick: run })),
       grid, status,
-      privacyNote('Your PDF is rotated locally in your browser with pdf-lib and is not uploaded.'));
+      privacyNote('Processed locally, never uploaded. Modifying a signed PDF invalidates its digital signature; inspect your output.'));
   },
 
   'pdf-merge'(root) {
+    let revision = 0, operation = 0;
     const listWrap = h('div', { class: 'file-list' });
     const status = statusLine('Add two or more PDFs. Use ↑/↓ to reorder.');
     const grid = statsGrid();
@@ -225,12 +234,14 @@ const defs = {
       if (count) status.set(`${count} PDF${count === 1 ? '' : 's'} ready. Reorder if needed, then Merge.`, 'info');
     };
     const zone = makeZone(true, onFiles, 'Choose PDF files or drop them here');
-    const updateGrid = () => grid.set([
+    const updateGrid = () => { revision++; status.set('List updated. Start the action when ready.', 'info'); grid.set([
       { label: 'Files', value: String(listWrap.children.length) },
       { label: 'Total size', value: fmtBytes([...listWrap.children].reduce((s, row) => s + row.file.size, 0)) },
-    ]);
+    ]); };
     const run = async () => {
       const ordered = [...listWrap.querySelectorAll('.file-row')].map((r) => r.file);
+      const version = revision, token = ++operation;
+      const current = () => version === revision && token === operation;
       if (ordered.length < 2) { status.set('Add at least two PDF files to merge.', 'warning'); return; }
       status.set(`Loading the PDF engine, then merging ${ordered.length} files…`, 'info');
       try {
@@ -249,25 +260,27 @@ const defs = {
           copied.forEach((p) => out.addPage(p));
           pages += copied.length;
         }
+        if (!current()) return;
         status.set('Writing the merged PDF…', 'info');
         const outBytes = await out.save();
+        if (!current()) return;
         const blob = new Blob([outBytes], { type: 'application/pdf' });
-        downloadBlob(blob, 'merged.pdf');
+        if (!downloadBlob(blob, 'merged.pdf')) throw new Error('Could not start the download in this browser.');
         grid.set([{ label: 'Pages merged', value: String(pages), kind: 'good' }, { label: 'Output size', value: fmtBytes(blob.size) }]);
         status.set(`Merged ${ordered.length} files into one PDF with ${pages} pages — download started ✓`, 'success');
-      } catch (e) { status.set(e.message, 'error'); }
+      } catch (e) { if (current()) status.set(e.message, 'error'); }
     };
     root.append(zone, listWrap,
       actionsRow(
         btn({ label: 'Merge PDFs', icon: 'layers', onClick: run }),
         btn({ label: 'Clear list', variant: 'ghost', icon: 'x', onClick: () => { listWrap.replaceChildren(); updateGrid(); status.set('Cleared.'); } })),
       grid, status,
-      privacyNote('PDFs are merged in your browser with pdf-lib. The files are never uploaded to any server.'));
+      privacyNote('Processed locally, never uploaded. Copied pages may not preserve forms, bookmarks, attachments or digital signatures; inspect your output.'));
   },
 
   'pdf-split'(root) {
     const zone = makeZone(false, (files) => {
-      file = files[0];
+      file = files[0]; revision++; operation++; grid.replaceChildren();
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(file), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       pageCount = null;
@@ -279,57 +292,68 @@ const defs = {
     const status = statusLine('Choose a PDF to begin.');
     const info = h('p', { class: 'hint' });
     const grid = statsGrid();
-    let file = null, pageCount = null;
-    const inspect = async () => {
+    let file = null, pageCount = null, revision = 0, operation = 0;
+    const inspect = async (token = ++operation) => {
+      const chosen = file, version = revision;
+      const current = () => version === revision && token === operation;
       if (!file) { status.set('Choose a PDF first.', 'warning'); return null; }
       try {
         const PDFLib = await loadPdfLib();
-        const bytes = await readFile(file, 'buffer');
+        const bytes = await readFile(chosen, 'buffer');
         const doc = await PDFLib.PDFDocument.load(bytes);
+        if (!current()) return null;
         pageCount = doc.getPageCount();
-        info.textContent = `“${file.name}” has ${pageCount} pages${doc.isEncrypted ? ' · ⚠ this document is encrypted' : ''}.`;
+        info.textContent = `“${chosen.name}” has ${pageCount} pages${doc.isEncrypted ? ' · ⚠ this document is encrypted' : ''}.`;
         return pageCount;
       } catch (e) {
-        status.set(/encrypt/i.test(String(e)) ? `“${file.name}” is password-protected and cannot be processed.` : `“${file.name}” could not be read as a PDF — it may be corrupted.`, 'error');
+        if (!current()) return null;
+        status.set(/encrypt/i.test(String(e)) ? `“${chosen.name}” is password-protected and cannot be processed.` : `“${chosen.name}” could not be read as a PDF — it may be corrupted.`, 'error');
         return null;
       }
     };
     const run = async () => {
       if (!file) { status.set('Choose a PDF first.', 'warning'); return; }
+      const chosen = file, version = revision, token = ++operation;
+      const current = () => version === revision && token === operation;
+      const selection = ranges.value;
+      const selectedMode = mode.getValue();
       status.set('Loading the PDF engine…', 'info');
-      const count = pageCount ?? await inspect();
-      if (count == null) return;
+      const count = pageCount ?? await inspect(token);
+      if (count == null || !current()) return;
       try {
         const PDFLib = await loadPdfLib();
-        if (mode.getValue() === 'extract') {
-          const pages = parseRanges(ranges.value, count);
-          const bytes = await readFile(file, 'buffer');
+        if (selectedMode === 'extract') {
+          const pages = parseRanges(selection, count);
+          const bytes = await readFile(chosen, 'buffer');
           const src = await PDFLib.PDFDocument.load(bytes);
           const out = await PDFLib.PDFDocument.create();
           const copied = await out.copyPages(src, pages.map((p) => p - 1));
           copied.forEach((p) => out.addPage(p));
           const outBytes = await out.save();
+          if (!current()) return;
           const blob = new Blob([outBytes], { type: 'application/pdf' });
-          downloadBlob(blob, `extract-${baseName(file.name)}.pdf`);
+          if (!downloadBlob(blob, `extract-${baseName(chosen.name)}.pdf`)) throw new Error('Could not start the download in this browser.');
           grid.set([{ label: 'Pages extracted', value: String(pages.length), kind: 'good' }, { label: 'Output size', value: fmtBytes(blob.size) }]);
           status.set(`Extracted ${pages.length} pages — download started ✓`, 'success');
         } else {
           if (count > 100) { status.set(`Splitting every page would create ${count} files. Use “Extract pages” for large documents.`, 'warning'); return; }
           status.set(`Creating ${count} single-page PDFs — your browser may ask to allow multiple downloads…`, 'info');
-          const bytes = await readFile(file, 'buffer');
+          const bytes = await readFile(chosen, 'buffer');
           const src = await PDFLib.PDFDocument.load(bytes);
           for (let p = 0; p < count; p++) {
             const out = await PDFLib.PDFDocument.create();
             const [page] = await out.copyPages(src, [p]);
             out.addPage(page);
             const outBytes = await out.save();
-            downloadBlob(new Blob([outBytes], { type: 'application/pdf' }), `${baseName(file.name)}-page-${p + 1}.pdf`);
+            if (!current()) return;
+            if (!downloadBlob(new Blob([outBytes], { type: 'application/pdf' }), `${baseName(chosen.name)}-page-${p + 1}.pdf`)) throw new Error(`Could not start download for page ${p + 1}; earlier requests may have started.`);
             await new Promise((r) => setTimeout(r, 250));
           }
-          grid.set([{ label: 'Files created', value: String(count), kind: 'good' }]);
-          status.set(`${count} single-page PDFs downloaded ✓`, 'success');
+          if (!current()) return;
+          grid.set([{ label: 'Download requests', value: String(count), kind: 'good' }]);
+          status.set(`${count} single-page download requests started. Your browser may block some downloads; check them.`, 'success');
         }
-      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+      } catch (e) { if (current()) { grid.replaceChildren(); status.set(e.message, 'error'); } }
     };
     function baseName(n) { return String(n).replace(/\.pdf$/i, ''); }
     root.append(zone, info,
@@ -337,13 +361,14 @@ const defs = {
         field({ label: 'Mode', control: mode }),
         field({ label: 'Pages to extract', control: ranges, hint: 'Only used in “Extract” mode' })),
       actionsRow(
-        btn({ label: 'Inspect PDF', variant: 'secondary', icon: 'info', onClick: inspect }),
+        btn({ label: 'Inspect PDF', variant: 'secondary', icon: 'info', onClick: () => inspect() }),
         btn({ label: 'Split PDF', icon: 'scissors', onClick: run })),
       grid, status,
-      privacyNote('Your PDF is processed locally in your browser with pdf-lib and is not uploaded.'));
+      privacyNote('Processed locally, never uploaded. Copied pages may not preserve forms, bookmarks, attachments or digital signatures; inspect your output.'));
   },
 
   'image-to-pdf'(root) {
+    let revision = 0, operation = 0;
     const listWrap = h('div', { class: 'file-list' });
     const status = statusLine('Add one or more images — each becomes a page. Use ↑/↓ to reorder.');
     const grid = statsGrid();
@@ -361,10 +386,10 @@ const defs = {
         if (count) status.set(`${count} image${count === 1 ? '' : 's'} ready. Reorder if needed, then Convert.`, 'info');
       },
     });
-    const updateGrid = () => grid.set([
+    const updateGrid = () => { revision++; status.set('List updated. Start the action when ready.', 'info'); grid.set([
       { label: 'Images', value: String(listWrap.children.length) },
       { label: 'Total size', value: fmtBytes([...listWrap.children].reduce((s, row) => s + row.file.size, 0)) },
-    ]);
+    ]); };
     async function embedImage(pdf, file) {
       const buf = await readFile(file, 'buffer');
       const isJpg = /jpe?g/i.test(file.type) || /\.jpe?g$/i.test(file.name);
@@ -377,6 +402,7 @@ const defs = {
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(bmp, 0, 0);
+      bmp.close?.();
       const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
       if (!blob) throw new Error(`“${file.name}” could not be decoded by this browser.`);
       return pdf.embedJpg(await blob.arrayBuffer());
@@ -384,7 +410,10 @@ const defs = {
     const PAGE = { a4: [595.28, 841.89], letter: [612, 792] };
     const run = async () => {
       const ordered = [...listWrap.querySelectorAll('.file-row')].map((r) => r.file);
+      const version = revision, token = ++operation;
+      const current = () => version === revision && token === operation;
       if (!ordered.length) { status.set('Add at least one image first.', 'warning'); return; }
+      const chosenSize = pageSize.getValue();
       status.set(`Loading the PDF engine, then converting ${ordered.length} image${ordered.length === 1 ? '' : 's'}…`, 'info');
       try {
         const PDFLib = await loadPdfLib();
@@ -392,11 +421,11 @@ const defs = {
         for (const f of ordered) {
           const img = await embedImage(pdf, f);
           let page, rect;
-          if (pageSize.getValue() === 'original') {
+          if (chosenSize === 'original') {
             page = pdf.addPage([img.width, img.height]);
             rect = { x: 0, y: 0, width: img.width, height: img.height };
           } else {
-            let [pw, ph] = PAGE[pageSize.getValue()];
+            let [pw, ph] = PAGE[chosenSize];
             if (img.width > img.height && pw < ph) [pw, ph] = [ph, pw]; // landscape image → landscape page
             page = pdf.addPage([pw, ph]);
             rect = fitRect(img.width, img.height, pw, ph, 36);
@@ -404,11 +433,12 @@ const defs = {
           page.drawImage(img, rect);
         }
         const outBytes = await pdf.save();
+        if (!current()) return;
         const blob = new Blob([outBytes], { type: 'application/pdf' });
-        downloadBlob(blob, ordered.length === 1 ? `${ordered[0].name.replace(/\.[^.]+$/, '')}.pdf` : 'images.pdf');
+        if (!downloadBlob(blob, ordered.length === 1 ? `${ordered[0].name.replace(/\.[^.]+$/, '')}.pdf` : 'images.pdf')) throw new Error('Could not start the download in this browser.');
         grid.set([{ label: 'Pages created', value: String(ordered.length), kind: 'good' }, { label: 'PDF size', value: fmtBytes(blob.size) }]);
         status.set(`Converted ${ordered.length} image${ordered.length === 1 ? '' : 's'} into a PDF — download started ✓`, 'success');
-      } catch (e) { status.set(e.message, 'error'); }
+      } catch (e) { if (current()) status.set(e.message, 'error'); }
     };
     root.append(zone, listWrap,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },

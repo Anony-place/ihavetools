@@ -284,3 +284,22 @@ PDF-lib has real generated-PDF tests for some operations; diverse documents, att
   unverified. Rotate/split still need async selection-race review.
 - All 128 mounts remain smoke tests only. Further systematic per-tool input,
   boundary, output and cross-browser testing is still required.
+
+## Batch-17 PDF workflow audit
+
+- Rotate and split now snapshot the selected document and options for each run;
+  changing the document or starting another action prevents older inspection or
+  export results from updating the UI or initiating a later download. Selection
+  clears prior output statistics. Split-per-page stops issuing further requests
+  after a change, though downloads already requested cannot be recalled.
+- Merge and image-to-PDF cancel pending results if their file list changes;
+  image-to-PDF snapshots page size for consistent pages. Organizer page edits
+  invalidate pending exports. PDF output uses browser download requests: a
+  failure to create a download URL is reported, but browsers may still block
+  or fail downloads after a request was made. Multi-download status reflects that.
+- Page-copy tools now warn that forms, bookmarks, attachments and signatures may
+  not be preserved; rotating a signed PDF invalidates the signature. Users should
+  inspect the result. Added jsdom delayed-load tests for stale inspect/export and
+  list changes, plus an object-URL failure test. Real browser dialogs, memory
+  limits, varied PDF structures, actual image rendering and accessibility remain
+  unverified; these tests do not certify every document or all 128 tools.

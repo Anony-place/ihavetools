@@ -827,6 +827,66 @@ await domTest('PDF rotate and split produce parseable pages with expected dimens
   } finally { URL.createObjectURL = original; }
 });
 
+for (const id of ['pdf-rotate', 'pdf-split']) {
+  await domTest(`${id}: stale inspect and export cannot use a newer selection`, async () => {
+    const lib = await import('pdf-lib');
+    const first = await lib.PDFDocument.create(); first.addPage([100,200]); first.addPage([100,200]);
+    const second = await lib.PDFDocument.create(); second.addPage([300,400]);
+    const files = [new File([await first.save()], 'first.pdf', {type:'application/pdf'}), new File([await second.save()], 'second.pdf', {type:'application/pdf'})];
+    let resolveLoad, calls = 0;
+    window.PDFLib = {...lib, PDFDocument: {create: (...a) => lib.PDFDocument.create(...a), load: (b,...a) => {
+      calls++; const load = () => lib.PDFDocument.load(new Uint8Array(b),...a);
+      if (calls === 1) return new Promise(resolve => { resolveLoad = () => resolve(load()); });
+      return load();
+    }}};
+    const app = await loadToolPage(id, 'pdf');
+    const drop = f => {const e = new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[f]}}); app.querySelector('.dropzone').dispatchEvent(e);};
+    let output; const original = URL.createObjectURL; URL.createObjectURL = b => {output=b;return 'blob:test';};
+    try {
+      drop(files[0]); click(btnByLabel(app,'Inspect PDF')); await new Promise(r => setTimeout(r,40)); assert.ok(resolveLoad);
+      drop(files[1]); click(btnByLabel(app,'Inspect PDF')); await new Promise(r => setTimeout(r,70)); resolveLoad(); await new Promise(r => setTimeout(r,60));
+      assert.match(app.textContent, /second.pdf” has 1 pages/); assert.doesNotMatch(app.textContent, /first.pdf” has/);
+      if (id === 'pdf-split') app.querySelector('input[type=text]').value='1';
+      click(btnByLabel(app,id === 'pdf-rotate' ? 'Rotate PDF' : 'Split PDF')); await new Promise(r => setTimeout(r,100));
+      assert.ok(output, app.textContent); const result = await lib.PDFDocument.load(await output.arrayBuffer());
+      assert.equal(result.getPageCount(),1); assert.equal(result.getPage(0).getWidth(),300);
+    } finally { URL.createObjectURL = original; }
+  });
+}
+for (const id of ['pdf-rotate', 'pdf-split']) {
+  await domTest(`${id}: selecting another document cancels an in-flight export`, async () => {
+    const lib = await import('pdf-lib'); const doc = await lib.PDFDocument.create(); doc.addPage([100,200]);
+    const bytes = await doc.save(); let calls = 0, release;
+    window.PDFLib = {...lib, PDFDocument: {create: (...a) => lib.PDFDocument.create(...a), load: (b,...a) => {
+      const load = () => lib.PDFDocument.load(new Uint8Array(b),...a);
+      if (++calls === 2) return new Promise(resolve => {release = () => resolve(load());}); return load();
+    }}};
+    const app = await loadToolPage(id,'pdf'); const drop = name => {const e = new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[new File([bytes],name,{type:'application/pdf'})]}}); app.querySelector('.dropzone').dispatchEvent(e);};
+    let output = false; const original = URL.createObjectURL; URL.createObjectURL = () => {output=true; return 'blob:test';};
+    try { drop('first.pdf'); if (id === 'pdf-split') app.querySelector('input[type=text]').value='1';
+      click(btnByLabel(app,id === 'pdf-rotate' ? 'Rotate PDF' : 'Split PDF')); await new Promise(r => setTimeout(r,80)); assert.ok(release);
+      drop('second.pdf'); release(); await new Promise(r => setTimeout(r,80)); assert.equal(output,false); assert.match(statusText(document), /second.pdf/);
+    } finally { URL.createObjectURL = original; }
+  });
+}
+await domTest('PDF merge cancels an export when the file list changes', async () => {
+  const lib = await import('pdf-lib'); const doc = await lib.PDFDocument.create(); doc.addPage(); const bytes = await doc.save(); let release;
+  window.PDFLib = {...lib, PDFDocument: {create: (...a) => new Promise(resolve => {release=() => resolve(lib.PDFDocument.create(...a));}), load: (b,...a) => lib.PDFDocument.load(new Uint8Array(b),...a)}};
+  const app = await loadToolPage('pdf-merge','pdf'); const e = new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[new File([bytes],'a.pdf',{type:'application/pdf'}),new File([bytes],'b.pdf',{type:'application/pdf'})]}}); app.querySelector('.dropzone').dispatchEvent(e);
+  let output = false; const original = URL.createObjectURL; URL.createObjectURL = () => {output=true; return 'blob:test';};
+  try { click(btnByLabel(app,'Merge PDFs')); await new Promise(r => setTimeout(r,30)); assert.ok(release); click(btnByLabel(app,'Clear list')); release(); await new Promise(r => setTimeout(r,100)); assert.equal(output,false); assert.match(statusText(document), /Cleared/); }
+  finally { URL.createObjectURL = original; }
+});
+
+await domTest('PDF download failures are not reported as success', async () => {
+  const lib = await import('pdf-lib'); window.PDFLib = {...lib, PDFDocument: {create: (...a) => lib.PDFDocument.create(...a), load: (b,...a) => lib.PDFDocument.load(new Uint8Array(b),...a)}};
+  const doc = await lib.PDFDocument.create(); doc.addPage(); const file = new File([await doc.save()],'test.pdf',{type:'application/pdf'});
+  const app = await loadToolPage('pdf-rotate','pdf'); const e = new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[file]}}); app.querySelector('.dropzone').dispatchEvent(e);
+  const original = URL.createObjectURL; URL.createObjectURL = () => { throw new Error('blocked'); };
+  try { click(btnByLabel(app,'Rotate PDF')); await new Promise(r => setTimeout(r,100)); assert.match(statusText(document), /Could not start the download/); }
+  finally { URL.createObjectURL = original; }
+});
+
 await domTest('Image to PDF keeps duplicate filenames distinct and updates removed-file totals', async () => {
   const app = await loadToolPage('image-to-pdf', 'pdf');
   const files = [new File(['a'], 'same.png', { type: 'image/png' }), new File(['bc'], 'same.png', { type: 'image/png' })];
