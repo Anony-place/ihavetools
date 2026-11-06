@@ -3,21 +3,11 @@
 // time-zone-converter (uses the browser's built-in IANA tz database via Intl)
 // =============================================================================
 import { h, field, input, textarea, select, switchChip, btn, actionsRow, statusLine, statsGrid, toast, mountTool } from '../ui.js';
+import { DAY_MS, parseCalendarDate, localDateISO, calendarSpan, isoWeek, addMonthsUTC, dateISO } from '../calendar.js';
+export { parseCalendarDate, localDateISO, isoWeek } from '../calendar.js';
 
 // Business days use calendar dates in UTC, avoiding local DST shifts.
-const DAY_MS = 86400000;
 const WEEKENDS = { sat_sun: [0, 6], fri_sat: [5, 6], sun: [0], none: [] };
-export function parseCalendarDate(text) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw new Error('Use a valid date in YYYY-MM-DD format.');
-  const year = Number(text.slice(0, 4));
-  if (year < 1900 || year > 2100) throw new Error('Dates must be between 1900 and 2100.');
-  const timestamp = Date.parse(`${text}T00:00:00Z`);
-  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== text) throw new Error(`Invalid date: ${text}.`);
-  return timestamp;
-}
-export function localDateISO(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
 function businessRules(weekend, holidays) {
   if (!Object.hasOwn(WEEKENDS, weekend)) throw new Error('Choose a valid weekend.');
   const parts = String(holidays || '').split(/[\s,;]+/).filter(Boolean);
@@ -47,61 +37,27 @@ export function addBusinessDays(start, amount, weekend = 'sat_sun', holidays = '
 }
 
 export function dateDiff(startStr, endStr, includeEnd = false) {
-  const parse = (s, label) => {
-    const d = new Date(`${s}T00:00:00`);
-    if (Number.isNaN(d.getTime())) throw new Error(`The ${label} date is invalid — pick it again.`);
-    return d;
-  };
-  const a = parse(startStr, 'start'), b = parse(endStr, 'end');
-  const [first, second] = a <= b ? [a, b] : [b, a];
-  const totalDays = Math.round((second - first) / 864e5) + (includeEnd ? 1 : 0);
-  // calendar difference (years/months/days) counted forward from first date
-  let years = second.getFullYear() - first.getFullYear();
-  let months = second.getMonth() - first.getMonth();
-  let days = second.getDate() - first.getDate();
-  if (days < 0) { months--; days += new Date(second.getFullYear(), second.getMonth(), 0).getDate(); }
-  if (months < 0) { years--; months += 12; }
-  let businessDays = 0;
-  const cur = new Date(first);
-  for (let k = 0; k < totalDays; k++) {
-    const wd = cur.getDay();
-    if (wd !== 0 && wd !== 6) businessDays++;
-    cur.setDate(cur.getDate() + 1);
-  }
-  const weekendDays = totalDays - businessDays;
-  return {
-    totalDays, years, months, days, businessDays, weekendDays,
-    weeks: Math.floor(totalDays / 7), remainderDays: totalDays % 7,
-    hours: totalDays * 24, minutes: totalDays * 1440,
-    reversed: a > b,
-  };
+  const a=parseCalendarDate(startStr), b=parseCalendarDate(endStr), first=Math.min(a,b), last=Math.max(a,b);
+  const span=calendarSpan(first,last), totalDays=(last-first)/DAY_MS+(includeEnd ? 1 : 0);
+  // Use whole weeks + a bounded remainder, not a loop over centuries.
+  const fullWeeks=Math.floor(totalDays/7); let businessDays=fullWeeks*5;
+  for(let i=0;i<totalDays%7;i++) {const wd=new Date(first+i*DAY_MS).getUTCDay(); if(wd!==0&&wd!==6) businessDays++;}
+  return {...span,totalDays,businessDays,weekendDays:totalDays-businessDays,weeks:fullWeeks,remainderDays:totalDays%7,hours:totalDays*24,minutes:totalDays*1440,reversed:a>b};
 }
-
 export function dateAdd(startStr, amount, unit, direction) {
-  const d = new Date(`${startStr}T00:00:00`);
-  if (Number.isNaN(d.getTime())) throw new Error('That start date is invalid — pick it again.');
-  const sign = direction === 'sub' ? -1 : 1;
-  const n = amount * sign;
-  if (!Number.isFinite(amount) || amount === 0) throw new Error('Enter a non-zero amount.');
-  switch (unit) {
-    case 'days': d.setDate(d.getDate() + n); break;
-    case 'weeks': d.setDate(d.getDate() + n * 7); break;
-    case 'months': {
-      const day = d.getDate();
-      d.setDate(1);
-      d.setMonth(d.getMonth() + n);
-      const maxDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-      d.setDate(Math.min(day, maxDay));
-      break;
-    }
-    case 'years': {
-      const day = d.getDate();
-      d.setFullYear(d.getFullYear() + n);
-      if (d.getDate() !== day) d.setDate(0); // Feb 29 → Feb 28
-      break;
-    }
-    default: throw new Error('Unknown unit.');
-  }
+  const start=parseCalendarDate(startStr);
+  if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000) throw new Error('Enter a whole number between 1 and 100,000.');
+  if (!['add','sub'].includes(direction)) throw new Error('Choose add or subtract.');
+  const n=amount*(direction==='sub' ? -1 : 1);
+  let result;
+  if (unit==='days') result=start+n*DAY_MS;
+  else if (unit==='weeks') result=start+n*7*DAY_MS;
+  else if (unit==='months') result=addMonthsUTC(start,n);
+  else if (unit==='years') result=addMonthsUTC(start,n*12);
+  else throw new Error('Unknown unit.');
+  if (!Number.isFinite(result) || result < parseCalendarDate('1900-01-01') || result > parseCalendarDate('2100-12-31')) throw new Error('The result is outside the supported date range (1900–2100).');
+  const iso=dateISO(result), d=new Date(`${iso}T00:00:00`);
+  if (localDateISO(d)!==iso) throw new Error('This local calendar date does not exist in your time zone.');
   return d;
 }
 
@@ -114,18 +70,24 @@ export function zoneOffset(timeZone, date) {
 
 export function convertTimeZone({ dateStr, timeStr, fromTz, toTz }) {
   if (!dateStr || !timeStr) throw new Error('Pick both a date and a time.');
-  // interpret the wall time in fromTz
-  const naive = Date.parse(`${dateStr}T${timeStr}:00Z`);
-  if (Number.isNaN(naive)) throw new Error('That date/time could not be parsed.');
-  let ts = naive - zoneOffset(fromTz, new Date(naive)) * 6e4;
-  ts = naive - zoneOffset(fromTz, new Date(ts)) * 6e4; // second pass handles DST edges
+  const day = parseCalendarDate(dateStr), match = /^(\d{2}):(\d{2})$/.exec(timeStr);
+  if (!match || +match[1] > 23 || +match[2] > 59) throw new Error('Enter a valid time.');
+  const naive = day + (+match[1] * 60 + +match[2]) * 60000;
+  // Candidate offsets around the wall time are checked by round-trip; do not
+  // silently guess when DST creates a missing or repeated local time.
+  const offsets = new Set();
+  for (let hour=-48;hour<=48;hour+=3) offsets.add(zoneOffset(fromTz,new Date(naive+hour*3600000)));
+  const candidates = [...offsets].map(o => naive-o*60000).filter(t => Math.abs(t+zoneOffset(fromTz,new Date(t))*60000-naive)<1);
+  if (!candidates.length) throw new Error('That local time does not exist in the selected source time zone (clock transition).');
+  if (candidates.length>1) throw new Error('That local time occurs twice in the selected source time zone (clock transition); choose an unambiguous time.');
+  const ts = candidates[0];
   const d = new Date(ts);
   const fmt = (tz) => new Intl.DateTimeFormat('en-US', { timeZone: tz, dateStyle: 'full', timeStyle: 'short' }).format(d);
   const off = (tz) => {
     const mins = zoneOffset(tz, d);
     const sign = mins < 0 ? '-' : '+';
-    const abs = Math.abs(mins);
-    return `UTC${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+    const seconds = Math.round(Math.abs(mins)*60), hh=Math.floor(seconds/3600), mm=Math.floor(seconds%3600/60), ss=seconds%60;
+    return `UTC${sign}${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}${ss ? `:${String(ss).padStart(2,'0')}` : ''}`;
   };
   return { from: { text: fmt(fromTz), offset: off(fromTz) }, to: { text: fmt(toTz), offset: off(toTz) }, utc: `${d.toISOString().slice(0, 16)} UTC` };
 }
@@ -149,6 +111,11 @@ export const TIME_ZONES = (() => {
 })();
 
 const defs = {
+  'iso-week-calculator'(root) {
+    const date = input({ type:'date', value: localDateISO(new Date()) }), grid=statsGrid(), status=statusLine('');
+    const run=()=>{try{const r=isoWeek(date.value);grid.set([{label:'ISO week',value:`${r.year}-W${String(r.week).padStart(2,'0')}`,kind:'good'},{label:'ISO weekday (Monday = 1)',value:String(r.weekday)},{label:'Week starts Monday',value:r.monday},{label:'Week ends Sunday',value:r.sunday}]);status.set('ISO weeks run Monday to Sunday. Week 1 contains January 4; the week-year can differ from the calendar year.', 'info');}catch(e){grid.replaceChildren();status.set(e.message,'error');}};
+    root.append(field({label:'Date',control:date,hint:'Supported dates: 1900–2100.'}),actionsRow(btn({label:'Calculate ISO week',icon:'calendar',onClick:run})),grid,status);
+  },
   'business-day-calculator'(root) {
     const today = new Date(), nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7);
     const start = input({ type: 'date', value: localDateISO(today) }), end = input({ type: 'date', value: localDateISO(nextWeek) });
@@ -162,8 +129,9 @@ const defs = {
   },
 
   'date-difference'(root) {
-    const start = input({ type: 'date', value: new Date().toISOString().slice(0, 10) });
-    const end = input({ type: 'date', value: new Date(Date.now() + 86400000).toISOString().slice(0, 10) });
+    const today = new Date(), tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    const start = input({ type: 'date', value: localDateISO(today) });
+    const end = input({ type: 'date', value: localDateISO(tomorrow) });
     const includeEnd = switchChip({ label: 'Include the end day in the count' });
     const grid = statsGrid();
     const status = statusLine('');
@@ -178,7 +146,7 @@ const defs = {
           { label: 'Weekend days', value: r.weekendDays.toLocaleString() },
           { label: 'Hours', value: r.hours.toLocaleString() },
         ]);
-        status.set(r.reversed ? 'End date precedes start; counts are shown as a magnitude. Hours are 24 per calendar day, not elapsed DST-adjusted hours.' : 'Hours are 24 per calendar day, not elapsed DST-adjusted hours.', 'info');
+        status.set(`${r.reversed ? 'Dates were reversed; the earlier date is counted first. ' : ''}The calendar breakdown excludes the end date; the include-end switch affects day, week, weekday and hour totals only. Hours use 24 per calendar day, not DST-adjusted elapsed time.`, 'info');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(h('div', { class: 'field-row', style: 'align-items:end' },
@@ -190,7 +158,7 @@ const defs = {
   },
 
   'date-add-calculator'(root) {
-    const start = input({ type: 'date', value: new Date().toISOString().slice(0, 10) });
+    const start = input({ type: 'date', value: localDateISO(new Date()) });
     const amount = input({ type: 'number', step: '1', value: '30' });
     const unit = select({ options: [{ v: 'days', t: 'Days' }, { v: 'weeks', t: 'Weeks' }, { v: 'months', t: 'Months' }, { v: 'years', t: 'Years' }], value: 'days' });
     const dir = select({ options: [{ v: 'add', t: 'Add (after)' }, { v: 'sub', t: 'Subtract (before)' }], value: 'add' });
@@ -198,7 +166,7 @@ const defs = {
     const status = statusLine('');
     const run = () => {
       try {
-        const d = dateAdd(start.value, Math.abs(Number(amount.value) || 0), unit.value, dir.value);
+        const d = dateAdd(start.value, Number(amount.value), unit.value, dir.value);
         grid.set([
           { label: 'Resulting date', value: d.toLocaleDateString(undefined, { dateStyle: 'full' }), kind: 'good' },
           { label: 'ISO', value: localDateISO(d) },
@@ -218,12 +186,12 @@ const defs = {
 
   'time-zone-converter'(root) {
     const now = new Date();
-    const dateIn = input({ type: 'date', value: now.toISOString().slice(0, 10) });
+    const dateIn = input({ type: 'date', value: localDateISO(now) });
     const timeIn = input({ type: 'time', value: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` });
     const fromTz = select({ options: TIME_ZONES.map((tz) => ({ v: tz, t: tz })), value: Intl.DateTimeFormat().resolvedOptions().timeZone });
     const toTz = select({ options: TIME_ZONES.map((tz) => ({ v: tz, t: tz })), value: 'UTC' });
     const grid = statsGrid();
-    const status = statusLine('Daylight-saving time is handled automatically by your browser’s timezone database.');
+    const status = statusLine('Your browser’s timezone database is used. Missing or repeated clock-transition times must be changed to an unambiguous time.');
     const run = () => {
       try {
         const r = convertTimeZone({ dateStr: dateIn.value, timeStr: timeIn.value, fromTz: fromTz.value, toTz: toTz.value });
@@ -245,7 +213,7 @@ const defs = {
       actionsRow(btn({ label: 'Convert', icon: 'globe', onClick: run }),
         btn({ label: 'Now', variant: 'secondary', onClick: () => {
           const n = new Date();
-          dateIn.value = n.toISOString().slice(0, 10);
+          dateIn.value = localDateISO(n);
           timeIn.value = `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
           run();
         } })),

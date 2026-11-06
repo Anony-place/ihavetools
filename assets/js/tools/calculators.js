@@ -9,6 +9,7 @@
 // Shareable calculators offer an opt-in link containing the entered values.
 // =============================================================================
 import { h, field, input, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool, shareState } from '../ui.js';
+import { DAY_MS, parseCalendarDate, localDateISO, dateISO, addMonthsUTC } from '../calendar.js';
 
 const num = (el) => { const v = parseFloat(String(el.value).replace(/,/g, '')); return v; };
 const money = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -33,29 +34,26 @@ export function discountCalc(price, pcts, taxPct = 0) {
   const tax = (p * taxPct) / 100;
   return { steps, saved, afterDiscount: p, tax, final: p + tax };
 }
-export function ageCalc(dobStr, atStr) {
-  const dob = new Date(`${dobStr}T00:00:00`);
-  if (Number.isNaN(dob.getTime())) throw new Error('That date could not be parsed. Pick the date again.');
-  const at = atStr ? new Date(`${atStr}T00:00:00`) : new Date();
-  if (Number.isNaN(at.getTime())) throw new Error('The “age at date” could not be parsed.');
-  if (dob > at) throw new Error('The date of birth must be before the reference date.');
-  let years = at.getFullYear() - dob.getFullYear();
-  let months = at.getMonth() - dob.getMonth();
-  let days = at.getDate() - dob.getDate();
-  if (days < 0) {
-    months--;
-    days += new Date(at.getFullYear(), at.getMonth(), 0).getDate();
-  }
-  if (months < 0) { years--; months += 12; }
-  const totalDays = Math.floor((at - dob) / 864e5);
-  const next = new Date(at.getFullYear(), dob.getMonth(), dob.getDate());
-  if (next < at) next.setFullYear(next.getFullYear() + 1);
-  if (next.getTime() === new Date(at.getFullYear(), dob.getMonth(), dob.getDate()).getTime() && at.getDate() === dob.getDate() && at.getMonth() === dob.getMonth()) {
-    next.setTime(next.getTime()); // birthday is today
-  }
-  const daysToBirthday = Math.round((next - at) / 864e5);
-  return { years, months, days, totalDays, weeks: Math.floor(totalDays / 7), hours: totalDays * 24, daysToBirthday, birthdayToday: daysToBirthday === 0 || (days === 0 && months === 0) };
+export function ageCalc(dobStr, atStr, leapRule = 'feb28') {
+  const birth = parseCalendarDate(dobStr), at = parseCalendarDate(atStr || localDateISO(new Date()));
+  if (birth > at) throw new Error('The date of birth must be before or equal to the reference date.');
+  if (!['feb28','mar1'].includes(leapRule)) throw new Error('Choose a valid leap-day birthday rule.');
+  const bd = new Date(birth), reference = new Date(at);
+  const birthdayIn = (year) => {
+    const month=bd.getUTCMonth(), day=bd.getUTCDate();
+    if (month===1 && day===29 && new Date(Date.UTC(year,2,0)).getUTCDate()===28) return Date.UTC(year, leapRule==='mar1' ? 2 : 1, leapRule==='mar1' ? 1 : 28);
+    return Date.UTC(year,month,day);
+  };
+  const y=reference.getUTCFullYear(); let years=y-bd.getUTCFullYear();
+  if (birthdayIn(y)>at) years--;
+  const anniversary=birthdayIn(bd.getUTCFullYear()+years); let months=0;
+  while (months<11 && addMonthsUTC(anniversary,months+1)<=at) months++;
+  const days=(at-addMonthsUTC(anniversary,months))/DAY_MS;
+  let next=birthdayIn(y); if(next<at) next=birthdayIn(y+1);
+  const totalDays=(at-birth)/DAY_MS;
+  return {years,months,days,totalDays,weeks:Math.floor(totalDays/7),hours:totalDays*24,daysToBirthday:(next-at)/DAY_MS,birthdayToday:next===at,nextBirthday:dateISO(next)};
 }
+
 export function bmiCalc({ cm = null, ft = null, inch = null, kg = null, lb = null }) {
   let hMeters, kgWeight;
   if (cm != null) hMeters = cm / 100;
@@ -659,14 +657,15 @@ const defs = {
   },
 
   'age-calculator'(root) {
-    const dob = input({ type: 'date', max: new Date().toISOString().slice(0, 10) });
+    const dob = input({ type: 'date' });
     const at = input({ type: 'date' });
+    const leap = select({ options: [{v:'feb28',t:'February 28'}, {v:'mar1',t:'March 1'}], value:'feb28' });
     const grid = statsGrid();
     const status = statusLine('Pick a date of birth to begin.');
     const run = () => {
-      if (!dob.value) { status.set('Pick a date of birth first.', 'warning'); return; }
+      if (!dob.value) { grid.replaceChildren(); status.set('Pick a date of birth first.', 'warning'); return; }
       try {
-        const r = ageCalc(dob.value, at.value || undefined);
+        const r = ageCalc(dob.value, at.value || undefined, leap.value);
         grid.set([
           { label: 'Age', value: `${r.years}y ${r.months}m ${r.days}d`, kind: 'good' },
           { label: 'In years', value: `${r.years}` },
@@ -674,16 +673,18 @@ const defs = {
           { label: 'Total weeks', value: fmtNumber(r.weeks) },
           { label: 'Total days', value: fmtNumber(r.totalDays) },
           { label: 'Total hours', value: fmtNumber(r.hours) },
-          { label: r.birthdayToday ? 'Birthday today! 🎂' : 'Next birthday in', value: r.birthdayToday ? `${r.years + 1}` : `${r.daysToBirthday} days`, kind: r.birthdayToday ? 'good' : '' },
+          { label: 'Next birthday on or after reference date', value: r.nextBirthday },
+          { label: r.birthdayToday ? 'Birthday today! 🎂' : 'Next birthday in', value: r.birthdayToday ? 'Today' : `${r.daysToBirthday} days`, kind: r.birthdayToday ? 'good' : '' },
         ]);
-        status.set(`Age calculated${at.value ? ' at the chosen date' : ' as of today'} ✓`, 'success');
+        status.set('Calendar age counts complete years, then months from the last birthday, then remaining days. Hours are 24 per calendar day, not actual elapsed hours. February 29 policy is a convention, not legal advice.', 'info');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(h('div', { class: 'field-row' },
         field({ label: 'Date of birth', control: dob }),
-        field({ label: 'Age at date', control: at, hint: 'Defaults to today' })),
+        field({ label: 'Age at date', control: at, hint: 'Defaults to today' }),
+        field({ label: 'February 29 birthday in non-leap years', control: leap })),
       actionsRow(btn({ label: 'Calculate age', icon: 'cake', onClick: run })), grid, status);
-    shareState(root, [['dob', dob], ['at', at]], run);
+    shareState(root, [['dob', dob], ['at', at], ['leap', leap]], run);
   },
 
   'bmi-calculator'(root) {

@@ -1,6 +1,6 @@
 # iHaveTools
 
-**123 free online tools. No sign-up or file uploads.** Every tool runs
+**124 free online tools. No sign-up or file uploads.** Every tool runs
 in your browser. Optional share links contain inputs; YouTube thumbnails load from its CDN.
 
 **Live site:** https://i-have-tools.vercel.app/ (Vercel, auto-deployed from `main` on every merge)
@@ -48,6 +48,7 @@ assets/js/
                      (build-time only — browsers never download it)
   search-index.js  ← GENERATED slim index for search, loaded lazily (16 KB vs 71 KB)
   ui.js            ← shared UI primitives (inputs, dropzone, results, tables)
+  calendar.js      ← strict Gregorian date-only arithmetic and ISO week helpers
   icons.js         ← hand-drawn SVG icon set; static pages reference a cached
                      sprite (/assets/icons/sprite.svg) generated from it
   site.js          ← behaviour only: theme, nav toggles, search, service-worker
@@ -58,8 +59,8 @@ scripts/
   build.mjs        ← generates every HTML page (home, categories, tools,
                      about/privacy/terms, 404), sitemap, llms.txt, sprite,
                      search index — all from registry.js
-  test-tools.mjs   ← 195 engine tests (pure logic, run in Node)
-  test-dom.mjs     ← 85 DOM tests: loads built pages into jsdom and drives real UIs
+  test-tools.mjs   ← 202 engine tests (pure logic, run in Node)
+  test-dom.mjs     ← 90 DOM tests: loads built pages into jsdom and drives real UIs
   test-chrome.mjs  ← 9 chrome tests: homepage, search, categories, theme, nav, install
   test-sw.mjs      ← service worker lifecycle, offline, privacy and cache-limit regression tests
   link-check.mjs   ← 20 integrity checks: dead links, sitemap↔files, SEO meta,
@@ -85,8 +86,8 @@ See **PLAN.md** for the SEO/speed roadmap (what is done, what is next).
 ```bash
 npm install          # devDependencies only (jsdom, sharp, pdf-lib, playwright*)
 npm run build        # regenerate all HTML from the registry
-npm test             # engine tests (195)
-npm run test:dom     # DOM tests against built pages (85)
+npm test             # engine tests (202)
+npm run test:dom     # DOM tests against built pages (90)
 npm run test:chrome  # chrome tests (9)
 npm run check        # build + engine/DOM/Chrome, service worker and link checks
 ```

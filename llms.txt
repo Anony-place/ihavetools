@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 123 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 124 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -90,7 +90,7 @@
 - [Average Calculator](https://i-have-tools.vercel.app/tools/average-calculator/): Mean, median, modes and standard deviation from a list of numbers.
 - [Ratio Calculator](https://i-have-tools.vercel.app/tools/ratio-calculator/): Simplify ratios and solve for the missing value.
 - [GCD & LCM Calculator](https://i-have-tools.vercel.app/tools/gcd-lcm-calculator/): Greatest common divisor and least common multiple, with prime factors.
-- [Date Difference](https://i-have-tools.vercel.app/tools/date-difference/): Days, weeks, months and weekdays between two dates.
+- [Date Difference](https://i-have-tools.vercel.app/tools/date-difference/): Days, weeks, calendar difference and weekdays between two dates.
 - [Date Add / Subtract](https://i-have-tools.vercel.app/tools/date-add-calculator/): Add or subtract days, weeks, months or years from a date.
 - [Time Zone Converter](https://i-have-tools.vercel.app/tools/time-zone-converter/): Convert a time between any two IANA time zones.
 - [CSV to JSON](https://i-have-tools.vercel.app/tools/csv-to-json/): RFC 4180-correct CSV conversion, with header row support.
@@ -144,6 +144,7 @@
 - [Debt-to-Income Ratio Calculator](https://i-have-tools.vercel.app/tools/debt-to-income-calculator/): Compare monthly debt payments with gross monthly income.
 - [Break-Even Calculator](https://i-have-tools.vercel.app/tools/break-even-calculator/): Find whole-unit sales needed to cover fixed and variable costs.
 - [Weighted Average Calculator](https://i-have-tools.vercel.app/tools/weighted-average-calculator/): Calculate a weighted mean from values and their weights.
+- [ISO Week Number Calculator](https://i-have-tools.vercel.app/tools/iso-week-calculator/): Find an ISO week number, week-year and Monday-to-Sunday dates.
 
 ## About this site
 - [About](https://i-have-tools.vercel.app/about/)

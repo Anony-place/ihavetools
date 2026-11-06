@@ -450,13 +450,13 @@ await test('discount stacking + tax', () => {
 });
 await test('age exact arithmetic', () => {
   const r = calc.ageCalc('2000-02-29', '2024-02-28');
-  assert.deepEqual({ y: r.years, m: r.months, d: r.days }, { y: 23, m: 11, d: 30 });
+  assert.deepEqual({ y: r.years, m: r.months, d: r.days }, { y: 23, m: 11, d: 31 });
   const r2 = calc.ageCalc('1990-01-15', '2024-01-15');
   assert.equal(r2.years, 34);
   assert.equal(r2.birthdayToday, true);
 });
 await test('age rejects future birth', () => {
-  assert.throws(() => calc.ageCalc('2999-01-01'), /before/);
+  assert.throws(() => calc.ageCalc('2100-01-01', '2024-01-01'), /before/);
 });
 await test('BMI categories + healthy range', () => {
   const r = calc.bmiCalc({ cm: 170, kg: 70 }); // 24.2
@@ -797,7 +797,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator', 'business-day-calculator', 'budget-calculator', 'emergency-fund-calculator', 'debt-to-income-calculator', 'break-even-calculator', 'average-calculator', 'ratio-calculator', 'gcd-lcm-calculator', 'weighted-average-calculator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator', 'business-day-calculator', 'budget-calculator', 'emergency-fund-calculator', 'debt-to-income-calculator', 'break-even-calculator', 'average-calculator', 'ratio-calculator', 'gcd-lcm-calculator', 'weighted-average-calculator', 'date-difference', 'date-add-calculator', 'iso-week-calculator'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -1006,6 +1006,43 @@ await test('DST handled correctly (summer vs winter)', () => {
 await test('zone offset helper sane', () => {
   assert.equal(dt.zoneOffset('UTC', new Date()), 0);
   assert.equal(dt.zoneOffset('Asia/Kolkata', new Date('2024-06-01T00:00:00Z')), 330);
+});
+
+console.log('\n── Batch-13 calendar reliability ──');
+await test('age uses clear leap-day policy and non-negative calendar breakdown',()=>{
+ const feb=calc.ageCalc('2000-02-29','2023-02-28','feb28'); assert.equal(feb.years,23); assert.equal(feb.birthdayToday,true); assert.equal(feb.daysToBirthday,0); assert.deepEqual([feb.months,feb.days],[0,0]);
+ const mar=calc.ageCalc('2000-02-29','2023-02-28','mar1'); assert.equal(mar.years,22); assert.equal(mar.daysToBirthday,1); assert.equal(mar.nextBirthday,'2023-03-01');
+ const x=calc.ageCalc('2000-01-31','2023-03-01'); assert.deepEqual([x.years,x.months,x.days],[23,1,1]);
+ assert.throws(()=>calc.ageCalc('2024-02-30','2024-03-01'),/Invalid date/); assert.throws(()=>calc.ageCalc('2000-01-01','2001-01-01','x'),/leap-day/);
+});
+await test('date difference handles month-end, reverse and inclusive totals',()=>{
+ const r=dt.dateDiff('2024-01-31','2024-03-01'); assert.deepEqual([r.years,r.months,r.days,r.totalDays],[0,1,1,30]);
+ const inclusive=dt.dateDiff('2024-03-01','2024-01-31',true); assert.equal(inclusive.totalDays,31); assert.equal(inclusive.businessDays+inclusive.weekendDays,31); assert.equal(inclusive.reversed,true); assert.deepEqual([inclusive.years,inclusive.months,inclusive.days],[0,1,1]);
+ assert.throws(()=>dt.dateDiff('2024-02-30','2024-03-01'),/Invalid date/); assert.throws(()=>dt.dateDiff('1899-12-31','2024-01-01'),/1900/);
+});
+await test('date-add validates positive integers, supported ranges and directions',()=>{
+ for(const v of [0,-1,1.5,Infinity,100001]) assert.throws(()=>dt.dateAdd('2024-01-01',v,'days','add'),/whole number/);
+ assert.throws(()=>dt.dateAdd('2024-02-30',1,'days','add'),/Invalid/); assert.throws(()=>dt.dateAdd('2100-12-31',1,'days','add'),/outside/); assert.throws(()=>dt.dateAdd('2024-01-01',1,'days','x'),/add or subtract/);
+});
+await test('ISO week boundaries use Thursday week-year and Monday weeks',()=>{
+ assert.deepEqual(dt.isoWeek('2021-01-01'),{year:2020,week:53,weekday:5,monday:'2020-12-28',sunday:'2021-01-03'});
+ assert.deepEqual(dt.isoWeek('2018-12-31'),{year:2019,week:1,weekday:1,monday:'2018-12-31',sunday:'2019-01-06'});
+ assert.equal(dt.isoWeek('2024-12-29').week,52); assert.equal(dt.isoWeek('2024-12-30').week,1); assert.throws(()=>dt.isoWeek('2024-02-30'),/Invalid/);
+});
+await test('calendar day totals are invariant across time zones and DST',async()=>{
+ const {execFileSync}=await import('node:child_process');
+ const code=`import {ageCalc} from './assets/js/tools/calculators.js'; import {dateDiff,isoWeek} from './assets/js/tools/datetime.js'; console.log(JSON.stringify([ageCalc('2024-03-09','2024-03-11').totalDays,dateDiff('2024-03-09','2024-03-11').totalDays,isoWeek('2021-01-01').week]))`;
+ for(const TZ of ['UTC','America/New_York','Asia/Kolkata','Pacific/Auckland']) assert.deepEqual(JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',code],{encoding:'utf8',env:{...process.env,TZ}})),[2,2,53]);
+});
+await test('time zone converter rejects DST gaps and repeated times',()=>{
+ const args={fromTz:'America/New_York',toTz:'UTC'};
+ assert.throws(()=>dt.convertTimeZone({...args,dateStr:'2024-03-10',timeStr:'02:30'}),/does not exist/);
+ assert.throws(()=>dt.convertTimeZone({...args,dateStr:'2024-11-03',timeStr:'01:30'}),/occurs twice/);
+ assert.equal(dt.convertTimeZone({...args,dateStr:'2024-11-03',timeStr:'03:30'}).utc,'2024-11-03T08:30 UTC');
+ assert.throws(()=>dt.convertTimeZone({...args,dateStr:'2024-02-30',timeStr:'12:00'}),/Invalid date/);
+});
+await test('ISO week guide, search and contextual inbound links',()=>{
+ const t=registry.getTool('iso-week-calculator'); assert.ok(t?.guide?.length>=3&&t.faqs?.length>=3); assert.ok(registry.searchTools('ISO week number',20).some(x=>x.id===t.id)); assert.ok(registry.tools.filter(x=>x.id!==t.id&&registry.relatedTools(x,6).some(y=>y.id===t.id)).length>=3);
 });
 
 console.log('\n── Data (CSV/JSONL) ──');
@@ -1294,8 +1331,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 123);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 66);
+  assert.equal(registry.tools.length, 124);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 70);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
