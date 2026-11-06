@@ -369,6 +369,19 @@ await test('SEO robots glob matching and Unicode keyword boundaries', () => {
  assert.throws(()=>seo.keywordDensity('a'.repeat(200001)),/limit/);
 });
 
+await test('random draws and wheel validate boundaries without retries', () => {
+ let calls=0; const rng={getRandomValues(a){calls++;a[0]=0;return a;}};
+ const nums=misc.randomNumbers({min:-500,max:499,count:1000,unique:true,rng}); assert.equal(calls,1000); assert.equal(new Set(nums).size,1000); assert.equal(nums.length,1000);
+ assert.equal(misc.randomNumbers({min:0,max:4294967295,count:1,rng})[0],'0');
+ assert.deepEqual(misc.randomNumbers({min:-1,max:-1,count:1,pad:3,rng}),['-01']);
+ const orders=new Set(); for(let x=0;x<3;x++) for(let y=0;y<2;y++){let values=[x,y,0];let fake={getRandomValues(a){a[0]=values.shift();return a;}};orders.add(misc.randomNumbers({min:0,max:2,count:3,unique:true,rng:fake}).join(','));} assert.equal(orders.size,6);
+ assert.throws(()=>misc.rollDice({dice:1.5,sides:6,rng}),/1 and 12/);
+ assert.throws(()=>misc.rollDice({dice:1,sides:6.5,rng}),/2 and 100/);
+ assert.throws(()=>misc.parseWheelEntries(Array(101).fill('A').join('\n')),/100 entries/);
+ assert.throws(()=>misc.parseWheelEntries('a'.repeat(201)+'\nb'),/200 characters/);
+ assert.deepEqual(misc.parseWheelEntries('A\nA\nB'),['A','A','B']);
+});
+
 console.log('\n── Parser-based formatters ──');
 await test('HTML formatter preserves preformatted content and rejects unsafe minification',async()=>{
  const out=await dev.formatHtml('<pre>  keep\n   me</pre>');assert.ok(out.includes('  keep\n   me'));

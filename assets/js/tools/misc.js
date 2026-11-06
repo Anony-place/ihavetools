@@ -5,33 +5,39 @@
 import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, statusLine, statsGrid, toast, copyText, privacyNote, mountTool } from '../ui.js';
 import { randomInt } from './security.js';
 
-export function rollDice({ dice = 2, sides = 6 }) {
-  if (!(dice >= 1 && dice <= 12)) throw new Error('Roll between 1 and 12 dice.');
-  if (!(sides >= 2 && sides <= 100)) throw new Error('Dice need between 2 and 100 sides.');
-  return Array.from({ length: dice }, () => 1 + randomInt(sides));
+export function rollDice({ dice = 2, sides = 6, rng }) {
+  if (!Number.isInteger(dice) || !(dice >= 1 && dice <= 12)) throw new Error('Roll between 1 and 12 dice.');
+  if (!Number.isInteger(sides) || !(sides >= 2 && sides <= 100)) throw new Error('Dice need between 2 and 100 sides.');
+  return Array.from({ length: dice }, () => 1 + randomInt(sides, rng));
 }
 
-export function randomNumbers({ min, max, count, unique = false, sort = 'none', pad = 0 }) {
+export function randomNumbers({ min, max, count, unique = false, sort = 'none', pad = 0, rng }) {
   if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max)) throw new Error('Minimum and maximum must be safe whole numbers.');
   if (!Number.isInteger(count) || count < 1 || count > 1000) throw new Error('Choose between 1 and 1000 numbers.');
   if (min > max) throw new Error('Minimum must be less than or equal to maximum.');
+  if (!Number.isInteger(pad) || pad < 0 || pad > 100) throw new Error('Padding must be a whole number from 0 to 100.');
   const span = max - min + 1;
   if (span > 4294967296) throw new Error('The inclusive range must contain at most 4,294,967,296 numbers.');
   if (unique && count > span) throw new Error(`Cannot pick ${count} unique numbers from a range of only ${span}.`);
   const out = [];
-  const seen = new Set();
-  while (out.length < count) {
-    const n = min + randomInt(span);
-    if (unique) { if (seen.has(n)) continue; seen.add(n); }
-    out.push(n);
+  // Sparse partial Fisher–Yates: exactly count draws, even for a full range.
+  const swaps = new Map();
+  for (let i = 0; i < count; i++) {
+    const remaining = span - i;
+    const index = randomInt(unique ? remaining : span, rng);
+    const picked = unique ? (swaps.get(index) ?? index) : index;
+    if (unique) swaps.set(index, swaps.get(remaining - 1) ?? (remaining - 1));
+    out.push(min + picked);
   }
   if (sort === 'asc') out.sort((a, b) => a - b);
   if (sort === 'desc') out.sort((a, b) => b - a);
-  return out.map((n) => (pad ? String(n).padStart(pad, '0') : String(n)));
+  return out.map(n => pad && n < 0 ? `-${String(-n).padStart(Math.max(0, pad - 1), '0')}` : pad ? String(n).padStart(pad, '0') : String(n));
 }
 
 export function parseWheelEntries(text) {
-  const entries = String(text || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean).slice(0, 100);
+  const entries = String(text || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  if (entries.length > 100) throw new Error('Use no more than 100 entries.');
+  if (entries.some(entry => entry.length > 200)) throw new Error('Each entry must be 200 characters or fewer.');
   if (entries.length < 2) throw new Error('Add at least two names or options — one per line.');
   return entries;
 }
@@ -103,8 +109,8 @@ const defs = {
     const gen = () => {
       try {
         const nums = randomNumbers({
-          min: Number(min.value), max: Number(max.value),
-          count: Math.max(1, Math.min(1000, Math.floor(Number(count.value) || 1))),
+          min: min.value === '' ? NaN : Number(min.value), max: max.value === '' ? NaN : Number(max.value),
+          count: count.value === '' ? NaN : Number(count.value),
           unique: unique.querySelector('input').checked,
           sort: sortSel.value,
         });
@@ -112,7 +118,7 @@ const defs = {
           type: 'button', class: 'swatch', role: 'listitem', style: 'width:96px;text-align:center',
           'aria-label': `Copy ${n}`, onclick: async () => { (await copyText(n)) ? toast(`${n} copied`, 'success') : toast('Copy failed', 'error'); },
         },
-          h('div', { class: 'sw-color', style: `height:56px;display:grid;place-items:center;font-size:1.25rem;font-weight:800;color:var(--text);background:${['var(--primary-soft)', 'var(--success-soft)', 'var(--warning-soft)'][i % 3]}`, text: n.length > 9 ? n.slice(0, 8) + '…' : n }),
+          h('div', { class: 'sw-color', style: `min-height:56px;display:grid;place-items:center;overflow-wrap:anywhere;font-size:.9rem;font-weight:800;color:var(--text);background:${['var(--primary-soft)', 'var(--success-soft)', 'var(--warning-soft)'][i % 3]}`, text: n }),
           h('div', { class: 'sw-info', style: 'text-align:center' }, h('span', { class: 'sw-hex', text: `#${i + 1}` })))));
         grid.set([
           { label: 'Range', value: `${min.value}–${max.value}` },
@@ -122,6 +128,7 @@ const defs = {
         status.set(`${nums.length} number${nums.length === 1 ? '' : 's'} drawn with crypto.getRandomValues ✓`, 'success');
       } catch (e) { out.replaceChildren(); grid.replaceChildren(); status.set(e.message, 'error'); }
     };
+    [min, max, count, sortSel, unique].forEach(el => { const invalidate = () => { out.replaceChildren(); grid.replaceChildren(); status.set('Settings changed. Generate again.', 'info'); }; el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     root.append(
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Minimum', control: min }),
@@ -198,14 +205,15 @@ const defs = {
       let entries;
       try { entries = parseWheelEntries(entriesBox.value); }
       catch (e) { status.set(e.message, 'error'); render(); return; }
-      spinning = true;
-      winnerBox.style.display = 'none';
+      let winnerIndex, finalRotation;
+      try {
+        winnerIndex = randomInt(entries.length);
+        finalRotation = wheelRotationForWinner({ currentRotation: rotation, count: entries.length, winnerIndex, jitter: randomInt(1000) / 1000, fullSpins: 5 });
+      } catch (e) { status.set(`Could not draw securely: ${e.message}`, 'error'); return; }
+      spinning = true; entriesBox.disabled = true;
+      [spinBtn, shuffleBtn, sortBtn].forEach(b => { b.disabled = true; });
+      winnerBox.style.display = 'none'; lastWinner = '';
       removeWinnerBtn.disabled = true;
-      const winnerIndex = randomInt(entries.length);
-      const finalRotation = wheelRotationForWinner({
-        currentRotation: rotation, count: entries.length, winnerIndex,
-        jitter: randomInt(1000) / 1000, fullSpins: 5,
-      });
       render(rotation);
       const group = svgHost.querySelector('[data-wheel-group]');
       const raf = globalThis.requestAnimationFrame || ((fn) => setTimeout(fn, 0));
@@ -218,7 +226,8 @@ const defs = {
       rotation = finalRotation;
       status.set('Wheel spinning…', 'warning');
       setTimeout(() => {
-        spinning = false;
+        spinning = false; entriesBox.disabled = false;
+        [spinBtn, shuffleBtn, sortBtn].forEach(b => { b.disabled = false; });
         lastWinner = entries[winnerIndex];
         history.unshift(lastWinner);
         if (history.length > 20) history.pop();
@@ -231,14 +240,15 @@ const defs = {
         status.set(`${lastWinner} wins. Spin again or remove the winner for an elimination draw.`, 'success');
       }, 4350);
     };
-    entriesBox.addEventListener('input', () => { if (!spinning) render(); });
+    const clearWinner = () => { lastWinner = ''; winnerBox.style.display = 'none'; removeWinnerBtn.disabled = true; };
+    entriesBox.addEventListener('input', () => { if (!spinning) { clearWinner(); render(); status.set('Entries changed. Spin again.', 'info'); } });
+    const spinBtn = btn({ label: 'Spin the wheel', icon: 'refresh', onClick: spin });
+    const shuffleBtn = btn({ label: 'Shuffle entries', variant: 'secondary', icon: 'shuffle', onClick: () => { if (spinning) return; try { entriesBox.value = shuffleEntries(parseWheelEntries(entriesBox.value)).join('\n'); clearWinner(); render(); status.set('Entries shuffled ✓', 'success'); } catch (e) { clearWinner(); status.set(e.message, 'error'); } } });
+    const sortBtn = btn({ label: 'Sort A–Z', variant: 'secondary', icon: 'table', onClick: () => { if (spinning) return; try { entriesBox.value = parseWheelEntries(entriesBox.value).sort((a, b) => a.localeCompare(b)).join('\n'); clearWinner(); render(); status.set('Entries sorted. Spin again.', 'info'); } catch (e) { clearWinner(); status.set(e.message, 'error'); } } });
     root.append(
       field({ label: 'Names or options (one per line, up to 100)', control: entriesBox }),
-      actionsRow(
-        btn({ label: 'Spin the wheel', icon: 'refresh', onClick: spin }),
-        btn({ label: 'Shuffle entries', variant: 'secondary', icon: 'shuffle', onClick: () => { try { entriesBox.value = shuffleEntries(parseWheelEntries(entriesBox.value)).join('\n'); render(); status.set('Entries shuffled ✓', 'success'); } catch (e) { status.set(e.message, 'error'); } } }),
-        btn({ label: 'Sort A–Z', variant: 'secondary', icon: 'table', onClick: () => { try { entriesBox.value = parseWheelEntries(entriesBox.value).sort((a, b) => a.localeCompare(b)).join('\n'); render(); } catch (e) { status.set(e.message, 'error'); } } }),
-        removeWinnerBtn),
+      h('p', { class: 'hint', text: 'Each line is a separate entry. Duplicate names receive multiple chances; long labels are shortened on the wheel.' }),
+      actionsRow(spinBtn, shuffleBtn, sortBtn, removeWinnerBtn),
       wheelHost, winnerBox, status, historyBox,
       privacyNote('Names stay in this tab. Nothing is saved or sent to a server, so the same list will not follow you to another device.'));
     render();
@@ -248,14 +258,17 @@ const defs = {
     const duration = segControl({ options: [{ v: '30', t: '30 seconds' }, { v: '60', t: '1 minute' }, { v: '120', t: '2 minutes' }], value: '60', ariaLabel: 'Test duration' });
     const targetBox = h('div', { style: 'font-size:1.13rem;line-height:1.9;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);white-space:pre-wrap;margin:14px 0', 'aria-label': 'Text to type' });
     const typed = textarea({ rows: 5, placeholder: 'Click here and start typing the text above…', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'none' });
-    typed.addEventListener('paste', (e) => e.preventDefault());
+    typed.addEventListener('paste', e => e.preventDefault());
+    typed.addEventListener('drop', e => e.preventDefault());
+    typed.addEventListener('beforeinput', e => { if (e.inputType === 'insertFromPaste' || e.inputType === 'insertFromDrop') e.preventDefault(); });
     const grid = statsGrid();
-    const status = statusLine('The timer starts with your first character. Paste is disabled so the score stays honest.');
+    const status = statusLine('The timer starts with your first character. Paste and drop are blocked where supported; scores are not verified.');
     let passageIndex = 0;
     let target = TYPING_TEXTS[passageIndex];
     let startedAt = null;
     let timer = null;
     let finished = false;
+    let lastAccepted = '';
     const secondsAllowed = () => Number(duration.getValue());
     const targetForDuration = () => {
       // Enough text for roughly an 84 WPM typist, so longer tests do not
@@ -269,7 +282,7 @@ const defs = {
       }
       return text;
     };
-    const elapsed = () => startedAt ? Math.min(secondsAllowed(), (Date.now() - startedAt) / 1000) : 0;
+    const elapsed = () => startedAt !== null ? Math.max(0, Math.min(secondsAllowed(), (performance.now() - startedAt) / 1000)) : 0;
     const renderTarget = () => {
       const typedText = typed.value;
       targetBox.replaceChildren(...[...target].map((ch, i) => {
@@ -304,11 +317,13 @@ const defs = {
     const tick = () => { if (elapsed() >= secondsAllowed()) finish('time'); else paint(); };
     typed.addEventListener('input', () => {
       if (finished) return;
+      if (startedAt !== null && elapsed() >= secondsAllowed()) { typed.value = lastAccepted; finish('time'); return; }
       if (typed.value.length > target.length) typed.value = typed.value.slice(0, target.length);
-      if (!startedAt && typed.value) {
-        startedAt = Date.now();
+      if (startedAt === null && typed.value) {
+        startedAt = performance.now();
         timer = setInterval(tick, 200);
       }
+      lastAccepted = typed.value;
       const r = paint();
       if (r.complete) finish('complete');
     });
@@ -323,13 +338,13 @@ const defs = {
         passageIndex = next;
       }
       target = targetForDuration();
-      typed.value = '';
+      typed.value = ''; lastAccepted = '';
       typed.disabled = false;
       paint(0);
-      status.set('The timer starts with your first character. Paste is disabled so the score stays honest.', 'warning');
+      status.set('The timer starts with your first character. Paste and drop are blocked where supported; scores are not verified.', 'warning');
       typed.focus();
     };
-    duration.addEventListener('change', () => reset(false));
+    duration.addEventListener('click', e => { if (e.target.closest('button')) reset(false); });
     root.append(
       field({ label: 'Test duration', control: duration }),
       targetBox,
@@ -356,8 +371,7 @@ defs['dice-roller'] = (root) => {
   const history = [];
   const roll = () => {
     try {
-      const n = Math.max(1, Math.min(12, Math.floor(Number(dice.value) || 1)));
-      dice.value = String(n);
+      const n = dice.value === '' ? NaN : Number(dice.value);
       const s = Number(sides.value);
       const rolls = rollDice({ dice: n, sides: s });
       const total = rolls.reduce((a, b) => a + b, 0);
@@ -374,9 +388,10 @@ defs['dice-roller'] = (root) => {
         { label: 'Average', value: (total / n).toFixed(2) },
         { label: 'Highest possible', value: String(n * s) },
       ]);
-      status.set(`Rolled ${n}d${s} → ${rolls.join(' + ')} = ${total}${rolls.some((r) => r === s) ? ' · max roll!' : rolls.some((r) => r === 1) ? ' · critical fail (1)' : ''}`, 'success');
-    } catch (e) { status.set(e.message, 'error'); }
+      status.set(`Rolled ${n}d${s} → ${rolls.join(' + ')} = ${total}${rolls.some((r) => r === s) ? ' · max roll!' : rolls.some((r) => r === 1) ? ' · rolled a 1' : ''}`, 'success');
+    } catch (e) { out.replaceChildren(); grid.replaceChildren(); status.set(e.message, 'error'); }
   };
+  [dice, sides].forEach(el => { const invalidate = () => { out.replaceChildren(); grid.replaceChildren(); status.set('Settings changed. Roll again.', 'info'); }; el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
   root.append(
     h('div', { class: 'field-row', style: 'align-items:end' },
       field({ label: 'Number of dice (1–12)', control: dice }),
