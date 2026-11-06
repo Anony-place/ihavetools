@@ -1232,6 +1232,26 @@ await domTest('QR scanner rejects oversized input and cleans up on repeated page
  } finally {if(old) Object.defineProperty(navigator,'mediaDevices',old); else delete navigator.mediaDevices;}
 });
 
+await domTest('typing duration resets test and rejects characters after deadline', async () => {
+ const previous=Object.getOwnPropertyDescriptor(performance,'now'); let now=5000; Object.defineProperty(performance,'now',{configurable:true,value:()=>now});
+ try {const app=await loadToolPage('typing-speed-test','misc'), box=app.querySelector('textarea'); click(btnByLabel(app,'30 seconds')); assert.match(app.textContent,/30sTime left/);
+ box.value='T'; fire(box,'input'); now+=31000; box.value='Th'; fire(box,'input'); assert.equal(box.value,'T'); assert.equal(box.disabled,true); assert.match(statusText(document),/Time is up/);
+ click(btnByLabel(app,'2 minutes')); assert.equal(box.disabled,false); assert.equal(box.value,''); assert.match(app.textContent,/120sTime left/);
+ } finally {if(previous) Object.defineProperty(performance,'now',previous); else delete performance.now;}
+});
+await domTest('random and dice reject fractional values and invalidate stale results', async () => {
+ let app=await loadToolPage('random-number-generator','misc'); const fields=app.querySelectorAll('input[type=number]'); assert.ok(app.querySelectorAll('.swatch').length); fields[2].value='1.5'; fire(fields[2],'input'); assert.equal(app.querySelectorAll('.swatch').length,0); click(btnByLabel(app,'Generate')); assert.match(statusText(document),/between 1 and 1000/);
+ fields[0].value=''; fields[2].value='1'; click(btnByLabel(app,'Generate')); assert.match(statusText(document),/safe whole/);
+ app=await loadToolPage('dice-roller','misc'); const dice=app.querySelector('input[type=number]'); dice.value='2.5'; fire(dice,'input'); assert.equal(app.querySelectorAll('.swatch').length,0); click(btnByLabel(app,'Roll')); assert.match(statusText(document),/1 and 12/);
+});
+await domTest('spin wheel locks list during draw and invalidates winner after edits', async () => {
+ const app=await loadToolPage('spin-wheel','misc'), entries=app.querySelector('textarea'), spin=btnByLabel(app,'Spin the wheel'), shuffle=btnByLabel(app,'Shuffle entries');
+ click(spin); assert.equal(entries.disabled,true); assert.equal(shuffle.disabled,true); const old=entries.value; click(shuffle); assert.equal(entries.value,old);
+ await new Promise(r=>setTimeout(r,4450)); assert.equal(entries.disabled,false); const remove=btnByLabel(app,'Remove winner'); assert.equal(remove.disabled,false);
+ entries.value='Another\nName'; fire(entries,'input'); assert.equal(remove.disabled,true); assert.match(statusText(document),/Entries changed/);
+ entries.value=Array(101).fill('Entry').join('\n'); fire(entries,'input'); click(spin); assert.match(statusText(document),/100 entries/);
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);

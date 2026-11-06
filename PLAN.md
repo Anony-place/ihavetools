@@ -11,6 +11,19 @@
 
 ---
 
+## Batch 27 plan — interactive random and typing tools
+
+1. Audit random number/dice input validation, unbiased sampling, display and stale
+   output; avoid unbounded retries for unique draws.
+2. Fix spin-wheel list changes during animation, winner invalidation and entry
+   limits. Preserve duplicate entries as separate weighted choices and explain it.
+3. Fix typing duration selection and deadline handling; use a monotonic clock,
+   reset sessions consistently and make scoring/paste limitations honest.
+4. Add deterministic engine and interaction regressions, update audit, run full
+   checks/security audit, then one CI-verified PR and production verification.
+
+---
+
 ## Batch 26 plan — QR generation, scanner and camera lifecycle
 
 1. Audit exact QR payload preservation, library loading and asynchronous generator

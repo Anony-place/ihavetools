@@ -12,6 +12,28 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
+## Batch 27 — interactive random and typing tools
+
+- Random number generation validates whole inputs and uses sparse partial
+  Fisher–Yates for unique draws instead of repeatedly retrying duplicates. Dice
+  reject fractional counts and sides; random/dice outputs clear on edits. Full
+  integers are visible rather than truncated. Cryptographic random values come
+  from the browser, not an independently certified draw; RNG rejection sampling
+  can itself retry. See https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues
+- Spin wheel now rejects excess or excessively long entries instead of silently
+  dropping them, locks list and reorder actions during a spin, handles unavailable
+  crypto, and clears the old winner when a list changes. Duplicate lines remain
+  separate chances; removing one winner removes only one matching line.
+- Typing duration buttons actually reset the test, elapsed time uses a monotonic
+  clock, and input delivered after the deadline is excluded. Paste/drop blocking
+  is best effort: scores are local, editable in principle and not verified.
+  The score reflects final characters, not an audit of every keystroke.
+- Engine tests cover all permutations of a tiny unique draw, range/length checks
+  and deterministic worst-case sample completion. DOM tests cover deadline,
+  duration reset, stale outputs and wheel locking. Physical animation alignment,
+  diverse browsers, screen readers and external fairness certification remain
+  unverified.
+
 ## Batch 26 — QR workflow integrity and camera lifecycle
 
 - QR generator preserves leading/trailing payload whitespace, rejects unpaired

@@ -1869,7 +1869,7 @@ export const tools = [
         p: 'A physical-looking spin can hide a biased choice, so this wheel does it in the transparent order: a cryptographic random integer chooses the winning entry first; the animation then rotates through five full turns and stops with that segment under the pointer. The segment sizes are equal, and the shuffle uses the Fisher–Yates algorithm — every ordering is equally likely when driven by the same crypto-random source.' },
       { h: 'Run a clean raffle or classroom draw', list: [
         'Freeze and proofread the entry list before the first spin; duplicates are extra chances unless duplicates are your deliberate weighting system.',
-        'Announce whether winners stay eligible. In an elimination draw, use Remove winner after each spin so nobody can win twice.',
+        'Announce whether winners stay eligible. Remove winner removes one matching line; remove every duplicate line manually if a name must not win again.',
         'The history records the order of winners in this tab — screenshot or copy it before closing if the draw needs an audit trail.',
         'For money prizes or regulated promotions, a browser wheel is entertainment software, not a certified draw system; check the promotion rules that apply to you.',
       ] },
@@ -1879,7 +1879,7 @@ export const tools = [
   T({ id: 'typing-speed-test', name: 'Typing Speed Test', icon: 'type', engine: 'misc', categories: ['misc', 'text', 'student'],
     related: ['word-counter', 'character-counter', 'spin-wheel', 'random-number-generator'],
     blurb: 'Measure WPM and accuracy in 30, 60 or 120 seconds.',
-    description: 'Take a 30-second, 1-minute or 2-minute typing test with live per-character feedback, net and gross words per minute, accuracy and progress. The timer begins with your first keystroke.',
+    description: 'Take a 30-second, 1-minute or 2-minute typing test with live per-character feedback, net and gross words per minute, accuracy and progress. The timer begins with the first character; scores are local and not independently verified.',
     keywords: ['typing speed test', 'typing test', 'wpm test', 'words per minute', 'typing speed', 'online typing test'],
     aliases: ['wpm test', 'typing test online', 'check typing speed', '1 minute typing test'],
     popularity: 88, added: '2026-11-03',
