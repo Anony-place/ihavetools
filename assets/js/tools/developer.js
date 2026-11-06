@@ -17,6 +17,7 @@ export function validateJson(text) {
     return { line, column: col };
   };
   const err = (msg, pos) => ({ ok: false, message: msg, position: pos, ...lineCol(pos) });
+  if (n > 1000000) return err('JSON input exceeds the 1,000,000-character limit.', 0);
   const dupKeys = [];
   const ws = () => { while (i < n && /[\t\n\r ]/.test(text[i])) i++; };
 
@@ -24,8 +25,10 @@ export function validateJson(text) {
     ws();
     if (i >= n) return err('Unexpected end of input — a value was expected here.', i);
     const c = text[i];
-    if (c === '{') return parseObject(keyPath);
-    if (c === '[') return parseArray(keyPath);
+    if (c === '{' || c === '[') {
+      if (depth >= 256) return err('JSON exceeds the 256-level nesting limit.', i);
+      depth++; const result = c === '{' ? parseObject(keyPath) : parseArray(keyPath); depth--; return result;
+    }
     if (c === '"') return parseString();
     if (c === '-' || (c >= '0' && c <= '9')) return parseNumber();
     if (text.startsWith('true', i) || text.startsWith('false', i)) { i += text[i] === 't' ? 4 : 5; return { ok: true }; }
@@ -125,13 +128,69 @@ export function validateJson(text) {
 export function jsonParse(text) {
   const v = validateJson(text);
   if (!v.ok) { const e = new Error(v.message); e.line = v.line; e.column = v.column; e.position = v.position; throw e; }
-  if (v.duplicateKeys?.length) console.warn('Duplicate keys:', v.duplicateKeys);
-  return JSON.parse(text);
+  return parseConversionJson(text);
 }
 
-export function jsonFormat(text, indent = 2) { return JSON.stringify(jsonParse(text), null, Math.max(0, Math.min(10, indent))); }
-export function jsonMinify(text) { return JSON.stringify(jsonParse(text)); }
+// Validate syntax, then change only insignificant whitespace. Never parse and
+// reserialize values: doing so can change large numbers, escapes and duplicate keys.
+function renderJson(text, indent) {
+  const validation = validateJson(text);
+  if (!validation.ok) { const error = new Error(validation.message); error.line = validation.line; error.column = validation.column; throw error; }
+  const pretty = indent > 0, parts = []; let length = 0, level = 0;
+  const add = (part) => { length += part.length; if (length > 10000000) throw new Error('Formatted output exceeds the 10,000,000-character limit.'); parts.push(part); };
+  const pad = () => pretty ? ' '.repeat(level * indent) : '';
+  for (let i = 0; i < text.length;) {
+    const c = text[i];
+    if (/[\t\n\r ]/.test(c)) { i++; continue; }
+    if (c === '"') {
+      const start = i++;
+      while (i < text.length) { if (text[i] === '\\') { i += 2; continue; } if (text[i++] === '"') break; }
+      add(text.slice(start, i)); continue;
+    }
+    if (c === '{' || c === '[') {
+      let next = i + 1; while (/[\t\n\r ]/.test(text[next] || '')) next++;
+      const closing = c === '{' ? '}' : ']';
+      add(c); i++; level++;
+      if (pretty && text[next] !== closing) add('\n' + pad());
+      continue;
+    }
+    if (c === '}' || c === ']') {
+      let previous = i - 1; while (previous >= 0 && /[\t\n\r ]/.test(text[previous])) previous--;
+      level--; if (pretty && text[previous] !== (c === '}' ? '{' : '[')) add('\n' + pad());
+      add(c); i++; continue;
+    }
+    if (c === ',') { add(pretty ? ',\n' + pad() : ','); i++; continue; }
+    if (c === ':') { add(pretty ? ': ' : ':'); i++; continue; }
+    let end = i + 1; while (end < text.length && !/[\t\n\r ,\]\}]/.test(text[end])) end++;
+    add(text.slice(i, end)); i = end;
+  }
+  return parts.join('');
+}
+export function jsonFormat(text, indent = 2) {
+  const width = Number.isFinite(Number(indent)) ? Math.max(0, Math.min(10, Math.trunc(Number(indent)))) : 2;
+  return renderJson(text, width);
+}
+export function jsonMinify(text) { return renderJson(text, 0); }
 export function countJsonWhitespace(text) { return (text.match(/\s/g) || []).length; }
+
+// Reject conversions that JSON.parse/stringify would silently corrupt. Decimal
+// numbers still use binary floating-point; callers must disclose rounding.
+export function parseConversionJson(text) {
+  let validation;
+  try { validation = validateJson(text); } catch { throw new Error('JSON is too deeply nested to inspect safely.'); }
+  if (!validation.ok) throw new Error(`Invalid JSON: ${validation.message}`);
+  if (validation.duplicateKeys.length) throw new Error('Duplicate JSON object keys would overwrite values. Use unique keys.');
+  const tokens = /"(?:\\.|[^"\\])*"|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
+  for (const match of text.matchAll(tokens)) {
+    const token = match[0];
+    if (token[0] === '"') continue;
+    const n = Number(token);
+    if (!Number.isFinite(n) || (Number.isInteger(n) && !Number.isSafeInteger(n))) throw new Error('JSON contains a number outside the safe numeric range. Use a quoted string to preserve it.');
+    const significand = token.split(/[eE]/)[0];
+    if ((n === 0 && /[1-9]/.test(significand)) || Object.is(n, -0)) throw new Error('JSON contains a number that would become zero or lose its negative-zero sign. Use a quoted string to preserve it.');
+  }
+  return JSON.parse(text);
+}
 
 /* ═══════════════════════════ Base64 ═══════════════════════════ */
 const B64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
@@ -351,8 +410,8 @@ export const formatJs = (source, indent = 2) => prettierFormat(source, 'babel', 
 export function compareJson(leftText, rightText, { maxNodes = 100000, maxChanges = 1000 } = {}) {
   if (leftText.length > 1000000 || rightText.length > 1000000) throw new Error('Each JSON input must be at most 1,000,000 characters.');
   let left, right;
-  try { left = JSON.parse(leftText); } catch (e) { throw new Error(`Left JSON is invalid: ${e.message}`); }
-  try { right = JSON.parse(rightText); } catch (e) { throw new Error(`Right JSON is invalid: ${e.message}`); }
+  try { left = parseConversionJson(leftText); } catch (e) { throw new Error(`Left JSON is invalid: ${e.message}`); }
+  try { right = parseConversionJson(rightText); } catch (e) { throw new Error(`Right JSON is invalid: ${e.message}`); }
   const kind = (v) => v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v;
   const segment = (s) => String(s).replace(/~/g, '~0').replace(/\//g, '~1');
   const changes = [], stack = [{ left, right, path: '' }]; let nodes = 0;
@@ -379,6 +438,7 @@ const defs = {
     const right = textarea({ rows: 10, value: '{\n  "tags": ["a", "c"],\n  "name": "Ana",\n  "role": "editor"\n}', placeholder: 'Paste revised JSON…' });
     const status = statusLine('Compare two JSON values. Object key order is ignored; array order matters.');
     const out = resultPanel({ label: 'Structural differences', copy: false });
+    [left, right].forEach(el => el.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Compare again.', 'info'); }));
     const preview = (v) => { const text = JSON.stringify(v, (_key, value) => typeof value === 'number' && !Number.isFinite(value) ? String(value) : value); return text.length > 240 ? `${text.slice(0, 240)}…` : text; };
     const run = () => {
       try {
@@ -395,7 +455,7 @@ const defs = {
     root.append(h('div', { class: 'field-row' }, field({ label: 'Original JSON', control: left }), field({ label: 'Revised JSON', control: right })),
       actionsRow(btn({ label: 'Compare JSON', icon: 'diff', onClick: run }), btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { left.value = ''; right.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, out.panel,
-      h('p', { class: 'hint', text: 'Values are parsed as JavaScript JSON: duplicate keys use the last value and numbers have floating-point precision limits. Inputs stay in your browser.' }));
+      h('p', { class: 'hint', text: 'Duplicate keys, unsafe integers, overflow, underflow and negative zero are rejected. Decimal numbers may round in JavaScript; use strings for exact comparisons. Inputs stay in your browser.' }));
   },
 
   'json-formatter'(root) {
@@ -403,6 +463,8 @@ const defs = {
     const indent = select({ id: 'indent', options: [{ v: 2, t: '2 spaces' }, { v: 4, t: '4 spaces' }, { v: 1, t: '1 space' }, { v: 3, t: '3 spaces' }], value: '2' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Formatted JSON', download: true, downloadName: 'formatted.json', downloadMime: 'application/json;charset=utf-8' });
+    const invalidate = () => { out.placeholder(); status.set('Input or indentation changed. Run again.', 'info'); };
+    inp.addEventListener('input', invalidate); indent.addEventListener('change', invalidate);
     const run = (mode) => {
       const src = inp.value;
       if (!src.trim()) { status.set('Paste some JSON first.', 'warning'); out.placeholder('Paste JSON above, then click Format or Minify.'); return; }
@@ -410,10 +472,11 @@ const defs = {
         const result = mode === 'minify' ? jsonMinify(src) : jsonFormat(src, Number(indent.value));
         out.set(result);
         const before = new Blob([src]).size, after = new Blob([result]).size;
-        status.set(`Valid JSON ✓ — ${fmtBytes(before)} → ${fmtBytes(after)}.`, 'success');
+        const duplicates = validateJson(src).duplicateKeys;
+        status.set(duplicates.length ? `Formatted with duplicate keys preserved. Other parsers may overwrite them. ${fmtBytes(before)} → ${fmtBytes(after)}.` : `Valid JSON ✓ — ${fmtBytes(before)} → ${fmtBytes(after)}.`, duplicates.length ? 'warning' : 'success');
       } catch (e) {
         out.placeholder();
-        status.set(`Line ${e.line}, column ${e.column}: ${e.message}`, 'error');
+        status.set(e.line != null ? `Line ${e.line}, column ${e.column}: ${e.message}` : e.message, 'error');
       }
     };
     root.append(
@@ -443,7 +506,7 @@ const defs = {
           status.set(`Valid JSON ✓ (with duplicate object keys: ${v.duplicateKeys.slice(0, 4).join(', ')}${v.duplicateKeys.length > 4 ? '…' : ''})`, 'warning');
         } else status.set('Valid JSON ✓ — the document parses cleanly.', 'success');
       } else {
-        status.set(`Invalid JSON — line ${v.line}, column ${v.column}`, 'error');
+        status.set(`${/limit/.test(v.message) ? 'Unable to validate' : 'Invalid JSON'} — line ${v.line}, column ${v.column}`, 'error');
         detail.append(errorBanner(v.message, `Line ${v.line}, column ${v.column}. Fix this spot and validate again.`));
       }
     };
@@ -459,16 +522,18 @@ const defs = {
     const inp = textarea({ rows: 12, placeholder: 'Paste JSON to minify…' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Minified JSON', download: true, downloadName: 'minified.json', downloadMime: 'application/json;charset=utf-8' });
+    inp.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Minify again.', 'info'); });
     root.append(field({ label: 'JSON input', control: inp }),
       actionsRow(btn({ label: 'Minify', icon: 'minimize', onClick: () => {
-        if (!inp.value.trim()) { status.set('Paste some JSON first.', 'warning'); return; }
+        if (!inp.value.trim()) { out.placeholder(); status.set('Paste some JSON first.', 'warning'); return; }
         try {
           const result = jsonMinify(inp.value);
           out.set(result);
           const before = new Blob([inp.value]).size, after = new Blob([result]).size;
           const saved = before ? Math.round((1 - after / before) * 100) : 0;
-          status.set(`Done — ${fmtBytes(before)} → ${fmtBytes(after)} (${saved}% smaller).`, 'success');
-        } catch (e) { out.placeholder(); status.set(`Line ${e.line}, column ${e.column}: ${e.message}`, 'error'); }
+          const duplicates = validateJson(inp.value).duplicateKeys;
+          status.set(duplicates.length ? `Minified with duplicate keys preserved. Other parsers may overwrite them. ${fmtBytes(before)} → ${fmtBytes(after)}.` : `Done — ${fmtBytes(before)} → ${fmtBytes(after)} (${saved}% smaller).`, duplicates.length ? 'warning' : 'success');
+        } catch (e) { out.placeholder(); status.set(e.line != null ? `Line ${e.line}, column ${e.column}: ${e.message}` : e.message, 'error'); }
       } }),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel);

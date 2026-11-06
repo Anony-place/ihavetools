@@ -148,6 +148,25 @@ await test('format rejects invalid with line info', () => {
   assert.throws(() => dev.jsonFormat('{"a":}'), (e) => e.line >= 1 && e.message.length > 5);
 });
 
+await test('JSON formatting changes only whitespace, preserving number and string tokens', () => {
+  const src = String.raw` { "99999999999999999999" : -0, "big": 900719925474099312345, "n":1e400, "tiny":1e-500, "s":"\u0061\/\\", "dup": 1, "dup":2, "v": [ {}, [ ] ] } `;
+  const min = String.raw`{"99999999999999999999":-0,"big":900719925474099312345,"n":1e400,"tiny":1e-500,"s":"\u0061\/\\","dup":1,"dup":2,"v":[{},[]]}`;
+  assert.equal(dev.jsonMinify(src), min); assert.equal(dev.jsonMinify(dev.jsonFormat(src, 4)), min);
+  assert.equal(dev.jsonFormat(' [ { } , [ ] ] ', 2), '[\n  {},\n  []\n]');
+  for (const value of [null,true,false,0,'a\n"x',{},[],{z:[1,2],a:{x:'ok'}}]) {
+    const serialized=JSON.stringify(value); assert.equal(dev.jsonMinify(dev.jsonFormat(serialized)), serialized);
+  }
+});
+await test('JSON tools limit nesting and reject unsafe structural comparisons', () => {
+  const nested = '['.repeat(257)+'0'+']'.repeat(257);
+  assert.match(dev.validateJson(nested).message, /nesting limit/); assert.throws(()=>dev.jsonMinify(nested),/nesting limit/);
+  assert.match(dev.validateJson(' '.repeat(1000001)).message,/character limit/);
+  for (const text of ['{"x":9007199254740993}', '{"x":1e400}', '{"x":1e-400}', '{"x":-0}', '{"a":1,"\\u0061":2}']) {
+    assert.throws(()=>dev.compareJson(text,'{}'),/Left JSON is invalid.*Duplicate|Left JSON is invalid.*safe numeric|Left JSON is invalid.*zero/);
+  }
+  assert.deepEqual(dev.compareJson('{"x":"9007199254740993"}', '{"x":"9007199254740992"}').map(d=>d.path), ['/x']);
+});
+
 console.log('\n── Base64 ──');
 await test('ascii round-trip', () => {
   assert.equal(dev.b64encode('Hello, world!'), 'SGVsbG8sIHdvcmxkIQ==');

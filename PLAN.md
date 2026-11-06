@@ -582,6 +582,17 @@ Continue the audit requested by the user; no new tools or thin pages.
 
 ---
 
+## 🚧 BATCH-20 — JSON developer tool integrity
+
+1. Audit formatter, minifier, validator and comparison for numeric precision,
+   duplicate keys, deep nesting, stale results and resource safety.
+2. Preserve original JSON tokens for formatting/minification, prevent unsafe
+   comparisons, share numerical guards with data converters, and disclose limits.
+3. Add edge-case and UI tests; run full checks and security audit; update audit
+   evidence and ship one PR followed by production verification.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha
