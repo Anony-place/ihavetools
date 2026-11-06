@@ -35,6 +35,9 @@ jobs:
       - name: Chrome tests (homepage/search/theme)
         run: node scripts/test-chrome.mjs
 
+      - name: Service worker tests
+        run: node scripts/test-sw.mjs
+
       - name: Link & integrity checks
         run: node scripts/link-check.mjs
 

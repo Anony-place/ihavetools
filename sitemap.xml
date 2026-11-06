@@ -30,7 +30,7 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/converters/</loc>
-    <lastmod>2026-11-01</lastmod>
+    <lastmod>2026-11-06</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/categories/developer/</loc>
@@ -247,6 +247,22 @@
   <url>
     <loc>https://i-have-tools.vercel.app/tools/volume-converter/</loc>
     <lastmod>2026-06-09</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/pressure-converter/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/energy-converter/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/power-converter/</loc>
+    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/fuel-economy-converter/</loc>
+    <lastmod>2026-11-06</lastmod>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/tools/password-generator/</loc>

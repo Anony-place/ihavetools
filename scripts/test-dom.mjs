@@ -425,6 +425,18 @@ await domTest('temperature-converter: 37°C → 98.6°F', async () => {
   assert.match(app.textContent, /98\.6 Fahrenheit/);
 });
 
+await domTest('fuel economy reciprocal, zero error, and unit swap',async()=>{
+ const app=await loadToolPage('fuel-economy-converter','converters'); assert.match(app.textContent,/7\.84048611 litres\/100 km/);
+ const value=app.querySelector('input[type=number]');value.value='0';fire(value,'input');assert.match(app.textContent,/greater than zero/);assert.doesNotMatch(app.textContent,/7\.84048611 litres/);
+ value.value='10';fire(value,'input'); const selects=app.querySelectorAll('select');click(btnByLabel(app,'⇄'));assert.equal(selects[0].value,'litres/100 km (L/100 km)');assert.match(app.textContent,/23\.52145833 miles\/US gallon/);
+});
+await domTest('pressure, energy and power converter default examples',async()=>{
+ for(const [id,re] of [['pressure-converter',/14\.50377377 psi/],['energy-converter',/3\.6 megajoule/],['power-converter',/0\.74569987 kilowatt/]]) {const app=await loadToolPage(id,'converters');assert.match(app.textContent,re);}
+});
+await domTest('small values stay nonzero in table and stale output clears',async()=>{
+ const app=await loadToolPage('length-converter','converters'),v=app.querySelector('input[type=number]');v.value='0.000001';fire(v,'input');assert.match(app.textContent,/e-\d+/);v.value='';fire(v,'input');assert.match(app.textContent,/valid number/);assert.doesNotMatch(app.textContent,/Equal to…/);
+});
+
 /* ═════════════════ Security ═════════════════ */
 console.log('\n── Security tool UIs ──');
 await domTest('password-generator: generates 20-char password with entropy', async () => {

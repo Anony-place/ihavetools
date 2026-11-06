@@ -797,7 +797,7 @@ await test('site.js favourite/recent list helpers (pure)', async () => {
   assert.deepEqual(site.pushRecentId(['1', '2', '3'], '0', 3), ['0', '1', '2'], 'recent list is capped');
 });
 await test('registry guides are well-formed and cover the top tools', () => {
-  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator', 'business-day-calculator', 'budget-calculator', 'emergency-fund-calculator', 'debt-to-income-calculator', 'break-even-calculator', 'average-calculator', 'ratio-calculator', 'gcd-lcm-calculator', 'weighted-average-calculator', 'date-difference', 'date-add-calculator', 'iso-week-calculator'];
+  const expected = ['json-formatter', 'password-generator', 'word-counter', 'sip-calculator', 'percentage-calculator', 'qr-code-generator', 'image-compressor', 'income-tax-calculator', 'image-to-pdf', 'bmi-calculator', 'age-calculator', 'emi-calculator', 'gst-calculator', 'compound-interest-calculator', 'simple-interest-calculator', 'discount-calculator', 'fd-calculator', 'ppf-calculator', 'rd-calculator', 'cagr-calculator', 'gratuity-calculator', 'uuid-generator', 'base64-encoder', 'jpg-to-png', 'png-to-jpg', 'pdf-merge', 'youtube-thumbnail-downloader', 'character-counter', 'timestamp-converter', 'number-base-converter', 'roman-numeral-converter', 'morse-code-translator', 'lumpsum-calculator', 'percentage-change', 'keyword-density-checker', 'data-storage-converter', 'palette-generator', 'robots-txt-generator', 'nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test', 'final-grade-calculator', 'savings-goal-calculator', 'swp-calculator', 'electricity-cost-calculator', 'fuel-cost-calculator', 'pdf-organizer', 'json-compare', 'loan-prepayment-calculator', 'inflation-calculator', 'work-hours-calculator', 'profit-margin-calculator', 'business-day-calculator', 'budget-calculator', 'emergency-fund-calculator', 'debt-to-income-calculator', 'break-even-calculator', 'average-calculator', 'ratio-calculator', 'gcd-lcm-calculator', 'weighted-average-calculator', 'date-difference', 'date-add-calculator', 'iso-week-calculator', 'pressure-converter', 'energy-converter', 'power-converter', 'fuel-economy-converter'];
   const byId = new Map(registry.tools.map((t) => [t.id, t]));
   for (const id of expected) {
     assert.ok(byId.get(id)?.guide?.length >= 2, `${id} must carry a hand-written guide (deep content)`);
@@ -1006,6 +1006,29 @@ await test('DST handled correctly (summer vs winter)', () => {
 await test('zone offset helper sane', () => {
   assert.equal(dt.zoneOffset('UTC', new Date()), 0);
   assert.equal(dt.zoneOffset('Asia/Kolkata', new Date('2024-06-01T00:00:00Z')), 330);
+});
+
+console.log('\n── Batch-14 conversion reliability ──');
+await test('pressure, energy, power factors and round trips',()=>{
+ const cases=[['pressure','bar','psi',1,14.503773773],['pressure','standard atmosphere (atm)','pascal (Pa)',1,101325],['energy','kilowatt-hour (kWh)','megajoule (MJ)',1,3.6],['energy','kilocalorie (thermochemical)','joule (J)',1,4184],['power','horsepower (mechanical)','kilowatt (kW)',1,0.7456998715822702],['power','horsepower (metric)','watt (W)',1,735.49875]];
+ for(const [set,from,to,value,expected] of cases){const r=conv.convert(value,from,to,set);assert.ok(Math.abs(r-expected)<Math.max(1e-9,Math.abs(expected)*1e-10));assert.ok(Math.abs(conv.convert(r,to,from,set)-value)<1e-12);}
+});
+await test('fuel conversion uses reciprocal and separate US and UK gallons',()=>{
+ const us='miles/US gallon (mpg US)', uk='miles/UK gallon (mpg UK)', k='kilometres/litre (km/L)', l='litres/100 km (L/100 km)';
+ const r=conv.convert(30,us,l,'fuel'); assert.ok(Math.abs(r-7.8404861111)<1e-9); assert.ok(Math.abs(conv.convert(r,l,us,'fuel')-30)<1e-10);
+ assert.ok(Math.abs(conv.convert(1,us,k,'fuel')-1.609344/3.785411784)<1e-12); assert.ok(Math.abs(conv.convert(1,uk,k,'fuel')-1.609344/4.54609)<1e-12);
+ for(const n of [0,-1,NaN,Infinity]) assert.throws(()=>conv.convert(n,us,l,'fuel'));
+});
+await test('conversion boundaries, absolute zero, formatting and invalid unit names',()=>{
+ assert.throws(()=>conv.convert(1,'metre','foot','nope'),/category/);assert.throws(()=>conv.convert(1,'toString','foot','length'),/Unknown unit/);
+ for(const n of [Infinity,NaN,1e101,1e-101]) assert.throws(()=>conv.convert(n,'metre','foot','length'),/valid number/);
+ for(const [unit,value] of [['Celsius',-273.15],['Fahrenheit',-459.67],['Kelvin',0],['Rankine',0]]) assert.ok(Math.abs(conv.convert(value,unit,'Kelvin','temperature'))<1e-10);
+ assert.throws(()=>conv.convert(-0.01,'Kelvin','Celsius','temperature'),/absolute zero/); assert.equal(conv.convert(1e-50,'Kelvin','Kelvin','temperature'),1e-50);
+ assert.match(conv.formatConversion(1e-8),/e-8/); assert.equal(conv.formatConversion(0),'0');
+});
+await test('new converter guides searchable and linked from other tools',()=>{
+ for(const id of ['pressure-converter','energy-converter','power-converter','fuel-economy-converter']) {const t=registry.getTool(id);assert.ok(t.guide.length>=3&&t.faqs.length>=3);assert.ok(registry.searchTools(t.name,20).some(x=>x.id===id));assert.ok(registry.tools.filter(x=>x.id!==id&&registry.relatedTools(x,6).some(y=>y.id===id)).length>=3,id);}
+ for(const id of ['volume-converter','time-converter','speed-converter','temperature-converter']) assert.ok(registry.getTool(id).guide.length>=3);
 });
 
 console.log('\n── Batch-13 calendar reliability ──');
@@ -1331,8 +1354,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 124);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 70);
+  assert.equal(registry.tools.length, 128);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 78);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

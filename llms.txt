@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 124 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 128 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -66,6 +66,10 @@
 - [Data Storage Converter](https://i-have-tools.vercel.app/tools/data-storage-converter/): Bytes, KB, MB, GB, TB — decimal and binary (KiB, MiB, GiB).
 - [Area Converter](https://i-have-tools.vercel.app/tools/area-converter/): Square metres, feet, acres, hectares and more.
 - [Volume Converter](https://i-have-tools.vercel.app/tools/volume-converter/): Litres, millilitres, gallons, cups, tablespoons and more.
+- [Pressure Converter](https://i-have-tools.vercel.app/tools/pressure-converter/): Convert psi, bar, pascals and standard atmospheres.
+- [Energy Converter](https://i-have-tools.vercel.app/tools/energy-converter/): Convert joules, kWh, calories and BTU.
+- [Power Converter](https://i-have-tools.vercel.app/tools/power-converter/): Convert watts, kilowatts and mechanical or metric horsepower.
+- [Fuel Economy Converter](https://i-have-tools.vercel.app/tools/fuel-economy-converter/): Convert km/L, L/100 km and US or UK mpg.
 - [Password Generator](https://i-have-tools.vercel.app/tools/password-generator/): Strong random passwords with entropy readout — all local.
 - [Password Strength Checker](https://i-have-tools.vercel.app/tools/password-strength-checker/): Entropy, crack-time estimates and weakness checks — locally.
 - [Random String Generator](https://i-have-tools.vercel.app/tools/random-string-generator/): Bulk random strings and keys from your browser’s CSPRNG.

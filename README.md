@@ -1,6 +1,6 @@
 # iHaveTools
 
-**124 free online tools. No sign-up or file uploads.** Every tool runs
+**128 free online tools. No sign-up or file uploads.** Every tool runs
 in your browser. Optional share links contain inputs; YouTube thumbnails load from its CDN.
 
 **Live site:** https://i-have-tools.vercel.app/ (Vercel, auto-deployed from `main` on every merge)
@@ -59,8 +59,8 @@ scripts/
   build.mjs        ← generates every HTML page (home, categories, tools,
                      about/privacy/terms, 404), sitemap, llms.txt, sprite,
                      search index — all from registry.js
-  test-tools.mjs   ← 202 engine tests (pure logic, run in Node)
-  test-dom.mjs     ← 90 DOM tests: loads built pages into jsdom and drives real UIs
+  test-tools.mjs   ← 206 engine tests (pure logic, run in Node)
+  test-dom.mjs     ← 93 DOM tests: loads built pages into jsdom and drives real UIs
   test-chrome.mjs  ← 9 chrome tests: homepage, search, categories, theme, nav, install
   test-sw.mjs      ← service worker lifecycle, offline, privacy and cache-limit regression tests
   link-check.mjs   ← 20 integrity checks: dead links, sitemap↔files, SEO meta,

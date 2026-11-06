@@ -2,7 +2,7 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-01 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 124 (70 guides)
+> `main` par merge = auto-deploy) · **Tools:** 128 (78 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
@@ -444,7 +444,7 @@ PR #18 merged; production READY/PROMOTED and live pages verified.
 
 ---
 
-## 🚧 BATCH-13 — Calendar and date reliability (2026-11-06)
+## ✅ BATCH-13 — Calendar and date reliability (2026-11-06)
 
 Market scan shows age, deadline and ISO-week workflows; this is qualitative,
 not search-volume evidence. Existing age and date-difference pages can produce
@@ -471,7 +471,39 @@ One planned batch:
 Implemented: 124 tools / 70 guides; explicit leap-day choices, date-only UTC
 arithmetic, ISO weeks, stricter date-add validation, and DST gap/overlap errors.
 Full local check: 202 engine, 90 DOM, 9 chrome, worker suite and 20 integrity.
-PR, CI and production verification remain pending until actually complete.
+PR #19 merged, CI passed, Vercel production READY/PROMOTED; ISO week, age and time-zone pages verified live.
+
+---
+
+## 🚧 BATCH-14 — Reliable conversion workflows (2026-11-06)
+
+Market scan (Measurement Wizard, Toolonic and Baseutils) shows pressure,
+energy, power and fuel-economy workflows beyond our existing eight converter
+families; this is qualitative evidence, not verified search demand. NIST SP 811
+Appendix B (https://www.nist.gov/pml/special-publication-811/nist-guide-si-appendix-b-conversion-factors) supplies reference conversion factors and explains reciprocal MPG to
+L/100 km. First improve existing converter safety and output rather than create
+thin pages for each unit pair.
+
+One batch, one PR:
+1. Audit shared converter errors/precision and fix non-finite output, invalid
+   unit/set handling and tiny values rounded to zero in tables. Explain numeric
+   rounding, temperature absolute-zero limit and time averages honestly.
+2. Add pressure, energy and power converters with unambiguous units (US/metric
+   horsepower, thermochemical calories) and a distinct reciprocal fuel-economy
+   converter supporting US/UK mpg, km/L and L/100 km; positive finite inputs,
+   explicitly explain US vs UK gallon and reciprocal direction.
+3. Original worked examples, FAQ, internal links, search metadata; improve
+   existing volume/time/speed/temperature guides where missing, and do not
+   imply volume-to-weight conversion without ingredient density.
+4. Regression tests: factor references, round trips, small/large numbers,
+   malformed values, reciprocity and zero, stale UI state, swap and discoverability.
+   Also update vulnerable build/test-only dependencies and run service-worker
+   checks in CI. Full build/check, CI, one PR, production verify. Real-browser audits and GSC
+   measurement remain pending; no paid services.
+
+Local implementation complete: 128 tools / 78 guides; 206 engine, 93 DOM,
+9 chrome, service-worker and 20 integrity checks passed; npm audit reports zero
+vulnerabilities. PR, CI, merge and production verification remain pending.
 
 ---
 
