@@ -258,3 +258,29 @@ PDF-lib has real generated-PDF tests for some operations; diverse documents, att
 - [Image to PDF](/tools/image-to-pdf/) — `image-to-pdf`
 - [PDF Page Organizer](/tools/pdf-organizer/) — `pdf-organizer`
 
+
+## Batch-16 deeper media/PDF checks
+
+- MP4 inspector now bounds-checks box sizes and nesting, supports extended and
+  zero-sized boxes, associates metadata with each track, handles unknown movie
+  duration, and warns for fragmented/missing metadata. A 2-second FFmpeg-created
+  H.264/AAC fixture independently identified as 128×96 was parsed in engine
+  tests, alongside malformed and synthetic boxes. This is best-effort inspection,
+  not a full ISO-BMFF validator or codec verification; other layouts, edit lists,
+  encryption and unusual files remain unverified.
+- Audio trimmer, speed changer and extraction invalidate older async decodes;
+  trimmer validates the requested range instead of silently replacing zero/empty
+  end with the full duration. A mocked decoder tests out-of-order selection and
+  failed loads. Input is limited to 100 MiB and 30 million decoded samples;
+  slowed output is also limited. Decode itself can still consume significant
+  memory; actual browser codec support and playback were not tested here.
+- Image sniffing checks complete PNG/GIF signatures and RIFF for WebP instead of
+  accepting short or unrelated headers. This identifies formats, not file validity.
+- Existing organizer and merge tests reload generated PDFs; added rotate and
+  split UI tests reload generated output and verify rotation and page selection.
+  These are small synthetic documents, not proof of preserving forms, annotations,
+  bookmarks, signatures or arbitrary PDF structures. Real browser downloads,
+  image-to-PDF pixels, encrypted documents, and multi-download behavior remain
+  unverified. Rotate/split still need async selection-race review.
+- All 128 mounts remain smoke tests only. Further systematic per-tool input,
+  boundary, output and cross-browser testing is still required.

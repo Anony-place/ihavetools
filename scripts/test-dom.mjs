@@ -666,10 +666,11 @@ await domTest('mp4-inspector: parses a synthetic MP4 via dropzone', async () => 
   tdv.setUint32(12, 1); tdv.setUint32(76, 1920 * 65536); tdv.setUint32(80, 1080 * 65536);
   const tkhd = box('tkhd', [...tkhdBody]);
   const mdhd = box('mdhd', [...u32(0), ...u32(0), ...u32(0), ...u32(48000), ...u32(960000)]);
-  const stsd = box('stsd', [...u32(0), ...u32(1), ...u32(16), ...enc('avc1')]);
+  const stsd = box('stsd', [...u32(0), ...u32(1), ...u32(8), ...enc('avc1')]);
   const stbl = box('stbl', [...stsd]);
   const minf = box('minf', [...stbl]);
-  const mdia = box('mdia', [...mdhd, ...minf]);
+  const hdlr = box('hdlr', [...u32(0), ...u32(0), ...enc('vide')]);
+  const mdia = box('mdia', [...mdhd, ...hdlr, ...minf]);
   const trak = box('trak', [...tkhd, ...mdia]);
   const moov = box('moov', [...mvhd, ...trak]);
   const bytes = new Uint8Array([...ftyp, ...moov]);
@@ -745,6 +746,26 @@ for (const [id, query, expected] of [
   });
 }
 
+await domTest('audio trimmer ignores stale decodes and rejects empty end time', async () => {
+  const app = await loadToolPage('audio-trimmer', 'audio');
+  const pending = []; const previous = window.AudioContext;
+  window.AudioContext = class { decodeAudioData(bytes, ok, fail) { pending.push({ok, fail}); } close() { return Promise.resolve(); } };
+  const drop = (file) => { const e = new window.Event('drop', {bubbles:true, cancelable:true}); Object.defineProperty(e, 'dataTransfer', {value:{files:[file]}}); app.querySelector('.dropzone').dispatchEvent(e); };
+  try {
+    drop(new File(['a'], 'first.wav')); await new Promise(r => setTimeout(r, 30));
+    drop(new File(['b'], 'second.wav')); await new Promise(r => setTimeout(r, 30));
+    assert.equal(pending.length, 2);
+    const fake = {duration:1, length:100, sampleRate:100, numberOfChannels:1, getChannelData:() => new Float32Array(100)};
+    pending[1].ok(fake); await new Promise(r => setTimeout(r, 10));
+    pending[0].ok(fake); await new Promise(r => setTimeout(r, 10));
+    assert.match(statusText(document), /second.wav/);
+    const fields = app.querySelectorAll('input[type=number]'); fields[1].value = '';
+    click(btnByLabel(app, 'Export WAV of selection')); assert.match(statusText(document), /valid range/);
+    drop(new File(['bad'], 'bad.wav')); await new Promise(r => setTimeout(r, 30)); pending[2].fail(); await new Promise(r => setTimeout(r, 10));
+    click(btnByLabel(app, 'Export WAV of selection')); assert.match(statusText(document), /Load an audio file first/);
+  } finally { window.AudioContext = previous; }
+});
+
 console.log('\n── Batch-7 private document UIs ──');
 await domTest('JSON compare reports structural paths safely and rejects invalid JSON', async () => {
   const app = await loadToolPage('json-compare', 'developer');
@@ -788,6 +809,21 @@ await domTest('PDF merge handles dropped duplicate filenames by identity and rem
     assert.equal(result.getPage(0).getWidth(),100); assert.equal(result.getPage(1).getWidth(),200);
     click(app.querySelector('[aria-label="Remove"]')); assert.equal(app.querySelectorAll('.file-row').length, 1);
     assert.match(app.textContent, /1Files/);
+  } finally { URL.createObjectURL = original; }
+});
+
+await domTest('PDF rotate and split produce parseable pages with expected dimensions and rotation', async () => {
+  const lib = await import('pdf-lib'); window.PDFLib = {...lib, PDFDocument: {create: (...a) => lib.PDFDocument.create(...a), load: (b,...a) => lib.PDFDocument.load(new Uint8Array(b),...a)}};
+  const src = await lib.PDFDocument.create(); src.addPage([100,200]); src.addPage([200,300]);
+  src.getPage(0).setRotation(lib.degrees(90)); const bytes = await src.save();
+  const drop = app => {const e = new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[new File([bytes],'source.pdf',{type:'application/pdf'})]}}); app.querySelector('.dropzone').dispatchEvent(e);};
+  let output; const original = URL.createObjectURL; URL.createObjectURL = b => { output = b; return 'blob:test'; };
+  try {
+    let app = await loadToolPage('pdf-rotate','pdf'); drop(app); click(btnByLabel(app,'Rotate PDF')); await new Promise(r => setTimeout(r,120));
+    assert.ok(output, app.textContent); let result = await lib.PDFDocument.load(await output.arrayBuffer());
+    assert.equal(result.getPageCount(),2); assert.equal(result.getPage(0).getRotation().angle,180); assert.equal(result.getPage(1).getRotation().angle,90);
+    output = null; app = await loadToolPage('pdf-split','pdf'); drop(app); app.querySelector('input[type=text]').value = '2'; click(btnByLabel(app,'Split PDF')); await new Promise(r => setTimeout(r,120));
+    assert.ok(output,app.textContent); result = await lib.PDFDocument.load(await output.arrayBuffer()); assert.equal(result.getPageCount(),1); assert.equal(result.getPage(0).getWidth(),200);
   } finally { URL.createObjectURL = original; }
 });
 

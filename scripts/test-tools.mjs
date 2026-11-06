@@ -4,6 +4,7 @@
 // Every claim a tool makes is asserted here against real inputs and outputs.
 // =============================================================================
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 // Provide browser globals the engines use (DOMParser) when running in Node.
@@ -1171,7 +1172,7 @@ await test('audio: MP4 box parser on a synthetic file', () => {
   tdv.setUint32(80, 1080 * 65536); // height
   const tkhd = box('tkhd', [...tkhdBody]);
   const mdhd = box('mdhd', [...u32(0), ...u32(0), ...u32(0), ...u32(48000), ...u32(960000)]);
-  const stsd = box('stsd', [...u32(0), ...u32(1), ...u32(16), ...enc('avc1')]); // entry size + format
+  const stsd = box('stsd', [...u32(0), ...u32(1), ...u32(8), ...enc('avc1')]); // entry size + format
   const stbl = box('stbl', [...stsd]);
   const minf = box('minf', [...stbl]);
   const mdia = box('mdia', [...mdhd, ...minf]);
@@ -1189,7 +1190,32 @@ await test('audio: MP4 box parser on a synthetic file', () => {
   assert.equal(p.tracks[0].codec, 'avc1');
   assert.ok(p.topBoxes.some((b) => b.type === 'ftyp'));
   assert.ok(p.topBoxes.some((b) => b.type === 'moov'));
-  assert.throws(() => audio.parseMp4(new Uint8Array([1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0])), /does not look like an MP4/);
+  assert.throws(() => audio.parseMp4(new Uint8Array([1, 2, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0])), /invalid|truncated|does not look like an MP4/);
+});
+
+await test('audio: real FFmpeg MP4 and boundary cases', () => {
+  const mp4 = readFileSync(new URL('./fixtures/ffmpeg-test.mp4', import.meta.url));
+  const p = audio.parseMp4(new Uint8Array(mp4));
+  assert.equal(p.mvhd.duration / p.mvhd.timescale, 2);
+  assert.equal(p.tracks.length, 2);
+  const video = p.tracks.find(t => t.handler === 'vide');
+  assert.equal(video.codec, 'avc1'); assert.equal(video.width, 128); assert.equal(video.height, 96);
+  assert.equal(p.tracks.find(t => t.handler === 'soun').codec, 'mp4a');
+  const box = (type, body, extended = false) => {
+    const header = extended ? 16 : 8, data = new Uint8Array(header + body.length), dv = new DataView(data.buffer);
+    dv.setUint32(0, extended ? 1 : data.length); data.set([...type].map(c => c.charCodeAt(0)), 4);
+    if (extended) dv.setBigUint64(8, BigInt(data.length)); data.set(body, header); return data;
+  };
+  const mvhd = new Uint8Array(32); mvhd[0] = 1; new DataView(mvhd.buffer).setUint32(20, 1000); new DataView(mvhd.buffer).setBigUint64(24, 0xffffffffffffffffn);
+  const extended = box('moov', box('mvhd', mvhd), true);
+  assert.equal(audio.parseMp4(extended).mvhd.duration, null);
+  const zero = box('moov', new Uint8Array()); new DataView(zero.buffer).setUint32(0, 0);
+  assert.equal(audio.parseMp4(zero).topBoxes[0].size, 8);
+  assert.throws(() => audio.parseMp4(extended.subarray(0, 20)), /truncated|invalid/);
+  const bad = box('moov', box('trak', box('mdia', box('minf', box('stbl', box('stsd', new Uint8Array([0,0,0,0,0,0,0,1,0,0,0,30,97,118,99,49])))))));
+  assert.throws(() => audio.parseMp4(bad), /truncated/);
+  assert.throws(() => audio.sliceBuffer({sampleRate:100,length:100}, -1, 0.5), /valid range/);
+  assert.throws(() => audio.sliceBuffer({sampleRate:100,length:100}, 0, 1.1), /valid range/);
 });
 
 await test('audio: sliceBuffer math', () => {
@@ -1197,7 +1223,7 @@ await test('audio: sliceBuffer math', () => {
   const sel = audio.sliceBuffer(fake, 0.1, 0.3);
   assert.equal(sel.channels.length, 2);
   assert.equal(sel.channels[0].length, 20);
-  assert.throws(() => audio.sliceBuffer(fake, 0.5, 0.5), /too short/);
+  assert.throws(() => audio.sliceBuffer(fake, 0.5, 0.5), /valid range/);
 });
 
 await test('dice roller in range and honest distribution', () => {
@@ -1228,10 +1254,12 @@ await test('dimension math', () => {
 });
 await test('magic-byte sniffing', () => {
   assert.equal(img.sniffImageType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]).buffer), 'jpeg');
-  assert.equal(img.sniffImageType(new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer), 'png');
-  const webp = new Uint8Array(16); webp.set([0x57, 0x45, 0x42, 0x50], 8);
+  assert.equal(img.sniffImageType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]).buffer), 'png');
+  const webp = new Uint8Array(16); webp.set([0x52, 0x49, 0x46, 0x46]); webp.set([0x57, 0x45, 0x42, 0x50], 8);
   assert.equal(img.sniffImageType(webp.buffer), 'webp');
   assert.equal(img.sniffImageType(new Uint8Array([1, 2, 3]).buffer), null);
+  assert.equal(img.sniffImageType(new Uint8Array([0x89,0x50,0x4e,0x47]).buffer), null);
+  assert.equal(img.sniffImageType(new Uint8Array([0,0,0,0,0,0,0,0,0x57,0x45,0x42,0x50]).buffer), null);
 });
 await test('quality clamped', () => {
   assert.equal(img.clampQuality(80), 0.8);
