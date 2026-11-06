@@ -11,6 +11,19 @@
 
 ---
 
+## Batch 23 plan — safe regex execution and output integrity
+
+1. Move user-supplied regex evaluation into a terminable local Web Worker; cancel
+   obsolete jobs immediately, enforce a time limit, and fail closed if unavailable.
+2. Bound inputs and rendered match/group data, accurately disclose truncation,
+   preserve zero-width matches and Unicode text, and expose named groups.
+3. Add engine, worker-thread and DOM regressions for cancellation, timeout,
+   stale output, malformed patterns, caps, and highlight fidelity; update audit.
+4. Run full checks and dependency audit, then one PR, CI and production verification.
+   Real-browser performance and compatibility remain a separate manual task.
+
+---
+
 ## ✅ Jo ho chuka hai (history, short me)
 
 **Base + Speed/SEO foundation (PR #1–#2):** service-worker fix (`/sw.js`),
