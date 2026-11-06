@@ -364,7 +364,7 @@ const defs = {
     const fmtSel = select({ options: [{ v: 'png', t: 'PNG' }, { v: 'jpeg', t: 'JPEG' }, { v: 'webp', t: 'WebP' }], value: 'png' });
     if (preset) fmtSel.value = preset;
     const bgPicker = input({ type: 'color', value: '#ffffff' });
-    const bgRow = field({ label: 'Background (for transparent → JPEG)', control: h('div', { style: 'display:flex;gap:8px;align-items:center' }, bgPicker) });
+    const bgRow = field({ label: 'Background (for transparent → JPEG)', control: bgPicker });
     bgRow.hidden = fmtSel.value !== 'jpeg';
     fmtSel.addEventListener('change', () => { bgRow.hidden = fmtSel.value !== 'jpeg'; });
     const status = statusLine('Choose an image to begin.');
@@ -566,7 +566,7 @@ const defs = {
           ['Last modified', new Date(f.lastModified).toLocaleString()],
         ];
         out.append(
-          h('section', { class: 'result-panel' }, h('div', { class: 'result-head' }, h('span', { class: 'result-label', text: 'Summary' })), h('div', { class: 'result-body' }, table({ headers: ['Property', 'Value'], rows: summary }))));
+          h('section', { class: 'result-panel' }, h('div', { class: 'result-head' }, h('span', { class: 'result-label', text: 'Summary' })), h('div', { class: 'result-body', tabindex: '0', role: 'region', 'aria-label': 'Result details' }, table({ headers: ['Property', 'Value'], rows: summary }))));
         if (meta.summary?.length) out.append(h('section', {}, h('h3', { text: 'Parsed metadata', style: 'margin:20px 0 10px' }), table({ headers: ['Property', 'Value'], rows: meta.summary })));
         if (meta.exif && Object.keys(meta.exif).length) {
           for (const [group, entries] of Object.entries(meta.exif)) {

@@ -130,6 +130,18 @@ await domTest('base64-encoder: unicode round trip via UI', async () => {
   click(btnByLabel(app, 'Decode'));
   assert.equal(resultText(document).trim(), 'héllo 🎉');
 });
+await domTest('UUID controls have real icons, accessible names, and reject invalid counts', async () => {
+ const app=await loadToolPage('uuid-generator','developer'); const count=app.querySelector('input[type=number]');
+ const copy=app.querySelector('.file-row button');assert.equal(copy.getAttribute('aria-label'),'Copy');assert.ok(copy.querySelector('svg'));assert.doesNotMatch(copy.textContent,/<svg/);
+ count.value='1.5';fire(count,'input');assert.equal(app.querySelectorAll('.file-row').length,0);click(btnByLabel(app,'Generate'));assert.match(statusText(document),/whole number/);
+ count.value='2';fire(count,'input');click(btnByLabel(app,'Generate'));assert.equal(app.querySelectorAll('.file-row').length,2);
+});
+await domTest('shared output buttons use real icons and report failed download requests', async () => {
+ const app=await loadToolPage('json-formatter','developer');click(btnByLabel(app,'Format'));
+ const copy=app.querySelector('.result-head button[aria-label=Copy]');const download=app.querySelector('.result-head button[aria-label=Download]');assert.ok(copy.querySelector('svg'));assert.ok(download.querySelector('svg'));
+ const original=URL.createObjectURL;try{URL.createObjectURL=()=>{throw new Error('blocked');};click(download);await new Promise(r=>setTimeout(r,0));assert.match(document.querySelector('.toast-container')?.textContent||'',/Download failed/);}finally{URL.createObjectURL=original;}
+});
+
 await domTest('uuid-generator: generates on load with copy buttons', async () => {
   const app = await loadToolPage('uuid-generator', 'developer');
   const rows = app.querySelectorAll('.file-row');

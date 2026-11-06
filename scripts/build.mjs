@@ -80,7 +80,7 @@ function guideHtml(tool) {
     if (b.table && Array.isArray(b.table.head) && Array.isArray(b.table.rows)) {
       const head = b.table.head.map((c) => `<th scope="col">${esc(c)}</th>`).join('');
       const rows = b.table.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('');
-      parts.push(`<div class="table-wrap"><table class="data-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`);
+      parts.push(`<div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable table"><table class="data-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`);
     }
     return parts.join('');
   }).join('');

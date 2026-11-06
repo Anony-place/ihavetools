@@ -57,7 +57,7 @@ export async function copyText(text) {
 }
 
 export function copyButton(getText, { label = 'Copy', small = true, onDone } = {}) {
-  const b = h('button', { type: 'button', class: `btn btn-secondary${small ? ' btn-sm' : ''}` }, icon('copy'), label);
+  const b = h('button', { type: 'button', class: `btn btn-secondary${small ? ' btn-sm' : ''}`, 'aria-label': label || 'Copy' }, h('span', { html: icon('copy'), style: 'display:inline-flex' }), label);
   b.addEventListener('click', async () => {
     const text = typeof getText === 'function' ? getText() : getText;
     if (!text) { toast('Nothing to copy yet', 'error'); return; }
@@ -87,14 +87,14 @@ export function downloadText(text, filename, mime = 'text/plain;charset=utf-8') 
 }
 
 export function downloadButton(getContent, filename, { label = 'Download', mime = 'text/plain;charset=utf-8', small = true } = {}) {
-  const b = h('button', { type: 'button', class: `btn btn-secondary${small ? ' btn-sm' : ''}` }, icon('download'), label);
+  const b = h('button', { type: 'button', class: `btn btn-secondary${small ? ' btn-sm' : ''}`, 'aria-label': label || 'Download' }, h('span', { html: icon('download'), style: 'display:inline-flex' }), label);
   b.addEventListener('click', () => {
     try {
       const content = typeof getContent === 'function' ? getContent() : getContent;
       if (!content) { toast('Nothing to download yet', 'error'); return; }
       const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
-      downloadBlob(blob, filename);
-      toast(`Downloading ${filename}`, 'success');
+      if (!downloadBlob(blob, filename)) throw new Error('Could not request a download.');
+      toast(`Download requested: ${filename}`, 'success');
     } catch (e) { toast(`Download failed: ${e.message}`, 'error'); }
   });
   return b;
@@ -170,7 +170,7 @@ export function actionsRow(...buttons) { return h('div', { class: 'action-row' }
 
 /* ---------- Results ---------- */
 export function resultPanel({ label = 'Result', copy = true, download = null, downloadName = 'result.txt', downloadMime = 'text/plain;charset=utf-8', pre = true, placeholder = 'Result appears here.' } = {}) {
-  const body = h('div', { class: 'result-body' });
+  const body = h('div', { class: 'result-body', tabindex: '0', role: 'region', 'aria-label': `${label} output` });
   const setPre = (content) => {
     body.replaceChildren(h('pre', { text: content ?? '' }));
     panel.dataset.has = content ? '1' : '';
@@ -222,7 +222,7 @@ export function statsGrid(entries) {
 export function table({ headers, rows, caption }) {
   const thead = h('thead', {}, h('tr', {}, headers.map((hd, i) => h('th', { scope: 'col', class: i > 0 ? 'mono' : '', text: hd }))));
   const tbody = h('tbody', {}, rows.map((r) => h('tr', {}, r.map((c, i) => h('td', { class: i > 0 ? 'mono' : '', text: String(c ?? '') })))));
-  const wrap = h('div', { class: 'table-wrap' });
+  const wrap = h('div', { class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': 'Scrollable table' });
   const t = caption ? h('table', { class: 'data-table' }, caption) : h('table', { class: 'data-table' });
   t.append(thead, tbody);
   wrap.append(t);
@@ -234,7 +234,7 @@ export function table({ headers, rows, caption }) {
 const MAX_FILE_MB = 200;
 
 export function dropzone({ accept = '', multiple = false, onFiles, title = 'Choose a file or drop it here', sub = '' } = {}) {
-  const zone = h('div', { class: 'dropzone', role: 'button', tabindex: '0', 'aria-label': title },
+  const zone = h('div', { class: 'dropzone' },
     h('span', { html: icon('upload'), style: 'display:inline-flex' }),
     h('span', { class: 'dz-title', text: title }),
     sub ? h('span', { class: 'dz-sub', text: sub }) : null,
@@ -247,10 +247,10 @@ export function dropzone({ accept = '', multiple = false, onFiles, title = 'Choo
     onFiles(list);
   };
   fi.addEventListener('change', () => handle(fi.files));
+  fi.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); fi.click(); } });
   ['dragenter', 'dragover'].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.add('is-dragover'); }));
   ['dragleave', 'drop'].forEach((ev) => zone.addEventListener(ev, (e) => { e.preventDefault(); zone.classList.remove('is-dragover'); }));
   zone.addEventListener('drop', (e) => handle(e.dataTransfer.files));
-  zone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); } });
   zone.clear = () => { fi.value = ''; zone.classList.remove('has-file'); };
   return zone;
 }
