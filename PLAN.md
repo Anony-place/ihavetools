@@ -11,6 +11,19 @@
 
 ---
 
+## Batch 24 plan — text tools integrity
+
+1. Audit text counts, Unicode slugs, line deduplication/sorting, diff limits and
+   change detection, and their UI disclosures for actual behaviour.
+2. Repair destructive transformations, inconsistent empty counts, numerical
+   sorting and stale output; bound costly diff inputs and preserve terminal lines.
+3. Add engine and DOM regressions for Unicode, empty/blank lines, ordering,
+   large asymmetric inputs, terminal newlines and output invalidation.
+4. Rebuild, run full checks and dependency audit, update audit with remaining
+   heuristic and browser limitations, ship one PR after CI and verify deployment.
+
+---
+
 ## Batch 23 plan — safe regex execution and output integrity
 
 1. Move user-supplied regex evaluation into a terminable local Web Worker; cancel

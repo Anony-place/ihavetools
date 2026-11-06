@@ -1173,6 +1173,17 @@ await domTest('regex fails closed without worker support', async () => {
   finally { global.Worker=old; }
 });
 
+await domTest('text tools clear stale results and diff detects final newline', async () => {
+  let app=await loadToolPage('text-diff','text'); const [a,b]=app.querySelectorAll('textarea'); a.value='same'; b.value='same\n'; click(btnByLabel(app,'Compare')); assert.match(statusText(document),/1 line added/); assert.ok(app.querySelector('.d-add'));
+  b.value='different'; fire(b,'input'); assert.equal(app.querySelector('.d-add'),null); assert.match(statusText(document),/changed/i);
+  click(btnByLabel(app,'Compare')); click(btnByLabel(app,'Swap sides')); assert.equal(app.querySelector('.d-add'),null); assert.match(statusText(document),/swapped/i);
+  app=await loadToolPage('text-sorter','text'); const input=app.querySelector('textarea'); input.value='a\nb'; click(btnByLabel(app,'Sort')); assert.match(resultText(document),/a/); input.value='z'; fire(input,'input'); assert.doesNotMatch(resultText(document),/^a\nb$/);
+  app=await loadToolPage('slug-generator','text'); click(btnByLabel(app,'Generate slugs')); const title=app.querySelector('textarea'); title.value='हिन्दी भाषा'; fire(title,'input'); assert.doesNotMatch(resultText(document),/coffee/); click(btnByLabel(app,'Generate slugs')); assert.equal(resultText(document),'हिन्दी-भाषा');
+});
+await domTest('line counter reports zero blank lines on empty input', async () => {
+ const app=await loadToolPage('line-counter','text'); assert.match(app.textContent,/0Empty/); assert.match(app.textContent,/0Total lines/);
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);

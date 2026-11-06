@@ -12,6 +12,29 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
+## Batch 24 — text integrity follow-up
+
+- Empty input now reports zero total and blank lines; counting handles CRLF and
+  CR. Reading-time formatting now matches the advertised 5-second rounding.
+  Character meters explicitly warn that code points do not predict platform,
+  SMS encoding, grapheme or search snippet limits. Word/sentence counts remain
+  whitespace/punctuation heuristics, not language-aware segmentation.
+- Latin diacritics are simplified without stripping essential combining marks
+  from Indic scripts; programmer-style case conversion also retains marks.
+  Slug output may still need percent-encoding and is not full transliteration.
+- Sort deduplication respects the case option and keeps blank lines; sorting
+  preserves input blank lines and handles non-numeric values consistently.
+  Locale affects alphabetical order and numeric parsing uses a numeric prefix
+  after skipping leading non-numeric characters, not arbitrary natural numbers.
+- Diff no longer silently drops trailing newlines. Line endings are normalized;
+  allocation is limited by both dimensions, cell count and total input length.
+  Button-based text results clear when inputs/settings change or sides swap.
+- Regression coverage includes Hindi combining marks, blank lines, numeric sort,
+  asymmetric diff bounds, final newlines and stale output. Browser locale,
+  language-specific casing/tokenization and very large interactive workloads
+  remain limitations; no real-device testing was performed in this batch.
+  Reference: MDN Intl.Collator sensitivity and locale-dependent ordering.
+
 ## Batch 23 — regex execution and output integrity
 
 Regex evaluation now runs in a local module worker, terminated after one second

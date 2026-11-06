@@ -14,11 +14,12 @@ export function textStats(text) {
   const charsNoSpaces = [...text.replace(/\s/gu, '')].length;
   const sentences = text.split(/[.!?…]+[\s"')\]]*|$|$/u).map((s) => s.trim()).filter(Boolean).length;
   const paragraphs = text.split(/\n\s*\n+/u).filter((p) => p.trim()).length;
-  const lines = text.split(/\n/).length;
-  const nonEmptyLines = text.split(/\n/).filter((l) => l.trim()).length;
+  const lineParts = text ? text.split(/\r\n|\r|\n/) : [];
+  const lines = lineParts.length;
+  const nonEmptyLines = lineParts.filter((l) => l.trim()).length;
   const readingSeconds = Math.ceil((words / 200) * 60 / 5) * 5;
-  const readingTime = words === 0 ? '0 sec' : readingSeconds < 60 ? `${readingSeconds} sec` : `${Math.ceil(readingSeconds / 60)} min`;
-  const longestLine = text.split(/\n/).reduce((m, l) => Math.max(m, [...l].length), 0);
+  const readingTime = words === 0 ? '0 sec' : readingSeconds < 60 ? `${readingSeconds} sec` : `${Math.floor(readingSeconds / 60)} min${readingSeconds % 60 ? ` ${readingSeconds % 60} sec` : ''}`;
+  const longestLine = lineParts.reduce((m, l) => Math.max(m, [...l].length), 0);
   const letters = (text.match(/\p{L}/gu) || []).length;
   const digits = (text.match(/\p{N}/gu) || []).length;
   return { words, chars, charsNoSpaces, sentences, paragraphs, lines, nonEmptyLines, blankLines: lines - nonEmptyLines, longestLine, letters, digits, readingTime };
@@ -30,10 +31,10 @@ function wordsOf(text) {
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/[_\-./\\]+/g, ' ')
-    .split(/[^\p{L}\p{N}']+/u)
+    .split(/[^\p{L}\p{M}\p{N}']+/u)
     .filter(Boolean);
 }
-const cap = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+const cap = (w) => { const [first = '', ...rest] = w; return first.toUpperCase() + rest.join(''); };
 
 export function convertCase(text, mode) {
   if (!text) return '';
@@ -72,10 +73,8 @@ export function dedupeLines(text, { caseInsensitive = false, trim = false, keepE
   for (const line of lines) {
     const key = trim ? line.trim() : line;
     const cmp = caseInsensitive ? key.toLowerCase() : key;
-    if (!keepEmpty && !key.trim()) continue;
-    if (cmp === '' && !keepEmpty) continue;
-    if (seen.has(cmp) && cmp !== '') continue;
-    if (cmp === '' && seen.has('')) continue;
+    if (!key.trim()) { if (keepEmpty) out.push(line); continue; }
+    if (seen.has(cmp)) continue;
     seen.add(cmp);
     out.push(line);
   }
@@ -84,16 +83,16 @@ export function dedupeLines(text, { caseInsensitive = false, trim = false, keepE
 
 export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensitive = true, unique = false } = {}) {
   let lines = text.split(/\r?\n/);
-  if (unique) lines = dedupeLines(lines.join('\n'), { trim: false, keepEmpty: false });
-  lines = lines.filter((l, i) => !(l === '' && (i === 0 || i === lines.length - 1)) || true);
-  const coll = new Intl.Collator(undefined, { sensitivity: caseInsensitive ? 'base' : 'variant', numeric: mode === 'natural' });
+  if (unique) lines = dedupeLines(lines.join('\n'), { caseInsensitive, trim: false, keepEmpty: true });
+  const coll = new Intl.Collator(undefined, { sensitivity: caseInsensitive ? 'accent' : 'variant', numeric: mode === 'natural' });
   const cmp = (a, b) => {
     let r = 0;
     if (mode === 'alpha') r = coll.compare(a, b);
     else if (mode === 'natural') r = coll.compare(a, b);
     else if (mode === 'numeric') {
       const na = parseFloat(a.replace(/^[^\d-]*/, '')), nb = parseFloat(b.replace(/^[^\d-]*/, ''));
-      r = (Number.isNaN(na) ? Infinity : na) - (Number.isNaN(nb) ? Infinity : nb) || coll.compare(a, b);
+      const va = Number.isFinite(na), vb = Number.isFinite(nb);
+      r = va !== vb ? (va ? -1 : 1) : va ? (na < nb ? -1 : na > nb ? 1 : coll.compare(a, b)) : coll.compare(a, b);
     } else if (mode === 'length') r = [...a].length - [...b].length || coll.compare(a, b);
     else if (mode === 'shuffle') r = Math.random() - 0.5;
     return direction === 'desc' && mode !== 'shuffle' ? -r : r;
@@ -104,11 +103,12 @@ export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensi
 
 /* ═══════════════════════════ Diff (LCS) ═══════════════════════════ */
 export function diffLines(aText, bText) {
-  const a = aText.split(/\r?\n/);
-  const b = bText.split(/\r?\n/);
+  if (aText.length + bText.length > 500000) throw new Error('Texts exceed the combined 500,000-character diff limit.');
+  const a = aText ? aText.split(/\r\n|\r|\n/) : [];
+  const b = bText ? bText.split(/\r\n|\r|\n/) : [];
   const n = a.length, m = b.length;
-  // LCS table (guard memory: cap at 4000×4000)
-  if (n * m > 16e6) throw new Error('These texts are too long to diff in the browser (over ~4000 lines each). Split them into smaller pieces.');
+  // Bound both dimensions and total cells, including the allocated border.
+  if (n > 4000 || m > 4000 || (n + 1) * (m + 1) > 4e6) throw new Error('Diff limit: at most 4,000 lines per side and 4 million table cells. Split the texts into smaller pieces.');
   const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
@@ -136,9 +136,10 @@ export function diffSummary(ops) {
 /* ═══════════════════════════ Slug ═══════════════════════════ */
 export function slugify(text, { separator = '-', lowercase = true, stripStopWords = false } = {}) {
   const STOP = new Set(['a','an','and','are','as','at','be','but','by','for','if','in','into','is','it','of','on','or','the','to','was','were','with']);
-  let s = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-  s = s.replace(/Æ/gi, 'AE').replace(/Ø/gi, 'O').replace(/Å/gi, 'A').replace(/Ð/g, 'D').replace(/Þ/g, 'TH').replace(/ß/g, 'ss');
-  let words = s.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  // Strip marks only from Latin bases; marks are essential in many other scripts.
+  let s = text.normalize('NFKD').replace(/(\p{Script=Latin})\p{M}+/gu, '$1');
+  s = s.replace(/[ÆæØøÐðÞþß]/g, c => ({Æ:'AE',æ:'ae',Ø:'O',ø:'o',Ð:'D',ð:'d',Þ:'TH',þ:'th',ß:'ss'})[c]);
+  let words = s.split(/[^\p{L}\p{M}\p{N}]+/u).filter(Boolean);
   if (stripStopWords) {
     words = words.filter((w, i) => !(STOP.has(w.toLowerCase()) && words.length > 2 && i > 0 && i < words.length - 1));
   }
@@ -225,7 +226,7 @@ const defs = {
         { label: 'Speaking time', value: s.words === 0 ? '0 sec' : `${Math.max(1, Math.ceil(s.words / 130 / 0.5) * 0.5)} min` },
       ]);
       extra.replaceChildren();
-      const longest = Math.max(...[...inp.value.split(/\n/)].map((l) => [...l].length).concat([0]));
+      const longest = s.longestLine;
       if (inp.value) extra.append(h('p', { class: 'hint', text: `Longest line: ${longest.toLocaleString()} characters · Letters: ${s.letters.toLocaleString()} · Numbers: ${s.digits.toLocaleString()} · Avg word length: ${(s.words ? s.charsNoSpaces / s.words : 0).toFixed(1)}` }));
     };
     inp.addEventListener('input', render);
@@ -273,7 +274,7 @@ const defs = {
     inp.addEventListener('input', render);
     render();
     root.append(h('div', { class: 'field-row', style: 'display:block' }, grid),
-      field({ label: 'Your text', control: inp }), meters,
+      field({ label: 'Your text', control: inp }), h('p', { class: 'hint', text: 'Counts Unicode code points, not grapheme clusters. Platform meters are rough references only: SMS encoding, X weighted characters and search-result pixel widths differ.' }), meters,
       actionsRow(btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; render(); } })));
   },
 
@@ -302,6 +303,9 @@ const defs = {
     const inp = textarea({ rows: 8, mono: false, value: 'The quick brown fox jumps over the lazy dog', placeholder: 'Paste your text…' });
     const status = statusLine('');
     const out = resultPanel({ label: 'Converted text' });
+    const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
+    root.addEventListener('input', invalidate);
+    root.addEventListener('change', invalidate);
     const apply = (mode) => {
       if (!inp.value.trim()) { status.set('Paste some text first.', 'warning'); out.placeholder(); return; }
       out.set(convertCase(inp.value, mode));
@@ -321,6 +325,9 @@ const defs = {
     const keepEmpty = switchChip({ label: 'Keep empty lines', checked: true });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Unique lines' });
+    const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
+    root.addEventListener('input', invalidate);
+    root.addEventListener('change', invalidate);
     const run = () => {
       if (!inp.value.trim()) { status.set('Paste some lines first.', 'warning'); return; }
       const before = inp.value.split(/\r?\n/).filter((l) => l.trim()).length;
@@ -348,9 +355,13 @@ const defs = {
     const uniq = switchChip({ label: 'Remove duplicates' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Sorted lines' });
+    [mode, dir].forEach(control => control.addEventListener('click', () => { out.placeholder(); status.set('Settings changed. Run again.', 'info'); }));
+    const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
+    root.addEventListener('input', invalidate);
+    root.addEventListener('change', invalidate);
     const run = () => {
       if (!inp.value.trim()) { status.set('Paste some lines first.', 'warning'); return; }
-      const result = sortLines(inp.value.replace(/\n+$/, ''), {
+      const result = sortLines(inp.value, {
         mode: mode.getValue(), direction: dir.getValue(),
         caseInsensitive: ci.querySelector('input').checked,
         unique: uniq.querySelector('input').checked,
@@ -363,6 +374,7 @@ const defs = {
         field({ label: 'Mode', control: mode }),
         field({ label: 'Direction', control: dir })),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, uniq),
+      h('p', { class: 'hint', text: 'Alphabetical order depends on your browser locale. Numeric mode parses the first number after a non-numeric prefix; non-numeric lines sort after numbers in ascending order. Blank lines are retained.' }),
       actionsRow(btn({ label: 'Sort', icon: 'sort', onClick: run }),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel);
@@ -373,10 +385,13 @@ const defs = {
     const b = textarea({ rows: 10, placeholder: 'Changed text…' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Differences', copy: false });
+    const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
+    root.addEventListener('input', invalidate);
+    root.addEventListener('change', invalidate);
     const run = () => {
       if (!a.value && !b.value) { status.set('Paste text in both boxes.', 'warning'); return; }
       try {
-        const ops = diffLines(a.value.replace(/\n$/, ''), b.value.replace(/\n$/, ''));
+        const ops = diffLines(a.value, b.value);
         const sum = diffSummary(ops);
         if (sum.unchanged) { out.set('The two texts are identical.', { placeholderMode: false }); status.set('No differences found — the texts match.', 'success'); return; }
         const view = h('div', { class: 'diff-view' },
@@ -390,8 +405,9 @@ const defs = {
     };
     root.append(
       h('div', { class: 'field-row' }, field({ label: 'Original', control: a }), field({ label: 'Changed', control: b })),
+      h('p', { class: 'hint', text: 'Line endings are normalized; a final newline counts as an extra blank line. Limit: 4,000 lines per side, 4 million table cells and 500,000 total characters.' }),
       actionsRow(btn({ label: 'Compare', icon: 'diff', onClick: run }),
-        btn({ label: 'Swap sides', variant: 'secondary', onClick: () => { [a.value, b.value] = [b.value, a.value]; } }),
+        btn({ label: 'Swap sides', variant: 'secondary', onClick: () => { [a.value, b.value] = [b.value, a.value]; out.placeholder(); status.set('Inputs swapped. Compare again.', 'info'); } }),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { a.value = ''; b.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel);
   },
@@ -403,6 +419,10 @@ const defs = {
     const keepCase = switchChip({ label: 'Keep original letter case' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Slugs' });
+    [sep].forEach(control => control.addEventListener('click', () => { out.placeholder(); status.set('Settings changed. Run again.', 'info'); }));
+    const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
+    root.addEventListener('input', invalidate);
+    root.addEventListener('change', invalidate);
     const run = () => {
       const lines = inp.value.split(/\r?\n/).filter((l) => l.trim());
       if (!lines.length) { status.set('Type a title first.', 'warning'); return; }
