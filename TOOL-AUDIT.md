@@ -12,6 +12,28 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
+## Batch 25 — SEO generator output integrity
+
+- Sitemap generator validates HTTP(S) URLs, a single origin, actual calendar
+  dates, priority and frequency; rejects fragments and credentials; escapes XML
+  and encodes non-ASCII URLs. It caps inputs at 10,000 URLs / 2 million
+  characters. It does not support hreflang or guarantee crawling/indexing.
+  Google ignores priority/changefreq and uses lastmod only when accurate:
+  https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap
+- Robots generator rejects malformed/injected user agents and paths and validates
+  sitemap URLs and delay. The tester avoids regex-based wildcard backtracking and
+  is explicitly approximate; percent encoding, crawler matching and compliance
+  can differ. Robots.txt is not authentication or an indexing guarantee.
+- Meta output requires a title and validates canonical/image URLs; editable
+  sitemap, keyword and URL outputs clear on changes. The URL parser labels its
+  last-two-hostname-label shortcut honestly (not a public-suffix calculation)
+  and recognizes host:port input. YouTube host checks now reject lookalike suffixes.
+- Keyword tokenization retains combining marks; inputs and expensive phrase
+  comparisons are bounded. It is still not a language-aware word segmenter.
+  OG preview is illustrative, does not fetch image content, and no longer claims
+  to offer absent image/layout controls. QR async camera/file races and real
+  browser/device validation remain follow-ups.
+
 ## Batch 24 — text integrity follow-up
 
 - Empty input now reports zero total and blank lines; counting handles CRLF and

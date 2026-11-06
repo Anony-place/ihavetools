@@ -345,6 +345,30 @@ await test('line sort and diff preserve blanks and enforce bounds', () => {
   assert.throws(()=>text.diffLines('x'.repeat(500001),''),/500,000/);
 });
 
+await test('SEO output rejects invalid URLs, control injection and unsafe sitemap metadata', () => {
+ assert.throws(()=>seo.buildRobots([{agent:'*\nDisallow: /',disallow:[]}]),/User-agent/);
+ assert.throws(()=>seo.buildRobots([{agent:'*',disallow:['/private#comment']}]),/Robots paths/);
+ assert.throws(()=>seo.buildRobots([],{sitemap:'javascript:alert(1)'}),/HTTP/);
+ assert.throws(()=>seo.buildRobots([],{crawlDelay:'1\nDisallow: /'}),/Crawl-delay/);
+ assert.throws(()=>seo.buildSitemapXml(['https://a.test/','https://b.test/']),/same scheme/);
+ assert.throws(()=>seo.buildSitemapXml(['https://a.test/#part']),/fragment/);
+ assert.throws(()=>seo.buildSitemapXml(['ftp://a.test/']),/HTTP/);
+ assert.throws(()=>seo.buildSitemapXml(['https://a.test/'],{lastmod:'2026-02-30'}),/valid date/);
+ assert.throws(()=>seo.buildSitemapXml(['https://a.test/'],{changefreq:'<script>'}),/frequency/);
+ assert.throws(()=>seo.buildSitemapXml(['https://a.test/'],{priority:'1.1'}),/Priority/);
+ assert.match(seo.buildSitemapXml(['https://a.test/हिन्दी']),/%E0%A4/);
+ assert.throws(()=>seo.extractYouTubeId('https://notyoutube.com/watch?v=abcdefghijk'),/No video ID/);
+ assert.equal(seo.parseUrlParts('localhost:3000/a').host,'localhost'); assert.equal(seo.parseUrlParts('localhost:3000/a').port,'3000');
+});
+await test('SEO robots glob matching and Unicode keyword boundaries', () => {
+ const rules=[{agent:'*',disallow:['/a*b*c$'],allow:[]}];
+ assert.equal(seo.testRobotsAccess(rules,'x','/aZZbZc').allowed,false);
+ assert.equal(seo.testRobotsAccess(rules,'x','/aZZbZc/no').allowed,true);
+ const stars=[{agent:'*',disallow:['/a'+'*a'.repeat(400)+'b$']}]; assert.equal(seo.testRobotsAccess(stars,'x','/a'.repeat(1000)).allowed,true);
+ assert.equal(seo.keywordDensity('हिन्दी हिन्दी', {filterStop:false}).terms[0].phrase,'हिन्दी');
+ assert.throws(()=>seo.keywordDensity('a'.repeat(200001)),/limit/);
+});
+
 console.log('\n── Parser-based formatters ──');
 await test('HTML formatter preserves preformatted content and rejects unsafe minification',async()=>{
  const out=await dev.formatHtml('<pre>  keep\n   me</pre>');assert.ok(out.includes('  keep\n   me'));
