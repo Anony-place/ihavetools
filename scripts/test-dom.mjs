@@ -521,8 +521,8 @@ await domTest('sitemap-generator: validates URLs', async () => {
   const ta = app.querySelector('textarea');
   ta.value = 'https://a.b/\nnot a url';
   click(btnByLabel(app, 'Generate sitemap'));
-  assert.match(statusText(document), /not a valid absolute URL/);
-  ta.value = 'https://a.b/\nhttps://a.c/d';
+  assert.match(statusText(document), /valid absolute URL/);
+  ta.value = 'https://a.b/\nhttps://a.b/d';
   click(btnByLabel(app, 'Generate sitemap'));
   assert.match(resultText(document), /<urlset/);
   assert.match(statusText(document), /2 URLs in the sitemap/);
@@ -1182,6 +1182,14 @@ await domTest('text tools clear stale results and diff detects final newline', a
 });
 await domTest('line counter reports zero blank lines on empty input', async () => {
  const app=await loadToolPage('line-counter','text'); assert.match(app.textContent,/0Empty/); assert.match(app.textContent,/0Total lines/);
+});
+
+await domTest('SEO generators reject unsafe input and invalidate old downloads', async () => {
+ let app=await loadToolPage('sitemap-generator','webseo'), ta=app.querySelector('textarea'); ta.value='https://a.test/'; fire(ta,'input'); click(btnByLabel(app,'Generate sitemap')); assert.match(resultText(document),/a.test/);
+ ta.value='https://b.test/'; fire(ta,'input'); assert.doesNotMatch(resultText(document),/a.test/); ta.value='https://a.test/\nhttps://b.test/'; click(btnByLabel(app,'Generate sitemap')); assert.match(statusText(document),/same scheme/);
+ app=await loadToolPage('meta-tag-generator','webseo'); const title=app.querySelector('input[type=text]'), url=app.querySelector('input[type=url]'); title.value='Title'; fire(title,'input'); assert.match(resultText(document),/<title>Title/); url.value='javascript:alert(1)'; fire(url,'input'); assert.match(statusText(document),/HTTP/); assert.doesNotMatch(resultText(document),/<title>/);
+ app=await loadToolPage('robots-txt-generator','webseo'); const sitemap=app.querySelector('input[type=url]'); sitemap.value='https://example.com/sitemap.xml'; fire(sitemap,'input'); assert.match(resultText(document),/Sitemap:/); sitemap.value='https://example.com/s.xml#frag'; fire(sitemap,'input'); assert.match(statusText(document),/fragment/); assert.doesNotMatch(resultText(document),/Sitemap:/);
+ app=await loadToolPage('keyword-density-checker','webseo'); const content=app.querySelector('textarea'); content.value='alpha alpha beta'; fire(content,'input'); click(btnByLabel(app,'Count keywords')); assert.match(app.textContent,/alpha/); content.value='new'; fire(content,'input'); assert.doesNotMatch(app.textContent,/alpha/); click(btnByLabel(app,'Download CSV')); assert.match(statusText(document),/before downloading/);
 });
 
 /* ═════════════════ summary ═════════════════ */

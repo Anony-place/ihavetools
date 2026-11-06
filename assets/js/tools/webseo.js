@@ -127,7 +127,7 @@ export function extractYouTubeId(raw) {
   if (host === 'youtu.be') {
     const id = u.pathname.split('/').filter(Boolean)[0];
     if (isId(id)) return id;
-  } else if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
+  } else if (host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtube-nocookie.com' || host.endsWith('.youtube-nocookie.com')) {
     if (isId(u.searchParams.get('v'))) return u.searchParams.get('v');
     const m = /^\/(?:shorts|embed|live|v)\/([a-zA-Z0-9_-]{11})/.exec(u.pathname);
     if (m) return m[1];
@@ -147,7 +147,8 @@ export const youtubeThumbUrl = (id, key) => `https://i.ytimg.com/vi/${id}/${key}
 export function parseUrlParts(raw) {
   const s = String(raw).trim();
   if (!s) throw new Error('Paste a URL first.');
-  const hasScheme = /^[a-z][a-z0-9+.-]*:/i.test(s) || s.includes('://');
+  const looksLikeHostPort = /^[^/?#]+:\d+(?:[/?#]|$)/.test(s);
+  const hasScheme = s.includes('://') || (!looksLikeHostPort && /^[a-z][a-z0-9+.-]*:/i.test(s));
   let u;
   if (hasScheme) {
     try { u = new URL(s); }
@@ -170,7 +171,7 @@ export function parseUrlParts(raw) {
 
 /* ═══════════════════════════ Keyword density ═══════════════════════════ */
 const STOPWORDS = new Set('a,an,and,are,as,at,be,been,but,by,can,could,did,do,does,for,from,had,has,have,he,her,his,how,i,if,in,into,is,it,its,just,like,may,might,must,not,of,on,or,our,shall,she,should,since,so,some,than,that,the,their,them,then,there,these,they,this,those,to,too,us,was,we,were,what,when,where,which,while,who,whom,why,will,with,would,you,your,yours'.split(','));
-const tokenizeWords = (text) => String(text || '').toLowerCase().match(/\p{L}[\p{L}'’-]*/gu) || [];
+const tokenizeWords = (text) => String(text || '').toLowerCase().match(/\p{L}[\p{L}\p{M}'’-]*/gu) || [];
 
 /**
  * Keyword frequency + density.
@@ -180,6 +181,7 @@ const tokenizeWords = (text) => String(text || '').toLowerCase().match(/\p{L}[\p
  * counted independently of the stop-word filter and phrase-length setting.
  */
 export function keywordDensity(text, { phraseLength = 1, filterStop = true, minCount = 1, limit = 100, target = '' } = {}) {
+  if (String(text).length > 200000 || String(target).length > 1000) throw new Error('Input limit: 200,000 characters of content and 1,000 characters in the target phrase.');
   const words = tokenizeWords(text);
   const n = [1, 2, 3].includes(Number(phraseLength)) ? Number(phraseLength) : 1;
   const minimum = Math.max(1, Number(minCount) || 1);
@@ -204,6 +206,7 @@ export function keywordDensity(text, { phraseLength = 1, filterStop = true, minC
   const targetWords = tokenizeWords(target);
   let targetResult = null;
   if (targetWords.length) {
+    if (targetWords.length * words.length > 2000000) throw new Error('Target phrase is too long for this content. Shorten it or the input.');
     let count = 0;
     for (let i = 0; i + targetWords.length <= words.length; i++) {
       if (targetWords.every((word, j) => words[i + j] === word)) count++;
@@ -229,7 +232,15 @@ export function keywordFrequencyCsv(terms = []) {
 /* ═══════════════════════════ Robots.txt builder ═══════════════════════════ */
 export function buildRobots(rules, { sitemap = '', crawlDelay = null } = {}) {
   const lines = [];
+  if (rules.length > 500 || rules.reduce((n, rule) => n + (rule.disallow || []).length + (rule.allow || []).length, 0) > 10000) throw new Error('At most 500 crawler groups and 10,000 paths are supported.');
+  if (crawlDelay != null && crawlDelay !== '' && (!/^\d+(?:\.\d+)?$/.test(String(crawlDelay)) || Number(crawlDelay) > 86400)) throw new Error('Crawl-delay must be a non-negative number of seconds, up to 86400.');
+  if (sitemap) validateWebUrl(sitemap, 'Sitemap URL');
   for (const rule of rules) {
+    if (!/^(?:\*|[A-Za-z][A-Za-z0-9_-]*)$/.test(rule.agent || '*')) throw new Error('User-agent must be * or a crawler token (letters, digits, hyphens and underscores).');
+    for (const path of [...(rule.disallow || []), ...(rule.allow || [])]) {
+      if (typeof path !== 'string' || !path.startsWith('/') || /[\s#\x00-\x1f\x7f]/.test(path)) throw new Error('Robots paths must start with / and contain no spaces, # or control characters. Percent-encode them.');
+      if (path.length > 2048) throw new Error('Robots paths must be at most 2,048 characters.');
+    }
     const disallow = rule.disallow || [];
     const allow = rule.allow || [];
     lines.push(`User-agent: ${rule.agent || '*'}`);
@@ -246,15 +257,24 @@ export function buildRobots(rules, { sitemap = '', crawlDelay = null } = {}) {
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 
-const robotsPatternRegex = (pattern) => {
+const robotsPatternMatches = (pattern, path) => {
   const anchored = pattern.endsWith('$');
-  const body = anchored ? pattern.slice(0, -1) : pattern;
-  const escaped = body.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
-  return new RegExp(`^${escaped}${anchored ? '$' : ''}`);
+  const parts = (anchored ? pattern.slice(0, -1) : pattern).split('*');
+  if (!path.startsWith(parts[0])) return false;
+  let pos = parts[0].length;
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i];
+    if (anchored && i === parts.length - 1) return path.endsWith(part) && path.length - part.length >= pos;
+    const index = path.indexOf(part, pos);
+    if (index < 0) return false;
+    pos = index + part.length;
+  }
+  return !anchored || pos === path.length;
 };
 
 const robotsPath = (raw) => {
   const value = String(raw || '').trim();
+  if (value.length > 8192) throw new Error('Test path must be no longer than 8,192 characters.');
   if (!value) throw new Error('Enter a URL or path to test.');
   try {
     const url = new URL(value);
@@ -292,7 +312,7 @@ export function testRobotsAccess(rules, userAgent, rawPath) {
     ];
     for (const candidate of candidates) {
       const pattern = String(candidate.pattern || '');
-      if (!pattern || !robotsPatternRegex(pattern).test(path)) continue;
+      if (!pattern || !robotsPatternMatches(pattern, path)) continue;
       if (!winner || pattern.length > winner.pattern.length || (pattern.length === winner.pattern.length && candidate.type === 'Allow')) {
         winner = { ...candidate, pattern };
       }
@@ -309,14 +329,30 @@ export function testRobotsAccess(rules, userAgent, rawPath) {
 }
 
 /* ═══════════════════════════ Sitemap XML builder ═══════════════════════════ */
+function validateWebUrl(raw, label = 'URL') {
+  if (typeof raw !== 'string' || raw.length >= 2048 || /[\x00-\x20\x7f]/.test(raw) || /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(raw)) throw new Error(`${label} must be a valid absolute URL under 2,048 characters, without whitespace or control characters.`);
+  let u; try { u = new URL(raw); } catch { throw new Error(`${label} must be a valid absolute URL with http:// or https://.`); }
+  if (u.href.length >= 2048) throw new Error(`${label} must be under 2,048 characters after URL encoding.`);
+  if (!/^https?:$/.test(u.protocol) || !u.hostname || u.username || u.password || u.hash) throw new Error(`${label} must be an absolute HTTP(S) URL without credentials or a fragment.`);
+  return u;
+}
 export function buildSitemapXml(urls, { changefreq = '', priority = '', lastmod = '' } = {}) {
-  if (!urls.length) throw new Error('Add at least one URL.');
-  const today = new Date().toISOString().slice(0, 10);
-  const entries = urls.map((raw) => {
-    const u = String(raw).trim();
-    if (!u) return null;
-    try { new URL(u); } catch { throw new Error(`“${u}” is not a valid absolute URL — sitemap entries must include https://.`); }
-    return `  <url>\n    <loc>${esc(u)}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}${changefreq ? `\n    <changefreq>${changefreq}</changefreq>` : ''}${priority !== '' ? `\n    <priority>${priority}</priority>` : ''}\n  </url>`;
+  if (!urls.length || !urls.some(raw => String(raw).trim())) throw new Error('Add at least one URL.');
+  if (urls.length > 10000 || urls.reduce((n, u) => n + String(u).length, 0) > 2000000) throw new Error('This generator supports at most 10,000 URLs and 2 million input characters per sitemap.');
+  if (changefreq && !['always','hourly','daily','weekly','monthly','yearly','never'].includes(changefreq)) throw new Error('Invalid change frequency.');
+  if (priority !== '' && (!/^(?:0(?:\.\d+)?|1(?:\.0+)?)$/.test(String(priority)))) throw new Error('Priority must be from 0.0 to 1.0.');
+  if (lastmod) {
+    const date = new Date(`${lastmod}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(lastmod) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0,10) !== lastmod) throw new Error('lastmod must be a valid date (YYYY-MM-DD).');
+  }
+  let origin = null;
+  const entries = urls.map(raw => {
+    const value = String(raw).trim(); if (!value) return null;
+    const u = validateWebUrl(value);
+    if (origin && origin !== u.origin) throw new Error('All sitemap URLs must have the same scheme, host and port.');
+    origin = u.origin;
+    // URL serialization percent-encodes non-ASCII/control-sensitive characters.
+    return `  <url>\n    <loc>${esc(u.href)}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}${changefreq ? `\n    <changefreq>${changefreq}</changefreq>` : ''}${priority !== '' ? `\n    <priority>${priority}</priority>` : ''}\n  </url>`;
   }).filter(Boolean);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join('\n')}\n</urlset>\n`;
 }
@@ -335,8 +371,11 @@ const defs = {
     const out = resultPanel({ label: 'Meta tags', download: true, downloadName: 'meta-tags.html', downloadMime: 'text/html;charset=utf-8' });
     const build = () => {
       const t = title.value.trim(), d = desc.value.trim(), u = url.value.trim(), img = image.value.trim(), sn = siteName.value.trim();
+      if (!t) { out.placeholder('Enter a page title to generate tags.'); status.set('Enter a page title first.', 'warning'); return; }
+      try { if (u) validateWebUrl(u, 'Canonical URL'); if (img) validateWebUrl(img, 'Image URL'); }
+      catch (e) { out.placeholder(); status.set(e.message, 'error'); return; }
       const L = [];
-      L.push(`<title>${esc(t || 'Page title')}</title>`);
+      L.push(`<title>${esc(t)}</title>`);
       L.push(`<meta name="description" content="${esc(d)}">`);
       L.push(`<meta name="robots" content="${robots.value}">`);
       if (u) L.push(`<link rel="canonical" href="${esc(u)}">`);
@@ -361,7 +400,7 @@ const defs = {
       if (d && d.length < 70) notes.push('description is short — aim for 70–160 characters');
       status.set(notes.length ? `Generated ✓ — but ${notes.join(' and ')}.` : 'Generated ✓ — lengths look good.', notes.length ? 'warning' : 'success');
     };
-    [title, desc, url, image, siteName, twitter, robots].forEach((el) => el.addEventListener('input', build));
+    [title, desc, url, image, siteName, twitter, robots].forEach((el) => { el.addEventListener('input', build); el.addEventListener('change', build); });
     root.append(
       field({ label: 'Page title', control: title }),
       field({ label: 'Meta description', control: desc }),
@@ -407,8 +446,10 @@ const defs = {
         out.set(text);
         status.set('Generated ✓ — place this file at the root of your domain.', 'success');
         runTest();
-      } catch (e) { status.set(e.message, 'error'); }
+      } catch (e) { out.placeholder(); testOut.placeholder(); status.set(e.message, 'error'); }
     };
+    [sitemap, delay].forEach(el => el.addEventListener('input', build));
+    [testAgent, testUrl].forEach(el => el.addEventListener('input', () => testOut.placeholder('Inputs changed. Run the test again.')));
     const addRule = () => {
       const agent = input({ type: 'text', placeholder: 'User-agent, e.g. * or Googlebot' });
       const dis = input({ type: 'text', placeholder: '/private/  (comma-separate multiple)' });
@@ -440,12 +481,13 @@ const defs = {
           { agent: '*', disallow: [], allow: [] },
           ...aiTrainingAgents.map((agent) => ({ agent, disallow: ['/'], allow: [] })),
         ]) })),
-      h('p', { class: 'hint', text: 'The AI preset blocks common training/data crawlers while leaving ordinary search crawlers under the wildcard rule. Review every preset before using it on a live site.' }),
+      h('p', { class: 'hint', text: 'The AI preset requests common crawlers not to crawl; compliance and future crawler names vary. Robots.txt is not access control and cannot guarantee blocking AI training or indexing. Review presets before publishing.' }),
       rows, formWrap,
       h('div', { class: 'field-row', style: 'margin-top:14px' }, field({ label: 'Sitemap URL', control: sitemap }), field({ label: 'Crawl-delay', control: delay, hint: 'Not supported by Google' })),
       actionsRow(btn({ label: 'Generate', icon: 'settings', onClick: build })),
       status, h('br'), out.panel,
       h('h3', { text: 'Test a URL against these rules', style: 'margin:22px 0 10px' }),
+      h('p', { class: 'hint', text: 'Approximate local simulation, not a crawler guarantee. Encoding and crawler-specific rule handling may differ; verify with the crawler’s official tools.' }),
       h('div', { class: 'field-row' },
         field({ label: 'Crawler user-agent', control: testAgent }),
         field({ label: 'URL or path', control: testUrl })),
@@ -469,7 +511,9 @@ const defs = {
         status.set(`${urls.length} URL${urls.length === 1 ? '' : 's'} in the sitemap ✓`, 'success');
       } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
     };
+    [inp, lastmod, freq, prio].forEach(el => { el.addEventListener('input', () => { out.placeholder(); status.set('Inputs changed. Generate again.', 'info'); }); el.addEventListener('change', () => { out.placeholder(); status.set('Inputs changed. Generate again.', 'info'); }); });
     root.append(field({ label: 'URLs (one per line)', control: inp }),
+      h('p', { class: 'hint', text: 'One HTTP(S) origin per sitemap; max 10,000 URLs / 2 million characters here. Use real modification dates only; Google ignores changefreq and priority.' }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'lastmod', control: lastmod }),
         field({ label: 'changefreq', control: freq }),
@@ -520,7 +564,7 @@ const defs = {
         const kv = (pairs) => h('dl', { class: 'kv-grid' }, pairs.flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { class: 'mono', text: String(v) || '—' })]));
         out.append(
           h('section', { class: 'result-panel' }, h('div', { class: 'result-head' }, h('span', { class: 'result-label', text: 'Components' })), h('div', { class: 'result-body' },
-            kv([['Protocol', p.protocol], ['Host', p.host], ['Port', p.port], ['Path', p.path], ['Query', p.query || '—'], ['Fragment', p.fragment ? `#${p.fragment}` : '—'], ['Origin', p.origin], ['Domain', p.domain], ['TLD', p.tld], ['Username', p.username || '—']]))),
+            kv([['Protocol', p.protocol], ['Host', p.host], ['Port', p.port], ['Path', p.path], ['Query', p.query || '—'], ['Fragment', p.fragment ? `#${p.fragment}` : '—'], ['Origin', p.origin], ['Last two hostname labels (not registrable domain)', p.domain], ['Last hostname label', p.tld], ['Username', p.username || '—']]))),
           h('section', {},
             h('h3', { text: `Query parameters (${p.params.length})`, style: 'margin:20px 0 10px' }),
             p.params.length
@@ -529,6 +573,7 @@ const defs = {
         status.set('Parsed ✓', 'success');
       } catch (e) { status.set(e.message, 'error'); }
     };
+    inp.addEventListener('input', () => { out.replaceChildren(); status.set('Input changed. Parse again.', 'info'); });
     root.append(field({ label: 'URL to parse', control: inp }),
       actionsRow(btn({ label: 'Parse URL', icon: 'link', onClick: run })), status, h('br'), out);
     run();
@@ -546,13 +591,13 @@ const defs = {
     let lastCsv = '';
     const run = () => {
       const text = inp.value;
-      if (!text.trim()) { lastCsv = ''; status.set('Paste some content first.', 'warning'); return; }
-      const r = keywordDensity(text, {
+      if (!text.trim()) { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Paste some content first.', 'warning'); return; }
+      let r; try { r = keywordDensity(text, {
         phraseLength: Number(len.value),
         filterStop: stop.querySelector('input').checked,
         minCount: Number(minimum.value),
         target: target.value,
-      });
+      }); } catch (e) { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set(e.message, 'error'); return; }
       lastCsv = keywordFrequencyCsv(r.terms);
       const stats = [
         { label: 'Total words', value: r.totalWords.toLocaleString(), kind: 'good' },
@@ -575,6 +620,7 @@ const defs = {
           : h('span'));
       status.set(`Analysed ${r.totalWords.toLocaleString()} words ✓`, 'success');
     };
+    [inp, target, len, minimum, stop].forEach(el => { const clear = () => { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Inputs changed. Analyse again.', 'info'); }; el.addEventListener('input', clear); el.addEventListener('change', clear); });
     root.append(field({ label: 'Content', control: inp }),
       field({ label: 'Target keyword or phrase', control: target, hint: 'Counted exactly, even if it contains stop words' }),
       h('div', { class: 'field-row', style: 'align-items:end' },

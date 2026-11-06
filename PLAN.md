@@ -11,6 +11,19 @@
 
 ---
 
+## Batch 25 plan — SEO generator output integrity
+
+1. Audit robots.txt, sitemap, meta and URL parsing workflows against published
+   crawler/sitemap rules; validate generated directives and absolute URLs.
+2. Prevent malformed or injected directives and XML, guard sitemap limits,
+   correct misleading URL/domain labels and remove stale downloadable outputs.
+3. Bound potentially costly matching and keyword tasks; disclose simulator and
+   search-engine limitations instead of implying guaranteed indexing behavior.
+4. Add independent edge-case and DOM regression tests, update the audit, run full
+   checks and dependency audit, then one PR and production deployment verification.
+
+---
+
 ## Batch 24 plan — text tools integrity
 
 1. Audit text counts, Unicode slugs, line deduplication/sorting, diff limits and
