@@ -188,7 +188,7 @@ export const tools = [
     ] }),
   T({ id: 'regex-tester', name: 'Regex Tester', icon: 'search-code', engine: 'developer', categories: ['developer'],
     blurb: 'Test regular expressions live with match highlighting and groups.',
-    description: 'Write a pattern, pick flags and see every match highlighted in your test string — with capture groups, named groups and match positions listed.',
+    description: 'Test a pattern locally in a time-limited worker. See match highlights, capture and named groups, and UTF-16 positions; results and input sizes are capped.',
     keywords: ['regex', 'regular expression', 'test', 'match', 'capture group', 'pattern'],
     aliases: ['regexp', 'regular expression tester'],
     popularity: 80, featured: true, added: '2026-06-03',

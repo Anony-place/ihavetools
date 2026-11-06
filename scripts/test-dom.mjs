@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JSDOM, VirtualConsole } from 'jsdom';
+import { Worker as ThreadWorker } from 'node:worker_threads';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -33,6 +34,19 @@ function makeBrowserGlobals() {
     virtualConsole,
   });
   const { window } = dom;
+  global.Worker = class {
+    constructor(url) {
+      const boot = `import { parentPort } from 'node:worker_threads';
+globalThis.self = { postMessage: m => parentPort.postMessage(m) };
+await import(${JSON.stringify(url.href)});
+parentPort.on('message', data => self.onmessage({data}));`;
+      this.thread = new ThreadWorker(new URL(`data:text/javascript,${encodeURIComponent(boot)}`));
+      this.thread.on('message', data => this.onmessage?.({data}));
+      this.thread.on('error', error => this.onerror?.(error));
+    }
+    postMessage(value) { this.thread.postMessage(value); }
+    terminate() { this.thread.terminate(); }
+  };
   global.window = window;
   global.document = window.document;
   Object.defineProperty(global, 'navigator', { value: window.navigator, configurable: true, writable: true });
@@ -1132,6 +1146,31 @@ await domTest('random strings deduplicate custom alphabets and clear outputs on 
   const custom=app.querySelector('input[type=text]'); custom.value='😀😀'; fire(custom,'input'); click(btnByLabel(app,'Generate'));
   assert.equal(app.querySelectorAll('.file-row').length,2); for(const code of app.querySelectorAll('.file-row code')) assert.equal(code.textContent,'😀'.repeat(8)); assert.match(statusText(document),/0 bits/);
   inputs[0].value='1.5'; fire(inputs[0],'input'); click(btnByLabel(app,'Generate')); assert.match(statusText(document),/whole numbers/); assert.equal(app.querySelectorAll('.file-row').length,0);
+});
+
+await domTest('regex worker times out, cancels stale work and preserves zero-width text', async () => {
+  const app=await loadToolPage('regex-tester','developer'); const pattern=app.querySelector('input[type=text]'), text=app.querySelector('textarea');
+  pattern.value='(?=a)'; text.value='aba'; fire(pattern,'input'); fire(text,'input');
+  app.querySelector('.switch input').checked=true; fire(app.querySelector('.switch input'),'change');
+  await new Promise(r=>setTimeout(r,450)); assert.equal(app.querySelector('.result-body pre').textContent,'aba'); assert.equal(app.querySelectorAll('mark').length,2);
+  pattern.value='(a+)+$'; text.value='a'.repeat(35)+'!'; fire(pattern,'input'); fire(text,'input'); assert.equal(app.querySelectorAll('mark').length,0);
+  await new Promise(r=>setTimeout(r,1450)); assert.match(statusText(document),/timed out/i);
+  pattern.value='(?<letter>b)'; text.value='abc'; fire(pattern,'input'); fire(text,'input'); await new Promise(r=>setTimeout(r,450)); assert.match(app.textContent,/letter="b"/);
+});
+await domTest('regex ignores late worker responses after edits', async () => {
+ const previous=global.Worker, jobs=[];
+ global.Worker=class { constructor(){jobs.push(this);} postMessage(v){this.data=v;} terminate(){this.terminated=true;} };
+ try { const app=await loadToolPage('regex-tester','developer'); assert.equal(jobs.length,1); const text=app.querySelector('textarea');
+   text.value='new'; fire(text,'input'); assert.equal(jobs[0].terminated,true);
+   jobs[0].onmessage({data:{matches:[{index:0,text:'old',length:3,groups:[],named:null}]}}); assert.equal(app.querySelectorAll('mark').length,0);
+   await new Promise(r=>setTimeout(r,250)); assert.equal(jobs.length,2);
+   jobs[1].onmessage({data:{matches:[{index:0,text:'new',length:3,groups:[],named:null}]}}); assert.equal(app.querySelector('mark').textContent,'new');
+ } finally {global.Worker=previous;}
+});
+await domTest('regex fails closed without worker support', async () => {
+  const old=global.Worker; delete global.Worker;
+  try { const app=await loadToolPage('regex-tester','developer'); assert.match(statusText(document),/unavailable/); assert.equal(app.querySelectorAll('mark').length,0); }
+  finally { global.Worker=old; }
 });
 
 /* ═════════════════ summary ═════════════════ */

@@ -12,6 +12,21 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
+## Batch 23 — regex execution and output integrity
+
+Regex evaluation now runs in a local module worker, terminated after one second
+or immediately on edits; if workers are unavailable it fails closed. Input is
+limited to 2,000 pattern and 100,000 text UTF-16 code units. Returned matches
+are bounded to 1,000 and 500,000 serialized characters; individual captures
+are shortened after 1,000 code units. The UI discloses caps, displays named
+captures and UTF-16 positions, and preserves characters at zero-width matches.
+The timeout includes worker startup and can reject legitimate slow patterns;
+worker isolation is not a guarantee against all resource exhaustion. The Node
+worker-thread adapter exercises real catastrophic backtracking and cancellation,
+but real browsers, slow devices, and offline worker loading still need testing.
+Reference: MDN JavaScript regular expression guide and the regexp-worker project
+for background-thread termination of catastrophic backtracking.
+
 ## Batch 22 — developer and security follow-up
 
 - Fixed a hash-generator startup error (`require_icon` was undefined), which the
@@ -29,8 +44,7 @@ canvas pixel comparison, or diverse user-file matrix was available.
   explicit timestamps and custom alphabets. Automated checks passed: 212 engine,
   113 DOM, 9 chrome, service worker and 20 integrity checks; npm audit reports
   zero vulnerabilities. jsdom/mocks are not real-browser or cryptographic audits.
-- Regex evaluation still runs on the main thread: pathological expressions can
-  freeze the page. Isolating it in a terminable worker is a follow-up. Broader
+- Batch 23 moves regex evaluation into a terminable worker; see below. Broader
   browser/device, security and accessibility validation remains outstanding.
 
 ## Confirmed issues repaired in this batch

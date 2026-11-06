@@ -338,26 +338,8 @@ export function toB64(bytes) {
   return btoa(bin);
 }
 
-/* ═══════════════════════════ Regex ═══════════════════════════ */
-export function findMatches(pattern, flags, text) {
-  let re;
-  try { re = new RegExp(pattern, flags.includes('g') ? flags : flags + 'g'); }
-  catch (e) { return { error: `Invalid regular expression: ${e.message}` }; }
-  try {
-    const matches = [];
-    if (pattern === '') return { matches };
-    if (!flags.includes('g')) {
-      const m = re.exec(text);
-      if (m) matches.push(m);
-    } else {
-      for (const m of text.matchAll(re)) {
-        matches.push(m);
-        if (matches.length >= 1000) break;
-      }
-    }
-    return { matches: matches.map((m) => ({ index: m.index, text: m[0], groups: m.slice(1), named: m.groups || null })) };
-  } catch (e) { return { error: e.message }; }
-}
+import { findMatches } from '../regex-engine.js';
+export { findMatches };
 
 /* ═══════════════════════════ JWT ═══════════════════════════ */
 function b64urlToText(s) {
@@ -728,50 +710,54 @@ const defs = {
     const status = statusLine('Matches update as you type.');
     const highlight = h('div', { class: 'result-body', style: 'max-height:220px' });
     const matchesTable = h('div', {});
-    const render = () => {
-      matchesTable.replaceChildren();
-      const fl = flags.filter((c) => c.querySelector('input').checked).map((c) => c.textContent.trim()).join('');
-      const r = findMatches(pattern.value, fl, test.value);
-      if (r.error) { status.set(r.error, 'error'); highlight.replaceChildren(h('pre', { class: 'placeholder', text: 'Fix the pattern to see matches.' })); return; }
-      const ms = r.matches;
-      // highlight
-      highlight.replaceChildren();
-      if (!ms.length) {
-        highlight.append(h('pre', { class: 'placeholder', text: 'No matches in the test string.' }));
-        status.set('No matches.', 'info');
-        return;
-      }
-      let pos = 0;
-      const frag = h('pre', {});
-      for (const m of ms.slice(0, 200)) {
-        if (m.index > pos) frag.append(document.createTextNode(test.value.slice(pos, m.index)));
-        frag.append(h('mark', { text: m.text, style: 'background:var(--primary-soft);color:var(--primary);border-radius:3px;padding:0 2px' }));
-        pos = m.index + (m.text.length || 1);
-        if (!m.text.length) pos = m.index + 1;
-      }
-      frag.append(document.createTextNode(test.value.slice(pos)));
-      highlight.replaceChildren(frag);
-      const rows = ms.slice(0, 100).map((m, i) => [
-        String(i + 1),
-        m.text.length > 80 ? m.text.slice(0, 80) + '…' : m.text,
-        String(m.index),
-        m.groups?.length ? m.groups.map((g, gi) => `$${gi + 1}=${g === undefined ? '—' : JSON.stringify(g)}`).join('  ') : '—',
-      ]);
-      matchesTable.append(h('h3', { text: `Matches (${ms.length}${ms.length >= 1000 ? '+, capped' : ''})`, style: 'margin:18px 0 10px' }),
-        rows.length ? table({ headers: ['#', 'Match', 'Position', 'Groups'], rows }) : h('p', { class: 'hint', text: 'No matches.' }));
-      status.set(`${ms.length} match${ms.length === 1 ? '' : 'es'} found.`, 'success');
+    let worker = null, deadline = null, debounce = null, revision = 0;
+    const clear = () => {
+      revision++; clearTimeout(debounce); clearTimeout(deadline);
+      if (worker) worker.terminate(); worker = null;
+      matchesTable.replaceChildren(); highlight.replaceChildren();
     };
-    root.append(
-      field({ label: 'Pattern', control: pattern }),
+    const run = () => {
+      const token = revision, text = test.value, source = pattern.value;
+      const fl = flags.filter(c => c.querySelector('input').checked).map(c => c.textContent.trim()).join('');
+      if (source.length > 2000 || text.length > 100000) { status.set('Pattern limit is 2,000 characters; test string limit is 100,000 UTF-16 code units.', 'error'); return; }
+      if (typeof Worker === 'undefined') { status.set('Web Workers are unavailable; regex evaluation is disabled to prevent freezing this page.', 'error'); return; }
+      try {
+        const job = new Worker(new URL('../regex-worker.js', import.meta.url), { type: 'module' }); worker = job;
+        status.set('Checking pattern locally…', 'info');
+        deadline = setTimeout(() => { if (token !== revision) return; job.terminate(); worker = null; status.set('Pattern timed out. Simplify it or shorten the test string.', 'error'); }, 1000);
+        job.onerror = () => { if (token !== revision || worker !== job) return; clearTimeout(deadline); job.terminate(); worker = null; status.set('Regex worker could not start. Check browser support and try again.', 'error'); };
+        job.onmessage = ({data: r}) => {
+          if (token !== revision || worker !== job) return;
+          clearTimeout(deadline); job.terminate(); worker = null;
+          if (r.error) { status.set(r.error, 'error'); return; }
+          const ms = r.matches;
+          if (!ms.length) { highlight.append(h('pre', { class: 'placeholder', text: 'No matches in the test string.' })); status.set(r.truncated ? 'Output limit reached before a match could be displayed.' : 'No matches.', 'info'); return; }
+          let pos = 0; const frag = h('pre', {});
+          for (const m of ms.slice(0, 200)) {
+            if (m.index > pos) frag.append(document.createTextNode(text.slice(pos, m.index)));
+            // Zero-width matches must not consume or drop a character.
+            frag.append(h('mark', { text: text.slice(m.index, m.index + m.length), style: 'background:var(--primary-soft);color:var(--primary);border-radius:3px;padding:0 2px' }));
+            pos = m.index + m.length;
+          }
+          frag.append(document.createTextNode(text.slice(pos))); highlight.replaceChildren(frag);
+          const show = value => value === undefined ? '—' : JSON.stringify(value);
+          const rows = ms.slice(0, 100).map((m, i) => [String(i + 1), m.text.length > 80 ? m.text.slice(0, 80) + '…' : m.text, String(m.index),
+            [...m.groups.map((g, gi) => `$${gi + 1}=${show(g)}`), ...Object.entries(m.named || {}).map(([name, value]) => `${name}=${show(value)}`)].join('  ') || '—']);
+          matchesTable.append(h('h3', { text: `Matches (${ms.length}${r.truncated ? ', capped' : ''})`, style: 'margin:18px 0 10px' }), table({ headers: ['#', 'Match', 'Position (UTF-16) ', 'Groups'], rows }));
+          status.set(`${ms.length} match${ms.length === 1 ? '' : 'es'} found${r.truncated ? ' (results capped)' : ''}. Showing up to 100 rows and 200 highlights; long captures are shortened.`, 'success');
+        };
+        job.postMessage({pattern: source, flags: fl, text});
+      } catch { clearTimeout(deadline); if (worker) worker.terminate(); worker = null; status.set('Regex worker could not start. Check browser support and try again.', 'error'); }
+    };
+    const schedule = () => { clear(); status.set('Input changed; checking shortly…', 'info'); debounce = setTimeout(run, 200); };
+    root.append(field({ label: 'Pattern', control: pattern }),
       h('div', { class: 'field' }, h('span', { class: 'field-legend', text: 'Flags' }), h('div', { class: 'switch-row' }, flags)),
       field({ label: 'Test string', control: test }),
-      status,
-      h('div', { class: 'result-panel', style: 'margin-top:10px' }, highlight),
-      matchesTable);
-    const debounced = (() => { let t; return () => { clearTimeout(t); t = setTimeout(render, 200); }; })();
-    [pattern, test].forEach((el) => el.addEventListener('input', debounced));
-    flags.forEach((c) => c.querySelector('input').addEventListener('change', render));
-    render();
+      h('p', { class: 'hint', text: 'Runs locally in a worker with a 1-second limit. Positions count UTF-16 code units; matching may time out on slow devices.' }),
+      status, h('div', { class: 'result-panel', style: 'margin-top:10px' }, highlight), matchesTable);
+    [pattern, test].forEach(el => el.addEventListener('input', schedule));
+    flags.forEach(c => c.querySelector('input').addEventListener('change', schedule));
+    run();
   },
 
   'jwt-decoder'(root) {

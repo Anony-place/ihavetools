@@ -319,6 +319,13 @@ await test('random alphabet uses Unicode code points and rejects invalid lengths
   assert.throws(()=>sec.buildCharset({custom:'\ud800'}),/surrogate/);
 });
 
+await test('regex bounded results retain zero-width positions and disclose truncation', () => {
+ const r=dev.findMatches('(?=a)','gu','😀aa'); assert.deepEqual(r.matches.map(x=>x.index),[2,3]);
+ assert.equal(dev.findMatches('a','g','a'.repeat(1001)).truncated,true);
+ assert.match(dev.findMatches('a','g','a'.repeat(100001)).error,/limit/);
+ const capture=dev.findMatches('(?<x>a+)','g','a'.repeat(2000)).matches[0]; assert.equal(capture.length,2000); assert.match(capture.named.x,/truncated/);
+});
+
 console.log('\n── Parser-based formatters ──');
 await test('HTML formatter preserves preformatted content and rejects unsafe minification',async()=>{
  const out=await dev.formatHtml('<pre>  keep\n   me</pre>');assert.ok(out.includes('  keep\n   me'));
