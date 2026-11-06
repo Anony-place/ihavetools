@@ -12,6 +12,29 @@ This report records implementation families and known gaps, not 128 individual
 certifications. No real browser, screen reader, device, camera/microphone,
 canvas pixel comparison, or diverse user-file matrix was available.
 
+## Batch 29 — color tool integrity
+
+- HEX/RGB/HSL converter retains alpha in generated formats, preview and copy;
+  invalid input clears other fields and disables copying. Bare comma-separated
+  RGB input now works as advertised. HEX alpha is quantized to 8 bits; RGB and
+  HSL channels are rounded, so round trips can change values. The parser covers
+  a subset of CSS colors, not named colors or all modern CSS syntax. Reference:
+  https://developer.mozilla.org/en-US/docs/Web/CSS/color_value
+- The opaque color picker rejects transparent HEX instead of silently discarding
+  alpha, leaves typed text intact, clears stale results and ignores late screen
+  picker results after input changes or pagehide. EyeDropper is browser-dependent
+  and was mocked in tests, not exercised on a physical device.
+- Palette harmonies preserve the exact selected base, including black and white;
+  monochromatic palettes now include all five planned shades. Other colors use
+  rounded HSL and aren't a perceptual color-space harmony guarantee.
+- Contrast pass/fail uses the unrounded ratio even when a displayed ratio rounds
+  across a threshold. For instance #070707 on #777777 displays 4.50:1 but fails
+  4.5:1. WCAG's guidance: https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+  The tool checks opaque color pairs only; this is not full WCAG certification.
+- Regression coverage includes alpha, copy/invalidation, exact palette bases,
+  mocked eyedropper races and contrast thresholds. Real browser rendering,
+  clipboard permissions, assistive technology and screen picking remain unverified.
+
 ## Batch 28 — student and math calculator accuracy
 
 - Scientific calculator now starts in the displayed DEG mode, accepts scientific

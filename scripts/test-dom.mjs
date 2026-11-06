@@ -498,6 +498,31 @@ await domTest('color-contrast-checker: black on white = 21:1', async () => {
   assert.match(app.textContent, /21\.0+:1/);
 });
 
+await domTest('color converter preserves transparency and clears stale results', async () => {
+  const app=await loadToolPage('hex-rgb-converter','color'); const [hex,rgb,hsl]=app.querySelectorAll('input.mono'); const copy=btnByLabel(app,'Copy all formats');
+  hex.value='#ff000080';fire(hex,'input'); assert.match(app.querySelector('[aria-label="Color preview"]').style.background, /0\.50/); assert.match(rgb.value,/\/ 0\.5019607843137255/); assert.match(hsl.value,/\/ 0\.5019607843137255/);
+  rgb.value='rgb(255 0 0 / 0.5)';fire(rgb,'input');assert.equal(hex.value,'#ff000080');assert.match(hsl.value,/\/ 0\.5/);
+  const old=Object.getOwnPropertyDescriptor(navigator,'clipboard');const secure=Object.getOwnPropertyDescriptor(window,'isSecureContext');let copied='';
+  try {Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText: async s=>{copied=s;}}});Object.defineProperty(window,'isSecureContext',{configurable:true,value:true});click(copy);await new Promise(r=>setTimeout(r,0));assert.match(copied,/rgb\(255 0 0 \/ 0\.5\)/);}
+  finally {if(old)Object.defineProperty(navigator,'clipboard',old);else delete navigator.clipboard;if(secure)Object.defineProperty(window,'isSecureContext',secure);else delete window.isSecureContext;}
+  rgb.value='bad!';fire(rgb,'input');assert.equal(hex.value,'');assert.equal(hsl.value,'');assert.ok(copy.disabled);
+  rgb.value='79, 70, 229';fire(rgb,'input');assert.equal(hex.value,'#4f46e5');assert.equal(copy.disabled,false);
+});
+await domTest('picker preserves typed text, rejects alpha and ignores late eyedropper', async () => {
+  let resolve; window.EyeDropper=class {open(){return new Promise(r=>{resolve=r;});}};
+  try {
+    const app=await loadToolPage('color-picker','color');const field=app.querySelector('input[type=text]');
+    field.value='#abc';fire(field,'input');assert.equal(field.value,'#abc');assert.match(app.textContent,/#AABBCC/);
+    field.value='#abc8';fire(field,'input');assert.match(app.textContent,/opaque colors only/);assert.equal(app.querySelectorAll('.stat-card').length,0);
+    click(btnByLabel(app,'Pick from screen'));field.value='#123456';fire(field,'input');resolve({sRGBHex:'#ffffff'});await new Promise(r=>setTimeout(r,0));assert.equal(field.value,'#123456');assert.match(app.textContent,/#123456/);
+    click(btnByLabel(app,'Pick from screen'));window.dispatchEvent(new window.Event('pagehide'));resolve({sRGBHex:'#ffffff'});await new Promise(r=>setTimeout(r,0));assert.equal(field.value,'#123456');
+  } finally {delete window.EyeDropper;}
+});
+await domTest('contrast boundary displays rounded ratio but does not round pass/fail', async () => {
+ const app=await loadToolPage('color-contrast-checker','color');const fields=app.querySelectorAll('input.mono');fields[0].value='#070707';fire(fields[0],'input');fields[1].value='#777777';fire(fields[1],'input');
+ assert.match(app.textContent,/4\.50:1/);assert.match(app.textContent,/Large text only/);assert.match(app.textContent,/unrounded ratio/);
+});
+
 /* ═════════════════ Web & SEO ═════════════════ */
 console.log('\n── Web & SEO tool UIs ──');
 await domTest('meta-tag-generator: emits full tag set', async () => {

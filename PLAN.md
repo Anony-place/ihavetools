@@ -695,6 +695,18 @@ Continue the audit requested by the user; no new tools or thin pages.
 
 ---
 
+## 🚧 BATCH-29 — Color tools integrity and accessibility audit
+
+1. Audit color parsing, alpha preservation, preview/copy consistency, WCAG
+   contrast thresholds, palette generation and stale/async UI paths against
+   published CSS and WCAG guidance.
+2. Fix confirmed data-loss and misleading-result bugs in one cohesive batch;
+   make unsupported formats and precision limitations explicit.
+3. Add engine and DOM regressions, run the full build/check and dependency audit,
+   update TOOL-AUDIT.md, then ship one CI-verified PR and verify production.
+
+---
+
 ## 🧑 Sirf tum kar sakte ho (off-code, ₹0 wale pehle)
 
 1. **GSC hafte me 1 baar** (2 min): Pages report — indexed count badh raha
