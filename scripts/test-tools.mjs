@@ -326,6 +326,25 @@ await test('regex bounded results retain zero-width positions and disclose trunc
  const capture=dev.findMatches('(?<x>a+)','g','a'.repeat(2000)).matches[0]; assert.equal(capture.length,2000); assert.match(capture.named.x,/truncated/);
 });
 
+await test('text statistics and Unicode slugs retain meaningful marks', () => {
+  const empty=text.textStats(''); assert.equal(empty.lines,0); assert.equal(empty.blankLines,0);
+  const lines=text.textStats('a\r\nb\r'); assert.equal(lines.lines,3); assert.equal(lines.blankLines,1); assert.equal(lines.longestLine,1);
+  assert.equal(text.slugify('हिन्दी भाषा'), 'हिन्दी-भाषा');
+  assert.equal(text.convertCase('हिन्दी भाषा','snake'),'हिन्दी_भाषा');
+  assert.equal(text.slugify('Ærø ÐÞ æøðþ', {lowercase:false}), 'AEro-DTH-aeodth');
+  const words=Array(216).fill('word').join(' '); assert.equal(text.textStats(words).readingTime,'1 min 5 sec');
+});
+await test('line sort and diff preserve blanks and enforce bounds', () => {
+  assert.deepEqual(text.dedupeLines('a\n\n\na',{keepEmpty:true}),['a','','']);
+  assert.equal(text.sortLines('B\na\nA', {unique:true,caseInsensitive:true}),'a\nB');
+  assert.equal(text.sortLines('x\n2\n-3\ny',{mode:'numeric'}),'-3\n2\nx\ny');
+  assert.equal(text.sortLines('b\na\n',{mode:'alpha'}),'\na\nb');
+  assert.equal(text.diffSummary(text.diffLines('a','a\n')).unchanged,false);
+  assert.equal(text.diffSummary(text.diffLines('a\r\nb','a\nb')).unchanged,true);
+  assert.throws(()=>text.diffLines('a\n'.repeat(4001),'x'),/4,000 lines/);
+  assert.throws(()=>text.diffLines('x'.repeat(500001),''),/500,000/);
+});
+
 console.log('\n── Parser-based formatters ──');
 await test('HTML formatter preserves preformatted content and rejects unsafe minification',async()=>{
  const out=await dev.formatHtml('<pre>  keep\n   me</pre>');assert.ok(out.includes('  keep\n   me'));
