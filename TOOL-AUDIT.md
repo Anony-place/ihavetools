@@ -13,6 +13,30 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## Bulk image target size — 2026-11-07
+
+- Added optional per-image target in whole KiB (1,024 bytes), for JPEG/WebP.
+  At the chosen fixed dimensions the browser tests a bounded set of quality
+  settings between 5 and 100. Only an actually encoded result at or below the
+  byte limit is included; a file fails if no sampled quality meets the target.
+  Failed files are omitted from the ZIP and listed in the per-file table.
+- Quality search is best effort: canvas output sizes need not be monotonic and
+  the search does not guarantee maximum possible quality or that another quality
+  could not fit. It does not automatically reduce dimensions; users can choose
+  smaller bounds or a larger target. Lossy compression changes pixels; PNG does
+  not support target mode. Browser encoders, memory and speed vary.
+- Market feature examples: https://imgtoolsbase.com/bulk-image-compressor/ and
+  https://roberin.com/en/image-compressor ; feature observations are not proof
+  of keyword demand. Canvas encoder API guidance:
+  https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toBlob
+- Engine regressions cover actual byte thresholds, impossible targets, limited
+  sampling, cancellation and non-monotonic encoder output; DOM tests cover
+  target and PNG validation. Chromium CI exercises real ZIP entries, a mixed
+  success/failure batch and a noisy JPEG requiring reduced quality. Test inputs
+  are synthetic; physical devices, browser diversity and image quality are not
+  certified. `npm run check`: 230 engine, 143 DOM, 9 chrome, worker and 21
+  integrity checks passed; npm audit: zero vulnerabilities.
+
 ## Bulk compression workflow — 2026-11-07
 
 - Extended the existing bulk resizer rather than creating a near-duplicate page.

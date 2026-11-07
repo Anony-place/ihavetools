@@ -11,6 +11,20 @@
 
 ---
 
+## Current batch — per-image target size (2026-11-07)
+
+1. Research target-size workflows and browser canvas encoder limits; implement
+   a bounded JPEG/WebP per-file search in the existing bulk tool, not a doorway.
+2. Never claim a target was met without checking actual bytes; fail individual
+   files when no sampled quality meets it. Preserve cancellation, limits and ZIP
+   semantics; clearly disclose fixed dimensions, quality loss and PNG limitation.
+3. Add deterministic adversarial encoder tests, UI race/validation tests, and
+   real-browser ZIP/byte-size and impossible-target regressions; update guides.
+4. Run full checks and audit, inspect the diff, ship one PR after CI/preview,
+   and verify production. Market feature examples are not keyword-volume proof.
+
+---
+
 ## Current consolidated batch — bulk image compression workflow (2026-11-07)
 
 1. Research competitor batch compression workflows and inspect the existing bulk
