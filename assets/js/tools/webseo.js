@@ -697,6 +697,7 @@ const defs = {
     let last = null, revision = 0; // {modules, size, version}
     const invalidate = () => { revision++; last = null; out.replaceChildren(); grid.replaceChildren(); status.set('Settings changed. Generate a new QR code.', 'info'); };
     [inp, ecl, sizeSel, fg, bg].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
+    window.addEventListener('pagehide', invalidate);
     const draw = (px) => {
       const { modules, size } = last;
       const cell = Math.max(1, Math.floor(px / (size + 8)));
@@ -722,15 +723,25 @@ const defs = {
         last = makeQrModules(lib, text, correction);
         const preview = draw(512);
         preview.setAttribute('class', 'img-preview');
+        preview.setAttribute('role', 'img'); preview.setAttribute('aria-label', 'Generated QR code preview');
         preview.setAttribute('style', 'margin-top:14px;max-width:320px;width:100%');
         out.replaceChildren(preview,
           h('div', { style: 'margin-top:10px;display:flex;gap:8px;flex-wrap:wrap' },
             h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => {
-              draw(Number(sizeSel.value)).toBlob((blob) => { if (token === revision && blob) { downloadBlob(blob, 'qr-code.png'); toast('PNG download started', 'success'); } }, 'image/png');
+              try {
+                draw(Number(sizeSel.value)).toBlob((blob) => {
+                  if (token !== revision) return;
+                  if (!blob || blob.type !== 'image/png' || !downloadBlob(blob, 'qr-code.png')) { status.set('Could not start the PNG download in this browser.', 'error'); return; }
+                  status.set('PNG download requested. Check that your browser saved it.', 'info');
+                }, 'image/png');
+              } catch { if (token === revision) status.set('Could not create the PNG in this browser.', 'error'); }
             } }, 'Download PNG'),
             h('button', { type: 'button', class: 'btn btn-secondary btn-sm', onclick: () => {
-              downloadText(qrSvgString(last.modules, { fg: fg.value, bg: bg.value }), 'qr-code.svg', 'image/svg+xml;charset=utf-8');
-              toast('SVG download started', 'success');
+              try {
+                if (token !== revision || !last) return;
+                if (!downloadText(qrSvgString(last.modules, { fg: fg.value, bg: bg.value }), 'qr-code.svg', 'image/svg+xml;charset=utf-8')) throw new Error('Download blocked');
+                status.set('SVG download requested. Check that your browser saved it.', 'info');
+              } catch { if (token === revision) status.set('Could not start the SVG download in this browser.', 'error'); }
             } }, 'Download SVG')));
         grid.set([
           { label: 'QR version', value: `v${last.version}` },
@@ -829,7 +840,8 @@ const defs = {
     const zone = dropzone({
       accept: 'image/*', title: 'Choose a QR image or drop it here',
       sub: 'Screenshot, JPG, PNG or WebP — up to 25 MiB and 40 million pixels, decoded locally',
-      onFiles: files => { if (files[0]) scanFile(files[0]); },
+      onFiles: files => { zone.clear(); if (files[0]) scanFile(files[0]); },
+      onReject: () => { invalidate(); releasePreview(); resetResult('Selection rejected.'); zone.clear(); status.set('Selection rejected. Choose an image no larger than 25 MiB.', 'error'); },
     });
     const scanFrame = async token => {
       if (token !== revision || !stream) return;

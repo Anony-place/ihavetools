@@ -1495,6 +1495,33 @@ await domTest('QR scanner rejects oversized input and cleans up on repeated page
  } finally {if(old) Object.defineProperty(navigator,'mediaDevices',old); else delete navigator.mediaDevices;}
 });
 
+await domTest('QR download failures and pagehide cannot report or deliver stale output', async () => {
+ const canvas=window.HTMLCanvasElement.prototype, oldCtx=canvas.getContext, oldBlob=canvas.toBlob, oldQr=window.qrcode, oldCreate=URL.createObjectURL; let callback, downloads=0;
+ window.qrcode=()=>({addData(){},make(){},getModuleCount(){return 21;},isDark(){return false;}});
+ canvas.getContext=()=>({fillRect(){},set fillStyle(v){}}); canvas.toBlob=cb=>{callback=cb;};
+ try {const app=await loadToolPage('qr-code-generator','webseo'), input=app.querySelector('textarea'); input.value='hello'; fire(input,'input'); click(btnByLabel(app,'Generate QR code'));await new Promise(r=>setTimeout(r,20));
+  click(btnByLabel(app,'Download PNG')); callback(null); assert.match(statusText(document),/Could not start the PNG/);
+  URL.createObjectURL=()=>{throw new Error('blocked');}; click(btnByLabel(app,'Download SVG')); assert.match(statusText(document),/Could not start the SVG/);
+  click(btnByLabel(app,'Download PNG')); window.dispatchEvent(new window.Event('pagehide')); URL.createObjectURL=()=>{downloads++; return 'blob:test';}; callback(new Blob(['x'],{type:'image/png'})); assert.equal(downloads,0); assert.equal(btnByLabel(app,'Download PNG'),undefined);
+ } finally {canvas.getContext=oldCtx;canvas.toBlob=oldBlob;window.qrcode=oldQr;URL.createObjectURL=oldCreate;}
+});
+await domTest('QR scanner rejects huge file and stops pending camera or scan', async () => {
+ const old=Object.getOwnPropertyDescriptor(navigator,'mediaDevices'), oldBitmap=global.createImageBitmap, oldCreate=URL.createObjectURL, oldRevoke=URL.revokeObjectURL; let grant,resolveBitmap,stopped=0,closed=0;
+ Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:{getUserMedia:()=>new Promise(resolve=>{grant=resolve;})}});
+ global.createImageBitmap=()=>new Promise(resolve=>{resolveBitmap=resolve;});URL.createObjectURL=()=> 'blob:test'; URL.revokeObjectURL=()=>{};
+ const drop=(app,file)=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[file]}});app.querySelector('.dropzone').dispatchEvent(e);};
+ try {const app=await loadToolPage('qr-code-scanner','webseo'); click(btnByLabel(app,'Start camera')); drop(app,{name:'huge.png',size:201*1024*1024}); grant({getTracks:()=>[{stop(){stopped++;}}]}); await new Promise(r=>setTimeout(r,15)); assert.equal(stopped,1); assert.match(statusText(document),/Selection rejected/);
+  drop(app,new File(['x'],'small.png',{type:'image/png'})); assert.ok(resolveBitmap); drop(app,{name:'huge.png',size:201*1024*1024}); resolveBitmap({width:1,height:1,close(){closed++;}}); await new Promise(r=>setTimeout(r,15)); assert.equal(closed,1); assert.match(statusText(document),/Selection rejected/);assert.equal(app.querySelector('.img-preview'),null);
+ } finally {if(old) Object.defineProperty(navigator,'mediaDevices',old); else delete navigator.mediaDevices;global.createImageBitmap=oldBitmap;URL.createObjectURL=oldCreate;URL.revokeObjectURL=oldRevoke;}
+});
+await domTest('CSV rejected selection cancels pending read and keeps input explicitly', async () => {
+ const app=await loadToolPage('csv-to-json','data'); await new Promise(r=>setTimeout(r,30)); const text=app.querySelector('textarea'); const before=text.value; const saved=global.FileReader; let reader;
+ global.FileReader=class {readAsText(){reader=this;}};
+ const drop=file=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[file]}});app.querySelector('.dropzone').dispatchEvent(e);};
+ try {drop(new File(['x'],'pending.csv'));assert.ok(reader);drop({name:'huge.csv',size:201*1024*1024});reader.result='name\nwrong';reader.onload();await new Promise(r=>setTimeout(r,10));assert.equal(text.value,before);assert.match(statusText(document),/Existing CSV input was kept/);}
+ finally {global.FileReader=saved;}
+});
+
 await domTest('typing duration resets test and rejects characters after deadline', async () => {
  const previous=Object.getOwnPropertyDescriptor(performance,'now'); let now=5000; Object.defineProperty(performance,'now',{configurable:true,value:()=>now});
  try {const app=await loadToolPage('typing-speed-test','misc'), box=app.querySelector('textarea'); click(btnByLabel(app,'30 seconds')); assert.match(app.textContent,/30sTime left/);

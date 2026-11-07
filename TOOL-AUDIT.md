@@ -13,6 +13,30 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## QR and imported-data safety — 2026-11-07
+
+- QR scanner now stops camera activity, rejects late permission/bitmap results,
+  clears displayed content and permits same-file reselection when the shared
+  dropzone rejects a very large image. Its own 25 MiB / 40 million decoded-pixel
+  limits remain; decoded dimensions are checked after browser allocation and
+  large images are scaled down, which can make small codes harder to read.
+- QR generation cancels pending output on page exit and detects null/invalid
+  PNG or failed download initiation for PNG/SVG. A requested download is not
+  proof a file was saved. Static codes are not phishing protection: the result
+  is shown first, no destination opens automatically, and users must still
+  check domains and payment details. Error correction is not a guarantee that
+  an arbitrary fraction of visible image damage is recoverable.
+- CSV file selection resets the picker and cancels late reads on oversized
+  rejection or pagehide; on a rejected import the existing text is retained
+  with an explicit message and old result cleared. Quoted CSV is not safe
+  against spreadsheet formula execution when opened in a spreadsheet.
+- DOM tests simulate deferred permission, image decoding, rejected files,
+  download failure and CSV races. Chromium round-trips generated PNG and SVG,
+  scans its own QR uploads, verifies an explicit URL action without auto-open,
+  and re-imports the same CSV file; loaded scanner checked at 320px and via axe.
+  Synthetic codes, mocks and automated scans do not certify physical cameras,
+  scanner readability, arbitrary payloads, all browsers or screen readers.
+
 ## Image editing integrity and coordinate crop — 2026-11-07
 
 - The cropper offers keyboard-operable whole-pixel left, top, width and height

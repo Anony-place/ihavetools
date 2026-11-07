@@ -178,6 +178,7 @@ const defs = {
     const out = resultPanel({ label: 'JSON', download: true, downloadName: 'data.json', downloadMime: 'application/json;charset=utf-8' });
     const zoneWrap = h('div', {});
     let revision = 0;
+    window.addEventListener('pagehide', () => { revision++; });
     const invalidate = () => { revision++; out.placeholder(); status.set('Input or options changed. Convert again.', 'info'); };
     [inp, delim, header, coerceTypes].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     const run = () => {
@@ -198,9 +199,11 @@ const defs = {
       actionsRow(btn({ label: 'Convert to JSON', icon: 'table', onClick: run })),
       status, h('p', { class: 'hint', text: 'Blank headers get generated names. Header whitespace is preserved; a leading UTF-8 BOM is removed. Type inference can round decimals and change text. CSV text is limited to 1,000,000 characters, 10,000 rows, 256 columns and 250,000 cells; uploads to 10 MiB.' }), h('br'), out.panel);
     import('../ui.js').then(({ dropzone }) => {
-      zoneWrap.append(dropzone({
+      const zone = dropzone({
         accept: '.csv,text/csv,text/plain', title: '…or drop a .csv file', sub: 'Read locally — never uploaded',
+        onReject: () => { revision++; zone.clear(); out.placeholder(); status.set('Selection rejected. Existing CSV input was kept; choose a file no larger than 10 MiB.', 'error'); },
         onFiles: async (files) => {
+          zone.clear();
           const token = ++revision; out.placeholder();
           try {
             if (files[0].size > 10 * 1024 * 1024) throw new Error('Choose a CSV file no larger than 10 MiB.');
@@ -208,9 +211,10 @@ const defs = {
             const text = await readFile(files[0], 'text');
             if (token !== revision) return;
             inp.value = text; run();
-          } catch (e) { if (token === revision) { out.placeholder(); status.set(e.message, 'error'); } }
+          } catch (e) { if (token === revision) { out.placeholder(); status.set(`${e.message} Existing CSV input was kept.`, 'error'); } }
         },
-      }));
+      });
+      zoneWrap.append(zone);
     });
   },
 

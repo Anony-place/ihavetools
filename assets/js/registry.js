@@ -1515,7 +1515,7 @@ export const tools = [
           ['A map location', 'geo:28.6139,77.2090'],
         ] } },
       { h: 'Error correction: L, M, Q or H?',
-        p: 'Error correction is spare capacity that lets a code scan even when part of it is damaged, dirty or covered: L recovers ~7% of the pattern, M ~15%, Q ~25% and H ~30%. M is the right default for screens and clean prints. Choose Q or H if the code will be printed small, placed outdoors, or have a logo sitting on top of it — just know the pattern gets denser, so print it a little bigger.' },
+        p: 'Error correction adds redundancy: L, M, Q and H roughly correspond to 7%, 15%, 25% and 30% of codewords recoverable under suitable conditions, not a guaranteed fraction of damaged image area. Higher levels can make the code denser. Damage to finder patterns, glare, size and print quality can still prevent scanning; test the actual final code.' },
       { h: 'Printing QR codes that actually scan', list: [
         'Size: minimum ~2 × 2 cm for close-up scanning. Rule of thumb — scanning distance is about 10× the printed width, so a poster read from 2 metres needs a ~20 cm code.',
         'Keep the white border (the “quiet zone”). Cropping it off is the #1 reason printed codes fail.',
@@ -1862,6 +1862,7 @@ export const tools = [
       { q: 'Is my photo or camera video uploaded?', a: 'No. The jsQR decoder runs in your browser, image pixels are read locally with Canvas, and camera frames stay on the device. Camera permission is requested by the browser only when you press Start camera.' },
       { q: 'Why does the scanner not find my QR code?', a: 'Use a closer, straighter image with the complete code and its quiet white border visible. Blur, glare, tiny screenshots, heavy perspective and damaged corners are the usual causes. Cropping tightly around — but not into — the border often fixes it.' },
       { q: 'Can it scan normal barcodes?', a: 'No. This tool decodes QR codes only, not one-dimensional retail barcodes such as UPC or EAN. It does recognise common QR payloads including URLs, Wi-Fi, email, phone, SMS, maps, vCards and UPI payment strings.' },
+      { q: 'Are uploaded images limited?', a: 'Images must be at most 25 MiB and 40 million decoded pixels. Large images are scaled for scanning, which may make small codes harder to read. Camera permission and codec support depend on your browser.' },
     ],
     guide: [
       { h: 'A QR code is a link you cannot read — inspect it first',
