@@ -13,6 +13,26 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## Bulk fixed-canvas layout — 2026-11-07
+
+- Added exact-canvas white or transparent padding to the existing batch workflow:
+  both dimensions are required; the whole image fits centered with no cropping.
+  The default no-enlargement rule still applies, so small photos may have more
+  padding. White mode fills transparent pixels; transparent mode requires PNG or
+  WebP. Fit mode and optional target size remain available. This does not detect
+  subjects or remove original backgrounds, nor certify marketplace requirements.
+- Selecting a file beyond the shared 200 MiB dropzone threshold now invalidates
+  the old bulk batch, so an accidentally rejected selection cannot leave a prior
+  ZIP appearing current. The batch itself remains limited to 20 MiB per file.
+- Geometry unit tests cover no-upscale, aspect ratios and centering. DOM checks
+  cover invalid settings and rejected selection. Browser CI independently extracts
+  PNG ZIPs and checks actual dimensions, white/transparent corners, image center,
+  and JPEG transparency rejection. This does not certify all browsers, physical
+  devices, image codecs or screen-reader behavior.
+- Feature research examples: https://www.birme.net/ and
+  https://pixelconvertor.com/tools/batch-resizer . These describe competitor
+  workflows, not verified keyword volumes or ranking outcomes.
+
 ## Bulk image target size — 2026-11-07
 
 - Added optional per-image target in whole KiB (1,024 bytes), for JPEG/WebP.

@@ -43,6 +43,13 @@ export function fitInside(w, h, maxWidth, maxHeight, upscale = false) {
   const scale = maxWidth == null && maxHeight == null ? 1 : Math.min(maxWidth == null ? Infinity : maxWidth / w, maxHeight == null ? Infinity : maxHeight / h, upscale ? Infinity : 1);
   return { width: Math.max(1, Math.min(maxWidth ?? Infinity, Math.round(w * scale))), height: Math.max(1, Math.min(maxHeight ?? Infinity, Math.round(h * scale))) };
 }
+// Center a proportionally fitted image on a fixed canvas, without cropping.
+export function paddedLayout(w, h, canvasWidth, canvasHeight, upscale = false) {
+  if (![canvasWidth, canvasHeight].every(n => Number.isSafeInteger(n) && n > 0)) throw new Error('Both canvas dimensions are required.');
+  const image = fitInside(w, h, canvasWidth, canvasHeight, upscale);
+  return { width: canvasWidth, height: canvasHeight, imageWidth: image.width, imageHeight: image.height,
+    x: Math.floor((canvasWidth - image.width) / 2), y: Math.floor((canvasHeight - image.height) / 2) };
+}
 export function sizeChange(original, output) {
   if (!Number.isSafeInteger(original) || original <= 0 || !Number.isSafeInteger(output) || output < 0) throw new Error('Invalid file size.');
   if (original === output) return 'Unchanged';
@@ -263,7 +270,7 @@ function downloadImage(blob, name) {
 // assigned a dropped FileList reliably, so pass files through a custom event.
 function imageZone(options) {
   let zone;
-  zone = dropzone({ ...options, onFiles: (files) => zone.dispatchEvent(new window.CustomEvent('iht-files', { detail: files })) });
+  zone = dropzone({ ...options, onFiles: (files) => zone.dispatchEvent(new window.CustomEvent('iht-files', { detail: files })), onReject: () => zone.dispatchEvent(new window.CustomEvent('iht-rejected')) });
   return zone;
 }
 
@@ -348,6 +355,7 @@ const defs = {
     const width = input({ type: 'number', min: 1, max: 4096, value: '1200' });
     const height = input({ type: 'number', min: 1, max: 4096, value: '1200' });
     const format = select({ options: [{ v: 'jpeg', t: 'JPEG' }, { v: 'png', t: 'PNG' }, { v: 'webp', t: 'WebP' }], value: 'jpeg' });
+    const layout = select({ options: [{ v: 'fit', t: 'Fit within bounds (no padding)' }, { v: 'white', t: 'Exact canvas with white padding' }, { v: 'transparent', t: 'Exact canvas with transparent padding' }], value: 'fit' });
     const quality = input({ type: 'number', min: 5, max: 100, value: '85' });
     const target = input({ type: 'number', min: 1, max: 51200, step: 1, placeholder: 'optional' });
     const upscale = switchChip({ label: 'Allow enlargement', checked: false });
@@ -362,6 +370,7 @@ const defs = {
       const ok = downloadBlob(archive, 'resized-images.zip');
       status.set(ok ? 'ZIP download requested.' : 'Could not request the ZIP download.', ok ? 'success' : 'error');
     } });
+    zone.addEventListener('iht-rejected', () => { invalidate(); files = []; list.replaceChildren(); status.set('Selection rejected. Choose files within the batch limits.', 'error'); });
     zone.addEventListener('iht-files', e => {
       invalidate(); files = []; list.replaceChildren();
       const selected = e.detail;
@@ -372,13 +381,17 @@ const defs = {
       list.replaceChildren(table({ headers: ['Selected file', 'Size'], rows: files.map(f => [f.name, fmtBytes(f.size)]) }));
       status.set(`${files.length} images selected. Set size and quality, then process.`, 'info');
     });
-    for (const el of [width, height, format, quality, target, upscale]) for (const ev of ['input', 'change']) el.addEventListener(ev, () => { invalidate(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
+    for (const el of [width, height, format, layout, quality, target, upscale]) for (const ev of ['input', 'change']) el.addEventListener(ev, () => { invalidate(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
     window.addEventListener('pagehide', invalidate);
     async function run() {
       invalidate();
       if (!files.length) { status.set('Choose images first.', 'warning'); return; }
       const w = width.value === '' ? null : Number(width.value), h0 = height.value === '' ? null : Number(height.value), q = Number(quality.value), fmt = format.value;
       if (![w, h0].every(n => n == null || (Number.isSafeInteger(n) && n >= 1 && n <= 4096))) { status.set('Maximum dimensions must be blank or whole numbers from 1 to 4096.', 'error'); return; }
+      const mode = layout.value;
+      if (!['fit', 'white', 'transparent'].includes(mode)) { status.set('Choose a supported layout.', 'error'); return; }
+      if (mode !== 'fit' && (w == null || h0 == null)) { status.set('Exact canvas requires both width and height.', 'error'); return; }
+      if (mode === 'transparent' && fmt === 'jpeg') { status.set('Transparent padding requires PNG or WebP output; JPEG cannot preserve transparency.', 'error'); return; }
       const targetKiB = target.value === '' ? null : Number(target.value);
       if (targetKiB != null && (!Number.isSafeInteger(targetKiB) || targetKiB < 1 || targetKiB > 51200)) { status.set('Target must be a whole number from 1 to 51200 KiB.', 'error'); return; }
       if (targetKiB != null && fmt === 'png') { status.set('Target size is available for JPEG and WebP only; PNG ignores quality.', 'error'); return; }
@@ -397,13 +410,14 @@ const defs = {
             if (revision !== token) return;
             const img = await loadImage(f);
             if (revision !== token) return;
-            const dims = fitInside(img.naturalWidth, img.naturalHeight, w, h0, enlarge);
+            const fit = mode === 'fit' ? fitInside(img.naturalWidth, img.naturalHeight, w, h0, enlarge) : null;
+            const dims = fit ? { ...fit, imageWidth: fit.width, imageHeight: fit.height, x: 0, y: 0 } : paddedLayout(img.naturalWidth, img.naturalHeight, w, h0, enlarge);
             validateCanvasSize(dims.width, dims.height);
             const canvas = document.createElement('canvas'); canvas.width = dims.width; canvas.height = dims.height;
             const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable.');
             ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-            if (fmt === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, dims.width, dims.height); }
-            ctx.drawImage(img, 0, 0, dims.width, dims.height);
+            if (fmt === 'jpeg' || mode === 'white') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, dims.width, dims.height); }
+            ctx.drawImage(img, dims.x, dims.y, dims.imageWidth, dims.imageHeight);
             const choice = targetKiB == null ? { blob: await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100) } : await encodeToTarget(qualityValue => canvasToBlob(canvas, MIME_BY_FMT[fmt], qualityValue), targetKiB * 1024, () => revision === token);
             const blob = choice.blob;
             if (revision !== token) return;
@@ -426,10 +440,10 @@ const defs = {
     }
     root.append(zone, list, h('div', { class: 'field-row', style: 'margin-top:14px' },
       field({ label: 'Maximum width (px)', control: width, hint: 'Blank means no width limit.' }), field({ label: 'Maximum height (px)', control: height, hint: 'Blank means no height limit; clear both to keep original dimensions.' }),
-      field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'PNG ignores quality; target mode chooses quality automatically.' }),
+      field({ label: 'Layout', control: layout, hint: 'Exact canvas needs both dimensions; image is centered without cropping.' }), field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'PNG ignores quality; target mode chooses quality automatically.' }),
       field({ label: 'Target per image (KiB)', control: target, hint: 'Optional, whole KiB (1 KiB = 1024 bytes). JPEG/WebP only; searches quality 5–100 at selected dimensions.' })),
       upscale, actionsRow(runButton, cancel, download), status, results,
-      privacyNote('Images are processed locally, not uploaded. Optional bounds fit images without cropping; clear both to retain original dimensions. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
+      privacyNote('Images are processed locally, not uploaded. Fit mode uses optional bounds; clear both to retain original dimensions. Exact canvas centers the full image with white or transparent padding, without cropping. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
   },
 
   'image-resizer'(root) {

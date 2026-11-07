@@ -1523,6 +1523,13 @@ await test('bulk fit, output filenames, search and discovery', () => {
   assert.ok(registry.searchTools('bulk image compressor', 20).some(t => t.id === 'bulk-image-resizer'));
   assert.ok(registry.tools.filter(t => registry.relatedTools(t,6).some(r => r.id === 'bulk-image-resizer')).length >= 3);
 });
+await test('fixed-canvas fit centers images without cropping or unwanted enlargement', () => {
+  assert.deepEqual(img.paddedLayout(80,40,40,40), {width:40,height:40,imageWidth:40,imageHeight:20,x:0,y:10});
+  assert.deepEqual(img.paddedLayout(3,2,10,10), {width:10,height:10,imageWidth:3,imageHeight:2,x:3,y:4});
+  assert.deepEqual(img.paddedLayout(3,2,10,10,true), {width:10,height:10,imageWidth:10,imageHeight:7,x:0,y:1});
+  assert.deepEqual(img.paddedLayout(100,400,200,200), {width:200,height:200,imageWidth:50,imageHeight:200,x:75,y:0});
+  assert.throws(() => img.paddedLayout(1,1,null,5), /both canvas dimensions/i);
+});
 await test('target-size search checks bytes, bounds work, cancellation and non-monotonic encoders', async () => {
   let calls = [];
   const encode = async q => { const n = Math.round(q * 100); calls.push(n); return { size: n * 10 }; };

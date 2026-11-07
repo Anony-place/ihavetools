@@ -233,7 +233,7 @@ export function table({ headers, rows, caption }) {
 /* ---------- Files ---------- */
 const MAX_FILE_MB = 200;
 
-export function dropzone({ accept = '', multiple = false, onFiles, title = 'Choose a file or drop it here', sub = '' } = {}) {
+export function dropzone({ accept = '', multiple = false, onFiles, onReject, title = 'Choose a file or drop it here', sub = '' } = {}) {
   const zone = h('div', { class: 'dropzone' },
     h('span', { html: icon('upload'), style: 'display:inline-flex' }),
     h('span', { class: 'dz-title', text: title }),
@@ -243,7 +243,7 @@ export function dropzone({ accept = '', multiple = false, onFiles, title = 'Choo
   const handle = (files) => {
     const list = [...files];
     if (!list.length) return;
-    for (const f of list) if (f.size > MAX_FILE_MB * 1024 * 1024) { toast(`"${f.name}" is larger than ${MAX_FILE_MB} MB.`, 'error'); return; }
+    for (const f of list) if (f.size > MAX_FILE_MB * 1024 * 1024) { onReject?.(f); toast(`"${f.name}" is larger than ${MAX_FILE_MB} MB.`, 'error'); return; }
     onFiles(list);
   };
   fi.addEventListener('change', () => handle(fi.files));
