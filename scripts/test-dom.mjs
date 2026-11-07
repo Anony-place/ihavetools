@@ -1131,6 +1131,15 @@ await domTest('bulk image resizer rejects invalid batches and cancels stale imag
     const file=new File([new Uint8Array([255,216,255,217])],'photo.jpg',{type:'image/jpeg'});
     const send=files=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files}});app.querySelector('.dropzone').dispatchEvent(e);};
     send(Array(21).fill(file)); assert.match(app.textContent,/at most 20 images/);
+    const other=new File([new Uint8Array([255,216,255,217])],'other.jpg',{type:'image/jpeg'});
+    send([file,other,file]);
+    assert.match(app.textContent,/001-photo.jpg/); assert.match(app.textContent,/003-photo.jpg/);
+    const up=app.querySelector('button[aria-label="Move up 3: photo.jpg"]'); click(up);
+    assert.match(app.textContent,/002-photo.jpg/);
+    click(app.querySelector('button[aria-label="Remove 2: photo.jpg"]'));
+    assert.doesNotMatch(app.textContent,/003-photo.jpg/);
+    click(btnByLabel(app,'Clear selected images')); assert.match(app.textContent,/Selection cleared/);
+    send([file]); const prefix=app.querySelector('input[placeholder^="optional, e.g."]'); prefix.value='../bad'; fire(prefix,'input'); click(btnByLabel(app,'Process images')); assert.match(app.textContent,/Prefix must use/); prefix.value=''; fire(prefix,'input');
     send([file]); const nums=app.querySelectorAll('input[type=number]');
     const selects=app.querySelectorAll('select'); selects[0].value='white'; nums[0].value=''; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/requires both width and height/);
     nums[0].value='1200'; selects[0].value='transparent'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/requires PNG or WebP/); selects[0].value='fit';

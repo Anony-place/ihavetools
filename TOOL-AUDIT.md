@@ -13,6 +13,26 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## Bulk image queue and filenames — 2026-11-07
+
+- The existing batch now previews output names, supports reordering, removing
+  individual files and clearing the selection; each action invalidates a prior
+  ZIP and pending work. Selecting a new batch replaces the queue. The file
+  picker is reset so the same files can be selected again after edits or clearing.
+- Optional prefix accepts up to 40 ASCII letters, digits, underscores or
+  hyphens; unsafe inputs are rejected instead of silently rewritten. Output
+  names retain a numbered index, sanitized original stem and format extension,
+  avoiding collisions. Stems are limited by both character count and UTF-8 byte
+  length, and unpaired surrogates are replaced; original files are not modified.
+  Filesystem extraction behavior can still vary, and a ZIP is not a backup.
+- Engine and DOM checks cover duplicate names, prefix validation, UTF-8 bounds,
+  ordering and clearing. CI Chromium verifies name previews against extracted
+  ZIP entry names, queue invalidation, same-file reselection and mobile/axe
+  checks. Physical devices, screen readers, and all archive extractors remain
+  unverified. Competitor feature reference:
+  https://toolboximage.com/tools/batch-renamer/ — feature evidence only, not
+  verified search demand or a guarantee of ranking.
+
 ## Bulk fixed-canvas layout — 2026-11-07
 
 - Added exact-canvas white or transparent padding to the existing batch workflow:
