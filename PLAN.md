@@ -2,12 +2,25 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-01 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 128 (78 guides)
+> `main` par merge = auto-deploy) · **Tools:** 129 (79 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Current consolidated batch — bulk image compression workflow (2026-11-07)
+
+1. Research competitor batch compression workflows and inspect the existing bulk
+   resizer; strengthen the existing page rather than create a duplicate doorway.
+2. Support keeping original dimensions, report honest before/after sizes and
+   increases per file, and preserve resource, privacy and stale-output safeguards.
+3. Improve search intent, contextual guidance and discovery; test proportional
+   bounds, original dimensions, failures, ZIP contents, mobile and accessibility.
+4. Audit outcomes and limitations, run checks and security audit; ship one PR
+   after CI and preview pass and verify production. No ranking claims.
 
 ---
 

@@ -74,7 +74,7 @@
 - [Password Strength Checker](https://i-have-tools.vercel.app/tools/password-strength-checker/): Check selected password patterns locally; not a strength guarantee.
 - [Random String Generator](https://i-have-tools.vercel.app/tools/random-string-generator/): Bulk random strings and keys from your browser’s CSPRNG.
 - [Image Compressor](https://i-have-tools.vercel.app/tools/image-compressor/): Shrink JPG, PNG and WebP in your browser — no uploads.
-- [Bulk Image Resizer](https://i-have-tools.vercel.app/tools/bulk-image-resizer/): Resize a batch of images locally and download a ZIP.
+- [Bulk Image Resizer & Compressor](https://i-have-tools.vercel.app/tools/bulk-image-resizer/): Resize or compress a batch of images locally and download a ZIP.
 - [Image Resizer](https://i-have-tools.vercel.app/tools/image-resizer/): Resize images to exact pixels, keeping the aspect ratio.
 - [Image Converter](https://i-have-tools.vercel.app/tools/image-converter/): Convert between PNG, JPG and WebP — transparent → white.
 - [Image Cropper](https://i-have-tools.vercel.app/tools/image-cropper/): Crop images with drag selection and aspect presets.

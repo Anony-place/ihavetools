@@ -1506,10 +1506,21 @@ await test('bulk fit, output filenames, search and discovery', () => {
   assert.deepEqual(img.fitInside(300,200,1200,1200), {width:300,height:200});
   assert.deepEqual(img.fitInside(300,200,1200,1200,true), {width:1200,height:800});
   assert.deepEqual(img.fitInside(10000,1,1,1), {width:1,height:1});
+  assert.deepEqual(img.fitInside(2400,1200,null,null,true), {width:2400,height:1200});
+  assert.deepEqual(img.fitInside(2400,1200,1200,null), {width:1200,height:600});
+  assert.deepEqual(img.fitInside(300,200,null,800,true), {width:1200,height:800});
+  assert.equal(img.sizeChange(1000,500), '50.0% smaller');
+  assert.equal(img.sizeChange(1000,1100), '10.0% larger');
+  assert.equal(img.sizeChange(1000,1000), 'Unchanged');
+  assert.equal(img.sizeChange(100000,100001), '<0.1% larger');
+  assert.throws(() => img.sizeChange(0, 5), /Invalid file size/);
   assert.throws(() => img.fitInside(10,10,0,100), /positive whole/);
   assert.equal(img.batchFilename('../test.png', 1, 'jpeg'), '001-_test.jpg');
   assert.notEqual(img.batchFilename('x.png', 1, 'png'), img.batchFilename('x.png', 2, 'png'));
+  assert.equal(img.batchFilename(`${'a'.repeat(79)}😀z.png`, 1, 'png'), `001-${'a'.repeat(79)}😀.png`);
+  assert.equal(img.batchFilename('x\ud800.png', 1, 'png'), '001-x_.png');
   assert.ok(registry.searchTools('bulk image resizer', 20).some(t => t.id === 'bulk-image-resizer'));
+  assert.ok(registry.searchTools('bulk image compressor', 20).some(t => t.id === 'bulk-image-resizer'));
   assert.ok(registry.tools.filter(t => registry.relatedTools(t,6).some(r => r.id === 'bulk-image-resizer')).length >= 3);
 });
 await test('JPEG EXIF parsed from crafted buffer', () => {
