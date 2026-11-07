@@ -1219,7 +1219,7 @@ export const tools = [
     steps: 'Drop or choose two or more PDF files.|Reorder them with the arrow buttons if needed.|Click Merge PDFs, then download the combined file.',
     guide: [
       { h: 'How merging works here — lossless page copying',
-        p: 'This tool opens each PDF with pdf-lib (loaded locally in your browser — files never upload) and copies its pages, in the order of your list, into one new document. Page content is copied rather than reprinted, so text stays selectable, images are not recompressed, and quality is identical to the originals. A natural consequence: the merged file is roughly the sum of the input sizes — merging does not compress anything.' },
+        p: 'This tool opens each PDF with pdf-lib (loaded locally in your browser — files never upload) and copies its pages, in the order of your list, into one new document. Pages are copied rather than reprinted, so existing text and image content generally remain without deliberate recompression. Document-level features may be lost; inspect the result. Output size can vary and merging is not a compression tool.' },
       { h: 'What does not survive a merge', list: [
         'Password-protected PDFs: encrypted files are rejected with a clear message — remove the password in the app that created the file, then merge.',
         'Interactive bits can be lost in the copy: form-field interactivity, document outlines/bookmarks and embedded file attachments may not carry over even though every page looks identical. Check the result if you rely on them.',
@@ -1234,7 +1234,7 @@ export const tools = [
     ],
     faqs: [
       { q: 'Are my PDFs uploaded anywhere?', a: 'No. Merging runs entirely in your browser using the pdf-lib library, which is loaded once from this site. Your files stay on your device.' },
-      { q: 'Is there a file size or page limit?', a: 'There is no artificial limit — the constraint is your device’s memory, since pages are copied into a new document in memory.' },
+      { q: 'Is there a file size or page limit?', a: 'Each selected file must be at most 200 MiB. The practical limit may be lower because documents and copied pages are held in device memory.' },
     ] }),
   T({ id: 'pdf-rotate', name: 'PDF Rotate', icon: 'refresh', engine: 'pdf', categories: ['pdf'],
     related: ["pdf-organizer","image-to-pdf","pdf-merge","pdf-split"],

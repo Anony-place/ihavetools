@@ -993,6 +993,62 @@ await domTest('Image to PDF keeps duplicate filenames distinct and updates remov
   assert.match(app.textContent, /2 BTotal size/);
 });
 
+for (const id of ['pdf-rotate', 'pdf-split']) {
+  await domTest(`${id}: edits and rejected selections cancel pending exports`, async () => {
+    const lib = await import('pdf-lib'); const doc = await lib.PDFDocument.create(); doc.addPage(); const bytes = await doc.save();
+    let calls=0, release;
+    window.PDFLib = {...lib, PDFDocument: {create: (...a) => lib.PDFDocument.create(...a), load: (b,...a) => {
+      const load=()=>lib.PDFDocument.load(new Uint8Array(b),...a);
+      if (++calls === 2) return new Promise(resolve => {release=()=>resolve(load());}); return load();
+    }}};
+    const app=await loadToolPage(id,'pdf');
+    const drop = file => { const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[file]}}); app.querySelector('.dropzone').dispatchEvent(e); };
+    const file=new File([bytes],'ok.pdf',{type:'application/pdf'}); const huge={name:'huge.pdf',size:201*1024*1024};
+    let output=0; const original=URL.createObjectURL; URL.createObjectURL=()=>{output++;return 'blob:test';};
+    try {
+      drop(file); if(id==='pdf-split') app.querySelector('input[type=text]').value='1';
+      click(btnByLabel(app,id==='pdf-rotate'?'Rotate PDF':'Split PDF')); await new Promise(r=>setTimeout(r,80)); assert.ok(release);
+      if(id==='pdf-rotate') click(btnByLabel(app,'180°')); else {const ranges=app.querySelector('input[type=text]'); ranges.value='2'; fire(ranges,'input');}
+      release(); await new Promise(r=>setTimeout(r,80)); assert.equal(output,0); assert.match(statusText(document),/Settings changed/);
+      drop(huge); assert.match(statusText(document),/Selection rejected/);
+      click(btnByLabel(app,id==='pdf-rotate'?'Rotate PDF':'Split PDF')); assert.match(statusText(document),/Choose a PDF first/);
+      drop(file); assert.match(statusText(document),/Loaded ok.pdf/);
+    } finally { URL.createObjectURL=original; }
+  });
+}
+await domTest('PDF organizer clears old document after a rejected selection', async () => {
+  const lib=await import('pdf-lib'); window.PDFLib={...lib,PDFDocument:{create:(...a)=>lib.PDFDocument.create(...a),load:(b,...a)=>lib.PDFDocument.load(new Uint8Array(b),...a)}};
+  const doc=await lib.PDFDocument.create(); doc.addPage(); const file=new File([await doc.save()],'ok.pdf',{type:'application/pdf'});
+  const app=await loadToolPage('pdf-organizer','pdf');
+  const drop = file => {const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[file]}}); app.querySelector('.dropzone').dispatchEvent(e);};
+  drop(file); await new Promise(r=>setTimeout(r,80)); assert.equal(app.querySelectorAll('.file-row').length,1);
+  drop({name:'large.pdf',size:201*1024*1024}); assert.equal(app.querySelectorAll('.file-row').length,0); click(btnByLabel(app,'Export organized PDF')); assert.match(statusText(document),/Choose a PDF first/);
+});
+await domTest('Image to PDF page-size changes cancel pending conversion', async () => {
+  const lib=await import('pdf-lib'); let release;
+  window.PDFLib={...lib, PDFDocument:{create:(...a)=>new Promise(resolve=>{release=()=>resolve(lib.PDFDocument.create(...a));})}};
+  const app=await loadToolPage('image-to-pdf','pdf'); const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[new File(['x'],'x.png',{type:'image/png'})]}}); app.querySelector('.dropzone').dispatchEvent(e);
+  let output=false; const original=URL.createObjectURL; URL.createObjectURL=()=>{output=true;return 'blob:test';};
+  try { click(btnByLabel(app,'Convert to PDF')); await new Promise(r=>setTimeout(r,30)); assert.ok(release); click(btnByLabel(app,'Letter (fit)')); release(); await new Promise(r=>setTimeout(r,80)); assert.equal(output,false); assert.match(statusText(document),/Page size changed/); }
+  finally { URL.createObjectURL=original; }
+});
+
+for (const id of ['pdf-merge', 'image-to-pdf']) {
+  await domTest(`${id}: oversized input keeps list but cancels pending output`, async () => {
+    const lib=await import('pdf-lib'); let release;
+    window.PDFLib={...lib,PDFDocument:{create:(...a)=>new Promise(resolve=>{release=()=>resolve(lib.PDFDocument.create(...a));})}};
+    const app=await loadToolPage(id,'pdf');
+    const drop=files=>{const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files}}); app.querySelector('.dropzone').dispatchEvent(e);};
+    const type=id==='pdf-merge'?'application/pdf':'image/png'; const ext=id==='pdf-merge'?'pdf':'png';
+    drop([new File(['a'],`a.${ext}`,{type}),new File(['b'],`b.${ext}`,{type})]);
+    let output=false; const original=URL.createObjectURL; URL.createObjectURL=()=>{output=true;return 'blob:test';};
+    try {click(btnByLabel(app,id==='pdf-merge'?'Merge PDFs':'Convert to PDF')); await new Promise(r=>setTimeout(r,30)); assert.ok(release);
+      drop([{name:`large.${ext}`,size:201*1024*1024}]); assert.equal(app.querySelectorAll('.file-row').length,2); assert.match(statusText(document),/Existing list was kept/);
+      release(); await new Promise(r=>setTimeout(r,80)); assert.equal(output,false);
+    } finally {URL.createObjectURL=original;}
+  });
+}
+
 console.log('\n── Batch-8 UIs ──');
 for (const [id, query, expected] of [
   ['loan-prepayment-calculator', '?principal=120000&rate=0&payment=10000&extra=1000&lump=20000&month=3', /2Time saved.*12Baseline months.*10With prepayment months/s],

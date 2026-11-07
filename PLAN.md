@@ -11,6 +11,21 @@
 
 ---
 
+## Current consolidated batch — PDF workflow integrity (2026-11-07)
+
+1. Audit PDF organizer, merge, split, rotate and image-to-PDF selection,
+   settings, asynchronous operations and oversized-file rejection.
+2. Prevent outdated downloads after settings edits or rejected input; make
+   selection semantics and same-file reselection explicit, and stop obsolete
+   work between asynchronous steps where possible.
+3. Test race conditions, same-file selection, rejection, page ordering,
+   downloadable output, mobile layout and accessibility; document limits of
+   page copying and browser download behavior without claiming certification.
+4. Run full checks and dependency audit, review and ship one consolidated PR;
+   verify CI, Vercel preview and production.
+
+---
+
 ## Current batch — bulk image queue and export integrity (2026-11-07)
 
 1. Research batch file naming and audit queue, filename portability, cancellation
