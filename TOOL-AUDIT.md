@@ -13,6 +13,27 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## Audio and media workflow integrity — 2026-11-07
+
+- Audio trimmer, speed changer, video audio extractor and MP4 inspector now
+  discard stale output when an oversized input is rejected, ignore late decode
+  results after leaving the page, and allow reselecting the same file. Files
+  between 100 and 200 MiB reach the tool-specific 100 MiB validation; larger
+  inputs are rejected by the shared dropzone. In-flight decoding itself cannot
+  be forcibly interrupted, and decoded-size checks happen after allocation.
+- Trimmer stops and closes its previous playback context when replaying,
+  editing the range, selecting another file, rejecting input or leaving.
+  WAV tools report blocked download initiation and otherwise say a download was
+  requested; browsers can still block or fail to save a requested download.
+- DOM tests exercise delayed decoding, rejection, mocked playback lifecycle
+  and download initiation failures. Chromium decodes and exports generated WAV
+  through trim and speed paths, validates duration and same-file reload, inspects
+  a small synthetic FFmpeg MP4 and tests its audio extraction when supported.
+  Loaded trimmer received a 320px and automated axe check. These are synthetic
+  fixtures, not guarantees for all codecs, physical speakers, browsers or
+  assistive technologies. Decode/resampling can change quality or pitch; speed
+  conversion lacks an anti-alias filter and amplification can clip.
+
 ## PDF workflow integrity — 2026-11-07
 
 - Rotate, split and image-to-PDF now invalidate in-flight work when relevant
@@ -433,9 +454,10 @@ for background-thread termination of catastrophic backtracking.
 
 ## Known gaps and follow-up
 
-1. MP4 parsing is best effort. Extended-size boxes may stop traversal, truncated
-   files can yield incomplete metadata, and synthetic test data is not evidence
-   that all MP4/MOV variants work. Cross-check media metadata externally.
+1. MP4 parsing is best effort. Supported extended-size boxes are bounds checked,
+   but fragmented or unusual files may lack complete metadata, and synthetic
+   test data is not evidence that all MP4/MOV variants work. Cross-check media
+   metadata externally.
 2. Audio/video decoding is browser- and codec-dependent. Actual playback,
    extraction, seeking, file size limits and downloads need manual device tests.
 3. PDF tests use generated documents; encrypted, signed, forms, attachments,

@@ -11,6 +11,21 @@
 
 ---
 
+## Current consolidated batch — audio and media workflow integrity (2026-11-07)
+
+1. Audit audio and MP4 selection, async decoding, playback lifecycle and WAV
+   download handling; compare claims and actual supported resource limits.
+2. Invalidate stale media after rejected selections or page exit, permit
+   same-file reselection, manage trimmer playback cleanup, and report download
+   failures without claiming a successful save.
+3. Add race, oversized rejection, playback and download regressions; verify
+   actual WAV and MP4 paths in Chromium and update user-facing limitations.
+4. Run full checks and dependency audit, review and deliver one consolidated
+   PR after CI and preview, then verify production. Browser codecs, physical
+   audio hardware and accessibility remain outside automated certification.
+
+---
+
 ## Current consolidated batch — PDF workflow integrity (2026-11-07)
 
 1. Audit PDF organizer, merge, split, rotate and image-to-PDF selection,

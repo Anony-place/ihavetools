@@ -226,7 +226,7 @@ export const tools = [
   // ── Video ──────────────────────────────────────────────────────────────────
   T({ id: 'extract-audio', name: 'Extract Audio from Video', icon: 'volume', engine: 'audio', categories: ['video', 'audio'],
     blurb: 'Extract supported video audio in your browser and save it as WAV.',
-    description: 'Extract the audio track from MP4, WebM or MOV videos and download it as a WAV file. Decoding happens entirely in your browser using its built-in audio codecs — the video is never uploaded.',
+    description: 'Extract supported audio from MP4, WebM or MOV videos and request a WAV download. Decoding depends on your browser and its codecs; unsupported or protected files may fail. Processing happens locally — the video is never uploaded.',
     keywords: ['extract audio', 'video to audio', 'video to wav', 'mp4 audio', 'sound extractor', 'audio from video'],
     aliases: ['video to wav', 'mp4 to wav', 'rip audio', 'audio extractor'],
     popularity: 57, added: '2026-09-19',
