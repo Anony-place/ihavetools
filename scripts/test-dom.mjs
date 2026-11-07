@@ -411,6 +411,32 @@ await domTest('rd, cagr and gratuity calculators mount and compute correct value
   assert.match(app.textContent, /576,923/, 'gratuity for ₹50,000 × 20 years is ₹5,76,923');
   assert.match(app.textContent, /Eligible/);
 });
+await domTest('shared download cleans up anchor and object URL when click throws', async () => {
+ const ui=await import('../assets/js/ui.js'), create=URL.createObjectURL, revoke=URL.revokeObjectURL, clickAnchor=window.HTMLAnchorElement.prototype.click; let revoked='';
+ URL.createObjectURL=()=> 'blob:blocked'; URL.revokeObjectURL=url=>{revoked=url;}; window.HTMLAnchorElement.prototype.click=()=>{throw new Error('blocked');};
+ try {assert.equal(ui.downloadBlob(new Blob(['x']),'x.txt'),false);assert.equal(revoked,'blob:blocked');assert.equal(document.querySelector('a[download="x.txt"]'),null);}
+ finally {URL.createObjectURL=create;URL.revokeObjectURL=revoke;window.HTMLAnchorElement.prototype.click=clickAnchor;}
+});
+await domTest('YouTube thumbnails ignore stale loads/downloads and show failures', async () => {
+ const app=await loadToolPage('youtube-thumbnail-downloader','webseo'), inp=app.querySelector('input[type=text]');
+ const oldFetch=global.fetch, oldCreate=URL.createObjectURL, oldClipboard=document.execCommand;let release,downloads=0;
+ global.fetch=()=>new Promise(resolve=>{release=resolve;});URL.createObjectURL=()=>{downloads++;return 'blob:test';};document.execCommand=()=>false;
+ try {inp.value='abcdefghijk'; fire(inp,'input');click(btnByLabel(app,'Get thumbnails'));
+  const imgs=[...app.querySelectorAll('img')];assert.ok(imgs.length>1);Object.defineProperty(imgs[0],'naturalWidth',{value:1280});fire(imgs[0],'load');assert.match(statusText(document),/1 thumbnail size/);
+  click(btnByLabel(app,'Download JPG'));assert.ok(release);inp.value='12345678901';fire(inp,'input');assert.equal(app.querySelectorAll('img').length,0);release({ok:true,blob:async()=>new Blob(['x'])});await new Promise(r=>setTimeout(r,10));assert.equal(downloads,0);fire(imgs[0],'load');assert.match(statusText(document),/Input changed/);
+  click(btnByLabel(app,'Get thumbnails')); for(const img of app.querySelectorAll('img')) fire(img,'error'); assert.match(statusText(document),/No thumbnails could be loaded/);
+  click(btnByLabel(app,'Get thumbnails'));const img=app.querySelector('img');Object.defineProperty(img,'naturalWidth',{value:1280});fire(img,'load'); global.fetch=async()=>{throw new Error('network');};click(btnByLabel(app,'Download JPG'));await new Promise(r=>setTimeout(r,10));assert.match(statusText(document),/Open image/);assert.ok(app.querySelector('a[target="_blank"][rel="noopener noreferrer"]'));
+ } finally {global.fetch=oldFetch;URL.createObjectURL=oldCreate;document.execCommand=oldClipboard;}
+});
+await domTest('keyword CSV reports blocked downloads', async () => {
+ const app=await loadToolPage('keyword-density-checker','webseo'), old=URL.createObjectURL; const input=app.querySelector('textarea'); input.value='alpha alpha beta'; fire(input,'input');click(btnByLabel(app,'Count keywords'));
+ try {URL.createObjectURL=()=>{throw new Error('blocked');};click(btnByLabel(app,'Download CSV'));assert.match(statusText(document),/Could not request the CSV/);} finally {URL.createObjectURL=old;}
+});
+await domTest('income tax labels historical year and equal regimes correctly', async () => {
+ const app=await loadToolPage('income-tax-calculator','calculators'); assert.match(app.textContent,/does not model Tax Year 2026/);
+ const nums=app.querySelectorAll('input[type=number]'); nums[0].value='400000';nums[1].value='0';nums[2].value='0';click(btnByLabel(app,'Calculate tax'));assert.match(app.textContent,/Neither \(tie\)/);
+});
+
 await domTest('income-tax-calculator: compares both regimes', async () => {
   const app = await loadToolPage('income-tax-calculator', 'calculators');
   const nums = app.querySelectorAll('input[type=number]');

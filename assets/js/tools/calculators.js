@@ -1073,9 +1073,9 @@ const defs = {
       try {
         const r = incomeTaxIndia({ grossSalary: num(salary), otherIncome: num(other), deductionsOld: num(deductions), ageGroup: age.value });
         grid.set([
-          { label: 'New regime tax', value: inr(r.newRegime.total), kind: r.better === 'new' ? 'good' : undefined },
-          { label: 'Old regime tax', value: inr(r.oldRegime.total), kind: r.better === 'old' ? 'good' : undefined },
-          { label: 'You save with', value: `${r.better === 'new' ? 'New' : 'Old'} regime` },
+          { label: 'New regime tax', value: inr(r.newRegime.total), kind: r.saving > 0 && r.better === 'new' ? 'good' : undefined },
+          { label: 'Old regime tax', value: inr(r.oldRegime.total), kind: r.saving > 0 && r.better === 'old' ? 'good' : undefined },
+          { label: 'You save with', value: r.saving === 0 ? 'Neither (tie)' : `${r.better === 'new' ? 'New' : 'Old'} regime` },
           { label: 'Saving', value: inr(r.saving), kind: 'good' },
         ]);
         detailWrap.replaceChildren(
@@ -1087,6 +1087,7 @@ const defs = {
       } catch (e) { grid.replaceChildren(); detailWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
+      h('p', { class: 'hint', text: 'Historical estimate for FY 2025–26 (AY 2026–27) only. This calculator does not model Tax Year 2026–27; verify current rules before planning or filing.' }),
       h('div', { class: 'field-row' },
         field({ label: 'Gross salary (yearly)', control: salary }),
         field({ label: 'Other income (yearly)', control: other, hint: 'Interest, rent, freelance…' }),

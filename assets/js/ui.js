@@ -73,13 +73,17 @@ export function copyButton(getText, { label = 'Copy', small = true, onDone } = {
 }
 
 export function downloadBlob(blob, filename) {
+  let url, a;
   try {
-    const url = URL.createObjectURL(blob);
-    const a = h('a', { href: url, download: filename });
-    document.body.append(a); a.click(); a.remove();
+    url = URL.createObjectURL(blob);
+    a = h('a', { href: url, download: filename });
+    document.body.append(a); a.click();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     return true;
-  } catch { return false; }
+  } catch {
+    if (url) { try { URL.revokeObjectURL(url); } catch {} }
+    return false;
+  } finally { a?.remove(); }
 }
 
 export function downloadText(text, filename, mime = 'text/plain;charset=utf-8') {

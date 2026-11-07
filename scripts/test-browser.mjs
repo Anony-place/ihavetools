@@ -77,6 +77,24 @@ try {
   assert.match(await page.locator('#tool-app .status-line').innerText(), /whole number/);
   assert.equal(await page.locator('.file-row').count(), 0);
   console.log('✓ scientific default angle and UUID validation');
+  await go('income-tax-calculator');
+  assert.match(await page.locator('#tool-app').innerText(),/does not model Tax Year 2026/);
+  const taxFields=page.locator('#tool-app input[type=number]'); await taxFields.nth(0).fill('400000'); await taxFields.nth(1).fill('0'); await taxFields.nth(2).fill('0');
+  await page.getByRole('button',{name:/Calculate tax/}).click(); assert.match(await page.locator('#tool-app').innerText(),/Neither \(tie\)/);
+  const thumbBytes=await sharp({create:{width:320,height:180,channels:3,background:'#ad1111'}}).jpeg().toBuffer();
+  await page.route('https://i.ytimg.com/**', route=>route.fulfill({status:200,contentType:'image/jpeg',headers:{'access-control-allow-origin':'*'},body:thumbBytes}));
+  await page.setViewportSize({width:320,height:844}); await go('youtube-thumbnail-downloader');
+  await page.locator('#tool-app input[type=text]').fill('abcdefghijk'); await page.getByRole('button',{name:'Get thumbnails'}).click();
+  await page.locator('#tool-app .status-line').getByText(/thumbnail size/).waitFor();
+  const thumbDownload=page.waitForEvent('download'); await page.getByRole('button',{name:'Download JPG'}).first().click();
+  const thumbMeta=await sharp(await readFile(await (await thumbDownload).path())).metadata();assert.equal(thumbMeta.width,320);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'thumbnail result fits mobile');
+  await page.locator('#tool-app input[type=text]').fill('12345678901');assert.equal(await page.locator('#tool-app img').count(),0);
+  await page.unroute('https://i.ytimg.com/**');
+  await page.route('https://i.ytimg.com/**',route=>route.fulfill({status:404,body:'not found'}));
+  await page.getByRole('button',{name:'Get thumbnails'}).click(); await page.locator('#tool-app .status-line').getByText(/No thumbnails could be loaded/).waitFor();
+  await page.unroute('https://i.ytimg.com/**'); await page.setViewportSize({width:1280,height:800});
+  console.log('✓ historical tax scope and mocked thumbnail download, stale input and failure states');
 
   await go('qr-code-generator');
   const payload = '  Hello QR  ';
