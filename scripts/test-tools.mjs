@@ -1519,6 +1519,13 @@ await test('bulk fit, output filenames, search and discovery', () => {
   assert.notEqual(img.batchFilename('x.png', 1, 'png'), img.batchFilename('x.png', 2, 'png'));
   assert.equal(img.batchFilename(`${'a'.repeat(79)}😀z.png`, 1, 'png'), `001-${'a'.repeat(79)}😀.png`);
   assert.equal(img.batchFilename('x\ud800.png', 1, 'png'), '001-x_.png');
+  assert.equal(img.batchFilename('photo.png', 3, 'webp', 'product_2'), '003-product_2-photo.webp');
+  assert.throws(() => img.batchFilename('x.png',1,'png','../bad'), /Prefix/);
+  assert.throws(() => img.batchFilename('x.png',1,'png','a'.repeat(41)), /Prefix/);
+  const longName = img.batchFilename('😀'.repeat(80)+'.png',1,'png','a'.repeat(40));
+  assert.ok(Buffer.byteLength(longName, 'utf8') <= 230);
+  assert.ok(!longName.includes('�'));
+
   assert.ok(registry.searchTools('bulk image resizer', 20).some(t => t.id === 'bulk-image-resizer'));
   assert.ok(registry.searchTools('bulk image compressor', 20).some(t => t.id === 'bulk-image-resizer'));
   assert.ok(registry.tools.filter(t => registry.relatedTools(t,6).some(r => r.id === 'bulk-image-resizer')).length >= 3);

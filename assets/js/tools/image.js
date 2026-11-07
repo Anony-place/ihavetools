@@ -78,11 +78,18 @@ export async function encodeToTarget(encode, targetBytes, isCurrent = () => true
   }
   return best;
 }
-export function batchFilename(name, index, fmt) {
-  if (!EXT_BY_FMT[fmt] || !Number.isInteger(index) || index < 1) throw new Error('Invalid output name.');
+export function batchFilename(name, index, fmt, prefix = '') {
+  if (!Object.hasOwn(EXT_BY_FMT, fmt) || !Number.isSafeInteger(index) || index < 1) throw new Error('Invalid output name.');
+  if (!/^[A-Za-z0-9_-]{0,40}$/.test(prefix)) throw new Error('Prefix must use at most 40 letters, numbers, hyphens or underscores.');
   const clean = baseName(name).normalize('NFC').replace(/[\\/\x00-\x1f\x7f<>:"|?*]/g, '_').replace(/^\.+/, '').replace(/[. ]+$/, '');
-  const stem = Array.from(clean, ch => ch.length === 1 && /[\uD800-\uDFFF]/.test(ch) ? '_' : ch).slice(0, 80).join('') || 'image';
-  return `${String(index).padStart(3, '0')}-${stem}.${EXT_BY_FMT[fmt]}`;
+  let stem = '', bytes = 0;
+  for (let ch of clean) {
+    if (ch.length === 1 && /[\uD800-\uDFFF]/.test(ch)) ch = '_';
+    const n = new TextEncoder().encode(ch).length;
+    if (bytes + n > 180 || [...stem].length >= 80) break;
+    stem += ch; bytes += n;
+  }
+  return `${String(index).padStart(3, '0')}-${prefix ? `${prefix}-` : ''}${stem || 'image'}.${EXT_BY_FMT[fmt]}`;
 }
 
 /* ═══════════════════════════ EXIF / metadata parsing (real implementation) ═══════════════════════════ */
@@ -358,6 +365,7 @@ const defs = {
     const layout = select({ options: [{ v: 'fit', t: 'Fit within bounds (no padding)' }, { v: 'white', t: 'Exact canvas with white padding' }, { v: 'transparent', t: 'Exact canvas with transparent padding' }], value: 'fit' });
     const quality = input({ type: 'number', min: 5, max: 100, value: '85' });
     const target = input({ type: 'number', min: 1, max: 51200, step: 1, placeholder: 'optional' });
+    const prefix = input({ type: 'text', maxlength: 40, placeholder: 'optional, e.g. product' });
     const upscale = switchChip({ label: 'Allow enlargement', checked: false });
     const status = statusLine('Choose images to begin.');
     const list = h('div', {}), results = h('div', {});
@@ -370,24 +378,46 @@ const defs = {
       const ok = downloadBlob(archive, 'resized-images.zip');
       status.set(ok ? 'ZIP download requested.' : 'Could not request the ZIP download.', ok ? 'success' : 'error');
     } });
-    zone.addEventListener('iht-rejected', () => { invalidate(); files = []; list.replaceChildren(); status.set('Selection rejected. Choose files within the batch limits.', 'error'); });
+    const renderQueue = () => {
+      if (!files.length) { list.replaceChildren(); return; }
+      const queue = h('ol', { class: 'file-list', 'aria-label': 'Selected images', style: 'list-style:none;padding:0' });
+      files.forEach((f, i) => {
+        let preview;
+        try { preview = batchFilename(f.name, i + 1, format.value, prefix.value); }
+        catch { preview = 'Enter a valid prefix to preview names.'; }
+        const action = (label, disabled, fn) => h('button', { type: 'button', class: 'btn btn-secondary btn-sm', disabled, 'aria-label': `${label} ${i + 1}: ${f.name}`, onclick: fn }, label);
+        const update = (next, msg) => { invalidate(); files = next; zone.clear(); renderQueue(); status.set(msg, 'info'); const row = list.querySelectorAll('li')[Math.min(i, files.length - 1)]; (row?.querySelector('button:not(:disabled)') || zone.querySelector('input[type=file]'))?.focus(); };
+        queue.append(h('li', { class: 'file-row', style: 'flex-wrap:wrap' },
+          h('div', { style: 'flex:1 1 180px;min-width:0;overflow-wrap:anywhere' },
+            h('strong', { text: `${i + 1}. ${f.name}` }), h('div', { class: 'hint', text: `${fmtBytes(f.size)} → ${preview}` })),
+          h('div', { class: 'fr-actions', style: 'flex-wrap:wrap;max-width:100%' },
+            action('Move up', i === 0, () => { const next=files.slice(); [next[i-1],next[i]]=[next[i],next[i-1]]; update(next, 'Image moved. Process again for a new ZIP.'); }),
+            action('Move down', i === files.length-1, () => { const next=files.slice(); [next[i],next[i+1]]=[next[i+1],next[i]]; update(next, 'Image moved. Process again for a new ZIP.'); }),
+            action('Remove', false, () => update(files.filter((_, index) => index !== i), 'Image removed. Process again for a new ZIP.')))));
+      });
+      list.replaceChildren(h('p', { class: 'hint', text: 'Selection order determines numbering. New selections replace this list.' }), queue,
+        btn({ label: 'Clear selected images', variant: 'secondary', onClick: () => { invalidate(); files=[]; zone.clear(); renderQueue(); status.set('Selection cleared.', 'info'); zone.querySelector('input[type=file]')?.focus(); } }));
+    };
+    zone.addEventListener('iht-rejected', () => { invalidate(); files = []; zone.clear(); list.replaceChildren(); status.set('Selection rejected. Choose files within the batch limits.', 'error'); });
     zone.addEventListener('iht-files', e => {
-      invalidate(); files = []; list.replaceChildren();
+      invalidate(); files = []; zone.clear(); list.replaceChildren();
       const selected = e.detail;
       if (selected.length > 20 || selected.some(f => f.size > 20 * 1024 * 1024) || selected.reduce((sum, f) => sum + f.size, 0) > 100 * 1024 * 1024) {
         status.set('Select at most 20 images, 20 MiB each and 100 MiB total.', 'error'); return;
       }
       files = selected.slice();
-      list.replaceChildren(table({ headers: ['Selected file', 'Size'], rows: files.map(f => [f.name, fmtBytes(f.size)]) }));
+      renderQueue();
       status.set(`${files.length} images selected. Set size and quality, then process.`, 'info');
     });
-    for (const el of [width, height, format, layout, quality, target, upscale]) for (const ev of ['input', 'change']) el.addEventListener(ev, () => { invalidate(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
+    for (const el of [width, height, format, layout, quality, target, prefix, upscale]) for (const ev of (el === prefix ? ['input'] : ['input', 'change'])) el.addEventListener(ev, () => { invalidate(); if (el === format || el === prefix) renderQueue(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
     window.addEventListener('pagehide', invalidate);
     async function run() {
       invalidate();
       if (!files.length) { status.set('Choose images first.', 'warning'); return; }
       const w = width.value === '' ? null : Number(width.value), h0 = height.value === '' ? null : Number(height.value), q = Number(quality.value), fmt = format.value;
       if (![w, h0].every(n => n == null || (Number.isSafeInteger(n) && n >= 1 && n <= 4096))) { status.set('Maximum dimensions must be blank or whole numbers from 1 to 4096.', 'error'); return; }
+      if (!/^[A-Za-z0-9_-]{0,40}$/.test(prefix.value)) { status.set('Prefix must use at most 40 letters, numbers, hyphens or underscores.', 'error'); return; }
+      const namingPrefix = prefix.value;
       const mode = layout.value;
       if (!['fit', 'white', 'transparent'].includes(mode)) { status.set('Choose a supported layout.', 'error'); return; }
       if (mode !== 'fit' && (w == null || h0 == null)) { status.set('Exact canvas requires both width and height.', 'error'); return; }
@@ -425,7 +455,7 @@ const defs = {
             const bytes = new Uint8Array(await blob.arrayBuffer());
             if (revision !== token) return;
             total += bytes.length; totalOriginal += f.size; if (blob.size > f.size) larger++;
-            const name = batchFilename(f.name, i + 1, fmt); entries[name] = bytes; successes++;
+            const name = batchFilename(f.name, i + 1, fmt, namingPrefix); entries[name] = bytes; successes++;
             rows.push([f.name, `${dims.width} × ${dims.height}`, fmtBytes(f.size), fmtBytes(blob.size), sizeChange(f.size, blob.size), targetKiB == null ? name : `${name} — target met at quality ${choice.quality}%`]);
           } catch (err) { if (revision !== token) return; rows.push([f.name, 'Failed', fmtBytes(f.size), '—', '—', err.message]); }
         }
@@ -441,7 +471,8 @@ const defs = {
     root.append(zone, list, h('div', { class: 'field-row', style: 'margin-top:14px' },
       field({ label: 'Maximum width (px)', control: width, hint: 'Blank means no width limit.' }), field({ label: 'Maximum height (px)', control: height, hint: 'Blank means no height limit; clear both to keep original dimensions.' }),
       field({ label: 'Layout', control: layout, hint: 'Exact canvas needs both dimensions; image is centered without cropping.' }), field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'PNG ignores quality; target mode chooses quality automatically.' }),
-      field({ label: 'Target per image (KiB)', control: target, hint: 'Optional, whole KiB (1 KiB = 1024 bytes). JPEG/WebP only; searches quality 5–100 at selected dimensions.' })),
+      field({ label: 'Target per image (KiB)', control: target, hint: 'Optional, whole KiB (1 KiB = 1024 bytes). JPEG/WebP only; searches quality 5–100 at selected dimensions.' }),
+      field({ label: 'Filename prefix', control: prefix, hint: 'Optional: up to 40 ASCII letters, numbers, hyphens or underscores.' })),
       upscale, actionsRow(runButton, cancel, download), status, results,
       privacyNote('Images are processed locally, not uploaded. Fit mode uses optional bounds; clear both to retain original dimensions. Exact canvas centers the full image with white or transparent padding, without cropping. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
   },

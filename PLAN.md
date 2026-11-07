@@ -11,6 +11,21 @@
 
 ---
 
+## Current batch — bulk image queue and export integrity (2026-11-07)
+
+1. Research batch file naming and audit queue, filename portability, cancellation
+   and stale-output behavior; keep improvements on the existing workflow.
+2. Add a manageable queue with remove, move and clear controls, safe optional
+   naming prefix and live output-name preview. Keep ZIP names unique and bounded
+   in UTF-8 bytes; invalidate all stale or pending output on every queue edit.
+3. Exercise duplicates, invalid names, Unicode, limits, same-file reselection,
+   reorder/remove races, real ZIP filenames, mobile layout and accessibility.
+4. Document limits, run full checks and audit, review diff and release one PR
+   only after CI/preview pass; confirm production. Feature research does not
+   establish keyword volume or guarantee ranking.
+
+---
+
 ## Current batch — fixed-canvas batch image workflow (2026-11-07)
 
 1. Research actual batch resize/padding workflows; extend the existing bulk tool
