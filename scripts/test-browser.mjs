@@ -54,6 +54,16 @@ try {
     }
     console.log(`✓ ${tools.length} mounts and document widths at ${width}px`);
   }
+  // Shared workspace should use the available desktop width on every tool,
+  // without introducing page-level horizontal scrolling.
+  await page.setViewportSize({ width: 1600, height: 900 });
+  for (const tool of tools) {
+    await go(tool.id);
+    const size = await page.evaluate(() => ({ width: document.querySelector('.tool-wrap').getBoundingClientRect().width, panel: document.querySelector('.tool-panel').getBoundingClientRect().width, viewport: innerWidth, scroll: document.documentElement.scrollWidth }));
+    assert.ok(size.width >= size.viewport - 1 && size.panel >= size.viewport - 65, `${tool.id} workspace too narrow: ${JSON.stringify(size)}`);
+    assert.ok(size.scroll <= size.viewport + 1, `${tool.id} desktop overflow: ${JSON.stringify(size)}`);
+  }
+  console.log(`✓ ${tools.length} full-width desktop workspaces without overflow`);
   await page.setViewportSize({ width: 1280, height: 800 });
   await go('json-formatter');
   await page.locator('#tool-app textarea').fill('{"big":9007199254740993}');
@@ -66,6 +76,8 @@ try {
   console.log('✓ JSON format and actual download preserve numeric token');
 
   await go('html-live-preview');
+  assert.equal(await page.locator('#tool-app').evaluate(el => [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'null')), false);
+  assert.ok((await page.locator('#tool-app iframe').boundingBox()).height >= 500, 'preview has ample desktop height');
   const htmlCode = page.locator('#tool-app textarea');
   const htmlFrame = page.frameLocator('#tool-app iframe');
   await htmlFrame.getByRole('heading', { name: 'Hello, world!' }).waitFor();
