@@ -318,7 +318,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 2rem 0; }
 .page-tool #tool-app { min-height: 46vh; }
 
 /* ---------- Tool page ---------- */
-.tool-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 30px; padding-bottom: 26px; }
+.tool-wrap { width: 100%; max-width: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 30px; padding-bottom: 26px; }
 .tool-panel {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
@@ -661,9 +661,9 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 /* Live HTML editor: keep each pane shrinkable on narrow screens. */
 .html-playground { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .html-playground-editor, .html-playground-preview { min-width: 0; }
-.html-playground-editor textarea { min-height: 420px; white-space: pre; overflow: auto; tab-size: 2; }
+.html-playground-editor textarea { height: clamp(480px, 65vh, 900px); min-height: 320px; white-space: pre; overflow: auto; tab-size: 2; }
 .html-playground-preview h3 { margin: 0 0 8px; font-size: 0.95rem; }
-.html-preview-frame { display: block; width: 100%; height: 420px; background: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
-@media (max-width: 720px) { .html-playground { grid-template-columns: minmax(0, 1fr); } .html-playground-editor textarea, .html-preview-frame { min-height: 280px; height: 280px; } }
+.html-preview-frame { display: block; width: 100%; height: clamp(480px, 65vh, 900px); background: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+@media (max-width: 720px) { .html-playground { grid-template-columns: minmax(0, 1fr); } .html-playground-editor textarea, .html-preview-frame { min-height: 320px; height: clamp(320px, 48vh, 560px); } }
 
 .html-preview-open[hidden] { display: none; }

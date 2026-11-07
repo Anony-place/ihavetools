@@ -471,8 +471,8 @@ const defs = {
     liveInput.addEventListener('change', () => { clearTimeout(timer); if (liveInput.checked) run(); else status.set('Live preview paused. Press Run preview to apply changes.', 'info'); });
     window.addEventListener('pagehide', () => { clearTimeout(timer); channel?.close(); channel = null; });
     window.addEventListener('pageshow', e => { if (e.persisted) { connect(); if (channel) { open.hidden = false; channel.postMessage({ type: 'preview', html: last }); } } });
+    if (!channel) root.append(h('p', { class: 'hint', text: 'Full-window sync is unavailable in this browser. The embedded preview still works.' }));
     root.append(
-      !channel ? h('p', { class: 'hint', text: 'Full-window sync is unavailable in this browser. The embedded preview still works.' }) : null,
       h('p', { class: 'hint', text: 'Write HTML with CSS in <style> and JavaScript in <script>. Only run trusted code: it can make network requests. Work is not saved.' }),
       h('div', { class: 'html-playground' },
         h('div', { class: 'html-playground-editor' }, field({ label: 'HTML code', control: code })),

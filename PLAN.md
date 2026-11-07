@@ -11,6 +11,19 @@
 
 ---
 
+## Current batch — More usable workspace for every tool (2026-11-07)
+
+1. Remove the narrow shared tool workspace cap on desktop while retaining
+   comfortable gutters and readable documentation; apply consistently across
+   all tool pages, not only the HTML editor.
+2. Give the HTML editor and preview larger responsive panes; preserve stacked
+   mobile layouts, controls and sandbox behavior. Remove the stray `null` text.
+3. Test every registered tool for workspace sizing and overflow on desktop and
+   mobile, plus representative interactions and accessibility; run the full
+   checks, release in one PR and verify the production deployment.
+
+---
+
 ## Current batch — Live HTML playground (2026-11-07)
 
 1. Build a developer-facing HTML editor with live HTML/CSS/JavaScript preview,
