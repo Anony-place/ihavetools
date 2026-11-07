@@ -11,6 +11,21 @@
 
 ---
 
+## Current consolidated plan — image metadata trust and privacy (2026-11-07)
+
+1. Research real user needs in private image workflows and review the existing
+   metadata viewer for misleading absence, GPS precision and malformed EXIF handling.
+2. Fix confirmed issues and communicate format/coverage limits clearly: this is
+   a partial inspection, not proof that a file is safe to share or metadata-free.
+3. Stop automatically advancing unchanged trust-page dates on each build; use
+   only maintained modification dates and add build/integrity regression checks.
+4. Add independent synthetic EXIF fixtures and UI regression tests, including
+   malformed data, GPS precision, and JPEG marker boundaries; run all checks.
+5. Review changes, security audit, and release via one PR after CI and preview
+   pass; verify production. Record what is and is not tested in TOOL-AUDIT.md.
+
+---
+
 ## Consolidated browser verification and remaining reliability plan (2026-11-06)
 
 1. Try to unblock headless Chromium using only permitted, free sources; document

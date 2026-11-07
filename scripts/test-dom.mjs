@@ -1122,6 +1122,21 @@ await domTest('image tools accept picker and drop, clear stale results, and refu
   } finally { global.Image=originalImage; URL.createObjectURL=originalCreate; URL.revokeObjectURL=originalRevoke; canvas.getContext=getContext; canvas.toBlob=toBlob; }
 });
 
+await domTest('metadata viewer warns about incomplete inspection and does not claim absence', async () => {
+  const oldImage=global.Image, create=URL.createObjectURL, revoke=URL.revokeObjectURL;
+  global.Image=class {constructor(){this.naturalWidth=1;this.naturalHeight=1;} set src(v){queueMicrotask(()=>this.onload());}};
+  URL.createObjectURL=()=> 'blob:test'; URL.revokeObjectURL=()=>{};
+  try {
+    const app=await loadToolPage('image-metadata-viewer','image');
+    assert.match(app.textContent,/does not mean metadata or location is absent/);
+    const file=new File([new Uint8Array([255,216,255,217])],'plain.jpg',{type:'image/jpeg'});
+    const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[file]}}); app.querySelector('.dropzone').dispatchEvent(e);
+    await new Promise(r=>setTimeout(r,30));
+    assert.match(app.textContent,/Not found/); assert.match(app.textContent,/does not establish/);
+    assert.doesNotMatch(app.textContent,/may have been stripped/);
+  } finally {global.Image=oldImage; URL.createObjectURL=create; URL.revokeObjectURL=revoke;}
+});
+
 await domTest('image resizer invalidates stale encodes, revokes previews and bounds dimensions', async () => {
   const originalImage=global.Image, originalCreate=URL.createObjectURL, originalRevoke=URL.revokeObjectURL;
   const canvas=window.HTMLCanvasElement.prototype, getContext=canvas.getContext, toBlob=canvas.toBlob; let callbacks=[], created=0, revoked=[];
