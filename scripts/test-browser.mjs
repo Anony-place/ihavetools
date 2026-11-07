@@ -12,6 +12,7 @@ import AxeBuilder from '@axe-core/playwright';
 import sharp from 'sharp';
 import jsQR from 'jsqr';
 import { PDFDocument } from 'pdf-lib';
+import { encodeWav } from '../assets/js/tools/audio.js';
 import { tools } from '../assets/js/registry.js';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -315,6 +316,40 @@ try {
   const wav = await readFile(await (await wavDownload).path());
   assert.equal(wav.toString('ascii', 0, 4), 'RIFF'); assert.equal(wav.toString('ascii', 8, 12), 'WAVE'); assert.equal(wav.readUInt32LE(24), 44100);
   console.log('✓ generated WAV downloads with expected header');
+  const mono = Float32Array.from({length:44100}, (_,i)=>0.4*Math.sin(2*Math.PI*440*i/44100));
+  const sourceWav = Buffer.from(encodeWav([mono],44100));
+  const audioInput=[{name:'sample.wav',mimeType:'audio/wav',buffer:sourceWav}];
+  const wavDuration=bytes=>bytes.readUInt32LE(40)/(bytes.readUInt32LE(24)*bytes.readUInt16LE(22)*2);
+  await page.setViewportSize({width:320,height:844});
+  await go('audio-trimmer'); await page.locator('#tool-app input[type=file]').setInputFiles(audioInput);
+  await page.locator('#tool-app .status-line').getByText(/Loaded/).waitFor();
+  await page.getByLabel('Keep from (seconds)').fill('0.1'); await page.getByLabel('Keep until (seconds)').fill('0.3');
+  let audioEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Export WAV of selection'}).click();
+  let rendered=await readFile(await (await audioEvent).path()); assert.equal(rendered.toString('ascii',0,4),'RIFF'); assert.ok(Math.abs(wavDuration(rendered)-0.2)<0.002);
+  await page.locator('#tool-app input[type=file]').setInputFiles(audioInput);
+  await page.locator('#tool-app .status-line').getByText(/Loaded/).waitFor();
+  assert.equal(await page.getByLabel('Keep from (seconds)').inputValue(),'0','same file should reload');
+  const audioAxe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
+  assert.deepEqual(audioAxe.violations.map(v=>v.id),[],'loaded audio accessibility');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'loaded audio fits mobile');
+  await go('audio-speed-changer'); await page.locator('#tool-app input[type=file]').setInputFiles(audioInput);
+  await page.locator('#tool-app .status-line').getByText(/Loaded/).waitFor();
+  await page.getByLabel('Speed (0.25×–4×)').fill('200');
+  audioEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Export WAV'}).click();
+  rendered=await readFile(await (await audioEvent).path()); assert.ok(Math.abs(wavDuration(rendered)-0.5)<0.002);
+  const fixture=await readFile(resolve(root,'scripts/fixtures/ffmpeg-test.mp4'));
+  await go('mp4-inspector'); await page.locator('#tool-app input[type=file]').setInputFiles([{name:'test.mp4',mimeType:'video/mp4',buffer:fixture}]);
+  await page.locator('#tool-app .status-line').getByText(/Parsed/).waitFor();
+  assert.match(await page.locator('#tool-app').innerText(),/128×96/); assert.match(await page.locator('#tool-app').innerText(),/avc1/);
+  await go('extract-audio'); await page.locator('#tool-app input[type=file]').setInputFiles([{name:'test.mp4',mimeType:'video/mp4',buffer:fixture}]);
+  await page.locator('#tool-app .status-line').getByText(/Audio track decoded|could not decode/i).waitFor();
+  const decodeStatus=await page.locator('#tool-app .status-line').innerText();
+  if (/Audio track decoded/.test(decodeStatus)) {
+    audioEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Export audio as WAV'}).click();
+    rendered=await readFile(await (await audioEvent).path()); assert.equal(rendered.toString('ascii',0,4),'RIFF'); assert.ok(wavDuration(rendered)>1.5 && wavDuration(rendered)<2.2);
+    console.log('✓ synthetic MP4 audio decoded and exported in this Chromium');
+  } else console.log('✓ synthetic MP4 codec unsupported in this Chromium; clear error shown');
+  console.log('✓ real audio trim/speed WAV durations, reload, mobile/axe and MP4 inspection');
   // Sample representative pages in both themes. Automated scans are partial
   // evidence only, not a substitute for keyboard and screen-reader reviews.
   await page.setViewportSize({ width: 390, height: 844 });

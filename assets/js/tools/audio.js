@@ -8,7 +8,7 @@
 // =============================================================================
 import {
   h, field, input, segControl, btn, actionsRow, statusLine, statsGrid, table,
-  toast, copyText, privacyNote, mountTool, dropzone, readFile, fmtBytes,
+  toast, copyText, privacyNote, mountTool, dropzone, readFile, fmtBytes, downloadBlob,
 } from '../ui.js';
 
 /* ═══════════════════════════ Pure audio helpers ═══════════════════════════ */
@@ -270,11 +270,7 @@ const defs = {
         btn({ label: 'Download WAV', variant: 'secondary', icon: 'download', onClick: () => {
           try {
             const wav = build();
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
-            a.download = `tone-${freq.value}hz-${wave}.wav`;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+            if (!downloadBlob(new Blob([wav], { type: 'audio/wav' }), `tone-${freq.value}hz-${wave}.wav`)) throw new Error('Could not start the WAV download in this browser.');
             status.set(`WAV download requested — ${fmtBytes(wav.byteLength)}.`, 'success');
           } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
         } })),
@@ -284,7 +280,12 @@ const defs = {
 
   /* ---------- Audio trimmer ---------- */
   'audio-trimmer'(root) {
-    let audio = null, revision = 0;
+    let audio = null, revision = 0, playing = null;
+    const stopPlaying = () => {
+      const active = playing; playing = null;
+      if (active) { try { active.source.stop(); } catch {} active.ctx.close().catch(() => {}); }
+    };
+    window.addEventListener('pagehide', () => { revision++; stopPlaying(); }, { once: true });
     const info = statsGrid();
     const start = input({ type: 'number', min: 0, step: '0.01', value: '0' });
     const end = input({ type: 'number', min: 0, step: '0.01', value: '0' });
@@ -293,7 +294,9 @@ const defs = {
       accept: 'audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac',
       title: 'Choose an audio file or drop it here',
       sub: 'MP3, WAV, OGG, M4A… — decoded locally by your browser, never uploaded',
+      onReject: () => { revision++; stopPlaying(); audio = null; info.replaceChildren(); zone.clear(); status.set('Selection rejected. Choose a file no larger than 100 MiB.', 'error'); },
       onFiles: async ([file]) => {
+        zone.clear(); stopPlaying();
         const token = ++revision; audio = null; info.replaceChildren();
         try {
           status.set(`Decoding “${file.name}” (${fmtBytes(file.size)})…`);
@@ -312,18 +315,25 @@ const defs = {
         } catch (e) { if (token === revision) { audio = null; info.replaceChildren(); status.set(e.message, 'error'); } }
       },
     });
+    for (const el of [start, end]) el.addEventListener('input', () => { stopPlaying(); status.set('Selection changed. Play or export again.', 'info'); });
     const playBtn = btn({ label: 'Play selection', variant: 'secondary', icon: 'zap', onClick: () => {
       try {
         if (!audio) { status.set('Load an audio file first.', 'error'); return; }
         const sel = sliceBuffer(audio, start.value === '' ? NaN : Number(start.value), end.value === '' ? NaN : Number(end.value));
         const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) throw new Error('This browser cannot play audio.');
+        stopPlaying();
         const ctx = new Ctx();
-        const buf = ctx.createBuffer(sel.channels.length, sel.channels[0].length, sel.sampleRate);
-        sel.channels.forEach((ch, c) => buf.copyToChannel(ch, c));
-        const src = ctx.createBufferSource();
-        src.buffer = buf; src.connect(ctx.destination); src.start();
-        src.onended = () => ctx.close().catch(() => {});
-        status.set(`Playing ${secFmt(Number(end.value) - Number(start.value))} selection…`, 'success');
+        try {
+          const buf = ctx.createBuffer(sel.channels.length, sel.channels[0].length, sel.sampleRate);
+          sel.channels.forEach((ch, c) => buf.copyToChannel(ch, c));
+          const src = ctx.createBufferSource();
+          src.buffer = buf; src.connect(ctx.destination);
+          playing = { ctx, source: src };
+          src.onended = () => { if (playing?.source === src) { playing = null; ctx.close().catch(() => {}); } };
+          src.start();
+        } catch (err) { if (playing?.ctx === ctx) playing = null; ctx.close().catch(() => {}); throw err; }
+        status.set(`Playback requested for ${secFmt(Number(end.value) - Number(start.value))} selection.`, 'success');
       } catch (e) { status.set(e.message, 'error'); }
     } });
     root.append(
@@ -337,12 +347,8 @@ const defs = {
             if (!audio) { status.set('Load an audio file first.', 'error'); return; }
             const sel = sliceBuffer(audio, start.value === '' ? NaN : Number(start.value), end.value === '' ? NaN : Number(end.value));
             const wav = encodeWav(sel.channels, sel.sampleRate);
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
-            a.download = 'trimmed.wav';
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-            status.set(`Exported ${secFmt(Number(end.value) - Number(start.value))} as WAV (${fmtBytes(wav.byteLength)}).`, 'success');
+            if (!downloadBlob(new Blob([wav], { type: 'audio/wav' }), 'trimmed.wav')) throw new Error('Could not start the WAV download in this browser.');
+            status.set(`WAV download requested for ${secFmt(Number(end.value) - Number(start.value))} (${fmtBytes(wav.byteLength)}).`, 'success');
           } catch (e) { status.set(e.message, 'error'); }
         } }),
         playBtn),
@@ -352,6 +358,7 @@ const defs = {
   /* ---------- Audio speed & volume changer ---------- */
   'audio-speed-changer'(root) {
     let audio = null, revision = 0;
+    window.addEventListener('pagehide', () => { revision++; }, { once: true });
     const info = statsGrid();
     const speed = input({ type: 'range', min: '25', max: '400', step: '5', value: '100' });
     const gain = input({ type: 'range', min: '10', max: '300', step: '5', value: '100' });
@@ -369,7 +376,9 @@ const defs = {
       accept: 'audio/*,.mp3,.wav,.ogg,.m4a,.flac,.aac',
       title: 'Choose an audio file or drop it here',
       sub: 'Speed and volume are applied locally — nothing is uploaded',
+      onReject: () => { revision++; audio = null; info.replaceChildren(); update(); zone.clear(); status.set('Selection rejected. Choose a file no larger than 100 MiB.', 'error'); },
       onFiles: async ([file]) => {
+        zone.clear();
         const token = ++revision; audio = null; info.replaceChildren(); update();
         try {
           status.set(`Decoding “${file.name}”…`);
@@ -402,12 +411,8 @@ const defs = {
           const chans = [];
           for (let c = 0; c < audio.numberOfChannels; c++) chans.push(applyGain(resampleLinear(audio.getChannelData(c), f), g));
           const wav = encodeWav(chans, audio.sampleRate);
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
-          a.download = `speed-${f.toFixed(2)}x.wav`;
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-          status.set(`Exported ${secFmt(audio.duration / f)} WAV (${fmtBytes(wav.byteLength)}).`, 'success');
+          if (!downloadBlob(new Blob([wav], { type: 'audio/wav' }), `speed-${f.toFixed(2)}x.wav`)) throw new Error('Could not start the WAV download in this browser.');
+          status.set(`WAV download requested for ${secFmt(audio.duration / f)} (${fmtBytes(wav.byteLength)}).`, 'success');
         } catch (e) { status.set(e.message, 'error'); }
       } })),
       status, privacyNote('Audio processing happens entirely in your browser. Files are never uploaded.'));
@@ -416,6 +421,7 @@ const defs = {
   /* ---------- Extract audio from video ---------- */
   'extract-audio'(root) {
     let audio = null, revision = 0;
+    window.addEventListener('pagehide', () => { revision++; }, { once: true });
     let srcName = 'video';
     const info = statsGrid();
     const status = statusLine('Drop a video up to 100 MiB — if your browser can decode its audio track (up to 30 million samples), you can export it as WAV.');
@@ -423,7 +429,9 @@ const defs = {
       accept: 'video/*,.mp4,.webm,.mov,.m4v,.mkv',
       title: 'Choose a video file or drop it here',
       sub: 'The audio track is decoded locally by your browser — the video is never uploaded',
+      onReject: () => { revision++; audio = null; info.replaceChildren(); zone.clear(); status.set('Selection rejected. Choose a file no larger than 100 MiB.', 'error'); },
       onFiles: async ([file]) => {
+        zone.clear();
         const token = ++revision; audio = null; info.replaceChildren();
         try {
           status.set(`Reading “${file.name}” (${fmtBytes(file.size)})…`);
@@ -449,12 +457,8 @@ const defs = {
           const chans = [];
           for (let c = 0; c < audio.numberOfChannels; c++) chans.push(audio.getChannelData(c));
           const wav = encodeWav(chans, audio.sampleRate);
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
-          a.download = `${srcName}-audio.wav`;
-          a.click();
-          setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-          status.set(`Exported ${secFmt(audio.duration)} WAV (${fmtBytes(wav.byteLength)}).`, 'success');
+          if (!downloadBlob(new Blob([wav], { type: 'audio/wav' }), `${srcName}-audio.wav`)) throw new Error('Could not start the WAV download in this browser.');
+          status.set(`WAV download requested for ${secFmt(audio.duration)} (${fmtBytes(wav.byteLength)}).`, 'success');
         } catch (e) { status.set(e.message, 'error'); }
       } })),
       status, privacyNote('Your video never leaves the browser. Only its decoded audio is written to a WAV file.'));
@@ -463,6 +467,7 @@ const defs = {
   /* ---------- MP4 inspector ---------- */
   'mp4-inspector'(root) {
     let revision = 0;
+    window.addEventListener('pagehide', () => { revision++; }, { once: true });
     const info = statsGrid();
     const boxes = table({ headers: ['Box', 'Size'], rows: [], caption: 'Top-level boxes' });
     const status = statusLine('Drop an MP4/M4V/MOV file to read its structure — parsed locally, no upload.');
@@ -470,7 +475,9 @@ const defs = {
       accept: 'video/mp4,.mp4,.m4v,.mov,.m4a',
       title: 'Choose an MP4/MOV file or drop it here',
       sub: 'Parsed byte-by-byte in your browser — nothing is uploaded',
+      onReject: () => { revision++; info.replaceChildren(); boxes.update([]); zone.clear(); status.set('Selection rejected. Choose a file no larger than 100 MiB.', 'error'); },
       onFiles: async ([file]) => {
+        zone.clear();
         const token = ++revision; info.replaceChildren(); boxes.update([]);
         try {
           if (file.size > 100 * 1024 * 1024) throw new Error('Choose a file no larger than 100 MiB.');

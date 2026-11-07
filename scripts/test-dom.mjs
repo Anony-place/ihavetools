@@ -859,6 +859,53 @@ await domTest('audio trimmer ignores stale decodes and rejects empty end time', 
   } finally { window.AudioContext = previous; }
 });
 
+for (const id of ['audio-trimmer','audio-speed-changer','extract-audio']) {
+  await domTest(`${id}: rejected media cancels pending decoding and stale export`, async () => {
+    const app=await loadToolPage(id,'audio'); const previous=window.AudioContext, pending=[];
+    window.AudioContext=class {decodeAudioData(bytes,ok,fail){pending.push({ok,fail});} close(){return Promise.resolve();}};
+    const drop=file=>{const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[file]}}); app.querySelector('.dropzone').dispatchEvent(e);};
+    try {
+      drop(new File(['x'],'first.wav',{type:'audio/wav'})); await new Promise(r=>setTimeout(r,30)); assert.equal(pending.length,1);
+      drop({name:'huge.wav',size:201*1024*1024});
+      pending[0].ok({duration:1,length:100,sampleRate:100,numberOfChannels:1,getChannelData:()=>new Float32Array(100)}); await new Promise(r=>setTimeout(r,20));
+      assert.match(statusText(document),/Selection rejected/);
+      click(btnByLabel(app,id==='audio-trimmer'?'Export WAV of selection':id==='extract-audio'?'Export audio as WAV':'Export WAV'));
+      assert.match(statusText(document),/Load an? (audio|video) file first/);
+    } finally {window.AudioContext=previous;}
+  });
+}
+await domTest('audio trimmer stops playback on selection changes and closes context', async () => {
+  const app=await loadToolPage('audio-trimmer','audio'); const previous=window.AudioContext; let stopped=0,closed=0;
+  const fake={duration:1,length:100,sampleRate:100,numberOfChannels:1,getChannelData:()=>new Float32Array(100)};
+  window.AudioContext=class {constructor(){this.destination={};} decodeAudioData(bytes,ok){ok(fake);} createBuffer(){return {copyToChannel(){}};} createBufferSource(){return {connect(){},start(){},stop(){stopped++;}};} close(){closed++;return Promise.resolve();}};
+  const drop=file=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[file]}});app.querySelector('.dropzone').dispatchEvent(e);};
+  try {drop(new File(['x'],'ok.wav')); await new Promise(r=>setTimeout(r,40)); click(btnByLabel(app,'Play selection')); click(btnByLabel(app,'Play selection')); assert.equal(stopped,1);
+    const start=app.querySelector('input[type=number]'); start.value='0.5'; fire(start,'input'); assert.equal(stopped,2); assert.ok(closed>=3);
+  } finally {window.AudioContext=previous;}
+});
+await domTest('tone WAV download failure is not reported as success', async () => {
+  const app=await loadToolPage('tone-generator','audio'); const original=URL.createObjectURL; URL.createObjectURL=()=>{throw new Error('blocked');};
+  try {click(btnByLabel(app,'Download WAV')); assert.match(statusText(document),/Could not start the WAV download/);} finally {URL.createObjectURL=original;}
+});
+
+for (const id of ['audio-trimmer','audio-speed-changer','extract-audio']) {
+  await domTest(`${id}: blocked WAV download is reported`, async () => {
+    const app=await loadToolPage(id,'audio'); const previous=window.AudioContext, original=URL.createObjectURL;
+    const fake={duration:1,length:100,sampleRate:100,numberOfChannels:1,getChannelData:()=>new Float32Array(100)};
+    window.AudioContext=class {decodeAudioData(bytes,ok){ok(fake);} close(){return Promise.resolve();}};
+    const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[new File(['x'],'ok.wav')]}});
+    try {app.querySelector('.dropzone').dispatchEvent(e); await new Promise(r=>setTimeout(r,40)); URL.createObjectURL=()=>{throw new Error('blocked');};
+      click(btnByLabel(app,id==='audio-trimmer'?'Export WAV of selection':id==='extract-audio'?'Export audio as WAV':'Export WAV')); assert.match(statusText(document),/Could not start the WAV download/);
+    } finally {window.AudioContext=previous;URL.createObjectURL=original;}
+  });
+}
+await domTest('MP4 inspector clears metadata after rejected file', async () => {
+  const app=await loadToolPage('mp4-inspector','audio'); const fixture=readFileSync(join(ROOT,'scripts/fixtures/ffmpeg-test.mp4'));
+  const drop=file=>{const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[file]}});app.querySelector('.dropzone').dispatchEvent(e);};
+  drop(new File([fixture],'test.mp4')); await new Promise(r=>setTimeout(r,50)); assert.match(app.textContent,/128×96/);
+  drop({name:'large.mp4',size:201*1024*1024}); assert.doesNotMatch(app.textContent,/128×96/); assert.match(statusText(document),/Selection rejected/);
+});
+
 console.log('\n── Batch-7 private document UIs ──');
 await domTest('JSON compare reports structural paths safely and rejects invalid JSON', async () => {
   const app = await loadToolPage('json-compare', 'developer');
