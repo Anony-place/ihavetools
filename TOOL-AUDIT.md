@@ -28,7 +28,8 @@ matrix was available.
 - Engine and DOM checks cover duplicate names, prefix validation, UTF-8 bounds,
   ordering and clearing. CI Chromium verifies name previews against extracted
   ZIP entry names, queue invalidation, same-file reselection and mobile/axe
-  checks. Physical devices, screen readers, and all archive extractors remain
+  checks. Chromium caught wrapped queue controls causing 320px overflow and a
+  prefix-blur rerender swallowing the next click; both were fixed and retested. Physical devices, screen readers, and all archive extractors remain
   unverified. Competitor feature reference:
   https://toolboximage.com/tools/batch-renamer/ — feature evidence only, not
   verified search demand or a guarantee of ranking.

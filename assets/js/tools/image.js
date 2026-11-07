@@ -390,7 +390,7 @@ const defs = {
         queue.append(h('li', { class: 'file-row', style: 'flex-wrap:wrap' },
           h('div', { style: 'flex:1 1 180px;min-width:0;overflow-wrap:anywhere' },
             h('strong', { text: `${i + 1}. ${f.name}` }), h('div', { class: 'hint', text: `${fmtBytes(f.size)} → ${preview}` })),
-          h('div', { class: 'fr-actions' },
+          h('div', { class: 'fr-actions', style: 'flex-wrap:wrap;max-width:100%' },
             action('Move up', i === 0, () => { const next=files.slice(); [next[i-1],next[i]]=[next[i],next[i-1]]; update(next, 'Image moved. Process again for a new ZIP.'); }),
             action('Move down', i === files.length-1, () => { const next=files.slice(); [next[i],next[i+1]]=[next[i+1],next[i]]; update(next, 'Image moved. Process again for a new ZIP.'); }),
             action('Remove', false, () => update(files.filter((_, index) => index !== i), 'Image removed. Process again for a new ZIP.')))));
@@ -409,7 +409,7 @@ const defs = {
       renderQueue();
       status.set(`${files.length} images selected. Set size and quality, then process.`, 'info');
     });
-    for (const el of [width, height, format, layout, quality, target, prefix, upscale]) for (const ev of ['input', 'change']) el.addEventListener(ev, () => { invalidate(); if (el === format || el === prefix) renderQueue(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
+    for (const el of [width, height, format, layout, quality, target, prefix, upscale]) for (const ev of (el === prefix ? ['input'] : ['input', 'change'])) el.addEventListener(ev, () => { invalidate(); if (el === format || el === prefix) renderQueue(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
     window.addEventListener('pagehide', invalidate);
     async function run() {
       invalidate();
