@@ -13,6 +13,26 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## Image editing integrity and coordinate crop — 2026-11-07
+
+- The cropper offers keyboard-operable whole-pixel left, top, width and height
+  fields, validated against the decoded image. The full image is initially
+  selected. Pointer selection remains available; aspect presets adjust the
+  current selection and pixel rounding may affect the exact ratio. Manual
+  coordinates are not constrained to the selected preset. Output remains PNG.
+- Single-image compressor, resizer, converter and preset conversions, cropper
+  and metadata viewer discard stale state when the shared dropzone rejects an
+  oversized file; pending operations cannot repopulate it. Input pickers reset
+  for same-file reselection and page exit invalidates work. Starting a new
+  compression, resize, conversion or crop clears a previous preview. File
+  sizes above 100 MiB are unsupported; the shared dropzone rejects above 200 MiB.
+- DOM regressions cover late loads, rejection, bounds, one-pixel crop and
+  immediate aspect application. Chromium tests a real downloaded PNG crop by
+  independently checking dimensions and color pixels, preset result, invalid
+  coordinates, same-file reload, 320px layout and automated axe. Synthetic
+  images and automated accessibility checks do not certify all formats,
+  orientation/color profiles, browsers, physical devices or screen readers.
+
 ## Audio and media workflow integrity — 2026-11-07
 
 - Audio trimmer, speed changer, video audio extractor and MP4 inspector now
