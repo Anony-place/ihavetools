@@ -37,15 +37,22 @@ export function sniffImageType(buffer) {
 }
 export function baseName(name) { return String(name).replace(/\.[^.]+$/, '') || 'image'; }
 
-// Fit inside a bounding box without cropping; never enlarge unless requested.
+// Fit inside optional bounds without cropping; no bounds retain original size.
 export function fitInside(w, h, maxWidth, maxHeight, upscale = false) {
-  if (![w, h, maxWidth, maxHeight].every(n => Number.isSafeInteger(n) && n > 0)) throw new Error('Dimensions must be positive whole numbers.');
-  const scale = Math.min(maxWidth / w, maxHeight / h, upscale ? Infinity : 1);
-  return { width: Math.max(1, Math.min(maxWidth, Math.round(w * scale))), height: Math.max(1, Math.min(maxHeight, Math.round(h * scale))) };
+  if (![w, h].every(n => Number.isSafeInteger(n) && n > 0) || ![maxWidth, maxHeight].every(n => n == null || (Number.isSafeInteger(n) && n > 0))) throw new Error('Dimensions must be positive whole numbers.');
+  const scale = maxWidth == null && maxHeight == null ? 1 : Math.min(maxWidth == null ? Infinity : maxWidth / w, maxHeight == null ? Infinity : maxHeight / h, upscale ? Infinity : 1);
+  return { width: Math.max(1, Math.min(maxWidth ?? Infinity, Math.round(w * scale))), height: Math.max(1, Math.min(maxHeight ?? Infinity, Math.round(h * scale))) };
+}
+export function sizeChange(original, output) {
+  if (!Number.isSafeInteger(original) || original <= 0 || !Number.isSafeInteger(output) || output < 0) throw new Error('Invalid file size.');
+  if (original === output) return 'Unchanged';
+  const pct = Math.abs((output - original) / original * 100);
+  return `${pct < 0.1 ? '<0.1' : pct.toFixed(1)}% ${output < original ? 'smaller' : 'larger'}`;
 }
 export function batchFilename(name, index, fmt) {
   if (!EXT_BY_FMT[fmt] || !Number.isInteger(index) || index < 1) throw new Error('Invalid output name.');
-  const stem = baseName(name).normalize('NFC').replace(/[\\/\x00-\x1f\x7f<>:"|?*]/g, '_').replace(/^\.+/, '').replace(/[. ]+$/, '').slice(0, 80) || 'image';
+  const clean = baseName(name).normalize('NFC').replace(/[\\/\x00-\x1f\x7f<>:"|?*]/g, '_').replace(/^\.+/, '').replace(/[. ]+$/, '');
+  const stem = Array.from(clean, ch => ch.length === 1 && /[\uD800-\uDFFF]/.test(ch) ? '_' : ch).slice(0, 80).join('') || 'image';
   return `${String(index).padStart(3, '0')}-${stem}.${EXT_BY_FMT[fmt]}`;
 }
 
@@ -325,7 +332,7 @@ const defs = {
     const list = h('div', {}), results = h('div', {});
     let files = [], revision = 0, archive = null;
     const invalidate = () => { revision++; archive = null; results.replaceChildren(); download.disabled = true; };
-    const runButton = btn({ label: 'Resize images', icon: 'crop', onClick: () => run() });
+    const runButton = btn({ label: 'Process images', icon: 'crop', onClick: () => run() });
     const cancel = btn({ label: 'Cancel', variant: 'secondary', onClick: () => { invalidate(); status.set('Cancelled. No partial ZIP is available.', 'info'); } });
     const download = btn({ label: 'Download ZIP', variant: 'secondary', disabled: true, onClick: () => {
       if (!archive) return;
@@ -340,18 +347,18 @@ const defs = {
       }
       files = selected.slice();
       list.replaceChildren(table({ headers: ['Selected file', 'Size'], rows: files.map(f => [f.name, fmtBytes(f.size)]) }));
-      status.set(`${files.length} images selected. Set a bounding box and resize.`, 'info');
+      status.set(`${files.length} images selected. Set size and quality, then process.`, 'info');
     });
-    for (const el of [width, height, format, quality, upscale]) for (const ev of ['input', 'change']) el.addEventListener(ev, () => { invalidate(); status.set('Settings changed. Resize again to create a new ZIP.', 'info'); });
+    for (const el of [width, height, format, quality, upscale]) for (const ev of ['input', 'change']) el.addEventListener(ev, () => { invalidate(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
     window.addEventListener('pagehide', invalidate);
     async function run() {
       invalidate();
       if (!files.length) { status.set('Choose images first.', 'warning'); return; }
-      const w = Number(width.value), h0 = Number(height.value), q = Number(quality.value), fmt = format.value;
-      if (![w, h0].every(n => Number.isSafeInteger(n) && n >= 1 && n <= 4096) || !width.value || !height.value) { status.set('Width and height must be whole numbers from 1 to 4096.', 'error'); return; }
+      const w = width.value === '' ? null : Number(width.value), h0 = height.value === '' ? null : Number(height.value), q = Number(quality.value), fmt = format.value;
+      if (![w, h0].every(n => n == null || (Number.isSafeInteger(n) && n >= 1 && n <= 4096))) { status.set('Maximum dimensions must be blank or whole numbers from 1 to 4096.', 'error'); return; }
       if (!quality.value || !Number.isFinite(q) || q < 5 || q > 100 || !MIME_BY_FMT[fmt]) { status.set('Quality must be between 5 and 100 and the format must be supported.', 'error'); return; }
       const token = revision, selected = files.slice(), enlarge = upscale.querySelector('input').checked;
-      const entries = {}, rows = []; let total = 0, successes = 0;
+      const entries = {}, rows = []; let total = 0, totalOriginal = 0, larger = 0, successes = 0;
       status.set('Preparing image tools…', 'info');
       try {
         const { zipSync } = await import('../../vendor/fflate.js');
@@ -376,24 +383,25 @@ const defs = {
             if (total + blob.size > 50 * 1024 * 1024) throw new Error('Output limit of 50 MiB reached; use a smaller batch.');
             const bytes = new Uint8Array(await blob.arrayBuffer());
             if (revision !== token) return;
-            total += bytes.length; const name = batchFilename(f.name, i + 1, fmt); entries[name] = bytes; successes++;
-            rows.push([f.name, `${dims.width} × ${dims.height}`, `${fmtBytes(blob.size)} — ${name}`]);
-          } catch (err) { if (revision !== token) return; rows.push([f.name, 'Failed', err.message]); }
+            total += bytes.length; totalOriginal += f.size; if (blob.size > f.size) larger++;
+            const name = batchFilename(f.name, i + 1, fmt); entries[name] = bytes; successes++;
+            rows.push([f.name, `${dims.width} × ${dims.height}`, fmtBytes(f.size), fmtBytes(blob.size), sizeChange(f.size, blob.size), name]);
+          } catch (err) { if (revision !== token) return; rows.push([f.name, 'Failed', fmtBytes(f.size), '—', '—', err.message]); }
         }
-        if (!successes) { results.replaceChildren(table({ headers: ['File', 'Size', 'Result'], rows })); status.set('No images succeeded. Check the individual errors.', 'error'); return; }
+        if (!successes) { results.replaceChildren(table({ headers: ['File', 'Dimensions', 'Original', 'Output', 'Change', 'Result'], rows })); status.set('No images succeeded. Check the individual errors.', 'error'); return; }
         const zip = zipSync(entries, { level: 0 });
         if (revision !== token) return;
         archive = new Blob([zip], { type: 'application/zip' });
-        results.replaceChildren(table({ headers: ['File', 'Dimensions', 'Result'], rows }));
+        results.replaceChildren(h('p', { class: 'hint', text: `Successful image files: ${fmtBytes(totalOriginal)} → ${fmtBytes(total)} (${sizeChange(totalOriginal, total)}). ${larger} output${larger === 1 ? '' : 's'} larger than the original. ZIP overhead is not included.` }), table({ headers: ['File', 'Dimensions', 'Original', 'Output', 'Change', 'Result'], rows }));
         download.disabled = false;
         status.set(`${successes} of ${selected.length} images ready in ZIP. ${selected.length - successes} failed.`, successes === selected.length ? 'success' : 'warning');
       } catch (err) { if (revision === token) status.set(`Could not create ZIP: ${err.message}`, 'error'); }
     }
     root.append(zone, list, h('div', { class: 'field-row', style: 'margin-top:14px' },
-      field({ label: 'Maximum width (px)', control: width }), field({ label: 'Maximum height (px)', control: height }),
+      field({ label: 'Maximum width (px)', control: width, hint: 'Blank means no width limit.' }), field({ label: 'Maximum height (px)', control: height, hint: 'Blank means no height limit; clear both to keep original dimensions.' }),
       field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'JPEG/WebP only; PNG ignores quality.' })),
       upscale, actionsRow(runButton, cancel, download), status, results,
-      privacyNote('Images are processed locally, not uploaded. Fits within the box without cropping; dimensions may be smaller and rounding affects aspect ratio. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. ZIP output is capped at 50 MiB; device limits may be lower.'));
+      privacyNote('Images are processed locally, not uploaded. Optional bounds fit images without cropping; clear both to retain original dimensions. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
   },
 
   'image-resizer'(root) {

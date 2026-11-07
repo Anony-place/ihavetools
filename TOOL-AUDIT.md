@@ -13,6 +13,30 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## Bulk compression workflow — 2026-11-07
+
+- Extended the existing bulk resizer rather than creating a near-duplicate page.
+  Either bound may be blank, and clearing both retains original dimensions while
+  JPEG, PNG or WebP re-encoding runs locally. Allow-enlargement applies only when
+  at least one bound is set. Output remains subject to 16,384 px per side and
+  40 million pixels, and existing batch and ZIP limits still apply.
+- Results now show actual per-file input/output sizes and percentage increases
+  or decreases. The aggregate covers successful images only and excludes ZIP
+  overhead; re-encoding is not guaranteed to shrink a file. PNG ignores the
+  quality control, JPEG flattens transparency to white, and canvas may discard
+  metadata or animation. ZIP packaging is synchronous, so cancellation cannot
+  interrupt the brief packaging step; memory and timing vary by device.
+- Intent research found quality controls, ZIP downloads and per-file comparisons
+  on https://www.image2url.com/image-compressor and
+  https://imgtoolsbase.com/bulk-image-compressor/ . These are feature signals,
+  not verified keyword volumes, usage evidence or ranking guarantees.
+- Engine tests cover optional dimensions, enlargement, precise direction of size
+  change, search and Unicode filename boundaries. DOM checks cover pending-load
+  invalidation. CI browser coverage checks actual ZIP entries and dimensions,
+  a failed file, the size-comparison direction, unchanged-size processing, JPEG
+  white transparency background, mobile overflow and automated axe. These do not
+  certify all input formats, codecs, devices, assistive technology or memory use.
+
 ## Bulk image resizer — 2026-11-07
 
 - Added a client-side bulk resizer with proportional fit, no-enlarge default,

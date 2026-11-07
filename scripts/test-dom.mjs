@@ -1131,12 +1131,17 @@ await domTest('bulk image resizer rejects invalid batches and cancels stale imag
     const file=new File([new Uint8Array([255,216,255,217])],'photo.jpg',{type:'image/jpeg'});
     const send=files=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files}});app.querySelector('.dropzone').dispatchEvent(e);};
     send(Array(21).fill(file)); assert.match(app.textContent,/at most 20 images/);
-    send([file]); const nums=app.querySelectorAll('input[type=number]'); nums[0].value='0'; click(btnByLabel(app,'Resize images')); assert.match(app.textContent,/whole numbers from 1 to 4096/);
-    nums[0].value='100'; click(btnByLabel(app,'Resize images'));
+    send([file]); const nums=app.querySelectorAll('input[type=number]'); nums[0].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/whole numbers from 1 to 4096/);
+    nums[0].value='100'; click(btnByLabel(app,'Process images'));
     for (let i=0;i<30 && !pending.length;i++) await new Promise(r=>setTimeout(r,10));
     assert.equal(pending.length,1,'image load should be in progress');
     click(btnByLabel(app,'Cancel')); pending[0].onload(); await new Promise(r=>setTimeout(r,20));
     assert.match(app.textContent,/Cancelled/); assert.equal(btnByLabel(app,'Download ZIP').disabled,true);
+    nums[0].value=''; nums[1].value=''; click(btnByLabel(app,'Process images'));
+    for (let i=0;i<30 && pending.length < 2;i++) await new Promise(r=>setTimeout(r,10));
+    assert.equal(pending.length,2,'blank bounds allow a new run');
+    nums[1].value='60'; fire(nums[1],'input'); pending[1].onload(); await new Promise(r=>setTimeout(r,20));
+    assert.match(app.textContent,/Settings changed/); assert.equal(btnByLabel(app,'Download ZIP').disabled,true);
   } finally {global.Image=oldImage; URL.createObjectURL=create; URL.revokeObjectURL=revoke;}
 });
 
