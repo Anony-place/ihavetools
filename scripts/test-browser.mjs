@@ -103,6 +103,20 @@ try {
   assert.equal(metadata.width, 8); assert.equal(metadata.height, 7); assert.equal(metadata.format, 'png');
   console.log('✓ actual canvas conversion and PNG download');
 
+  // A decoded JPEG without EXIF must not be described as metadata-free.
+  await page.setViewportSize({ width: 320, height: 844 });
+  await go('image-metadata-viewer');
+  const plainJpeg = await sharp({ create: { width: 8, height: 7, channels: 3, background: '#ff0000' } }).jpeg().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles({ name: 'plain.jpg', mimeType: 'image/jpeg', buffer: plainJpeg });
+  await page.locator('#tool-app .status-line').getByText(/Analysed/).waitFor();
+  assert.match(await page.locator('#tool-app').innerText(), /does not mean metadata or location is absent/);
+  assert.match(await page.locator('#tool-app').innerText(), /does not establish/);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'metadata result must fit mobile viewport');
+  const metadataAxe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  assert.deepEqual(metadataAxe.violations.map(v => v.id), [], 'metadata result accessibility');
+  console.log('✓ decoded JPEG metadata limitations and mobile result accessibility');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
   await go('pdf-merge');
   const chooser = page.waitForEvent('filechooser');
   await page.locator('#tool-app input[type=file]').focus();

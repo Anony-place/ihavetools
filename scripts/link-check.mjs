@@ -74,6 +74,25 @@ test('sitemap contains exactly home + categories + tools + trust pages, all reso
     assert.ok(existsSync(file), `sitemap URL has no file: ${loc}`);
   }
 });
+test('sitemap lastmod and structured-data modified dates come only from maintained tool dates', () => {
+  const xml = readFileSync(join(ROOT, 'sitemap.xml'), 'utf8');
+  const entries = [...xml.matchAll(/<url>\s*<loc>([^<]+)<\/loc>([\s\S]*?)<\/url>/g)];
+  const expected = new Map(tools.map(t => [`${site.url}/tools/${t.id}/`, t.modified]));
+  for (const [, loc, remainder] of entries) {
+    const dates = [...remainder.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map(m => m[1]);
+    assert.deepEqual(dates, expected.get(loc) ? [expected.get(loc)] : [], `unexpected lastmod: ${loc}`);
+  }
+  for (const t of tools) {
+    if (t.modified) assert.match(t.modified, /^\d{4}-\d{2}-\d{2}$/);
+    const html = readFileSync(join(ROOT, 'tools', t.id, 'index.html'), 'utf8');
+    const application = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map(m => JSON.parse(m[1])).find(o => o['@type'] === 'WebApplication');
+    assert.equal(application.dateModified, t.modified, `${t.id} modified date`);
+  }
+  for (const id of ['about', 'privacy-policy', 'terms']) {
+    const html = readFileSync(join(ROOT, id, 'index.html'), 'utf8');
+    assert.doesNotMatch(html, /"dateModified"|Last updated:/, `${id} has no maintained modification date`);
+  }
+});
 test('no URLs in sitemap are missing from the filesystem and vice versa', () => {
   const xml = readFileSync(join(ROOT, 'sitemap.xml'), 'utf8');
   const locs = new Set([...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].replace(site.url, '')));

@@ -52,23 +52,31 @@ const ORIENTATIONS = { 1: 'Normal', 2: 'Mirrored horizontal', 3: 'Rotated 180°'
 function parseJpeg(buffer) {
   const view = new DataView(buffer);
   const bytes = new Uint8Array(buffer);
-  let exifStart = -1, exifEnd = -1;
-  // walk JPEG segments
+  let exifStart = -1, exifEnd = -1, scanComplete = false;
+  // Inspect marker segments before the first scan; JPEG fill bytes are legal.
   let i = 2;
-  while (i + 4 < bytes.length) {
-    if (bytes[i] !== 0xff) break;
-    const marker = bytes[i + 1];
-    const size = view.getUint16(i + 2);
-    if (size < 2 || i + 2 + size > bytes.length) break;
-    if (marker === 0xe1 && size >= 8 && i + 10 < bytes.length && bytes[i + 4] === 0x45 && bytes[i + 5] === 0x78 && bytes[i + 6] === 0x69 && bytes[i + 7] === 0x66 && bytes[i + 8] === 0x00 && bytes[i + 9] === 0x00) {
-      exifStart = i + 10; exifEnd = i + 2 + size;
+  while (i < bytes.length) {
+    if (bytes[i++] !== 0xff) break;
+    while (i < bytes.length && bytes[i] === 0xff) i++;
+    if (i >= bytes.length) break;
+    const marker = bytes[i++];
+    if (marker === 0xda || marker === 0xd9) { scanComplete = true; break; }
+    if (marker === 0x00 || marker === 0xd8) break;
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+    if (i + 2 > bytes.length) break;
+    const size = view.getUint16(i);
+    if (size < 2 || i + size > bytes.length) break;
+    if (marker === 0xe1 && size >= 8 && bytes[i + 2] === 0x45 && bytes[i + 3] === 0x78 && bytes[i + 4] === 0x69 && bytes[i + 5] === 0x66 && bytes[i + 6] === 0 && bytes[i + 7] === 0) {
+      exifStart = i + 8; exifEnd = i + size;
       break;
     }
-    if (marker === 0xda) break; // start of scan
-    i += 2 + size;
+    i += size;
   }
   const out = { exif: null, chunks: null };
-  if (exifStart === -1) return out;
+  if (exifStart === -1) {
+    out.summary = [['Format', 'JPEG'], ['EXIF before first scan', scanComplete ? 'Not found' : 'Could not inspect completely']];
+    return out;
+  }
   try {
     const bounds = (off, len) => { if (!Number.isSafeInteger(off) || !Number.isSafeInteger(len) || off < exifStart || len < 0 || off + len > exifEnd) throw new Error('Invalid EXIF bounds'); };
     bounds(exifStart, 8);
@@ -87,18 +95,24 @@ function parseJpeg(buffer) {
         const tag = u16(e);
         const typ = u16(e + 2);
         const num = u32(e + 4);
-        const sizes = { 2: 1, 3: 2, 4: 4, 5: 8, 10: 8 };
+        const sizes = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 10: 8 };
         if (!tagMap[tag] || !sizes[typ]) continue;
         if (num > 4096) throw new Error('EXIF value too large');
         const total = sizes[typ] * num;
         const valOff = total <= 4 ? e + 8 : exifStart + u32(e + 8);
         bounds(valOff, total);
         let value;
-        if (typ === 2) value = new TextDecoder('ascii', { fatal: false }).decode(new Uint8Array(buffer, valOff, num)).replace(/\0.*$/, '').trim();
+        if (typ === 1) value = num === 1 ? bytes[valOff] : Array.from(bytes.subarray(valOff, valOff + num));
+        else if (typ === 2) value = new TextDecoder('ascii', { fatal: false }).decode(new Uint8Array(buffer, valOff, num)).replace(/\0.*$/, '').trim();
         else if (typ === 3) value = num === 1 ? u16(valOff) : Array.from({ length: num }, (_, q) => u16(valOff + q * 2));
         else if (typ === 4) value = num === 1 ? u32(valOff) : Array.from({ length: num }, (_, q) => u32(valOff + q * 4));
-        else if (typ === 5) value = Array.from({ length: num }, (_, q) => u32(valOff + q * 8) / (u32(valOff + q * 8 + 4) || 1));
-        else if (typ === 10) value = Array.from({ length: num }, (_, q) => view.getInt32(valOff + q * 8, little) / (view.getInt32(valOff + q * 8 + 4, little) || 1));
+        else if (typ === 5 || typ === 10) value = Array.from({ length: num }, (_, q) => {
+          const offset = valOff + q * 8;
+          const numerator = typ === 5 ? u32(offset) : view.getInt32(offset, little);
+          const denominator = typ === 5 ? u32(offset + 4) : view.getInt32(offset + 4, little);
+          if (!denominator) throw new Error('Invalid EXIF rational');
+          return numerator / denominator;
+        });
         else value = null; // undefined/unknown types skipped
         if (value != null && tagMap[tag]) entries[tagMap[tag]] = Array.isArray(value) && value.length === 1 ? value[0] : value;
       }
@@ -112,7 +126,10 @@ function parseJpeg(buffer) {
       bounds(ifd0Off + 2, count * 12);
       for (let k = 0; k < count; k++) {
         const e = ifd0Off + 2 + k * 12;
-        if (u16(e) === tag) { return ifd(exifStart + u32(e + 8), map, 'sub'); }
+        if (u16(e) === tag) {
+          if (u16(e + 2) !== 4 || u32(e + 4) !== 1) throw new Error('Invalid EXIF directory pointer');
+          return ifd(exifStart + u32(e + 8), map, 'sub');
+        }
       }
       return {};
     };
@@ -573,7 +590,7 @@ const defs = {
             if (!entries || !Object.keys(entries).length) continue;
             const rows = Object.entries(entries).map(([k, v]) => {
               let val = Array.isArray(v) ? v.map((x) => Number.isFinite(x) ? Math.round(x * 1000) / 1000 : x).join(', ') : String(v);
-              if (k === 'GPSLatitude' || k === 'GPSLongitude') val = `${typeof v === 'number' ? v.toFixed(6) : val}°`;
+              if ((k === 'GPSLatitude' || k === 'GPSLongitude') && Array.isArray(v)) val = `${v.map(n => Number.isFinite(n) ? Number(n.toPrecision(10)) : n).join(', ')} (degrees, minutes, seconds)`;
               if (k === 'ExposureTime' && Number.isFinite(v)) val = v < 1 ? `1/${Math.round(1 / v)} s` : `${v} s`;
               if (k === 'FNumber' && Number.isFinite(v)) val = `f/${Math.round(v * 100) / 100}`;
               return [k, val];
@@ -581,7 +598,7 @@ const defs = {
             out.append(h('section', {}, h('h3', { text: group, style: 'margin:20px 0 10px' }), table({ headers: ['Tag', 'Value'], rows })));
           }
         } else if (meta.type === 'jpeg') {
-          out.append(h('p', { class: 'hint', style: 'margin-top:14px', text: 'No readable EXIF metadata found — the image may have been stripped (e.g. re-saved by an editor or social platform).' }));
+          out.append(h('p', { class: 'hint', style: 'margin-top:14px', text: 'No readable JPEG EXIF tags were displayed. This does not establish that the image contains no metadata.' }));
         }
         if (meta.type === 'png' && meta.chunks?.length) {
           out.append(h('section', {}, h('h3', { text: 'PNG chunks', style: 'margin:20px 0 10px' }), table({ headers: ['Chunk', 'Size', 'Purpose'], rows: meta.chunks })));
@@ -590,7 +607,7 @@ const defs = {
       } catch (err) { if (currentFile === f && revision === token) status.set(err.message, 'error'); }
     });
     root.append(zone, status, out,
-      privacyNote('Metadata is read in your browser. The image is never uploaded — this is a safe way to check what a photo reveals before sharing it.'));
+      privacyNote('Read locally, without uploading. This partial viewer reads selected tags from the first JPEG EXIF block and lists PNG chunks; it does not decode PNG EXIF, XMP, IPTC, all tags or other formats. A missing result does not mean metadata or location is absent. It does not remove metadata.'));
   },
 };
 

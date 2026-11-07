@@ -13,6 +13,33 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## Image metadata trust and sitemap dates — 2026-11-07
+
+- Reviewed private image workflows: batch processing and local handling are
+  offered by competitors, e.g. https://www.image2url.com/image-compressor . This
+  is a feature observation, not proof of search demand or a ranking prediction.
+- The metadata viewer reads selected tags in the first JPEG EXIF block and lists
+  PNG chunks; it does not decode PNG EXIF, XMP, IPTC, all JPEG tags or other
+  formats. UI and page copy now explicitly warn that missing output is not proof
+  of absent metadata/location and that the viewer does not remove metadata.
+- JPEG marker fill bytes are accepted; malformed marker segments are reported as
+  incomplete rather than absent. GPS BYTE altitude reference is read, latitude/
+  longitude DMS retain more displayed precision, and zero EXIF rational
+  denominators or invalid directory pointers make the block unreadable instead
+  of inventing values. Crafted fixture and DOM tests cover these cases. This is
+  still not an exhaustive EXIF parser or a privacy guarantee for real photos.
+- Builds no longer stamp trust pages with the current build date or claim that
+  every tool's creation date is its last modification. Sitemap lastmod and tool
+  structured-data dateModified are emitted only for explicitly maintained dates;
+  unknown dates are omitted. See Google's sitemap guidance:
+  https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap
+  Future meaningful edits need their actual `modified` date maintained manually;
+  there is no promise of indexing or ranking from this change.
+- `npm run check`: 228 engine, 142 DOM, 9 site-chrome, service worker and 21
+  integrity checks pass. Dependency audit finds zero vulnerabilities. The CI
+  Chromium suite includes a decoded JPEG metadata result, mobile width and axe
+  scan; local real-browser execution depends on an available Chromium runtime.
+
 ## Real Chromium and accessibility audit — 2026-11-06
 
 - Obtained headless Chromium 153 from the npm distribution and built missing

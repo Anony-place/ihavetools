@@ -14,13 +14,11 @@ import { iconRef as icon, icons as iconBodies, brandMark } from '../assets/js/ic
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const URL_BASE = site.url.replace(/\/$/, '');
-const today = new Date().toISOString().slice(0, 10);
 // Production is served from the domain root on Vercel. Absolute
 // paths everywhere — the committed HTML, site.js, PDF loader and the
 // service worker all already assume this. (Previously this flipped between
 // '' and '../../', making every rebuild silently rewrite every URL.)
 const ROOT_PREFIX = '/';
-const LATEST_TOOL_DATE = tools.map((t) => t.added).sort().at(-1);
 export const STATIC_PAGES = ['about', 'privacy-policy', 'terms'];
 
 /* ---------- helpers ---------- */
@@ -441,7 +439,7 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
         name: t.name, applicationCategory: 'UtilitiesApplication', operatingSystem: 'Any (web browser)',
         browserRequirements: 'Requires JavaScript', inLanguage: 'en', isAccessibleForFree: true,
         url: pageUrl(`/tools/${t.id}/`), description: t.description,
-        datePublished: t.added, dateModified: t.added,
+        datePublished: t.added, ...(t.modified ? { dateModified: t.modified } : {}),
         publisher: { '@type': 'Organization', name: site.name, url: pageUrl('/') },
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
       },
@@ -503,7 +501,6 @@ ${body}
       id: 'privacy-policy', title: 'Privacy Policy', desc: metaDesc('iHaveTools Privacy Policy — local processing, optional share links, YouTube thumbnails, browser storage and hosting logs.'),
       lede: 'Most processing is local. Optional shared links, YouTube thumbnails, browser storage and hosting requests have privacy implications explained below.',
       body: `
-    <p><em>Last updated: ${today}</em></p>
     <section><h2>What data the tools process</h2>
     <p>Tools run in your browser. Files you select for PDF, image, audio and video processing and text entered into text tools are processed locally rather than uploaded for processing. Browser extensions, operating-system software, screen captures, downloads and services you choose to use separately are outside our control.</p>
     <p>The YouTube thumbnail downloader requests images from YouTube’s CDN (i.ytimg.com). That service receives the requested video ID and normal request information such as your IP address, under its own policies. Opening external links or QR-code actions also contacts their destinations.</p></section>
@@ -533,7 +530,6 @@ ${body}
       id: 'terms', title: 'Terms of Use', desc: metaDesc('iHaveTools Terms of Use — the tools are free to use for personal and commercial work, provided as-is. Results from calculators are informational, not professional advice.'),
       lede: 'The tools are free to use, for personal and commercial work. They are provided as-is — please read the short print.',
       body: `
-    <p><em>Last updated: ${today}</em></p>
     <section><h2>Using the tools</h2>
     <p>You may use every tool on iHaveTools free of charge, for personal and commercial purposes, without creating an account. Because processing happens in your browser, you keep full rights to — and full responsibility for — everything you create or convert with the tools.</p></section>
     <section><h2>Results are informational</h2>
@@ -555,7 +551,7 @@ ${body}
       description: p.desc,
       canonical: pageUrl(`/${p.id}/`),
       jsonLd: [
-        { '@context': 'https://schema.org', '@type': 'WebPage', name: p.title, description: p.desc, url: pageUrl(`/${p.id}/`), inLanguage: 'en', isPartOf: { '@id': `${pageUrl('/')}#site` }, dateModified: today },
+        { '@context': 'https://schema.org', '@type': 'WebPage', name: p.title, description: p.desc, url: pageUrl(`/${p.id}/`), inLanguage: 'en', isPartOf: { '@id': `${pageUrl('/')}#site` } },
         { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Home', item: pageUrl('/') },
           { '@type': 'ListItem', position: 2, name: p.title, item: pageUrl(`/${p.id}/`) },
@@ -591,18 +587,15 @@ function build404() {
 
 /* ---------- sitemap / robots / manifest / search index / llms.txt ---------- */
 function buildMeta() {
-  // Honest lastmod: a tool page changed when the tool was added, a
-  // category when its newest tool arrived, trust pages today. (Stamping
-  // every URL with "today" on every build teaches search engines to
-  // ignore lastmod entirely.)
-  const catDate = (c) => toolsByCategory(c.id).map((t) => t.added).sort().at(-1) || LATEST_TOOL_DATE;
+  // Only emit a lastmod when an actual content modification date is maintained.
+  // Creation dates and build time are not reliable modification dates.
   const entries = [
-    { u: '/', d: LATEST_TOOL_DATE },
-    ...categories.map((c) => ({ u: `/categories/${c.id}/`, d: catDate(c) })),
-    ...tools.map((t) => ({ u: `/tools/${t.id}/`, d: t.added })),
-    ...STATIC_PAGES.map((id) => ({ u: `/${id}/`, d: today })),
+    { u: '/' },
+    ...categories.map((c) => ({ u: `/categories/${c.id}/` })),
+    ...tools.map((t) => ({ u: `/tools/${t.id}/`, d: t.modified })),
+    ...STATIC_PAGES.map((id) => ({ u: `/${id}/` })),
   ];
-  write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.map(({ u, d }) => `  <url>\n    <loc>${pageUrl(u)}</loc>\n    <lastmod>${d}</lastmod>\n  </url>`).join('\n')}\n</urlset>\n`);
+  write('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.map(({ u, d }) => `  <url>\n    <loc>${pageUrl(u)}</loc>${d ? `\n    <lastmod>${d}</lastmod>` : ''}\n  </url>`).join('\n')}\n</urlset>\n`);
   // Slim, lazily-loaded search index — the browser no longer needs the
   // full 71 KB registry (descriptions/steps/FAQs) just to power search.
   const searchIndex = tools.map((t) => ({

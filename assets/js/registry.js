@@ -39,7 +39,8 @@ export const categories = [
 
 // fields: id (slug), name, icon, categories (first = primary), blurb (cards),
 // description (page lede), keywords, aliases, popularity 0-100, featured,
-// added (ISO date), steps "a|b|c", faqs optional [{q,a}], privacyOverride,
+// added (ISO date), optional modified (actual significant content change date),
+// steps "a|b|c", faqs optional [{q,a}], privacyOverride,
 // engine (which grouped module implements it), related (optional override),
 // guide optional [{h, p|list|table:{head,rows}}] — hand-written deep content
 // rendered as static HTML on the tool page (top tools first; see PLAN.md).
@@ -855,10 +856,10 @@ export const tools = [
     steps: 'Drop or choose an image.|Drag a selection on the preview, or pick an aspect preset and adjust.|Click Crop, then download the result.' }),
   T({ id: 'image-metadata-viewer', name: 'Image Metadata Viewer', icon: 'info', engine: 'image', categories: ['image'],
     blurb: 'Inspect EXIF data and PNG chunks — fully offline.',
-    description: 'Inspect what an image reveals: dimensions, type, size, JPEG EXIF (camera, settings, GPS where present) and PNG chunk structure. Read locally, never uploaded.',
+    description: 'Inspect selected JPEG EXIF tags and PNG chunk structure locally. This partial viewer cannot establish that a file is metadata-free and does not remove metadata.',
     keywords: ['exif', 'metadata', 'image info', 'photo details', 'png chunks', 'camera data'],
     aliases: ['exif viewer', 'photo metadata', 'image info'],
-    popularity: 60, added: '2026-09-17',
+    popularity: 60, added: '2026-09-17', modified: '2026-11-07',
     steps: 'Drop or choose a JPEG or PNG image.|Browse the summary, EXIF and structure tables.|Nothing is uploaded — parsing happens in your browser.' }),
 
   // ── Color ──────────────────────────────────────────────────────────────────

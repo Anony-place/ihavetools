@@ -1528,6 +1528,29 @@ await test('JPEG EXIF parsed from crafted buffer', () => {
   assert.equal(meta.exif['Camera / Image'].Make, 'TestCam');
   assert.equal(meta.exif['Camera / Image'].Model, 'T1');
 });
+await test('JPEG EXIF marker padding, GPS rationals and malformed pointers are handled honestly', () => {
+  const ab = b => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+  const tiff = Buffer.alloc(80);
+  tiff.write('II', 0); tiff.writeUInt16LE(42, 2); tiff.writeUInt32LE(8, 4);
+  tiff.writeUInt16LE(1, 8); tiff.writeUInt16LE(0x8825, 10); tiff.writeUInt16LE(4, 12);
+  tiff.writeUInt32LE(1, 14); tiff.writeUInt32LE(26, 18);
+  tiff.writeUInt16LE(2, 26);
+  tiff.writeUInt16LE(2, 28); tiff.writeUInt16LE(5, 30); tiff.writeUInt32LE(3, 32); tiff.writeUInt32LE(56, 36);
+  tiff.writeUInt16LE(5, 40); tiff.writeUInt16LE(1, 42); tiff.writeUInt32LE(1, 44); tiff[48] = 1;
+  [[28,1],[36,1],[1234567,100000]].forEach(([n,d],i) => { tiff.writeUInt32LE(n,56+i*8); tiff.writeUInt32LE(d,60+i*8); });
+  const jpeg = () => { const payload=Buffer.concat([Buffer.from('Exif\0\0'), tiff]); const head=Buffer.from([0xff,0xd8,0xff,0xff,0xe1,0,0]); head.writeUInt16BE(payload.length+2,5); return Buffer.concat([head,payload,Buffer.from([0xff,0xd9])]); };
+  let meta = img.parseImageMetadata(ab(jpeg()));
+  assert.deepEqual(meta.exif.GPS.GPSLatitude, [28,36,12.34567]);
+  assert.equal(meta.exif.GPS.GPSAltitudeRef, 1);
+  tiff.writeUInt32LE(0, 76); meta = img.parseImageMetadata(ab(jpeg()));
+  assert.equal(meta.exif, null); assert.match(JSON.stringify(meta.summary), /unreadable/);
+  tiff.writeUInt32LE(100000, 76); tiff.writeUInt16LE(3, 12);
+  meta = img.parseImageMetadata(ab(jpeg())); assert.equal(meta.exif, null); assert.match(JSON.stringify(meta.summary), /unreadable/);
+  meta = img.parseImageMetadata(ab(Buffer.from([255,216,255,225,0,20,1,2])));
+  assert.match(JSON.stringify(meta.summary), /Could not inspect completely/);
+  meta = img.parseImageMetadata(ab(Buffer.from([255,216,255,217])));
+  assert.match(JSON.stringify(meta.summary), /Not found/);
+});
 await test('PNG chunks parsed from crafted buffer', () => {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(100, 0); ihdr.writeUInt32BE(50, 4); ihdr[8] = 8; ihdr[9] = 6; // 8-bit RGBA
