@@ -37,6 +37,18 @@ export function sniffImageType(buffer) {
 }
 export function baseName(name) { return String(name).replace(/\.[^.]+$/, '') || 'image'; }
 
+// Fit inside a bounding box without cropping; never enlarge unless requested.
+export function fitInside(w, h, maxWidth, maxHeight, upscale = false) {
+  if (![w, h, maxWidth, maxHeight].every(n => Number.isSafeInteger(n) && n > 0)) throw new Error('Dimensions must be positive whole numbers.');
+  const scale = Math.min(maxWidth / w, maxHeight / h, upscale ? Infinity : 1);
+  return { width: Math.max(1, Math.min(maxWidth, Math.round(w * scale))), height: Math.max(1, Math.min(maxHeight, Math.round(h * scale))) };
+}
+export function batchFilename(name, index, fmt) {
+  if (!EXT_BY_FMT[fmt] || !Number.isInteger(index) || index < 1) throw new Error('Invalid output name.');
+  const stem = baseName(name).normalize('NFC').replace(/[\\/\x00-\x1f\x7f<>:"|?*]/g, '_').replace(/^\.+/, '').replace(/[. ]+$/, '').slice(0, 80) || 'image';
+  return `${String(index).padStart(3, '0')}-${stem}.${EXT_BY_FMT[fmt]}`;
+}
+
 /* ═══════════════════════════ EXIF / metadata parsing (real implementation) ═══════════════════════════ */
 export function parseImageMetadata(buffer) {
   const type = sniffImageType(buffer);
@@ -300,6 +312,88 @@ const defs = {
       actionsRow(btn({ label: 'Compress', icon: 'minimize', onClick: run })),
       status, grid, preview,
       privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. JPEG flattens transparency onto white. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
+  },
+
+  'bulk-image-resizer'(root) {
+    const zone = imageZone({ accept: 'image/jpeg,image/png,image/webp,image/gif,image/bmp', multiple: true, title: 'Choose images or drop them here', sub: 'Up to 20 images, 20 MiB each and 100 MiB total' });
+    const width = input({ type: 'number', min: 1, max: 4096, value: '1200' });
+    const height = input({ type: 'number', min: 1, max: 4096, value: '1200' });
+    const format = select({ options: [{ v: 'jpeg', t: 'JPEG' }, { v: 'png', t: 'PNG' }, { v: 'webp', t: 'WebP' }], value: 'jpeg' });
+    const quality = input({ type: 'number', min: 5, max: 100, value: '85' });
+    const upscale = switchChip({ label: 'Allow enlargement', checked: false });
+    const status = statusLine('Choose images to begin.');
+    const list = h('div', {}), results = h('div', {});
+    let files = [], revision = 0, archive = null;
+    const invalidate = () => { revision++; archive = null; results.replaceChildren(); download.disabled = true; };
+    const runButton = btn({ label: 'Resize images', icon: 'crop', onClick: () => run() });
+    const cancel = btn({ label: 'Cancel', variant: 'secondary', onClick: () => { invalidate(); status.set('Cancelled. No partial ZIP is available.', 'info'); } });
+    const download = btn({ label: 'Download ZIP', variant: 'secondary', disabled: true, onClick: () => {
+      if (!archive) return;
+      const ok = downloadBlob(archive, 'resized-images.zip');
+      status.set(ok ? 'ZIP download requested.' : 'Could not request the ZIP download.', ok ? 'success' : 'error');
+    } });
+    zone.addEventListener('iht-files', e => {
+      invalidate(); files = []; list.replaceChildren();
+      const selected = e.detail;
+      if (selected.length > 20 || selected.some(f => f.size > 20 * 1024 * 1024) || selected.reduce((sum, f) => sum + f.size, 0) > 100 * 1024 * 1024) {
+        status.set('Select at most 20 images, 20 MiB each and 100 MiB total.', 'error'); return;
+      }
+      files = selected.slice();
+      list.replaceChildren(table({ headers: ['Selected file', 'Size'], rows: files.map(f => [f.name, fmtBytes(f.size)]) }));
+      status.set(`${files.length} images selected. Set a bounding box and resize.`, 'info');
+    });
+    for (const el of [width, height, format, quality, upscale]) for (const ev of ['input', 'change']) el.addEventListener(ev, () => { invalidate(); status.set('Settings changed. Resize again to create a new ZIP.', 'info'); });
+    window.addEventListener('pagehide', invalidate);
+    async function run() {
+      invalidate();
+      if (!files.length) { status.set('Choose images first.', 'warning'); return; }
+      const w = Number(width.value), h0 = Number(height.value), q = Number(quality.value), fmt = format.value;
+      if (![w, h0].every(n => Number.isSafeInteger(n) && n >= 1 && n <= 4096) || !width.value || !height.value) { status.set('Width and height must be whole numbers from 1 to 4096.', 'error'); return; }
+      if (!quality.value || !Number.isFinite(q) || q < 5 || q > 100 || !MIME_BY_FMT[fmt]) { status.set('Quality must be between 5 and 100 and the format must be supported.', 'error'); return; }
+      const token = revision, selected = files.slice(), enlarge = upscale.querySelector('input').checked;
+      const entries = {}, rows = []; let total = 0, successes = 0;
+      status.set('Preparing image tools…', 'info');
+      try {
+        const { zipSync } = await import('../../vendor/fflate.js');
+        if (revision !== token) return;
+        for (let i = 0; i < selected.length; i++) {
+          if (revision !== token) return;
+          const f = selected[i]; status.set(`Processing ${i + 1} of ${selected.length}…`, 'info');
+          try {
+            await checkDecodable(f);
+            if (revision !== token) return;
+            const img = await loadImage(f);
+            if (revision !== token) return;
+            const dims = fitInside(img.naturalWidth, img.naturalHeight, w, h0, enlarge);
+            validateCanvasSize(dims.width, dims.height);
+            const canvas = document.createElement('canvas'); canvas.width = dims.width; canvas.height = dims.height;
+            const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable.');
+            ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+            if (fmt === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, dims.width, dims.height); }
+            ctx.drawImage(img, 0, 0, dims.width, dims.height);
+            const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100);
+            if (revision !== token) return;
+            if (total + blob.size > 50 * 1024 * 1024) throw new Error('Output limit of 50 MiB reached; use a smaller batch.');
+            const bytes = new Uint8Array(await blob.arrayBuffer());
+            if (revision !== token) return;
+            total += bytes.length; const name = batchFilename(f.name, i + 1, fmt); entries[name] = bytes; successes++;
+            rows.push([f.name, `${dims.width} × ${dims.height}`, `${fmtBytes(blob.size)} — ${name}`]);
+          } catch (err) { if (revision !== token) return; rows.push([f.name, 'Failed', err.message]); }
+        }
+        if (!successes) { results.replaceChildren(table({ headers: ['File', 'Size', 'Result'], rows })); status.set('No images succeeded. Check the individual errors.', 'error'); return; }
+        const zip = zipSync(entries, { level: 0 });
+        if (revision !== token) return;
+        archive = new Blob([zip], { type: 'application/zip' });
+        results.replaceChildren(table({ headers: ['File', 'Dimensions', 'Result'], rows }));
+        download.disabled = false;
+        status.set(`${successes} of ${selected.length} images ready in ZIP. ${selected.length - successes} failed.`, successes === selected.length ? 'success' : 'warning');
+      } catch (err) { if (revision === token) status.set(`Could not create ZIP: ${err.message}`, 'error'); }
+    }
+    root.append(zone, list, h('div', { class: 'field-row', style: 'margin-top:14px' },
+      field({ label: 'Maximum width (px)', control: width }), field({ label: 'Maximum height (px)', control: height }),
+      field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'JPEG/WebP only; PNG ignores quality.' })),
+      upscale, actionsRow(runButton, cancel, download), status, results,
+      privacyNote('Images are processed locally, not uploaded. Fits within the box without cropping; dimensions may be smaller and rounding affects aspect ratio. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. ZIP output is capped at 50 MiB; device limits may be lower.'));
   },
 
   'image-resizer'(root) {

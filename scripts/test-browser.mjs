@@ -3,6 +3,7 @@
 // an installed Chromium/Chrome executable if Playwright has no bundled browser.
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { execFileSync } from 'node:child_process';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -115,6 +116,38 @@ try {
   const metadataAxe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   assert.deepEqual(metadataAxe.violations.map(v => v.id), [], 'metadata result accessibility');
   console.log('✓ decoded JPEG metadata limitations and mobile result accessibility');
+  await page.setViewportSize({ width: 1280, height: 800 });
+
+  await page.setViewportSize({ width: 320, height: 844 });
+  await go('bulk-image-resizer');
+  const wide = await sharp({ create: { width: 80, height: 40, channels: 4, background: '#ff0000' } }).png().toBuffer();
+  const tall = await sharp({ create: { width: 20, height: 60, channels: 4, background: '#00ff00' } }).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles([
+    { name: 'same.png', mimeType: 'image/png', buffer: wide },
+    { name: 'same.png', mimeType: 'image/png', buffer: tall },
+    { name: 'bad.png', mimeType: 'image/png', buffer: Buffer.from('not an image') },
+  ]);
+  await page.getByLabel('Maximum width (px)').fill('40');
+  await page.getByLabel('Maximum height (px)').fill('30');
+  await page.getByLabel('Output format').selectOption('png');
+  await page.getByRole('button', { name: 'Resize images' }).click();
+  await page.locator('#tool-app .status-line').getByText(/2 of 3 images ready/).waitFor();
+  assert.match(await page.locator('#tool-app').innerText(), /bad.png.*Failed/s);
+  const zipDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download ZIP' }).click();
+  const zipPath = await (await zipDownload).path();
+  // Use Python's ZIP reader rather than the writer library as an independent check.
+  const extracted = JSON.parse(execFileSync('python3', ['-c', 'import zipfile,sys,json,base64; z=zipfile.ZipFile(sys.argv[1]); print(json.dumps({i.filename:base64.b64encode(z.read(i)).decode() for i in z.infolist()}))', zipPath], { encoding: 'utf8' }));
+  assert.deepEqual(Object.keys(extracted), ['001-same.png', '002-same.png']);
+  const wideMeta = await sharp(Buffer.from(extracted['001-same.png'], 'base64')).metadata();
+  const tallMeta = await sharp(Buffer.from(extracted['002-same.png'], 'base64')).metadata();
+  assert.deepEqual([wideMeta.width, wideMeta.height, tallMeta.width, tallMeta.height], [40, 20, 10, 30]);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'batch result must fit mobile viewport');
+  const batchAxe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  assert.deepEqual(batchAxe.violations.map(v => v.id), [], 'batch result accessibility');
+  await page.getByLabel('Maximum width (px)').fill('39');
+  assert.equal(await page.getByRole('button', { name: 'Download ZIP' }).isDisabled(), true, 'edits invalidate archive');
+  console.log('✓ batch resize, independent ZIP decode, partial failure, invalidation and mobile accessibility');
   await page.setViewportSize({ width: 1280, height: 800 });
 
   await go('pdf-merge');

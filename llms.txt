@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 128 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 129 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -74,6 +74,7 @@
 - [Password Strength Checker](https://i-have-tools.vercel.app/tools/password-strength-checker/): Check selected password patterns locally; not a strength guarantee.
 - [Random String Generator](https://i-have-tools.vercel.app/tools/random-string-generator/): Bulk random strings and keys from your browser’s CSPRNG.
 - [Image Compressor](https://i-have-tools.vercel.app/tools/image-compressor/): Shrink JPG, PNG and WebP in your browser — no uploads.
+- [Bulk Image Resizer](https://i-have-tools.vercel.app/tools/bulk-image-resizer/): Resize a batch of images locally and download a ZIP.
 - [Image Resizer](https://i-have-tools.vercel.app/tools/image-resizer/): Resize images to exact pixels, keeping the aspect ratio.
 - [Image Converter](https://i-have-tools.vercel.app/tools/image-converter/): Convert between PNG, JPG and WebP — transparent → white.
 - [Image Cropper](https://i-have-tools.vercel.app/tools/image-cropper/): Crop images with drag selection and aspect presets.

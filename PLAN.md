@@ -11,6 +11,20 @@
 
 ---
 
+## Current consolidated batch — bulk image resizing (2026-11-07)
+
+1. Competitor feature research identifies a batch image resizing + ZIP workflow;
+   this is feature evidence, not verified keyword volume or a ranking guarantee.
+2. Build a real client-side bulk image resizer with proportional fit, clear size
+   and batch limits, per-file failures, unique safe archive names, ZIP download,
+   cancellation/invalidation, and transparent output-format limitations.
+3. Add search/discovery, useful static guidance, links, independent ZIP and
+   browser output tests plus mobile/accessibility and edge-case regressions.
+4. Run full checks and dependency audit; release one consolidated PR after CI and
+   preview pass, verify production, and document remaining limitations.
+
+---
+
 ## Current consolidated plan — image metadata trust and privacy (2026-11-07)
 
 1. Research real user needs in private image workflows and review the existing

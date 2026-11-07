@@ -1,6 +1,6 @@
 # iHaveTools
 
-**128 free online tools. No sign-up or file uploads.** Every tool runs
+**129 free online tools. No sign-up or file uploads.** Every tool runs
 in your browser. Optional share links contain inputs; YouTube thumbnails load from its CDN.
 
 **Live site:** https://i-have-tools.vercel.app/ (Vercel, auto-deployed from `main` on every merge)
@@ -19,6 +19,7 @@ suite enforces this.
 
 - **PDF tools** — merge, split, rotate and organize PDF pages in the browser via
   [pdf-lib](https://github.com/Hopding/pdf-lib) (bundled locally, no CDN).
+  Bulk image ZIP files use locally bundled [fflate](https://github.com/101arrowz/fflate) 0.8.2 (MIT; see `assets/vendor/FFLATE-LICENSE.txt`).
 - **Image tools** — compression, resizing, format conversion, cropping and
   EXIF inspection using the browser's own canvas and decoders.
 - **Audio / Video tools** — tone generation, audio trimming, speed/volume
@@ -98,7 +99,7 @@ The browser suite requires a working local Chromium/Chrome and its system librar
 It starts an ephemeral localhost server itself. Set `CHROMIUM_PATH` to the
 executable (or install Playwright Chromium separately); CI uses its preinstalled
 Chrome. `FULL_A11Y=1` expands the axe scan from seven representative pages to
-the homepage and all 128 tools in both themes. These automated scans do not
+the homepage and all registered tools in both themes. These automated scans do not
 replace screen-reader, real-device, cross-browser or exhaustive functional testing.
 
 Add a new tool by adding one `T({ ... })` entry to `assets/js/registry.js` and
