@@ -13,6 +13,33 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## Launch-critical stabilization pass — 2026-11-07
+
+- Shared blob download cleanup now removes a temporary anchor and revokes its
+  object URL if initiating a download throws. Success means a request was
+  initiated, not proof that the browser ultimately saved the file.
+- YouTube thumbnail input edits invalidate earlier image loads and pending
+  downloads; missing images no longer leave an indefinite loading message.
+  Automatic download failure offers an explicit open-image fallback, and copy
+  failures no longer claim success. Image hosting receives the video ID and IP.
+  Live CDN/CORS behavior and video-specific availability can vary.
+- The income tax tool explicitly labels its supported historical FY 2025–26
+  (AY 2026–27) and says it does not model Tax Year 2026–27. Equal tax outputs
+  no longer incorrectly favor a regime. This does not certify tax calculations
+  or replace professional advice; authoritative context:
+  https://www.incometax.gov.in/iec/foportal/help/all-topics/e-filing-services/objective-and-scope-new-act-faq
+- Full local check, dependency audit, DOM race/error regressions, and real
+  Chromium tests passed. The latter exercised mocked CDN downloads/errors and
+  all 129 tool mounts at 320/390px, plus automated axe initial-state scans of
+  the home page and 129 tools in both themes. Some interactive results receive
+  separate targeted scans. These do not certify physical hardware, screen
+  readers, other browsers, every user file or every tool calculation.
+- Still outstanding: actual diverse PDF/image/audio files, real devices,
+  manual assistive-technology review, and Google Search Console indexing
+  diagnosis (user's Indexing → Pages screenshot). These are follow-up evidence
+  gaps, not reasons to claim all functionality is certified. Ranking and
+  indexing depend on Google and cannot be guaranteed.
+
 ## QR and imported-data safety — 2026-11-07
 
 - QR scanner now stops camera activity, rejects late permission/bitmap results,
@@ -506,8 +533,8 @@ for background-thread termination of catastrophic backtracking.
    extraction, seeking, file size limits and downloads need manual device tests.
 3. PDF tests use generated documents; encrypted, signed, forms, attachments,
    bookmarks and unusual real-world PDFs need a fixture matrix. Image Canvas
-   tests are mocked; real output fidelity, orientation, metadata and color
-   profiles are not yet comprehensively verified.
+   has targeted real-browser output checks, but real-file fidelity, orientation,
+   metadata and color profiles are not yet comprehensively verified.
 4. All 128 tools need deeper per-tool boundary and claim verification; especially
    old finance formulas, JS/CSS/HTML semantics, timestamps, security heuristics,
    SEO generated output and real-device usability. No universal accuracy or

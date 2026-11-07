@@ -633,8 +633,8 @@ const defs = {
         btn({ label: 'Count keywords', icon: 'chart', onClick: run }),
         btn({ label: 'Download CSV', variant: 'secondary', icon: 'download', onClick: () => {
           if (!lastCsv) { status.set('Analyse some content before downloading the CSV.', 'warning'); return; }
-          downloadText(lastCsv, 'keyword-frequency.csv', 'text/csv;charset=utf-8');
-          toast('Keyword frequency CSV downloading', 'success');
+          if (!downloadText(lastCsv, 'keyword-frequency.csv', 'text/csv;charset=utf-8')) { status.set('Could not request the CSV download in this browser.', 'error'); return; }
+          status.set('CSV download requested. Check that your browser saved it.', 'info');
         } })),
       grid, out, status);
   },
@@ -643,21 +643,24 @@ const defs = {
     const inp = input({ type: 'text', class: 'input mono', placeholder: 'https://www.youtube.com/watch?v=… or a video ID' });
     const status = statusLine('Paste any YouTube link — watch, youtu.be, Shorts or embed.');
     const out = h('div', {});
-    const download = async (url, filename) => {
+    let revision = 0;
+    const download = async (url, filename, token) => {
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error('fetch failed');
         const blob = await res.blob();
-        downloadBlob(blob, filename);
-        toast('Download started', 'success');
-      } catch { window.open(url, '_blank', 'noopener'); }
+        if (token !== revision) return;
+        if (!downloadBlob(blob, filename)) throw new Error('download failed');
+        status.set('Download requested. Check that your browser saved it.', 'info');
+      } catch { if (token === revision) status.set('Could not download automatically. Use Open image and save it from the new tab.', 'warning'); }
     };
     const run = () => {
-      out.replaceChildren();
+      const token = ++revision; out.replaceChildren();
       let id;
       try { id = extractYouTubeId(inp.value); }
       catch (e) { status.set(e.message, 'error'); return; }
-      let shown = 0;
+      let shown = 0, pending = YT_THUMB_SIZES.length;
+      const done = () => { if (token !== revision) return; pending--; if (!pending && !shown) status.set('No thumbnails could be loaded. Check the video ID, availability and network.', 'warning'); };
       for (const s of YT_THUMB_SIZES) {
         const url = youtubeThumbUrl(id, s.key);
         const card = h('div', { style: 'margin-top:18px' },
@@ -666,19 +669,23 @@ const defs = {
             class: 'img-preview', src: url, alt: `YouTube thumbnail ${s.label}`, loading: 'lazy',
             onload: (e) => {
               // YouTube serves a 120×90 placeholder when a size doesn't exist.
-              if (s.w > 120 && e.target.naturalWidth <= 120) { card.remove(); return; }
-              shown += 1;
+              if (token !== revision) return;
+              if (s.w > 120 && e.target.naturalWidth <= 120) { card.remove(); done(); return; }
+              shown += 1; done();
               status.set(`Video ID ${id} — ${shown} thumbnail size${shown === 1 ? '' : 's'} available ✓`, 'success');
             },
-            onerror: () => card.remove(),
+            onerror: () => { if (token !== revision) return; card.remove(); done(); },
           }),
           h('div', { style: 'margin-top:8px;display:flex;gap:8px;flex-wrap:wrap' },
-            h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => download(url, `youtube-${id}-${s.key}.jpg`) }, 'Download JPG'),
-            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => copyText(url).then(() => toast('Thumbnail URL copied', 'success')) }, 'Copy URL')));
+            h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => download(url, `youtube-${id}-${s.key}.jpg`, token) }, 'Download JPG'),
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: async () => { const ok = await copyText(url); if (token === revision) toast(ok ? 'Thumbnail URL copied' : 'Copy failed', ok ? 'success' : 'error'); } }, 'Copy URL'),
+            h('a', { class: 'btn btn-secondary btn-sm', href: url, target: '_blank', rel: 'noopener noreferrer' }, 'Open image')));
         out.append(card);
       }
       status.set(`Loading thumbnails for video ${id}…`, 'info');
     };
+    inp.addEventListener('input', () => { revision++; out.replaceChildren(); status.set('Input changed. Get thumbnails again.', 'info'); });
+    window.addEventListener('pagehide', () => { revision++; });
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
     root.append(field({ label: 'YouTube video URL or ID', control: inp }),
       actionsRow(btn({ label: 'Get thumbnails', icon: 'film', onClick: run })), status, out,

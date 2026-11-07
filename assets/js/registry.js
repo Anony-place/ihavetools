@@ -1371,6 +1371,7 @@ export const tools = [
     popularity: 92, featured: true, added: '2026-10-31',
     steps: 'Enter your yearly gross salary and any other income.|Enter your total deductions (80C, 80D, HRA, home-loan interest) — used only by the old regime.|Compare both regimes slab by slab and see which one is cheaper for you.',
     guide: [
+      { h: 'Which tax year does this cover?', p: 'This calculator is limited to FY 2025-26 (AY 2026-27), not the current Tax Year 2026-27. Tax rules and filing terminology can change; check official guidance or consult a qualified tax professional before using an estimate for planning or filing.' },
       { h: 'New regime slabs — FY 2025-26 (Section 115BAC)',
         table: { head: ['Taxable income', 'Rate'], rows: [
           ['Up to ₹4,00,000', 'Nil'],

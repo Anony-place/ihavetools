@@ -11,6 +11,32 @@
 
 ---
 
+## Launch-critical stabilization pass (2026-11-07)
+
+**Scope and stop condition:** The site is already live. This pass prioritizes
+user-visible correctness, privacy and broken core workflows over additional
+features. Complete a single consolidated release after local checks, browser
+regressions, CI and production verification. Findings that require physical
+hardware, external indexing data, legal interpretation or extensive fixture
+matrices are documented rather than represented as complete. Optional feature
+polish is deferred; this is not a guarantee of ranking or universal correctness.
+
+1. Audit shared download handling, external thumbnail workflows, and
+   high-traffic financial labels for stale or misleading results.
+2. Fix confirmed issues and add regression tests for blocked downloads, async
+   races, user-visible failures, and outdated-period/tie clarity.
+3. Run the entire engine/DOM/integrity suite, security audit and real Chromium
+   including full initial-state accessibility scans where environment permits.
+4. Release one PR, verify preview and production, and report outstanding
+   physical-device/browser/GSC and real-world file gaps without overstating.
+
+Initial rough estimate to user: 3–6 active working hours for the targeted pass
+if no new critical issues arise; full deep certification takes longer and needs
+real devices. SEO impact cannot be promised on a schedule. Estimate is not an
+SLA and depends on CI/deployment and what the audit uncovers.
+
+---
+
 ## Current consolidated batch — QR and imported-data safety (2026-11-07)
 
 1. Audit QR generation, image scanning and camera lifecycle alongside CSV file
