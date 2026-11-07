@@ -1122,6 +1122,24 @@ await domTest('image tools accept picker and drop, clear stale results, and refu
   } finally { global.Image=originalImage; URL.createObjectURL=originalCreate; URL.revokeObjectURL=originalRevoke; canvas.getContext=getContext; canvas.toBlob=toBlob; }
 });
 
+await domTest('bulk image resizer rejects invalid batches and cancels stale image loads', async () => {
+  const oldImage=global.Image, create=URL.createObjectURL, revoke=URL.revokeObjectURL; const pending=[];
+  global.Image=class {constructor(){this.naturalWidth=80;this.naturalHeight=40;} set src(v){pending.push(this);}};
+  URL.createObjectURL=()=> 'blob:test'; URL.revokeObjectURL=()=>{};
+  try {
+    const app=await loadToolPage('bulk-image-resizer','image');
+    const file=new File([new Uint8Array([255,216,255,217])],'photo.jpg',{type:'image/jpeg'});
+    const send=files=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files}});app.querySelector('.dropzone').dispatchEvent(e);};
+    send(Array(21).fill(file)); assert.match(app.textContent,/at most 20 images/);
+    send([file]); const nums=app.querySelectorAll('input[type=number]'); nums[0].value='0'; click(btnByLabel(app,'Resize images')); assert.match(app.textContent,/whole numbers from 1 to 4096/);
+    nums[0].value='100'; click(btnByLabel(app,'Resize images'));
+    for (let i=0;i<30 && !pending.length;i++) await new Promise(r=>setTimeout(r,10));
+    assert.equal(pending.length,1,'image load should be in progress');
+    click(btnByLabel(app,'Cancel')); pending[0].onload(); await new Promise(r=>setTimeout(r,20));
+    assert.match(app.textContent,/Cancelled/); assert.equal(btnByLabel(app,'Download ZIP').disabled,true);
+  } finally {global.Image=oldImage; URL.createObjectURL=create; URL.revokeObjectURL=revoke;}
+});
+
 await domTest('metadata viewer warns about incomplete inspection and does not claim absence', async () => {
   const oldImage=global.Image, create=URL.createObjectURL, revoke=URL.revokeObjectURL;
   global.Image=class {constructor(){this.naturalWidth=1;this.naturalHeight=1;} set src(v){queueMicrotask(()=>this.onload());}};
@@ -1155,7 +1173,7 @@ await domTest('image resizer invalidates stale encodes, revokes previews and bou
 });
 
 console.log('\n── All registered tool UI mount smoke test ──');
-await domTest('all 128 registered tools mount in jsdom',async()=>{
+await domTest('all registered tools mount in jsdom',async()=>{
  const {tools}=await import('../assets/js/registry.js'); const issues=[];
  for (const tool of tools) {try {const app=await loadToolPage(tool.id,tool.engine); assert.doesNotMatch(app.textContent,/Something went wrong while starting this tool\.|This tool could not load\./);} catch(e){issues.push(`${tool.id}: ${e.message}`);}}
  assert.deepEqual(issues,[]);

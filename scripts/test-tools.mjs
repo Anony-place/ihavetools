@@ -1501,6 +1501,17 @@ await test('quality clamped', () => {
   assert.equal(img.clampQuality(1000), 1);
   assert.equal(img.clampQuality(-5), 0.05);
 });
+await test('bulk fit, output filenames, search and discovery', () => {
+  assert.deepEqual(img.fitInside(2400,1200,1200,1200), {width:1200,height:600});
+  assert.deepEqual(img.fitInside(300,200,1200,1200), {width:300,height:200});
+  assert.deepEqual(img.fitInside(300,200,1200,1200,true), {width:1200,height:800});
+  assert.deepEqual(img.fitInside(10000,1,1,1), {width:1,height:1});
+  assert.throws(() => img.fitInside(10,10,0,100), /positive whole/);
+  assert.equal(img.batchFilename('../test.png', 1, 'jpeg'), '001-_test.jpg');
+  assert.notEqual(img.batchFilename('x.png', 1, 'png'), img.batchFilename('x.png', 2, 'png'));
+  assert.ok(registry.searchTools('bulk image resizer', 20).some(t => t.id === 'bulk-image-resizer'));
+  assert.ok(registry.tools.filter(t => registry.relatedTools(t,6).some(r => r.id === 'bulk-image-resizer')).length >= 3);
+});
 await test('JPEG EXIF parsed from crafted buffer', () => {
   // craft minimal JPEG with EXIF: Make="TestCam", Model="T1", Orientation=6
   const tiff = Buffer.alloc(8 + 2 + 12 * 3 + 4 + 20);
@@ -1642,8 +1653,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 128);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 78);
+  assert.equal(registry.tools.length, 129);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 79);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

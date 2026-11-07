@@ -13,6 +13,31 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## Bulk image resizer — 2026-11-07
+
+- Added a client-side bulk resizer with proportional fit, no-enlarge default,
+  JPEG/PNG/WebP output and ZIP download. Up to 20 input files (20 MiB each,
+  100 MiB total); successful encoded output is capped at 50 MiB. Maximum box
+  is 4096 × 4096; decoding can allocate memory before dimensions are known.
+- Outputs are sequential, numbered to avoid filename collisions; individual
+  errors are listed and only successful files enter the ZIP. Settings, new
+  selection, cancellation and pagehide invalidate a pending or completed ZIP.
+  JPEG uses a white background; canvas can remove metadata and animation.
+  ZIP stores encoded images without extra compression; files may grow, and
+  results are not guaranteed identical dimensions or metadata-free.
+- Research observed batch ZIP and local processing features at
+  https://www.picssizer.com/bulk-image-compressor and https://resizeimage.io/ ;
+  competitor features do not establish actual search demand or rank potential.
+- New tests cover fit maths, filename safety, discovery, input limits, pending
+  load cancellation, and real Chromium ZIP extraction using Python zipfile,
+  per-file errors, encoded dimensions, invalidation and mobile axe checks.
+  `npm run check`: 229 engine, 143 DOM, 9 chrome, service worker and 21 integrity
+  checks pass; npm audit reports zero vulnerabilities. Real-browser coverage is
+  run in CI; physical devices, all browser codecs, large real-world files,
+  screen readers and exhaustiveness remain unverified.
+- ZIP writer: fflate 0.8.2, MIT licensed and bundled locally under assets/vendor;
+  see FFLATE-LICENSE.txt. It loads only when the batch workflow runs.
+
 ## Image metadata trust and sitemap dates — 2026-11-07
 
 - Reviewed private image workflows: batch processing and local handling are
