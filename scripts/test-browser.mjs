@@ -104,6 +104,33 @@ try {
   const metadata = await sharp(image).metadata();
   assert.equal(metadata.width, 8); assert.equal(metadata.height, 7); assert.equal(metadata.format, 'png');
   console.log('✓ actual canvas conversion and PNG download');
+  await page.setViewportSize({width:320,height:844});
+  await go('image-cropper');
+  const raw=Buffer.alloc(80*40*4);
+  for(let y=0;y<40;y++) for(let x=0;x<80;x++){const i=(y*80+x)*4; raw[i]=x<40?255:0; raw[i+2]=x<40?0:255; raw[i+3]=255;}
+  const cropSource=await sharp(raw,{raw:{width:80,height:40,channels:4}}).png().toBuffer();
+  const cropFile={name:'colors.png',mimeType:'image/png',buffer:cropSource};
+  await page.locator('#tool-app input[type=file]').setInputFiles(cropFile);
+  await page.locator('#tool-app .status-line').getByText(/Loaded/).waitFor();
+  assert.equal(await page.getByLabel('Crop width (px)').inputValue(),'80');
+  await page.getByLabel('Left (px)').fill('30'); await page.getByLabel('Top (px)').fill('10');
+  await page.getByLabel('Crop width (px)').fill('20'); await page.getByLabel('Crop height (px)').fill('10');
+  const cropAxe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
+  assert.deepEqual(cropAxe.violations.map(v=>v.id),[],'crop editor accessibility');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'crop editor fits mobile');
+  await page.getByRole('button',{name:'Crop',exact:true}).click();
+  let cropDownload=page.waitForEvent('download'); await page.getByRole('button',{name:/Download 20 × 10 PNG/}).click();
+  let cropData=await sharp(await readFile(await (await cropDownload).path())).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  assert.deepEqual([cropData.info.width,cropData.info.height],[20,10]);
+  assert.deepEqual([...cropData.data.subarray(0,4)],[255,0,0,255]); assert.deepEqual([...cropData.data.subarray(19*4,20*4)],[0,0,255,255]);
+  await page.getByLabel('Left (px)').fill('70'); await page.getByRole('button',{name:'Crop',exact:true}).click();
+  assert.match(await page.locator('#tool-app .status-line').innerText(),/within the image/); assert.equal(await page.locator('#tool-app .img-preview').count(),0);
+  await page.locator('#tool-app input[type=file]').setInputFiles(cropFile);
+  await page.locator('#tool-app .status-line').getByText(/Loaded/).waitFor(); assert.equal(await page.getByLabel('Left (px)').inputValue(),'0');
+  await page.getByRole('button',{name:'1:1',exact:true}).click(); assert.equal(await page.getByLabel('Crop width (px)').inputValue(),'40');
+  await page.getByRole('button',{name:'Crop',exact:true}).click(); cropDownload=page.waitForEvent('download'); await page.getByRole('button',{name:/Download 40 × 40 PNG/}).click();
+  cropData=await sharp(await readFile(await (await cropDownload).path())).metadata(); assert.deepEqual([cropData.width,cropData.height],[40,40]);
+  console.log('✓ numeric image crop output pixels, presets, validation, same-file reload and mobile accessibility');
 
   // A decoded JPEG without EXIF must not be described as metadata-free.
   await page.setViewportSize({ width: 320, height: 844 });

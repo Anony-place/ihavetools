@@ -77,7 +77,7 @@
 - [Bulk Image Resizer & Compressor](https://i-have-tools.vercel.app/tools/bulk-image-resizer/): Resize or compress a batch of images locally and download a ZIP.
 - [Image Resizer](https://i-have-tools.vercel.app/tools/image-resizer/): Resize images to exact pixels, keeping the aspect ratio.
 - [Image Converter](https://i-have-tools.vercel.app/tools/image-converter/): Convert between PNG, JPG and WebP — transparent → white.
-- [Image Cropper](https://i-have-tools.vercel.app/tools/image-cropper/): Crop images with drag selection and aspect presets.
+- [Image Cropper](https://i-have-tools.vercel.app/tools/image-cropper/): Crop images with pixel coordinates or drag selection.
 - [Image Metadata Viewer](https://i-have-tools.vercel.app/tools/image-metadata-viewer/): Inspect EXIF data and PNG chunks — fully offline.
 - [Color Picker](https://i-have-tools.vercel.app/tools/color-picker/): Pick colors, get every format, plus tints and shades.
 - [HEX / RGB / HSL Converter](https://i-have-tools.vercel.app/tools/hex-rgb-converter/): Convert colors between HEX, RGB and HSL — both ways.

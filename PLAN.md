@@ -11,6 +11,19 @@
 
 ---
 
+## Current consolidated batch — image editing integrity and crop accessibility (2026-11-07)
+
+1. Audit single-image compressor, resizer, converter, cropper and metadata viewer
+   for stale results, oversized selection rejection, async races and reselection.
+2. Clear stale previews and pending work; add a keyboard-operable pixel-coordinate
+   crop workflow alongside pointer selection, with explicit bounds validation.
+3. Test actual crop pixels, coordinates, mobile/axe, same-file reload, invalid
+   inputs and race/rejection behavior; document limits and privacy honestly.
+4. Run checks and dependency audit, review the changes and deliver one PR only
+   after CI and preview pass, then verify production. No ranking guarantees.
+
+---
+
 ## Current consolidated batch — audio and media workflow integrity (2026-11-07)
 
 1. Audit audio and MP4 selection, async decoding, playback lifecycle and WAV

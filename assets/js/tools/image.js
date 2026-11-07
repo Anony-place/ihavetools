@@ -277,7 +277,8 @@ function downloadImage(blob, name) {
 // assigned a dropped FileList reliably, so pass files through a custom event.
 function imageZone(options) {
   let zone;
-  zone = dropzone({ ...options, onFiles: (files) => zone.dispatchEvent(new window.CustomEvent('iht-files', { detail: files })), onReject: () => zone.dispatchEvent(new window.CustomEvent('iht-rejected')) });
+  zone = dropzone({ ...options, onFiles: (files) => { zone.dispatchEvent(new window.CustomEvent('iht-files', { detail: files })); zone.querySelector('input[type=file]').value = ''; }, onReject: () => zone.dispatchEvent(new window.CustomEvent('iht-rejected')) });
+  zone.resetSelectionUI = () => { zone.replaceChildren(h('span', { class: 'dz-title', text: options.title || 'Choose an image' }), zone.querySelector('input[type=file]')); zone.clear(); };
   return zone;
 }
 
@@ -303,9 +304,12 @@ const defs = {
       status.set(`Loaded ${f.name} (${fmtBytes(f.size)}). Adjust options, then Compress.`, 'info');
     };
     zone.addEventListener('iht-files', (e) => { if (e.detail[0]) origHook(e.detail[0]); });
+    zone.addEventListener('iht-rejected', () => { revision++; file = null; lastBlob = null; grid.replaceChildren(); previews.clear(); zone.resetSelectionUI(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
+    window.addEventListener('pagehide', () => { revision++; previews.clear(); }, { once: true });
     [quality, fmtSel, maxW].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; grid.replaceChildren(); previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file) { status.set('Choose an image first.', 'warning'); return; }
+      previews.clear(); grid.replaceChildren();
       status.set('Compressing…', 'info');
       const selected = file, token = ++revision;
       try {
@@ -489,10 +493,12 @@ const defs = {
     const preview = h('div', {}), previews = previewManager(preview);
     let revision = 0, selectionRevision = 0;
     let file = null, img = null, lastBlob = null;
+    zone.addEventListener('iht-rejected', () => { revision++; selectionRevision++; file = null; img = null; lastBlob = null; info.textContent = ''; wIn.placeholder = 'width'; hIn.placeholder = 'height'; previews.clear(); zone.resetSelectionUI(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
+    window.addEventListener('pagehide', () => { revision++; selectionRevision++; previews.clear(); }, { once: true });
     zone.addEventListener('iht-files', async (e) => {
       const f = e.detail[0];
       if (!f) return;
-      const loadToken = ++selectionRevision; revision++; file = f; img = null; lastBlob = null; previews.clear(); info.textContent = '';
+      const loadToken = ++selectionRevision; revision++; file = f; img = null; lastBlob = null; previews.clear(); info.textContent = ''; wIn.placeholder = 'width'; hIn.placeholder = 'height';
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       try {
@@ -514,6 +520,7 @@ const defs = {
     [wIn, hIn, pctIn, fmtSel, lock].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
+      previews.clear();
       status.set('Resizing…', 'info');
       const selected = file, format = fmtSel.value, token = ++revision;
       try {
@@ -564,6 +571,8 @@ const defs = {
     const preview = h('div', {}), previews = previewManager(preview);
     let revision = 0, selectionRevision = 0;
     let file = null, lastBlob = null;
+    zone.addEventListener('iht-rejected', () => { revision++; selectionRevision++; file = null; lastBlob = null; info.textContent = ''; previews.clear(); zone.resetSelectionUI(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
+    window.addEventListener('pagehide', () => { revision++; selectionRevision++; previews.clear(); }, { once: true });
     zone.addEventListener('iht-files', async (e) => {
       const f = e.detail[0];
       if (!f) return;
@@ -580,6 +589,7 @@ const defs = {
     [fmtSel, bgPicker].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file) { status.set('Choose an image first.', 'warning'); return; }
+      previews.clear();
       status.set('Converting…', 'info');
       const selected = file, format = fmtSel.value, token = ++revision;
       try {
@@ -619,18 +629,46 @@ const defs = {
   'image-cropper'(root) {
     const zone = imageZone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'Cropped locally — never uploaded' });
     const aspect = segControl({ options: [{ v: 'free', t: 'Free' }, { v: '1', t: '1:1' }, { v: '4/3', t: '4:3' }, { v: '16/9', t: '16:9' }], value: 'free', ariaLabel: 'Aspect ratio' });
-    const status = statusLine('Choose an image, then drag a selection on the preview.');
+    const status = statusLine('Choose an image, then drag a selection or enter crop coordinates.');
+    const xIn = input({ type: 'number', min: 0, step: 1 });
+    const yIn = input({ type: 'number', min: 0, step: 1 });
+    const widthIn = input({ type: 'number', min: 1, step: 1 });
+    const heightIn = input({ type: 'number', min: 1, step: 1 });
+    const coords = [xIn, yIn, widthIn, heightIn];
     const stage = h('div', { class: 'cropper-stage' });
     const canvas = document.createElement('canvas');
     stage.append(canvas);
     const preview = h('div', {}), previews = previewManager(preview);
     let revision = 0, selectionRevision = 0;
     let file = null, img = null, sel = null, dragging = false, startX = 0, startY = 0;
-    let dispScale = 1;
+    let scaleX = 1, scaleY = 1;
+    const clearCrop = () => { coords.forEach(el => { el.value = ''; }); canvas.width = 0; canvas.height = 0; sel = null; dragging = false; };
+    zone.addEventListener('iht-rejected', () => { revision++; selectionRevision++; file = null; img = null; clearCrop(); previews.clear(); zone.resetSelectionUI(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
+    window.addEventListener('pagehide', () => { revision++; selectionRevision++; previews.clear(); }, { once: true });
+    const fromFields = () => {
+      if (!img || coords.some(el => el.value.trim() === '')) return null;
+      const [x, y, w, h] = coords.map(el => Number(el.value));
+      if (![x,y,w,h].every(Number.isSafeInteger) || x < 0 || y < 0 || w < 1 || h < 1 || x + w > img.naturalWidth || y + h > img.naturalHeight) return null;
+      return { x, y, w, h };
+    };
+    const showFields = () => {
+      if (!sel || !img) return;
+      const x = Math.max(0, Math.min(img.naturalWidth - 1, Math.round(sel.x / scaleX)));
+      const y = Math.max(0, Math.min(img.naturalHeight - 1, Math.round(sel.y / scaleY)));
+      const w = Math.max(1, Math.min(img.naturalWidth - x, Math.round(sel.w / scaleX)));
+      const h = Math.max(1, Math.min(img.naturalHeight - y, Math.round(sel.h / scaleY)));
+      [x,y,w,h].forEach((v,i) => { coords[i].value = String(v); });
+      sel = { x:x*scaleX, y:y*scaleY, w:w*scaleX, h:h*scaleY };
+    };
+    coords.forEach(el => el.addEventListener('input', () => {
+      revision++; previews.clear(); const c = fromFields();
+      sel = c ? { x:c.x*scaleX, y:c.y*scaleY, w:c.w*scaleX, h:c.h*scaleY } : null;
+      draw(); status.set(c ? 'Coordinates updated. Crop to create a new output.' : 'Enter whole-number coordinates within the image.', c ? 'info' : 'warning');
+    }));
     zone.addEventListener('iht-files', async (e) => {
       const f = e.detail[0];
       if (!f) return;
-      const loadToken = ++selectionRevision; revision++; file = f; img = null; sel = null; previews.clear(); canvas.width = 0; canvas.height = 0;
+      const loadToken = ++selectionRevision; revision++; file = f; img = null; sel = null; previews.clear(); clearCrop();
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       try {
@@ -639,12 +677,12 @@ const defs = {
         if (file !== f || selectionRevision !== loadToken) return;
         img = loaded;
         if (!img.naturalWidth || !img.naturalHeight) throw new Error('Image dimensions could not be read.');
-        dispScale = Math.min(1, 900 / img.naturalWidth, 900 / img.naturalHeight);
-        canvas.width = Math.max(1, Math.round(img.naturalWidth * dispScale));
-        canvas.height = Math.max(1, Math.round(img.naturalHeight * dispScale));
-        draw();
-        sel = null;
-        status.set(`Loaded ${img.naturalWidth} × ${img.naturalHeight} px. Drag on the image to select a crop area.`, 'info');
+        const scale = Math.min(1, 900 / img.naturalWidth, 900 / img.naturalHeight);
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        scaleX = canvas.width / img.naturalWidth; scaleY = canvas.height / img.naturalHeight;
+        sel = { x:0, y:0, w:canvas.width, h:canvas.height }; showFields(); draw();
+        status.set(`Loaded ${img.naturalWidth} × ${img.naturalHeight} px. Drag or enter pixel coordinates.`, 'info');
       } catch (err) { if (file === f && selectionRevision === loadToken) { file = null; img = null; status.set(err.message, 'error'); } }
     });
     function draw() {
@@ -655,7 +693,7 @@ const defs = {
       if (sel) {
         ctx.fillStyle = 'rgba(8,10,16,0.55)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, sel.x / dispScale, sel.y / dispScale, sel.w / dispScale, sel.h / dispScale, sel.x, sel.y, sel.w, sel.h);
+        ctx.drawImage(img, sel.x / scaleX, sel.y / scaleY, sel.w / scaleX, sel.h / scaleY, sel.x, sel.y, sel.w, sel.h);
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1.5;
         ctx.strokeRect(sel.x + 0.5, sel.y + 0.5, sel.w, sel.h);
@@ -664,7 +702,7 @@ const defs = {
     function applyAspect(s) {
       if (!img || !s || aspect.getValue() === 'free') return s;
       const [rw, rh] = aspect.getValue() === '1' ? [1, 1] : aspect.getValue().split('/').map(Number);
-      const ratio = rw / rh;
+      const ratio = (rw / rh) * scaleX / scaleY;
       let w = s.w, hh = Math.round(w / ratio);
       if (hh > s.h) { hh = s.h; w = Math.round(hh * ratio); }
       return { ...s, w, h: hh };
@@ -694,25 +732,24 @@ const defs = {
     });
     canvas.addEventListener('pointerup', () => {
       dragging = false;
-      if (sel && (sel.w < 4 || sel.h < 4)) { sel = null; draw(); return; }
-      if (sel) status.set(`Selection: ${Math.round(sel.w / dispScale)} × ${Math.round(sel.h / dispScale)} px. Click Crop to cut it.`, 'info');
+      if (sel && (sel.w < 4 || sel.h < 4)) { sel = null; coords.forEach(el => { el.value = ''; }); draw(); status.set('Selection is too small. Drag again or enter coordinates.', 'warning'); return; }
+      if (sel) { showFields(); draw(); status.set(`Selection: ${widthIn.value} × ${heightIn.value} px. Click Crop to cut it.`, 'info'); }
     });
-    aspect.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setTimeout(() => {
-      if (sel && img) {
-        sel = applyAspect(sel);
-        sel.x = Math.min(sel.x, canvas.width - sel.w);
-        sel.y = Math.min(sel.y, canvas.height - sel.h);
-        draw();
-      }
-    }, 0)));
-    [aspect].forEach((el) => { for (const type of ['click']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
+    canvas.addEventListener('pointercancel', () => { dragging = false; sel = null; coords.forEach(el => { el.value = ''; }); revision++; previews.clear(); draw(); status.set('Selection cancelled. Drag again or enter coordinates.', 'info'); });
+    aspect.addEventListener('click', () => {
+      revision++; previews.clear();
+      if (sel && img) { sel = applyAspect(sel); sel.x = Math.min(sel.x, canvas.width - sel.w); sel.y = Math.min(sel.y, canvas.height - sel.h); showFields(); draw(); }
+      status.set('Aspect applied to the current selection. Crop to create a new output.', 'info');
+    });
     const run = async () => {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
-      if (!sel || sel.w < 4 || sel.h < 4) { status.set('Drag a selection on the image first.', 'warning'); return; }
+      previews.clear();
+      const crop = fromFields();
+      if (!crop) { status.set('Enter whole-number coordinates within the image, with positive width and height.', 'warning'); return; }
       status.set('Cropping…', 'info');
       const selected = file, token = ++revision;
       try {
-        const sx = sel.x / dispScale, sy = sel.y / dispScale, sw = sel.w / dispScale, sh = sel.h / dispScale;
+        const { x:sx, y:sy, w:sw, h:sh } = crop;
         const out = document.createElement('canvas');
         const width = Math.max(1, Math.round(sw)), height = Math.max(1, Math.round(sh));
         validateCanvasSize(width, height);
@@ -727,6 +764,8 @@ const defs = {
       } catch (e) { if (file === selected && revision === token) status.set(e.message, 'error'); }
     };
     root.append(zone, h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' }, field({ label: 'Aspect ratio', control: aspect })),
+      h('p', { class: 'hint', text: 'Drag the preview or enter pixel coordinates from the top-left corner. Aspect buttons adjust the current selection; manual coordinates can use any ratio.' }),
+      h('div', { class: 'field-row' }, field({ label: 'Left (px)', control: xIn }), field({ label: 'Top (px)', control: yIn }), field({ label: 'Crop width (px)', control: widthIn }), field({ label: 'Crop height (px)', control: heightIn })),
       actionsRow(btn({ label: 'Crop', icon: 'crop', onClick: run })),
       status, h('br'), stage, preview,
       privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
@@ -737,6 +776,8 @@ const defs = {
     const status = statusLine('Everything is decoded in your browser.');
     const out = h('div', { class: 'tool-docs', style: 'margin-top:16px' });
     let currentFile = null, revision = 0;
+    zone.addEventListener('iht-rejected', () => { revision++; currentFile = null; out.replaceChildren(); zone.resetSelectionUI(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
+    window.addEventListener('pagehide', () => { revision++; }, { once: true });
     zone.addEventListener('iht-files', async (e) => {
       const f = e.detail[0];
       if (!f) return;
