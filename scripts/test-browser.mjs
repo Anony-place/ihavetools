@@ -65,6 +65,40 @@ try {
   assert.match((await readFile(await (await jsonDownload).path())).toString(), /9007199254740993/);
   console.log('✓ JSON format and actual download preserve numeric token');
 
+  await go('html-live-preview');
+  const htmlCode = page.locator('#tool-app textarea');
+  const htmlFrame = page.frameLocator('#tool-app iframe');
+  await htmlFrame.getByRole('heading', { name: 'Hello, world!' }).waitFor();
+  await htmlFrame.getByRole('button', { name: 'Click me' }).click();
+  assert.equal(await htmlFrame.locator('p').innerText(), 'JavaScript works!');
+  const popupPromise = page.waitForEvent('popup');
+  await page.getByRole('link', { name: /Open full-window preview/ }).click();
+  const preview = await popupPromise;
+  const fullFrame = preview.frameLocator('iframe');
+  await fullFrame.getByRole('heading', { name: 'Hello, world!' }).waitFor();
+  assert.equal(await preview.locator('iframe').getAttribute('sandbox'), 'allow-scripts');
+  assert.ok(!preview.url().includes('Hello'));
+  await htmlCode.fill(`<h1>Updated</h1><p id="result"></p><script>try { parent.document.body.dataset.intruded = 'yes'; } catch(e) { document.querySelector('#result').textContent = 'isolated'; }<\/script>`);
+  await htmlFrame.getByRole('heading', { name: 'Updated' }).waitFor();
+  await fullFrame.getByRole('heading', { name: 'Updated' }).waitFor();
+  assert.equal(await htmlFrame.locator('#result').innerText(), 'isolated');
+  assert.equal(await fullFrame.locator('#result').innerText(), 'isolated');
+  assert.equal(await page.locator('body').getAttribute('data-intruded'), null);
+  await page.locator('#tool-app label.switch').click();
+  await htmlCode.fill('<h1>Paused edit</h1>');
+  await page.waitForTimeout(600);
+  assert.equal(await fullFrame.locator('h1').innerText(), 'Updated');
+  await page.getByRole('button', { name: 'Run preview', exact: true }).click();
+  await fullFrame.getByRole('heading', { name: 'Paused edit' }).waitFor();
+  await page.getByRole('button', { name: 'Stop preview' }).click();
+  await preview.waitForFunction(() => document.querySelector('iframe').srcdoc === '');
+  await htmlCode.fill('x'.repeat(200001));
+  await page.getByRole('button', { name: 'Run preview', exact: true }).click();
+  assert.match(await page.locator('#tool-app .status-line').innerText(), /200,000/);
+  assert.equal(await page.locator('#tool-app iframe').getAttribute('srcdoc'), '');
+  await preview.close();
+  console.log('✓ HTML preview scripts, isolation, full-window sync, pause and size limit');
+
   await go('scientific-calculator');
   await page.locator('#tool-app input[type=text]').fill('sin(90)');
   await page.locator('#tool-app button').filter({hasText: 'Calculate'}).click();
@@ -437,7 +471,7 @@ try {
   // evidence only, not a substitute for keyboard and screen-reader reviews.
   await page.setViewportSize({ width: 390, height: 844 });
   for (const theme of ['light', 'dark']) {
-    const routes = process.env.FULL_A11Y === '1' ? ['', ...tools.map(tool => `tools/${tool.id}/`)] : ['', 'tools/json-formatter/', 'tools/uuid-generator/', 'tools/qr-code-generator/', 'tools/pdf-merge/', 'tools/scientific-calculator/', 'tools/spin-wheel/'];
+    const routes = process.env.FULL_A11Y === '1' ? ['', ...tools.map(tool => `tools/${tool.id}/`)] : ['', 'tools/json-formatter/', 'tools/html-live-preview/', 'tools/uuid-generator/', 'tools/qr-code-generator/', 'tools/pdf-merge/', 'tools/scientific-calculator/', 'tools/spin-wheel/'];
     for (const route of routes) {
       await page.goto(`${base}/${route}`);
       if (route) await page.waitForSelector('#tool-app > *');

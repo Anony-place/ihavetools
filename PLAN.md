@@ -11,6 +11,22 @@
 
 ---
 
+## Current batch — Live HTML playground (2026-11-07)
+
+1. Build a developer-facing HTML editor with live HTML/CSS/JavaScript preview,
+   manual run, stop, reset and responsive layout. Never inject user code into
+   the site's own DOM: use a scripts-only opaque-origin sandboxed iframe.
+2. Add a full-window preview in a new tab, live-synchronized from the editor
+   using an ephemeral random same-origin channel; never put code in a URL or
+   storage. Gracefully explain browsers without channel support.
+3. Document network, iframe restrictions, unsaved work and runaway-script
+   limitations; no claim the sandbox is a complete security boundary.
+4. Add unit/DOM and real-browser tests for live updates, JS, sandbox isolation,
+   new-tab synchronization, pause/stop/reset, limits, mobile and accessibility;
+   run checks/audit and release in one PR after CI/preview and production verify.
+
+---
+
 ## Launch-critical stabilization pass (2026-11-07)
 
 **Scope and stop condition:** The site is already live. This pass prioritizes

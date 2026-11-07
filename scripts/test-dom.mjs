@@ -1581,6 +1581,16 @@ await domTest('math results are invalidated after changing input', async () => {
  for (const [id,initial,label] of [['average-calculator','1,2,3','Calculate'],['gcd-lcm-calculator','12,18','Calculate GCD'],['weighted-average-calculator','80,3\n90,2','Calculate weighted']]) {const app=await loadToolPage(id,'math'), inp=app.querySelector('textarea,input[type=text]'); inp.value=initial; click(btnByLabel(app,label)); assert.ok(app.querySelector('.stat-card')); inp.value='4'; fire(inp,'input'); assert.equal(app.querySelector('.stat-card'),null);}
 });
 
+await domTest('HTML preview runs, pauses, clears oversized code and handles unsupported sync', async () => {
+ const app=await loadToolPage('html-live-preview','developer'), code=app.querySelector('textarea'), frame=app.querySelector('iframe'), live=app.querySelector('input[type=checkbox]');
+ assert.equal(frame.getAttribute('sandbox'),'allow-scripts'); assert.equal(frame.getAttribute('referrerpolicy'),'no-referrer');
+ assert.match(frame.srcdoc,/Hello, world/); assert.equal(app.querySelector('.html-preview-open').hidden,true);
+ live.checked=false; fire(live,'change'); code.value='<h1>Manual</h1>'; fire(code,'input'); assert.match(frame.srcdoc,/Hello, world/);
+ click(btnByLabel(app,'Run preview')); assert.equal(frame.srcdoc,'<h1>Manual</h1>');
+ code.value='x'.repeat(200001); click(btnByLabel(app,'Run preview')); assert.equal(frame.srcdoc,''); assert.match(statusText(document),/200,000/);
+ code.value='<p>new</p>'; click(btnByLabel(app,'Run preview')); click(btnByLabel(app,'Stop preview')); assert.equal(frame.srcdoc,''); assert.equal(live.checked,false);
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);

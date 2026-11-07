@@ -110,7 +110,7 @@ console.log('\n── SEO metadata ──');
 test('every page has unique title & description, canonical, OG tags', () => {
   const titles = new Set(), descs = new Set();
   for (const file of htmlFiles) {
-    if (file.endsWith('404.html') || file.endsWith('offline.html')) continue; // utility pages are noindex, not landing pages
+    if (file.endsWith('404.html') || file.endsWith('offline.html') || file.endsWith('/assets/html-preview.html')) continue; // utility pages are noindex, not landing pages
     const html = readFileSync(file, 'utf8');
     const title = /<title>([^<]+)<\/title>/.exec(html)?.[1];
     const desc = /<meta name="description" content="([^"]*)"/.exec(html)?.[1];
@@ -130,6 +130,7 @@ test('every page has unique title & description, canonical, OG tags', () => {
 });
 test('heading hierarchy: one h1 per page, logical h2/h3', () => {
   for (const file of htmlFiles) {
+    if (file.endsWith('/assets/html-preview.html')) { assert.match(readFileSync(file, 'utf8'), /name="robots" content="noindex, nofollow"/); continue; }
     const html = readFileSync(file, 'utf8');
     const h1s = (html.match(/<h1[ >]/g) || []).length;
     assert.ok(h1s === 1, `${rel(file)} has ${h1s} h1 elements`);

@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 129 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 130 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -21,6 +21,7 @@
 - [Miscellaneous tools](https://i-have-tools.vercel.app/categories/misc/): Useful tools that do not fit a neat box — starting with cryptographically random numbers.
 
 ## Tools
+- [Live HTML Editor & Preview](https://i-have-tools.vercel.app/tools/html-live-preview/): Edit HTML, CSS and JavaScript with a live sandboxed preview.
 - [JSON Formatter](https://i-have-tools.vercel.app/tools/json-formatter/): Format, validate and minify JSON with precise error messages.
 - [JSON Validator](https://i-have-tools.vercel.app/tools/json-validator/): Check JSON syntax and get the exact line and column of errors.
 - [JSON Minifier](https://i-have-tools.vercel.app/tools/json-minifier/): Strip whitespace from JSON and see how many bytes you saved.

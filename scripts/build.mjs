@@ -33,6 +33,7 @@ function write(relPath, content) {
 }
 
 function privacyFor(tool) {
+  if (tool.privacyOverride) return tool.privacyOverride;
   const cats = tool.categories;
   if (tool.id === 'youtube-thumbnail-downloader') return 'Thumbnail images load from YouTube’s image CDN, which receives your IP address and the requested video ID.';
   if (tool.engine === 'image' || tool.engine === 'pdf') {
@@ -308,7 +309,7 @@ function buildHome() {
 <section class="section tint" id="about">
   <div class="container">
     <div class="privacy-strip">
-      <div class="strip-item">${icon('shield-check')}<div><h3>Private by design</h3><p>Most tools process inputs on your device. Share links can expose values, and YouTube thumbnails load from its CDN. See our Privacy Policy.</p></div></div>
+      <div class="strip-item">${icon('shield-check')}<div><h3>Private by design</h3><p>Most tools process inputs on your device. Share links can expose values; YouTube thumbnails and code run in the HTML preview can contact external services. See our Privacy Policy.</p></div></div>
       <div class="strip-item">${icon('zap')}<div><h3>Fast and dependency-free</h3><p>No frameworks, no trackers on tool pages, no waiting. Pages are static and open instantly, even on slow connections.</p></div></div>
       <div class="strip-item">${icon('check-circle')}<div><h3>Honest tools only</h3><p>Every tool listed here genuinely works — no half-finished stubs, no fake buttons, no empty categories.</p></div></div>
     </div>
@@ -484,7 +485,7 @@ ${body}
     <section><h2>What is iHaveTools?</h2>
     <p>iHaveTools is a collection of ${tools.length} free online tools for everyday work: calculators, converters, text and image utilities, PDF tools and developer helpers. Every tool works instantly in your web browser — there is no account to create, nothing to install and nothing to pay.</p></section>
     <section><h2>How it works — and why your data stays private</h2>
-    <p>Unlike most tool sites, iHaveTools has no server that processes your work. When you compress an image, merge a PDF or format JSON here, the computation happens on your own device using built-in browser technology (Canvas, Web Audio, Web Crypto and pdf-lib). Selected files and text are processed locally by these tools. Some optional links contain entered calculator values, and the YouTube thumbnail tool contacts YouTube’s CDN. Previously visited tools can work offline when their required files have been cached; some features require browser or device support.</p></section>
+    <p>Unlike most tool sites, iHaveTools has no server that processes your work. When you compress an image, merge a PDF or format JSON here, the computation happens on your own device using built-in browser technology (Canvas, Web Audio, Web Crypto and pdf-lib). Selected files and text are processed locally by these tools. Some optional links contain entered calculator values, the YouTube thumbnail tool contacts YouTube’s CDN, and code in the HTML preview can contact external services. Previously visited tools can work offline when their required files have been cached; some features require browser or device support.</p></section>
     <section><h2>Our principles</h2>
     <ul>
       <li><strong>Private by design</strong> — processing is primarily local; sharing and external services have exceptions. See the <a href="/privacy-policy/">Privacy Policy</a>.</li>
@@ -503,7 +504,7 @@ ${body}
       body: `
     <section><h2>What data the tools process</h2>
     <p>Tools run in your browser. Files you select for PDF, image, audio and video processing and text entered into text tools are processed locally rather than uploaded for processing. Browser extensions, operating-system software, screen captures, downloads and services you choose to use separately are outside our control.</p>
-    <p>The YouTube thumbnail downloader requests images from YouTube’s CDN (i.ytimg.com). That service receives the requested video ID and normal request information such as your IP address, under its own policies. Opening external links or QR-code actions also contacts their destinations.</p></section>
+    <p>The YouTube thumbnail downloader requests images from YouTube’s CDN (i.ytimg.com). That service receives the requested video ID and normal request information such as your IP address, under its own policies. Opening external links or QR-code actions also contacts their destinations. Code run in the HTML preview can load external resources or send data to other services; only run trusted code and avoid secrets.</p></section>
     <section><h2>Optional calculator links</h2>
     <p>Calculator inputs are not automatically added to the address bar. If you choose “Copy link with inputs”, the resulting link contains your values in its URL fragment. Fragments are not sent in normal HTTP requests, but anyone with the link can read them; they may also remain in browser history, bookmarks, clipboard or sharing apps. Avoid sharing sensitive information. “Copy page link” excludes inputs.</p>
     <p>Older links may contain values in the query string. Opening one sends those values to the host and intermediaries as part of the request and may record them in logs or history. The tool removes known input parameters from the address bar after loading, but cannot erase earlier records or prevent the initial request.</p></section>
@@ -609,7 +610,7 @@ function buildMeta() {
   // (long-cache header on /assets/icons/** in firebase.json).
   write('assets/icons/sprite.svg', `<svg xmlns="http://www.w3.org/2000/svg">${Object.entries(iconBodies).map(([n, b]) => `<symbol id="i-${n}" viewBox="0 0 24 24">${b}</symbol>`).join('')}</svg>\n`);
   // llms.txt — a clean map of the site for AI search/answer engines.
-  write('llms.txt', `# ${site.name}\n\n> ${site.description} ${tools.length} tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, and YouTube thumbnails load from its CDN. See the Privacy Policy.\n\n## Categories\n${categories.map((c) => `- [${c.name} tools](${pageUrl(`/categories/${c.id}/`)}): ${c.description}`).join('\n')}\n\n## Tools\n${tools.map((t) => `- [${t.name}](${pageUrl(`/tools/${t.id}/`)}): ${t.blurb}`).join('\n')}\n\n## About this site\n- [About](${pageUrl('/about/')})\n- [Privacy Policy](${pageUrl('/privacy-policy/')})\n- [Terms of Use](${pageUrl('/terms/')})\n`);
+  write('llms.txt', `# ${site.name}\n\n> ${site.description} ${tools.length} tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.\n\n## Categories\n${categories.map((c) => `- [${c.name} tools](${pageUrl(`/categories/${c.id}/`)}): ${c.description}`).join('\n')}\n\n## Tools\n${tools.map((t) => `- [${t.name}](${pageUrl(`/tools/${t.id}/`)}): ${t.blurb}`).join('\n')}\n\n## About this site\n- [About](${pageUrl('/about/')})\n- [Privacy Policy](${pageUrl('/privacy-policy/')})\n- [Terms of Use](${pageUrl('/terms/')})\n`);
   write('robots.txt', `User-agent: *\nAllow: /\n\nSitemap: ${pageUrl('/sitemap.xml')}\n`);
   write('manifest.webmanifest', JSON.stringify({
     name: site.name,

@@ -48,6 +48,24 @@ const T = (t) => ({ popularity: 50, featured: false, faqs: null, guide: null, al
 
 export const tools = [
   // ── Developer ──────────────────────────────────────────────────────────────
+  T({ id: 'html-live-preview', name: 'Live HTML Editor & Preview', icon: 'code', engine: 'developer', categories: ['developer', 'web-seo'],
+    related: ['html-formatter', 'css-formatter', 'js-formatter', 'json-formatter'],
+    blurb: 'Edit HTML, CSS and JavaScript with a live sandboxed preview.',
+    description: 'Test HTML with embedded CSS and JavaScript in a live browser preview. Open a synchronized full-window preview in a new tab, pause automatic updates or run manually.',
+    keywords: ['html live preview', 'html editor', 'online html viewer', 'html css javascript playground', 'live code editor'],
+    aliases: ['html preview', 'live html editor', 'html tester', 'html playground'],
+    popularity: 75, added: '2026-11-07',
+    privacyOverride: 'Code stays in this browser and is not stored by this tool; code you run can request external resources or send data. Only run code you trust.',
+    steps: 'Edit the HTML document, including CSS in style tags and JavaScript in script tags.|The sandboxed preview updates automatically; pause live updates to run manually.|Open full-window preview in a new tab. Keep the editor tab open for live updates.',
+    guide: [
+      { h: 'Write and preview a complete HTML document', p: 'Use the editor for HTML, CSS inside style tags and JavaScript inside script tags. Changes update the preview after a short delay. Turn off live preview to make several edits and press Run preview when ready. The separate preview tab follows the last executed version while this editor remains open.' },
+      { h: 'Sandbox and browser limitations', list: ['The preview uses an iframe with scripts enabled but without same-origin, form submission, popups or top-level navigation permissions. Some demos and APIs will not work in this sandbox.', 'Preview code can still load external resources or attempt network requests. Only run code you trust, do not paste secrets, and check third-party services and CORS restrictions.', 'Infinite loops and expensive scripts may freeze a browser tab; the stop button cannot guarantee recovery from a blocked browser. Close the tab if necessary.', 'This is a browser preview, not a server, package manager, backend, multi-file project or persistent code editor. Save your code elsewhere before closing or reloading. Downloaded HTML runs outside this tool’s sandbox when opened directly.', 'Keep the full-window preview link private: its fragment identifies the temporary browser channel. The separate tab keeps its last preview if the editor is closed, but will not receive further updates.'] },
+    ],
+    faqs: [
+      { q: 'Can I use CSS and JavaScript?', a: 'Yes. Add CSS in style tags and JavaScript in script tags inside your HTML document. Browser security and iframe sandbox restrictions apply.' },
+      { q: 'Does the full-window tab update live?', a: 'Yes, in browsers supporting BroadcastChannel, while the editor tab remains open. It displays the most recently run code; if live updates are paused, press Run preview to update both views.' },
+      { q: 'Is my code saved or uploaded?', a: 'This tool does not save your editor text or upload it to a server. Code you run can load external resources or send data over the network, so run only trusted code and do not include secrets.' },
+    ] }),
   T({ id: 'json-formatter', name: 'JSON Formatter', icon: 'braces', engine: 'developer', categories: ['developer', 'data'],
     related: ["json-compare","json-validator","json-minifier","csv-to-json","json-to-csv","json-lines-converter"],
     blurb: 'Format, validate and minify JSON with precise error messages.',
