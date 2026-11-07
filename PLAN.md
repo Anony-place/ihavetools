@@ -11,6 +11,21 @@
 
 ---
 
+## Current consolidated batch — QR and imported-data safety (2026-11-07)
+
+1. Audit QR generation, image scanning and camera lifecycle alongside CSV file
+   import, focusing on rejected input, races, stale results and download errors.
+2. Stop camera and invalidate pending scans on all rejected selections; support
+   same-file reselection, honest PNG/SVG download status and generator cleanup.
+   Protect CSV imports from late reads and rejected-file ambiguity.
+3. Exercise generated PNG/SVG and scanner end-to-end in Chromium, camera mocks,
+   oversized selections, stale/failed downloads, mobile and automated axe checks.
+4. Update guidance and audit; run full checks, security audit and review, then
+   ship one consolidated PR only after CI/preview pass and verify production.
+   No claim of protection from phishing or physical-camera certification.
+
+---
+
 ## Current consolidated batch — image editing integrity and crop accessibility (2026-11-07)
 
 1. Audit single-image compressor, resizer, converter, cropper and metadata viewer
