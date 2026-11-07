@@ -1523,6 +1523,21 @@ await test('bulk fit, output filenames, search and discovery', () => {
   assert.ok(registry.searchTools('bulk image compressor', 20).some(t => t.id === 'bulk-image-resizer'));
   assert.ok(registry.tools.filter(t => registry.relatedTools(t,6).some(r => r.id === 'bulk-image-resizer')).length >= 3);
 });
+await test('target-size search checks bytes, bounds work, cancellation and non-monotonic encoders', async () => {
+  let calls = [];
+  const encode = async q => { const n = Math.round(q * 100); calls.push(n); return { size: n * 10 }; };
+  let result = await img.encodeToTarget(encode, 523);
+  assert.equal(result.quality,52); assert.equal(result.blob.size,520); assert.ok(calls.length <= 9);
+  calls=[]; result=await img.encodeToTarget(encode,1000); assert.equal(result.quality,100); assert.deepEqual(calls,[100]);
+  calls=[]; await assert.rejects(img.encodeToTarget(encode,49), /No tested quality/); assert.deepEqual(calls,[100,5]);
+  await assert.rejects(img.encodeToTarget(encode,0), /Invalid target/);
+  let current=true, attempts=0;
+  await assert.rejects(img.encodeToTarget(async () => { attempts++; current=false; return {size:100}; },50,()=>current), /Cancelled/);
+  assert.equal(attempts,1);
+  // Deliberately non-monotonic; the returned sample must still actually fit.
+  result=await img.encodeToTarget(async q => ({size:q === 0.05 ? 100 : q === 1 ? 1000 : 2000}), 100);
+  assert.equal(result.quality,5); assert.ok(result.blob.size <= 100);
+});
 await test('JPEG EXIF parsed from crafted buffer', () => {
   // craft minimal JPEG with EXIF: Make="TestCam", Model="T1", Orientation=6
   const tiff = Buffer.alloc(8 + 2 + 12 * 3 + 4 + 20);

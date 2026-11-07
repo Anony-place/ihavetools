@@ -49,6 +49,28 @@ export function sizeChange(original, output) {
   const pct = Math.abs((output - original) / original * 100);
   return `${pct < 0.1 ? '<0.1' : pct.toFixed(1)}% ${output < original ? 'smaller' : 'larger'}`;
 }
+// Search integer encoder qualities, retaining only blobs actually at/below target.
+// Encoded size is not guaranteed monotonic; this is best effort, not a global optimum.
+export async function encodeToTarget(encode, targetBytes, isCurrent = () => true) {
+  if (!Number.isSafeInteger(targetBytes) || targetBytes < 1) throw new Error('Invalid target size.');
+  let best = null;
+  const sample = async quality => {
+    if (!isCurrent()) throw new Error('Cancelled');
+    const blob = await encode(quality / 100);
+    if (!isCurrent()) throw new Error('Cancelled');
+    if (!blob || !Number.isSafeInteger(blob.size)) throw new Error('Encoder did not return an image.');
+    if (blob.size <= targetBytes && (!best || quality > best.quality)) best = { blob, quality };
+    return blob.size <= targetBytes;
+  };
+  if (await sample(100)) return best;
+  if (!await sample(5)) throw new Error('No tested quality met the target at these dimensions. Try a larger target or smaller dimensions.');
+  let low = 5, high = 100;
+  while (high - low > 1) {
+    const middle = Math.floor((low + high) / 2);
+    if (await sample(middle)) low = middle; else high = middle;
+  }
+  return best;
+}
 export function batchFilename(name, index, fmt) {
   if (!EXT_BY_FMT[fmt] || !Number.isInteger(index) || index < 1) throw new Error('Invalid output name.');
   const clean = baseName(name).normalize('NFC').replace(/[\\/\x00-\x1f\x7f<>:"|?*]/g, '_').replace(/^\.+/, '').replace(/[. ]+$/, '');
@@ -327,6 +349,7 @@ const defs = {
     const height = input({ type: 'number', min: 1, max: 4096, value: '1200' });
     const format = select({ options: [{ v: 'jpeg', t: 'JPEG' }, { v: 'png', t: 'PNG' }, { v: 'webp', t: 'WebP' }], value: 'jpeg' });
     const quality = input({ type: 'number', min: 5, max: 100, value: '85' });
+    const target = input({ type: 'number', min: 1, max: 51200, step: 1, placeholder: 'optional' });
     const upscale = switchChip({ label: 'Allow enlargement', checked: false });
     const status = statusLine('Choose images to begin.');
     const list = h('div', {}), results = h('div', {});
@@ -349,14 +372,17 @@ const defs = {
       list.replaceChildren(table({ headers: ['Selected file', 'Size'], rows: files.map(f => [f.name, fmtBytes(f.size)]) }));
       status.set(`${files.length} images selected. Set size and quality, then process.`, 'info');
     });
-    for (const el of [width, height, format, quality, upscale]) for (const ev of ['input', 'change']) el.addEventListener(ev, () => { invalidate(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
+    for (const el of [width, height, format, quality, target, upscale]) for (const ev of ['input', 'change']) el.addEventListener(ev, () => { invalidate(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
     window.addEventListener('pagehide', invalidate);
     async function run() {
       invalidate();
       if (!files.length) { status.set('Choose images first.', 'warning'); return; }
       const w = width.value === '' ? null : Number(width.value), h0 = height.value === '' ? null : Number(height.value), q = Number(quality.value), fmt = format.value;
       if (![w, h0].every(n => n == null || (Number.isSafeInteger(n) && n >= 1 && n <= 4096))) { status.set('Maximum dimensions must be blank or whole numbers from 1 to 4096.', 'error'); return; }
-      if (!quality.value || !Number.isFinite(q) || q < 5 || q > 100 || !MIME_BY_FMT[fmt]) { status.set('Quality must be between 5 and 100 and the format must be supported.', 'error'); return; }
+      const targetKiB = target.value === '' ? null : Number(target.value);
+      if (targetKiB != null && (!Number.isSafeInteger(targetKiB) || targetKiB < 1 || targetKiB > 51200)) { status.set('Target must be a whole number from 1 to 51200 KiB.', 'error'); return; }
+      if (targetKiB != null && fmt === 'png') { status.set('Target size is available for JPEG and WebP only; PNG ignores quality.', 'error'); return; }
+      if (!MIME_BY_FMT[fmt] || (targetKiB == null && (!quality.value || !Number.isFinite(q) || q < 5 || q > 100))) { status.set('Quality must be between 5 and 100 and the format must be supported.', 'error'); return; }
       const token = revision, selected = files.slice(), enlarge = upscale.querySelector('input').checked;
       const entries = {}, rows = []; let total = 0, totalOriginal = 0, larger = 0, successes = 0;
       status.set('Preparing image tools…', 'info');
@@ -378,14 +404,15 @@ const defs = {
             ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
             if (fmt === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, dims.width, dims.height); }
             ctx.drawImage(img, 0, 0, dims.width, dims.height);
-            const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100);
+            const choice = targetKiB == null ? { blob: await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100) } : await encodeToTarget(qualityValue => canvasToBlob(canvas, MIME_BY_FMT[fmt], qualityValue), targetKiB * 1024, () => revision === token);
+            const blob = choice.blob;
             if (revision !== token) return;
             if (total + blob.size > 50 * 1024 * 1024) throw new Error('Output limit of 50 MiB reached; use a smaller batch.');
             const bytes = new Uint8Array(await blob.arrayBuffer());
             if (revision !== token) return;
             total += bytes.length; totalOriginal += f.size; if (blob.size > f.size) larger++;
             const name = batchFilename(f.name, i + 1, fmt); entries[name] = bytes; successes++;
-            rows.push([f.name, `${dims.width} × ${dims.height}`, fmtBytes(f.size), fmtBytes(blob.size), sizeChange(f.size, blob.size), name]);
+            rows.push([f.name, `${dims.width} × ${dims.height}`, fmtBytes(f.size), fmtBytes(blob.size), sizeChange(f.size, blob.size), targetKiB == null ? name : `${name} — target met at quality ${choice.quality}%`]);
           } catch (err) { if (revision !== token) return; rows.push([f.name, 'Failed', fmtBytes(f.size), '—', '—', err.message]); }
         }
         if (!successes) { results.replaceChildren(table({ headers: ['File', 'Dimensions', 'Original', 'Output', 'Change', 'Result'], rows })); status.set('No images succeeded. Check the individual errors.', 'error'); return; }
@@ -399,9 +426,10 @@ const defs = {
     }
     root.append(zone, list, h('div', { class: 'field-row', style: 'margin-top:14px' },
       field({ label: 'Maximum width (px)', control: width, hint: 'Blank means no width limit.' }), field({ label: 'Maximum height (px)', control: height, hint: 'Blank means no height limit; clear both to keep original dimensions.' }),
-      field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'JPEG/WebP only; PNG ignores quality.' })),
+      field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'PNG ignores quality; target mode chooses quality automatically.' }),
+      field({ label: 'Target per image (KiB)', control: target, hint: 'Optional, whole KiB (1 KiB = 1024 bytes). JPEG/WebP only; searches quality 5–100 at selected dimensions.' })),
       upscale, actionsRow(runButton, cancel, download), status, results,
-      privacyNote('Images are processed locally, not uploaded. Optional bounds fit images without cropping; clear both to retain original dimensions. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
+      privacyNote('Images are processed locally, not uploaded. Optional bounds fit images without cropping; clear both to retain original dimensions. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
   },
 
   'image-resizer'(root) {

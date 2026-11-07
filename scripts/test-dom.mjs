@@ -1131,7 +1131,9 @@ await domTest('bulk image resizer rejects invalid batches and cancels stale imag
     const file=new File([new Uint8Array([255,216,255,217])],'photo.jpg',{type:'image/jpeg'});
     const send=files=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files}});app.querySelector('.dropzone').dispatchEvent(e);};
     send(Array(21).fill(file)); assert.match(app.textContent,/at most 20 images/);
-    send([file]); const nums=app.querySelectorAll('input[type=number]'); nums[0].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/whole numbers from 1 to 4096/);
+    send([file]); const nums=app.querySelectorAll('input[type=number]'); nums[3].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/Target must be a whole number/);
+    nums[3].value='10'; app.querySelector('select').value='png'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/JPEG and WebP only/);
+    nums[3].value=''; app.querySelector('select').value='jpeg'; nums[0].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/whole numbers from 1 to 4096/);
     nums[0].value='100'; click(btnByLabel(app,'Process images'));
     for (let i=0;i<30 && !pending.length;i++) await new Promise(r=>setTimeout(r,10));
     assert.equal(pending.length,1,'image load should be in progress');

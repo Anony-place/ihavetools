@@ -180,6 +180,41 @@ try {
   assert.deepEqual([jpgMeta.format, jpgMeta.width, jpgMeta.height], ['jpeg',4,3]);
   const rgb = await sharp(jpgBytes).raw().toBuffer(); assert.ok(rgb[0] >= 250 && rgb[1] >= 250 && rgb[2] >= 250, 'transparent JPEG background is white');
   console.log('✓ batch JPEG conversion flattens transparency to white');
+  const large = await sharp({ create: { width: 512, height: 512, channels: 3, background: '#ff0000' } }).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles([
+    { name: 'tiny.png', mimeType: 'image/png', buffer: transparent },
+    { name: 'large.png', mimeType: 'image/png', buffer: large },
+  ]);
+  await page.getByLabel('Target per image (KiB)').fill('1');
+  await page.getByRole('button', { name: 'Process images' }).click();
+  await page.locator('#tool-app .status-line').getByText(/1 of 2 images ready/).waitFor();
+  assert.match(await page.locator('#tool-app').innerText(), /No tested quality met the target/);
+  const targetEvent=page.waitForEvent('download'); await page.getByRole('button', {name:'Download ZIP'}).click();
+  const targetPath=await (await targetEvent).path();
+  const targetData=JSON.parse(execFileSync('python3', ['-c', 'import zipfile,sys,json; z=zipfile.ZipFile(sys.argv[1]); print(json.dumps({i.filename:len(z.read(i)) for i in z.infolist()}))',targetPath],{encoding:'utf8'}));
+  assert.deepEqual(Object.keys(targetData), ['001-tiny.jpg']); assert.ok(targetData['001-tiny.jpg'] <= 1024);
+  assert.match(await page.locator('#tool-app').innerText(), /target met at quality/);
+  await page.getByLabel('Output format').selectOption('png');
+  assert.equal(await page.getByRole('button', {name:'Download ZIP'}).isDisabled(),true);
+  await page.getByRole('button',{name:'Process images'}).click();
+  assert.match(await page.locator('#tool-app .status-line').innerText(), /JPEG and WebP only/);
+  console.log('✓ per-image target byte limit, partial failure and PNG validation');
+  const noise = Buffer.alloc(128 * 128 * 3); let state = 123456789;
+  for (let i = 0; i < noise.length; i++) { state ^= state << 13; state ^= state >>> 17; state ^= state << 5; noise[i] = state & 255; }
+  const noisyPng = await sharp(noise, { raw: { width: 128, height: 128, channels: 3 } }).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles({ name:'noise.png', mimeType:'image/png', buffer:noisyPng });
+  await page.getByLabel('Output format').selectOption('jpeg');
+  await page.getByLabel('Target per image (KiB)').fill('4');
+  await page.getByRole('button', {name:'Process images'}).click();
+  await page.locator('#tool-app .status-line').getByText(/1 of 1 images ready/).waitFor();
+  const searchedText = await page.locator('#tool-app table').last().innerText();
+  const quality = Number(/target met at quality (\d+)%/.exec(searchedText)?.[1]);
+  assert.ok(quality >= 5 && quality < 100, `target must actually reduce quality: ${searchedText}`);
+  const searchEvent=page.waitForEvent('download'); await page.getByRole('button', {name:'Download ZIP'}).click();
+  const searchPath=await (await searchEvent).path();
+  const searchedSize=Number(execFileSync('python3', ['-c', 'import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); print(len(z.read("001-noise.jpg")))',searchPath],{encoding:'utf8'}));
+  assert.ok(searchedSize <= 4096);
+  console.log('✓ real JPEG quality search meets target bytes');
   console.log('✓ batch resize, independent ZIP decode, partial failure, invalidation and mobile accessibility');
   await page.setViewportSize({ width: 1280, height: 800 });
 
