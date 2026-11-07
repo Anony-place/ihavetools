@@ -215,6 +215,26 @@ try {
   const searchedSize=Number(execFileSync('python3', ['-c', 'import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); print(len(z.read("001-noise.jpg")))',searchPath],{encoding:'utf8'}));
   assert.ok(searchedSize <= 4096);
   console.log('✓ real JPEG quality search meets target bytes');
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'wide.png', mimeType:'image/png', buffer:wide});
+  await page.getByLabel('Target per image (KiB)').fill('');
+  await page.getByLabel('Maximum width (px)').fill('40'); await page.getByLabel('Maximum height (px)').fill('40');
+  await page.getByLabel('Output format').selectOption('png'); await page.getByLabel('Layout').selectOption('white');
+  const extractPad = async () => {
+    await page.getByRole('button',{name:'Process images'}).click();
+    await page.locator('#tool-app .status-line').getByText(/1 of 1 images ready/).waitFor();
+    const event=page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
+    const path=await (await event).path();
+    const encoded=execFileSync('python3',['-c','import zipfile,sys,base64; z=zipfile.ZipFile(sys.argv[1]); print(base64.b64encode(z.read("001-wide.png")).decode())',path],{encoding:'utf8'}).trim();
+    return sharp(Buffer.from(encoded,'base64')).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  };
+  const whitePad=await extractPad(); assert.deepEqual([whitePad.info.width,whitePad.info.height],[40,40]);
+  const pixel=(v,x,y)=>[...v.data.subarray((y*v.info.width+x)*4,(y*v.info.width+x)*4+4)];
+  assert.deepEqual(pixel(whitePad,0,0),[255,255,255,255]); assert.deepEqual(pixel(whitePad,20,20),[255,0,0,255]);
+  await page.getByLabel('Layout').selectOption('transparent');
+  const transparentPad=await extractPad(); assert.deepEqual(pixel(transparentPad,0,0),[0,0,0,0]); assert.deepEqual(pixel(transparentPad,20,20),[255,0,0,255]);
+  await page.getByLabel('Output format').selectOption('jpeg'); await page.getByRole('button',{name:'Process images'}).click();
+  assert.match(await page.locator('#tool-app .status-line').innerText(),/requires PNG or WebP/);
+  console.log('✓ exact canvas ZIP output, white and transparent padding, and format validation');
   console.log('✓ batch resize, independent ZIP decode, partial failure, invalidation and mobile accessibility');
   await page.setViewportSize({ width: 1280, height: 800 });
 

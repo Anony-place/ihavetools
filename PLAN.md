@@ -11,6 +11,20 @@
 
 ---
 
+## Current batch — fixed-canvas batch image workflow (2026-11-07)
+
+1. Research actual batch resize/padding workflows; extend the existing bulk tool
+   rather than duplicate pages or imply marketplace compliance.
+2. Add an exact-width/height padded canvas with centered, uncropped image,
+   white or transparent padding, explicit enlargement rules and format limits.
+   Retain existing fit and per-file byte-target modes and clear stale results.
+3. Fix rejected oversized selections retaining previous batch output; test geometry,
+   transparency and colors from actual ZIPs, accessibility, validation and races.
+4. Document the limits and run build, full checks, audit and browser CI; release
+   one PR after checks and Vercel preview, then verify production.
+
+---
+
 ## Current batch — per-image target size (2026-11-07)
 
 1. Research target-size workflows and browser canvas encoder limits; implement

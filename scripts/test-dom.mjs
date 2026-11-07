@@ -1131,9 +1131,13 @@ await domTest('bulk image resizer rejects invalid batches and cancels stale imag
     const file=new File([new Uint8Array([255,216,255,217])],'photo.jpg',{type:'image/jpeg'});
     const send=files=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files}});app.querySelector('.dropzone').dispatchEvent(e);};
     send(Array(21).fill(file)); assert.match(app.textContent,/at most 20 images/);
-    send([file]); const nums=app.querySelectorAll('input[type=number]'); nums[3].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/Target must be a whole number/);
-    nums[3].value='10'; app.querySelector('select').value='png'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/JPEG and WebP only/);
-    nums[3].value=''; app.querySelector('select').value='jpeg'; nums[0].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/whole numbers from 1 to 4096/);
+    send([file]); const nums=app.querySelectorAll('input[type=number]');
+    const selects=app.querySelectorAll('select'); selects[0].value='white'; nums[0].value=''; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/requires both width and height/);
+    nums[0].value='1200'; selects[0].value='transparent'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/requires PNG or WebP/); selects[0].value='fit';
+    const huge = { name: 'huge.jpg', size: 201 * 1024 * 1024 }; send([huge]); assert.match(app.textContent,/Selection rejected/); click(btnByLabel(app,'Process images')); assert.match(app.textContent,/Choose images first/); send([file]);
+    nums[3].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/Target must be a whole number/);
+    nums[3].value='10'; app.querySelectorAll('select')[1].value='png'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/JPEG and WebP only/);
+    nums[3].value=''; app.querySelectorAll('select')[1].value='jpeg'; nums[0].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/whole numbers from 1 to 4096/);
     nums[0].value='100'; click(btnByLabel(app,'Process images'));
     for (let i=0;i<30 && !pending.length;i++) await new Promise(r=>setTimeout(r,10));
     assert.equal(pending.length,1,'image load should be in progress');
