@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Full-window HTML preview — iHaveTools</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; }
+    body { background: white; }
+    iframe { border: 0; display: block; width: 100%; height: 100%; }
+    #notice { position: fixed; inset: 1rem auto auto 1rem; padding: .6rem .8rem; font: 14px system-ui, sans-serif; color: #202431; background: #fff; border: 1px solid #b8beca; border-radius: .5rem; }
+    #notice[hidden] { display: none; }
+  </style>
+  <script type="module" src="/assets/js/html-preview.js"></script>
+</head>
+<body>
+  <iframe title="Full-window HTML preview" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
+  <p id="notice" role="status">Waiting for the editor tab. Keep it open to receive updates.</p>
+</body>
+</html>

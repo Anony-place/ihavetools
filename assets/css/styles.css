@@ -657,3 +657,13 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 
 /* Optional calculator input sharing */
 .share-inputs { margin-top: 20px; }
+
+/* Live HTML editor: keep each pane shrinkable on narrow screens. */
+.html-playground { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.html-playground-editor, .html-playground-preview { min-width: 0; }
+.html-playground-editor textarea { min-height: 420px; white-space: pre; overflow: auto; tab-size: 2; }
+.html-playground-preview h3 { margin: 0 0 8px; font-size: 0.95rem; }
+.html-preview-frame { display: block; width: 100%; height: 420px; background: #fff; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+@media (max-width: 720px) { .html-playground { grid-template-columns: minmax(0, 1fr); } .html-playground-editor textarea, .html-preview-frame { min-height: 280px; height: 280px; } }
+
+.html-preview-open[hidden] { display: none; }

@@ -4,7 +4,7 @@
 // url-encoder, uuid-generator, timestamp-converter, hash-generator,
 // regex-tester, jwt-decoder, html-formatter, css-formatter, js-formatter
 // =============================================================================
-import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, errorBanner, statsGrid, table, copyButton, downloadButton, toast, readFile, fmtBytes, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, errorBanner, statsGrid, table, copyButton, downloadButton, privacyNote, toast, readFile, fmtBytes, mountTool } from '../ui.js';
 
 /* ═══════════════════════════ JSON engine (RFC 8259) ═══════════════════════════ */
 export function validateJson(text) {
@@ -422,6 +422,73 @@ export function compareJson(leftText, rightText, { maxNodes = 100000, maxChanges
 }
 
 const defs = {
+  'html-live-preview'(root) {
+    const starter = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My page</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; background: #f3f4ff; }
+    button { padding: .7rem 1rem; border: 0; border-radius: .5rem; background: #4f46e5; color: white; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Hello, world!</h1>
+  <p>Edit this HTML, CSS and JavaScript to see changes live.</p>
+  <button id="hello">Click me</button>
+  <script>document.getElementById('hello').addEventListener('click', () => { document.querySelector('p').textContent = 'JavaScript works!'; });<\/script>
+</body>
+</html>`;
+    const code = textarea({ rows: 18, value: starter, placeholder: 'Write a complete HTML document…' });
+    code.setAttribute('aria-label', 'HTML code'); code.spellcheck = false;
+    const live = switchChip({ label: 'Live preview', checked: true });
+    const liveInput = live.querySelector('input');
+    const frame = h('iframe', { title: 'Live HTML preview', sandbox: 'allow-scripts', referrerpolicy: 'no-referrer', class: 'html-preview-frame' });
+    const status = statusLine('Preview ready. Your code is not saved by this tool.');
+    let timer = null, last = '', channel = null, id = '';
+    try { const bytes = new Uint8Array(16); window.crypto.getRandomValues(bytes); id = [...bytes].map(v => v.toString(16).padStart(2, '0')).join(''); } catch { /* Full-window sync unavailable without randomness. */ }
+    const connect = () => {
+      if (!id || !window.BroadcastChannel) return;
+      try { channel = new window.BroadcastChannel(`iht-html-preview-${id}`); channel.onmessage = e => { if (e.data?.type === 'ready') channel?.postMessage({ type: 'preview', html: last }); }; }
+      catch { channel = null; }
+    };
+    connect();
+    const open = h('a', { class: 'btn btn-secondary html-preview-open', href: `/assets/html-preview.html#${id}`, target: '_blank', rel: 'noopener noreferrer' }, 'Open full-window preview ↗');
+    if (!channel) { open.hidden = true; status.set('Live preview works here, but full-window sync needs BroadcastChannel and secure randomness in a supported browser.', 'warning'); }
+    const send = html => { frame.srcdoc = html; last = html; channel?.postMessage({ type: 'preview', html }); };
+    const run = () => {
+      clearTimeout(timer); timer = null;
+      if (code.value.length > 200000) { send(''); status.set('Code exceeds the 200,000-character preview limit. Shorten it before running.', 'error'); return; }
+      send(code.value); status.set('Preview updated. Code is not saved; external resources may receive requests.', 'info');
+    };
+    code.addEventListener('input', () => {
+      clearTimeout(timer);
+      if (liveInput.checked) { status.set('Updating preview…', 'info'); timer = setTimeout(run, 400); }
+      else status.set('Live preview paused. Press Run preview to apply changes.', 'info');
+    });
+    liveInput.addEventListener('change', () => { clearTimeout(timer); if (liveInput.checked) run(); else status.set('Live preview paused. Press Run preview to apply changes.', 'info'); });
+    window.addEventListener('pagehide', () => { clearTimeout(timer); channel?.close(); channel = null; });
+    window.addEventListener('pageshow', e => { if (e.persisted) { connect(); if (channel) { open.hidden = false; channel.postMessage({ type: 'preview', html: last }); } } });
+    root.append(
+      !channel ? h('p', { class: 'hint', text: 'Full-window sync is unavailable in this browser. The embedded preview still works.' }) : null,
+      h('p', { class: 'hint', text: 'Write HTML with CSS in <style> and JavaScript in <script>. Only run trusted code: it can make network requests. Work is not saved.' }),
+      h('div', { class: 'html-playground' },
+        h('div', { class: 'html-playground-editor' }, field({ label: 'HTML code', control: code })),
+        h('div', { class: 'html-playground-preview' }, h('h3', { text: 'Live preview' }), frame)),
+      h('div', { class: 'switch-row', style: 'margin-top:12px' }, live),
+      actionsRow(btn({ label: 'Run preview', icon: 'eye', onClick: run }),
+        btn({ label: 'Stop preview', variant: 'secondary', onClick: () => { clearTimeout(timer); liveInput.checked = false; send(''); status.set('Preview stopped. Press Run preview to restart.', 'info'); } }),
+        open,
+        copyButton(() => code.value, { label: 'Copy HTML' }),
+        downloadButton(() => code.value, 'index.html', { label: 'Download HTML', mime: 'text/html;charset=utf-8' }),
+        btn({ label: 'Reset example', variant: 'ghost', onClick: () => { if (code.value !== starter && !window.confirm('Replace your current code with the example?')) return; code.value = starter; liveInput.checked = true; run(); } })),
+      status,
+      privacyNote('Scripts run in a restricted iframe, but can request external resources. The sandbox blocks some browser APIs, forms, popups and top navigation; it cannot guarantee protection from hostile code or infinite loops. Do not paste secrets.'));
+    send(starter);
+  },
+
   'json-compare'(root) {
     const left = textarea({ rows: 10, value: '{\n  "name": "Ana",\n  "active": true,\n  "tags": ["a", "b"]\n}', placeholder: 'Paste original JSON…' });
     const right = textarea({ rows: 10, value: '{\n  "tags": ["a", "c"],\n  "name": "Ana",\n  "role": "editor"\n}', placeholder: 'Paste revised JSON…' });
