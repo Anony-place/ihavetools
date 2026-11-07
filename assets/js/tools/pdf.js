@@ -73,8 +73,8 @@ export async function organizePdf(PDFLib, source, pages) {
 }
 
 /* ── shared UI bits ── */
-function makeZone(multiple, onFiles, label) {
-  const zone = dropzone({ accept: 'application/pdf,.pdf', multiple, title: label || 'Choose a PDF or drop it here', sub: 'Processed locally with pdf-lib — never uploaded', onFiles: (files) => onFiles(multiple ? files : files.slice(0, 1)) });
+function makeZone(multiple, onFiles, label, onReject) {
+  const zone = dropzone({ accept: 'application/pdf,.pdf', multiple, title: label || 'Choose a PDF or drop it here', sub: 'Processed locally with pdf-lib — never uploaded', onReject, onFiles: (files) => { onFiles(multiple ? files : files.slice(0, 1)); zone.querySelector('input[type=file]').value = ''; } });
   return zone;
 }
 function pdfFilesRow(file, onRemove = () => {}) {
@@ -97,7 +97,8 @@ function moveRow(e, dir) {
 
 const defs = {
   'pdf-organizer'(root) {
-    let source = null, file = null, pages = [], revision = 0;
+    let source = null, file = null, pages = [], revision = 0, operation = 0;
+    window.addEventListener('pagehide', () => { revision++; }, { once: true });
     const status = statusLine('Choose a PDF to begin.'), list = h('div', { class: 'file-list', role: 'region', 'aria-label': 'PDF pages' });
     const info = h('p', { class: 'hint' });
     const render = () => {
@@ -123,18 +124,18 @@ const defs = {
         if (doc.getPageCount() > 500) throw new Error('This organizer supports up to 500 pages to keep the page list responsive.');
         source = doc; file = chosen; reset(); status.set(`Loaded ${chosen.name}. Reorder, rotate or remove pages, then export.`, 'success');
       } catch (e) { if (token === revision) status.set(/encrypt/i.test(String(e)) ? 'Password-protected PDFs cannot be processed. Remove protection first.' : `Could not open PDF: ${e.message}`, 'error'); }
-    });
+    }, undefined, () => { revision++; source = null; file = null; pages = []; list.replaceChildren(); info.textContent = ''; zone.clear(); status.set('Selection rejected. Choose a PDF within the 200 MB limit.', 'error'); });
     const run = async () => {
       if (!source || !file) { status.set('Choose a PDF first.', 'warning'); return; }
       if (!pages.length) { status.set('Keep at least one page, or restore the original.', 'warning'); return; }
-      const doc = source, selected = pages.map(p => ({ ...p })), name = file.name, token = revision;
+      const doc = source, selected = pages.map(p => ({ ...p })), name = file.name, token = revision, action = ++operation;
       status.set('Creating your PDF locally…', 'info');
       try {
         const lib = await loadPdfLib(); const bytes = await organizePdf(lib, doc, selected);
-        if (token !== revision) return;
+        if (token !== revision || action !== operation) return;
         const saved = downloadBlob(new Blob([bytes], { type: 'application/pdf' }), `organized-${name.replace(/\.pdf$/i, '')}.pdf`);
         status.set(saved ? `Exported ${selected.length} pages — download started.` : 'Could not start the download in this browser.', saved ? 'success' : 'error');
-      } catch (e) { if (token === revision) status.set(e.message, 'error'); }
+      } catch (e) { if (token === revision && action === operation) status.set(e.message, 'error'); }
     };
     root.append(zone, info, list, actionsRow(btn({ label: 'Export organized PDF', icon: 'download', onClick: run }), btn({ label: 'Restore original pages', variant: 'secondary', icon: 'refresh', onClick: reset })), status,
       privacyNote('Your PDF is processed locally. Page copying may not preserve bookmarks, forms, attachments or digital signatures; inspect the output.'));
@@ -148,14 +149,21 @@ const defs = {
       pageCount = null;
       info.textContent = '';
       status.set(`Loaded ${file.name} (${fmtBytes(file.size)}). Click Inspect to read the page count.`, 'info');
-    }, 'Choose a PDF or drop it here');
-    const angle = segControl({ options: [{ v: '90', t: '90° ↻' }, { v: '180', t: '180° ↕' }, { v: '270', t: '90° ↺' }], value: '90', ariaLabel: 'Rotation angle' });
-    const scope = segControl({ options: [{ v: 'all', t: 'All pages' }, { v: 'range', t: 'Page range' }], value: 'all', ariaLabel: 'Scope' });
+    }, 'Choose a PDF or drop it here', () => {
+      file = null; pageCount = null; revision++; operation++; grid.replaceChildren(); info.textContent = '';
+      zone.replaceChildren(h('span', { class: 'dz-title', text: 'Choose a PDF or drop it here' }), zone.querySelector('input[type=file]'));
+      zone.clear(); status.set('Selection rejected. Choose a PDF within the 200 MB limit.', 'error');
+    });
+    const angle = segControl({ options: [{ v: '90', t: '90° ↻' }, { v: '180', t: '180° ↕' }, { v: '270', t: '90° ↺' }], value: '90', ariaLabel: 'Rotation angle', onChange: () => settingsChanged() });
+    const scope = segControl({ options: [{ v: 'all', t: 'All pages' }, { v: 'range', t: 'Page range' }], value: 'all', ariaLabel: 'Scope', onChange: () => settingsChanged() });
     const ranges = input({ type: 'text', class: 'input mono', placeholder: 'e.g. 1-3, 7' });
     const status = statusLine('Choose a PDF to begin.');
     const info = h('p', { class: 'hint' });
     const grid = statsGrid();
     let file = null, pageCount = null, revision = 0, operation = 0;
+    window.addEventListener('pagehide', () => { revision++; operation++; }, { once: true });
+    const settingsChanged = () => { operation++; grid.replaceChildren(); status.set('Settings changed. Start the action again.', 'info'); };
+    ranges.addEventListener('input', settingsChanged);
     const inspect = async (token = ++operation) => {
       const chosen = file, version = revision;
       const current = () => version === revision && token === operation;
@@ -176,6 +184,7 @@ const defs = {
     };
     const run = async () => {
       if (!file) { status.set('Choose a PDF first.', 'warning'); return; }
+      grid.replaceChildren();
       const chosen = file, version = revision, token = ++operation;
       const current = () => version === revision && token === operation;
       const selection = ranges.value;
@@ -221,6 +230,7 @@ const defs = {
 
   'pdf-merge'(root) {
     let revision = 0, operation = 0;
+    window.addEventListener('pagehide', () => { revision++; operation++; }, { once: true });
     const listWrap = h('div', { class: 'file-list' });
     const status = statusLine('Add two or more PDFs. Use ↑/↓ to reorder.');
     const grid = statsGrid();
@@ -233,12 +243,13 @@ const defs = {
       const count = listWrap.children.length;
       if (count) status.set(`${count} PDF${count === 1 ? '' : 's'} ready. Reorder if needed, then Merge.`, 'info');
     };
-    const zone = makeZone(true, onFiles, 'Choose PDF files or drop them here');
+    const zone = makeZone(true, onFiles, 'Choose PDF files or drop them here', () => { revision++; grid.replaceChildren(); zone.clear(); status.set('Selection rejected: each file must be within 200 MB. Existing list was kept; start again.', 'error'); });
     const updateGrid = () => { revision++; status.set('List updated. Start the action when ready.', 'info'); grid.set([
       { label: 'Files', value: String(listWrap.children.length) },
       { label: 'Total size', value: fmtBytes([...listWrap.children].reduce((s, row) => s + row.file.size, 0)) },
     ]); };
     const run = async () => {
+      grid.replaceChildren();
       const ordered = [...listWrap.querySelectorAll('.file-row')].map((r) => r.file);
       const version = revision, token = ++operation;
       const current = () => version === revision && token === operation;
@@ -249,6 +260,7 @@ const defs = {
         const out = await PDFLib.PDFDocument.create();
         let pages = 0;
         for (const f of ordered) {
+          if (!current()) return;
           const bytes = await readFile(f, 'buffer');
           let src;
           try { src = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: false }); }
@@ -286,13 +298,20 @@ const defs = {
       pageCount = null;
       info.textContent = '';
       status.set(`Loaded ${file.name} (${fmtBytes(file.size)}). Click Inspect to read the page count.`, 'info');
-    }, 'Choose a PDF or drop it here');
-    const mode = segControl({ options: [{ v: 'extract', t: 'Extract pages into one PDF' }, { v: 'each', t: 'Each page as its own PDF' }], value: 'extract', ariaLabel: 'Split mode' });
+    }, 'Choose a PDF or drop it here', () => {
+      file = null; pageCount = null; revision++; operation++; grid.replaceChildren(); info.textContent = '';
+      zone.replaceChildren(h('span', { class: 'dz-title', text: 'Choose a PDF or drop it here' }), zone.querySelector('input[type=file]'));
+      zone.clear(); status.set('Selection rejected. Choose a PDF within the 200 MB limit.', 'error');
+    });
+    const mode = segControl({ options: [{ v: 'extract', t: 'Extract pages into one PDF' }, { v: 'each', t: 'Each page as its own PDF' }], value: 'extract', ariaLabel: 'Split mode', onChange: () => settingsChanged() });
     const ranges = input({ type: 'text', class: 'input mono', placeholder: 'e.g. 1-3, 7, 11-13' });
     const status = statusLine('Choose a PDF to begin.');
     const info = h('p', { class: 'hint' });
     const grid = statsGrid();
     let file = null, pageCount = null, revision = 0, operation = 0;
+    window.addEventListener('pagehide', () => { revision++; operation++; }, { once: true });
+    const settingsChanged = () => { operation++; grid.replaceChildren(); status.set('Settings changed. Start again; download requests already started cannot be recalled.', 'info'); };
+    ranges.addEventListener('input', settingsChanged);
     const inspect = async (token = ++operation) => {
       const chosen = file, version = revision;
       const current = () => version === revision && token === operation;
@@ -313,6 +332,7 @@ const defs = {
     };
     const run = async () => {
       if (!file) { status.set('Choose a PDF first.', 'warning'); return; }
+      grid.replaceChildren();
       const chosen = file, version = revision, token = ++operation;
       const current = () => version === revision && token === operation;
       const selection = ranges.value;
@@ -369,14 +389,17 @@ const defs = {
 
   'image-to-pdf'(root) {
     let revision = 0, operation = 0;
+    window.addEventListener('pagehide', () => { revision++; operation++; }, { once: true });
     const listWrap = h('div', { class: 'file-list' });
     const status = statusLine('Add one or more images — each becomes a page. Use ↑/↓ to reorder.');
     const grid = statsGrid();
-    const pageSize = segControl({ options: [{ v: 'a4', t: 'A4 (fit)' }, { v: 'letter', t: 'Letter (fit)' }, { v: 'original', t: 'Image size' }], value: 'a4', ariaLabel: 'Page size' });
+    const pageSize = segControl({ options: [{ v: 'a4', t: 'A4 (fit)' }, { v: 'letter', t: 'Letter (fit)' }, { v: 'original', t: 'Image size' }], value: 'a4', ariaLabel: 'Page size', onChange: () => { operation++; grid.replaceChildren(); status.set('Page size changed. Start conversion again.', 'info'); } });
     const zone = dropzone({
       accept: 'image/*', multiple: true, title: 'Choose images or drop them here',
       sub: 'JPG, PNG, WebP, GIF… — converted locally, never uploaded',
+      onReject: () => { revision++; grid.replaceChildren(); zone.clear(); status.set('Selection rejected: each file must be within 200 MB. Existing list was kept; start again.', 'error'); },
       onFiles: (incoming) => {
+        zone.querySelector('input[type=file]').value = '';
         for (const f of incoming) {
           if (!f.type.startsWith('image/')) { status.set(`“${f.name}” is not an image file.`, 'error'); continue; }
             listWrap.append(pdfFilesRow(f, updateGrid));
@@ -409,6 +432,7 @@ const defs = {
     }
     const PAGE = { a4: [595.28, 841.89], letter: [612, 792] };
     const run = async () => {
+      grid.replaceChildren();
       const ordered = [...listWrap.querySelectorAll('.file-row')].map((r) => r.file);
       const version = revision, token = ++operation;
       const current = () => version === revision && token === operation;
@@ -419,6 +443,7 @@ const defs = {
         const PDFLib = await loadPdfLib();
         const pdf = await PDFLib.PDFDocument.create();
         for (const f of ordered) {
+          if (!current()) return;
           const img = await embedImage(pdf, f);
           let page, rect;
           if (chosenSize === 'original') {

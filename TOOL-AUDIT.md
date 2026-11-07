@@ -13,6 +13,28 @@ certifications. A headless Chromium audit is now available (see below). No
 physical-device, screen-reader, physical camera/microphone or diverse user-file
 matrix was available.
 
+## PDF workflow integrity — 2026-11-07
+
+- Rotate, split and image-to-PDF now invalidate in-flight work when relevant
+  settings change, preventing a stale configuration from triggering a download.
+  Page navigation invalidates pending PDF actions. The merge and image loops
+  also stop before starting the next file after invalidation; synchronous PDF
+  processing already under way cannot always be interrupted; individual
+  split-page download requests already started cannot be recalled.
+- The shared 200 MiB per-file rejection clears the prior single-document
+  selection in organizer, split and rotate. For merge and image-to-PDF it keeps
+  the existing list but cancels pending work and says the new selection was
+  rejected. Picker values reset to allow selecting the same file again.
+- Corrected the merge guide's false claim of no size limit and overly broad
+  guarantee of identical output. Page copying may lose document features;
+  signatures, forms, links, bookmarks and attachments require review.
+- DOM tests delay PDF operations to verify settings edits, rejected selections
+  and list changes do not deliver obsolete downloads. Chromium downloads and
+  reopens synthetic organizer, split, rotate, merge and image-to-PDF outputs;
+  it checks same-file selection and organizer mobile layout and automated axe.
+  Synthetic documents are not a comprehensive real-world fixture matrix.
+  Browser diversity, physical devices and screen readers remain unverified.
+
 ## Bulk image queue and filenames — 2026-11-07
 
 - The existing batch now previews output names, supports reordering, removing
