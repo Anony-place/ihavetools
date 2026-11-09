@@ -11,12 +11,12 @@ import { chromium } from 'playwright-core';
 import AxeBuilder from '@axe-core/playwright';
 import sharp from 'sharp';
 import jsQR from 'jsqr';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, rgb as pdfRgb } from 'pdf-lib';
 import { encodeWav } from '../assets/js/tools/audio.js';
 import { tools } from '../assets/js/registry.js';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.wasm': 'application/wasm' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.wasm': 'application/wasm' };
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
@@ -436,6 +436,51 @@ try {
   console.log('✓ queue ordering, prefix preview, ZIP filenames, invalidation and reselect');
   console.log('✓ batch resize, independent ZIP decode, partial failure, invalidation and mobile accessibility');
   await page.setViewportSize({ width: 1280, height: 800 });
+
+  // Exercise the locally bundled renderer and inspect real downloaded pixels.
+  await go('pdf-to-image');
+  const renderedPdf = await PDFDocument.create();
+  renderedPdf.addPage([100, 200]); renderedPdf.addPage([200, 100]).drawRectangle({x: 0, y: 0, width: 200, height: 100, color: pdfRgb(1, 0, 0)}); renderedPdf.addPage([9000, 100]);
+  const imagePdf = { name: 'pages.pdf', mimeType: 'application/pdf', buffer: Buffer.from(await renderedPdf.save()) };
+  const network = []; const watchRequest = request => { if (!request.url().startsWith(base) && !request.url().startsWith('blob:')) network.push(request.url()); };
+  page.on('request', watchRequest);
+  await page.locator('#tool-app input[type=file]').setInputFiles(imagePdf);
+  await page.locator('#tool-app .status-line').getByText(/PDF opened/).waitFor();
+  await page.getByLabel('Resolution').selectOption('1');
+  await page.getByLabel('Page number').fill('2');
+  await page.getByRole('button', { name: 'Render page' }).click();
+  await page.locator('#tool-app .status-line').getByText(/Rendered page 2/).waitFor();
+  let imgEvent = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download image' }).click();
+  const pngBytes = await readFile(await (await imgEvent).path());
+  let imageMeta = await sharp(pngBytes).metadata();
+  const pdfPixel = await sharp(pngBytes).removeAlpha().extract({left: 10, top: 10, width: 1, height: 1}).raw().toBuffer();
+  assert.ok(pdfPixel[0] > 240 && pdfPixel[1] < 20 && pdfPixel[2] < 20, 'rendered PDF content appears in downloaded PNG');
+  assert.equal(imageMeta.format, 'png'); assert.equal(imageMeta.width, 200); assert.equal(imageMeta.height, 100);
+  await page.getByLabel('Image format').selectOption('jpeg');
+  assert.equal(await page.getByRole('button', { name: 'Download image' }).isDisabled(), true);
+  await page.getByRole('button', { name: 'Render page' }).click();
+  await page.locator('#tool-app .status-line').getByText(/Rendered page 2/).waitFor();
+  imgEvent = page.waitForEvent('download'); await page.getByRole('button', { name: 'Download image' }).click();
+  imageMeta = await sharp(await readFile(await (await imgEvent).path())).metadata();
+  assert.equal(imageMeta.format, 'jpeg'); assert.equal(imageMeta.width, 200); assert.equal(imageMeta.height, 100);
+  await page.getByLabel('Page number').fill('3'); await page.getByRole('button', { name: 'Render page' }).click();
+  await page.locator('#tool-app .status-line').getByText(/too large/).waitFor();
+  await page.getByLabel('Page number').fill('4'); await page.getByRole('button', { name: 'Render page' }).click();
+  await page.locator('#tool-app .status-line').getByText(/valid page/).waitFor();
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'bad.pdf',mimeType:'application/pdf',buffer:Buffer.from('not a pdf')});
+  await page.locator('#tool-app .status-line').getByText(/Could not open/).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Download image' }).isDisabled(), true);
+  await page.locator('#tool-app input[type=file]').setInputFiles(imagePdf);
+  await page.locator('#tool-app .status-line').getByText(/PDF opened/).waitFor();
+  await page.getByRole('button', { name: 'Clear PDF' }).click();
+  await page.getByRole('button', { name: 'Render page' }).click();
+  await page.locator('#tool-app .status-line').getByText(/Choose a PDF first/).waitFor();
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'large.pdf', mimeType:'application/pdf', buffer:Buffer.alloc(20 * 1024 * 1024 + 1)});
+  await page.locator('#tool-app .status-line').getByText(/no larger than 20 MiB/).waitFor();
+  const pdfA11y = await new AxeBuilder({ page }).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
+  assert.deepEqual(pdfA11y.violations.map(v => v.id), [], 'PDF tool accessibility');
+  page.off('request', watchRequest); assert.deepEqual(network, [], 'PDF rendering must not make external requests');
+  console.log('✓ local PDF page rendering, PNG/JPEG downloads, invalid input and clear');
 
   await go('pdf-merge');
   const chooser = page.waitForEvent('filechooser');
