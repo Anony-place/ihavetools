@@ -539,6 +539,65 @@ try {
   await page.setViewportSize({width:1280,height:800});
   console.log('✓ image quarter turns and mirror combinations, downloaded formats, invalid input and accessibility');
 
+  await go('bulk-image-resizer');
+  await page.locator('#tool-app input[type=file]').setInputFiles([rotateFile,{name:'second.png',mimeType:'image/png',buffer:sourcePng}]);
+  await page.getByLabel('Maximum width (px)').fill(''); await page.getByLabel('Maximum height (px)').fill('');
+  await page.getByLabel('Output format').selectOption('png');
+  const batchH = page.locator('#tool-app label.switch').filter({hasText:'Flip horizontally'});
+  const batchV = page.locator('#tool-app label.switch').filter({hasText:'Flip vertically'});
+  for (const deg of [0,90,180,270]) for (const hFlip of [false,true]) for (const vFlip of [false,true]) {
+    await page.getByLabel('Rotate all images').selectOption(String(deg));
+    if (await batchH.locator('input').isChecked() !== hFlip) await batchH.click();
+    if (await batchV.locator('input').isChecked() !== vFlip) await batchV.click();
+    await page.getByRole('button',{name:'Process images'}).click();
+    await page.locator('#tool-app .status-line').getByText(/2 of 2 images ready/).waitFor();
+    const batchEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
+    const zipFiles=unzipSync(new Uint8Array(await readFile(await (await batchEvent).path())));
+    assert.deepEqual(Object.keys(zipFiles),['001-colors.png','002-second.png']);
+    const output=await sharp(Buffer.from(zipFiles['001-colors.png'])).removeAlpha().raw().toBuffer({resolveWithObject:true});
+    const width=deg%180?3:2, height=deg%180?2:3; assert.equal(output.info.width,width); assert.equal(output.info.height,height);
+    const expected=Buffer.alloc(width*height*3);
+    for (let y=0;y<3;y++) for (let x=0;x<2;x++) {
+      let dx=deg===0?x:deg===90?2-y:deg===180?1-x:y;
+      let dy=deg===0?y:deg===90?x:deg===180?2-y:1-x;
+      if (hFlip) dx=width-1-dx; if (vFlip) dy=height-1-dy;
+      rgbPixels.copy(expected,(dy*width+dx)*3,(y*2+x)*3,(y*2+x+1)*3);
+    }
+    assert.deepEqual(output.data,expected,`batch rotation ${deg} / ${hFlip} / ${vFlip}`);
+    const secondPixels=await sharp(Buffer.from(zipFiles['002-second.png'])).removeAlpha().raw().toBuffer(); assert.deepEqual(secondPixels,expected);
+  }
+  await page.getByLabel('Rotate all images').selectOption('90');
+  assert.equal(await page.getByRole('button',{name:'Download ZIP'}).isDisabled(),true);
+  if (await batchH.locator('input').isChecked()) await batchH.click();
+  if (await batchV.locator('input').isChecked()) await batchV.click();
+  await page.getByLabel('Maximum width (px)').fill('7'); await page.getByLabel('Maximum height (px)').fill('6');
+  await page.getByLabel('Layout').selectOption('transparent');
+  await page.getByRole('button',{name:'Process images'}).click();
+  await page.locator('#tool-app .status-line').getByText(/2 of 2 images ready/).waitFor();
+  const paddedZipEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
+  const paddedZip=unzipSync(new Uint8Array(await readFile(await (await paddedZipEvent).path())));
+  const paddedPixels=await sharp(Buffer.from(paddedZip['001-colors.png'])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  assert.deepEqual([paddedPixels.info.width,paddedPixels.info.height],[7,6]);
+  assert.deepEqual(pixel(paddedPixels,0,0),[0,0,0,0]); assert.deepEqual(pixel(paddedPixels,2,2),[255,0,255,255]);
+  await page.getByLabel('Layout').selectOption('white');
+  await page.getByLabel('Output format').selectOption('jpeg');
+  await page.locator('#tool-app input[type=file]').setInputFiles([rotateFile,{name:'invalid.png',mimeType:'image/png',buffer:Buffer.from('bad')}]);
+  await page.getByRole('button',{name:'Process images'}).click();
+  await page.locator('#tool-app .status-line').getByText(/1 of 2 images ready/).waitFor();
+  assert.match(await page.locator('#tool-app').innerText(), /does not look like a supported image/);
+  const partialRotateEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
+  const partialRotateZip=unzipSync(new Uint8Array(await readFile(await (await partialRotateEvent).path())));
+  assert.deepEqual(Object.keys(partialRotateZip),['001-colors.jpg']);
+  const jpegPad=await sharp(Buffer.from(partialRotateZip['001-colors.jpg'])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  assert.deepEqual([jpegPad.info.width,jpegPad.info.height],[7,6]); assert.ok(pixel(jpegPad,0,0).slice(0,3).every(v=>v>230));
+  await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  assert.equal(await page.getByRole('button',{name:'Download ZIP'}).isDisabled(),true);
+  await page.setViewportSize({width:320,height:844});
+  assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'batch rotation accessibility');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  await page.setViewportSize({width:1280,height:800});
+  console.log('✓ batch rotation and mirrors: all 16 combinations, ZIP pixels, padding and accessibility');
+
   await go('pdf-to-image');
   const renderedPdf = await PDFDocument.create();
   renderedPdf.addPage([100, 200]); renderedPdf.addPage([200, 100]).drawRectangle({x: 0, y: 0, width: 200, height: 100, color: pdfRgb(1, 0, 0)}); renderedPdf.addPage([9000, 100]);

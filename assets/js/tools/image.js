@@ -371,6 +371,9 @@ const defs = {
     const target = input({ type: 'number', min: 1, max: 51200, step: 1, placeholder: 'optional' });
     const prefix = input({ type: 'text', maxlength: 40, placeholder: 'optional, e.g. product' });
     const upscale = switchChip({ label: 'Allow enlargement', checked: false });
+    const rotation = select({ options: [{v:'0',t:'No rotation'}, {v:'90',t:'90° clockwise'}, {v:'180',t:'180°'}, {v:'270',t:'90° counterclockwise'}], value:'0' });
+    const flipX = switchChip({ label:'Flip horizontally', checked:false });
+    const flipY = switchChip({ label:'Flip vertically', checked:false });
     const status = statusLine('Choose images to begin.');
     const list = h('div', {}), results = h('div', {});
     let files = [], revision = 0, archive = null;
@@ -413,7 +416,7 @@ const defs = {
       renderQueue();
       status.set(`${files.length} images selected. Set size and quality, then process.`, 'info');
     });
-    for (const el of [width, height, format, layout, quality, target, prefix, upscale]) for (const ev of (el === prefix ? ['input'] : ['input', 'change'])) el.addEventListener(ev, () => { invalidate(); if (el === format || el === prefix) renderQueue(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
+    for (const el of [width, height, format, layout, quality, target, prefix, upscale, rotation, flipX, flipY]) for (const ev of (el === prefix ? ['input'] : ['input', 'change'])) el.addEventListener(ev, () => { invalidate(); if (el === format || el === prefix) renderQueue(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
     window.addEventListener('pagehide', invalidate);
     async function run() {
       invalidate();
@@ -430,6 +433,8 @@ const defs = {
       if (targetKiB != null && (!Number.isSafeInteger(targetKiB) || targetKiB < 1 || targetKiB > 51200)) { status.set('Target must be a whole number from 1 to 51200 KiB.', 'error'); return; }
       if (targetKiB != null && fmt === 'png') { status.set('Target size is available for JPEG and WebP only; PNG ignores quality.', 'error'); return; }
       if (!MIME_BY_FMT[fmt] || (targetKiB == null && (!quality.value || !Number.isFinite(q) || q < 5 || q > 100))) { status.set('Quality must be between 5 and 100 and the format must be supported.', 'error'); return; }
+      const deg = Number(rotation.value), horizontal = flipX.querySelector('input').checked, vertical = flipY.querySelector('input').checked;
+      if (![0,90,180,270].includes(deg)) { status.set('Choose a valid rotation.', 'error'); return; }
       const token = revision, selected = files.slice(), enlarge = upscale.querySelector('input').checked;
       const entries = {}, rows = []; let total = 0, totalOriginal = 0, larger = 0, successes = 0;
       status.set('Preparing image tools…', 'info');
@@ -439,19 +444,27 @@ const defs = {
         for (let i = 0; i < selected.length; i++) {
           if (revision !== token) return;
           const f = selected[i]; status.set(`Processing ${i + 1} of ${selected.length}…`, 'info');
+          let canvas;
           try {
             await checkDecodable(f);
             if (revision !== token) return;
             const img = await loadImage(f);
             if (revision !== token) return;
-            const fit = mode === 'fit' ? fitInside(img.naturalWidth, img.naturalHeight, w, h0, enlarge) : null;
-            const dims = fit ? { ...fit, imageWidth: fit.width, imageHeight: fit.height, x: 0, y: 0 } : paddedLayout(img.naturalWidth, img.naturalHeight, w, h0, enlarge);
+            const rotatedW = deg % 180 ? img.naturalHeight : img.naturalWidth, rotatedH = deg % 180 ? img.naturalWidth : img.naturalHeight;
+            const fit = mode === 'fit' ? fitInside(rotatedW, rotatedH, w, h0, enlarge) : null;
+            const dims = fit ? { ...fit, imageWidth: fit.width, imageHeight: fit.height, x: 0, y: 0 } : paddedLayout(rotatedW, rotatedH, w, h0, enlarge);
             validateCanvasSize(dims.width, dims.height);
-            const canvas = document.createElement('canvas'); canvas.width = dims.width; canvas.height = dims.height;
+            canvas = document.createElement('canvas'); canvas.width = dims.width; canvas.height = dims.height;
             const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable.');
             ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
             if (fmt === 'jpeg' || mode === 'white') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, dims.width, dims.height); }
-            ctx.drawImage(img, dims.x, dims.y, dims.imageWidth, dims.imageHeight);
+            if (!deg && !horizontal && !vertical) ctx.drawImage(img, dims.x, dims.y, dims.imageWidth, dims.imageHeight);
+            else {
+              ctx.translate(dims.x + dims.imageWidth / 2, dims.y + dims.imageHeight / 2);
+              ctx.scale(horizontal ? -1 : 1, vertical ? -1 : 1); ctx.rotate(deg * Math.PI / 180);
+              const drawW = deg % 180 ? dims.imageHeight : dims.imageWidth, drawH = deg % 180 ? dims.imageWidth : dims.imageHeight;
+              ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+            }
             const choice = targetKiB == null ? { blob: await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100) } : await encodeToTarget(qualityValue => canvasToBlob(canvas, MIME_BY_FMT[fmt], qualityValue), targetKiB * 1024, () => revision === token);
             const blob = choice.blob;
             if (revision !== token) return;
@@ -462,6 +475,7 @@ const defs = {
             const name = batchFilename(f.name, i + 1, fmt, namingPrefix); entries[name] = bytes; successes++;
             rows.push([f.name, `${dims.width} × ${dims.height}`, fmtBytes(f.size), fmtBytes(blob.size), sizeChange(f.size, blob.size), targetKiB == null ? name : `${name} — target met at quality ${choice.quality}%`]);
           } catch (err) { if (revision !== token) return; rows.push([f.name, 'Failed', fmtBytes(f.size), '—', '—', err.message]); }
+          finally { if (canvas) { canvas.width = 0; canvas.height = 0; } }
         }
         if (!successes) { results.replaceChildren(table({ headers: ['File', 'Dimensions', 'Original', 'Output', 'Change', 'Result'], rows })); status.set('No images succeeded. Check the individual errors.', 'error'); return; }
         const zip = zipSync(entries, { level: 0 });
@@ -477,8 +491,9 @@ const defs = {
       field({ label: 'Layout', control: layout, hint: 'Exact canvas needs both dimensions; image is centered without cropping.' }), field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'PNG ignores quality; target mode chooses quality automatically.' }),
       field({ label: 'Target per image (KiB)', control: target, hint: 'Optional, whole KiB (1 KiB = 1024 bytes). JPEG/WebP only; searches quality 5–100 at selected dimensions.' }),
       field({ label: 'Filename prefix', control: prefix, hint: 'Optional: up to 40 ASCII letters, numbers, hyphens or underscores.' })),
+      h('div', { class: 'field-row' }, field({label:'Rotate all images', control:rotation, hint:'Applied before resizing and padding.'}), field({label:'Mirror after rotation',control:flipX}), field({label:'',control:flipY})),
       upscale, actionsRow(runButton, cancel, download), status, results,
-      privacyNote('Images are processed locally, not uploaded. Fit mode uses optional bounds; clear both to retain original dimensions. Exact canvas centers the full image with white or transparent padding, without cropping. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
+      privacyNote('Images are processed locally, not uploaded. The chosen rotation and output-axis mirrors apply to every image before resizing and padding; preview individual photos to choose appropriate settings. Fit mode uses optional bounds; clear both to retain original dimensions. Exact canvas centers the full image with white or transparent padding, without cropping. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
   },
 
   'image-resizer'(root) {

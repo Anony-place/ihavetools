@@ -1289,6 +1289,22 @@ await domTest('image rotator cancels stale loads and stale encoding', async () =
     click(btnByLabel(app,'Create preview')); assert.match(statusText(document),/Choose a supported image/);
   } finally {global.Image=oldImage;URL.createObjectURL=create;URL.revokeObjectURL=revoke;canvas.getContext=oldContext;canvas.toBlob=oldBlob;}
 });
+await domTest('batch image rotation changes cancel an in-flight load', async () => {
+  const oldImage=global.Image, create=URL.createObjectURL, revoke=URL.revokeObjectURL, pending=[];
+  global.Image=class {constructor(){this.naturalWidth=80;this.naturalHeight=40;} set src(v){pending.push(this);}};
+  URL.createObjectURL=()=> 'blob:test'; URL.revokeObjectURL=()=>{};
+  try {
+    const app=await loadToolPage('bulk-image-resizer','image');
+    const event=new window.Event('drop',{bubbles:true,cancelable:true});
+    Object.defineProperty(event,'dataTransfer',{value:{files:[new File([new Uint8Array([255,216,255,217])],'a.jpg')]}});
+    app.querySelector('.dropzone').dispatchEvent(event); click(btnByLabel(app,'Process images'));
+    for(let i=0;i<30 && !pending.length;i++) await new Promise(r=>setTimeout(r,10));
+    assert.equal(pending.length,1);
+    const rotation=[...app.querySelectorAll('select')].find(el=>[...el.options].some(o=>o.value==='270'));
+    rotation.value='90'; fire(rotation,'change'); pending[0].onload(); await new Promise(r=>setTimeout(r,20));
+    assert.match(statusText(document),/Settings changed/); assert.equal(btnByLabel(app,'Download ZIP').disabled,true);
+  } finally {global.Image=oldImage;URL.createObjectURL=create;URL.revokeObjectURL=revoke;}
+});
 await domTest('crop coordinates validate boundaries and aspect changes are synchronous', async () => {
   const oldImage=global.Image, create=URL.createObjectURL, revoke=URL.revokeObjectURL;
   const canvas=window.HTMLCanvasElement.prototype, getContext=canvas.getContext, toBlob=canvas.toBlob;
