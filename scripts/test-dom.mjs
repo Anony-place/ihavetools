@@ -1609,6 +1609,31 @@ await domTest('combined date workflow and invalid robots rules remain editable',
  app=await loadToolPage('robots-txt-generator','webseo'); click(btnByLabel(app,'Add rule')); let agent=app.querySelector('input[placeholder^="User-agent"]'), path=app.querySelector('input[placeholder^="/private/"]'); agent.value='Bad agent'; path.value='/foo'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(statusText(document),/User-agent must/); assert.ok(app.contains(agent)); assert.equal(agent.value,'Bad agent'); agent.value='TestBot'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(app.textContent,/UA: TestBot/);
 });
 
+await domTest('keyword text import preserves content on rejection and ignores stale reads', async () => {
+ const app=await loadToolPage('keyword-density-checker','webseo'), box=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');
+ const saved=global.FileReader; let reader;
+ global.FileReader=class { readAsText(){ reader=this; } };
+ const choose=file=>{Object.defineProperty(picker,'files',{configurable:true,value:[file]});fire(picker,'change');};
+ try {
+   box.value='existing'; choose(new File(['x'],'draft.txt')); assert.ok(reader); box.value='new edit'; fire(box,'input'); reader.result='late overwrite'; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'new edit');
+   choose(new File(['x'],'bad.pdf')); assert.match(statusText(document),/Existing content was kept/); assert.equal(box.value,'new edit');
+   choose(new File(['hello'],'draft.txt')); reader.result='hello hello'; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'hello hello'); click(btnByLabel(app,'Count keywords')); assert.match(app.textContent,/hello/);
+   choose({name:'huge.txt',size:800001}); assert.match(statusText(document),/Existing content was kept/); assert.equal(box.value,'hello hello');
+ } finally {global.FileReader=saved;}
+});
+await domTest('HTML editor opt-in Tab inserts spaces and keeps Shift+Tab navigation', async () => {
+ const app=await loadToolPage('html-live-preview','developer'), code=app.querySelector('textarea'), toggle=[...app.querySelectorAll('label.switch')].find(el=>el.textContent.includes('Tab inserts spaces')).querySelector('input');
+ code.value='abcd';code.setSelectionRange(1,3);let ev=new window.KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true});code.dispatchEvent(ev);assert.equal(ev.defaultPrevented,false);assert.equal(code.value,'abcd');
+ toggle.checked=true;ev=new window.KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true});code.dispatchEvent(ev);assert.equal(ev.defaultPrevented,true);assert.equal(code.value,'a  d');assert.equal(code.selectionStart,3);
+ ev=new window.KeyboardEvent('keydown',{key:'Tab',shiftKey:true,bubbles:true,cancelable:true});code.dispatchEvent(ev);assert.equal(ev.defaultPrevented,false);
+});
+await domTest('JSON tree search shows matching ancestors and restores expansion', async () => {
+ const app=await loadToolPage('json-formatter','developer'), code=app.querySelector('textarea');code.value='{"outer":{"big":9007199254740993},"other":1}';fire(code,'input');click(btnByLabel(app,'View tree'));
+ const tree=app.querySelector('.json-tree'), details=tree.querySelectorAll('details'), search=tree.querySelector('input[type=search]');assert.equal(details[1].open,false);
+ search.value='9007199254740993';fire(search,'input');assert.equal(details[1].open,true);assert.equal(tree.querySelectorAll('.json-tree-value[hidden]').length,1);assert.match(tree.textContent,/1 matching item/);
+ search.value='missing';fire(search,'input');assert.match(tree.textContent,/0 matching items/);search.value='';fire(search,'input');assert.equal(details[1].open,false);assert.equal(tree.querySelectorAll('[hidden]').length,0);
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);

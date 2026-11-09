@@ -477,6 +477,7 @@ const defs = {
     code.setAttribute('aria-label', 'HTML code'); code.spellcheck = false;
     const live = switchChip({ label: 'Live preview', checked: true });
     const liveInput = live.querySelector('input');
+    const indentMode = switchChip({ label: 'Tab inserts spaces', checked: false });
     const frame = h('iframe', { title: 'Live HTML preview', sandbox: 'allow-scripts', referrerpolicy: 'no-referrer', class: 'html-preview-frame' });
     const status = statusLine('Preview ready. Your code is not saved by this tool.');
     let timer = null, last = '', channel = null, id = '';
@@ -495,6 +496,13 @@ const defs = {
       if (code.value.length > 200000) { send(''); status.set('Code exceeds the 200,000-character preview limit. Shorten it before running.', 'error'); return; }
       send(code.value); status.set('Preview updated. Code is not saved; external resources may receive requests.', 'info');
     };
+    code.addEventListener('keydown', event => {
+      if (!indentMode.querySelector('input').checked || event.key !== 'Tab' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
+      event.preventDefault();
+      const start = code.selectionStart, end = code.selectionEnd;
+      code.setRangeText('  ', start, end, 'end');
+      code.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
     code.addEventListener('input', () => {
       clearTimeout(timer);
       if (liveInput.checked) { status.set('Updating preview…', 'info'); timer = setTimeout(run, 400); }
@@ -509,7 +517,8 @@ const defs = {
       h('div', { class: 'html-playground' },
         h('div', { class: 'html-playground-editor' }, field({ label: 'HTML code', control: code })),
         h('div', { class: 'html-playground-preview' }, h('h3', { text: 'Live preview' }), frame)),
-      h('div', { class: 'switch-row', style: 'margin-top:12px' }, live),
+      h('div', { class: 'switch-row', style: 'margin-top:12px' }, live, indentMode),
+      h('p', { class: 'hint', text: 'Tab moves focus by default. Enable “Tab inserts spaces” to insert two spaces; Shift+Tab still moves focus.' }),
       actionsRow(btn({ label: 'Run preview', icon: 'eye', onClick: run }),
         btn({ label: 'Stop preview', variant: 'secondary', onClick: () => { clearTimeout(timer); liveInput.checked = false; send(''); status.set('Preview stopped. Press Run preview to restart.', 'info'); } }),
         open,
@@ -574,13 +583,42 @@ const defs = {
         const data = jsonTree(inp.value);
         const render = (node, label, depth = 0) => {
           const prefix = label == null ? 'Root' : label;
-          if (node.type === 'value') return h('div', { class: 'json-tree-value', text: `${prefix}: ${node.raw}` });
-          const details = h('details', { open: depth === 0 }, h('summary', { text: `${prefix}: ${node.type} (${node.children.length})` }));
-          const children = h('div', { class: 'json-tree-children' });
-          node.children.forEach((entry, index) => children.append(render(entry.node, entry.key ?? `[${index}]`, depth + 1)));
-          details.append(children); return details;
+          if (node.type === 'value') {
+            const text = `${prefix}: ${node.raw}`;
+            return { el: h('div', { class: 'json-tree-value', text }), text, children: [] };
+          }
+          const text = `${prefix}: ${node.type} (${node.children.length})`;
+          const details = h('details', { open: depth === 0 }, h('summary', { text }));
+          const childrenEl = h('div', { class: 'json-tree-children' });
+          const children = node.children.map((entry, index) => render(entry.node, entry.key ?? `[${index}]`, depth + 1));
+          children.forEach(child => childrenEl.append(child.el)); details.append(childrenEl);
+          return { el: details, text, children };
         };
-        tree.append(h('h3', { text: 'JSON tree (read-only)' }), h('p', { class: 'hint', text: 'Expand items to inspect original values. Numbers and duplicate keys are preserved; editing happens in the input above.' }), render(data, null));
+        const rootNode = render(data, null);
+        const search = input({ type: 'search', placeholder: 'Find keys or values…', maxlength: 200 });
+        const matches = h('p', { class: 'hint', role: 'status', 'aria-live': 'polite' });
+        let previousStates = null;
+        const filter = () => {
+          const query = search.value.toLocaleLowerCase(), active = !!query; let count = 0;
+          if (active && !previousStates) {
+            previousStates = new Map();
+            const save = node => { if (node.el.tagName === 'DETAILS') previousStates.set(node.el, node.el.open); node.children.forEach(save); }; save(rootNode);
+          }
+          const visit = node => {
+            let descendant = false;
+            for (const child of node.children) if (visit(child)) descendant = true;
+            const matched = active && node.text.toLocaleLowerCase().includes(query);
+            if (matched) count++;
+            node.el.hidden = active && !matched && !descendant;
+            if (active && node.el.tagName === 'DETAILS' && descendant) node.el.open = true;
+            return matched || descendant;
+          };
+          visit(rootNode);
+          if (!active && previousStates) { for (const [el, open] of previousStates) el.open = open; previousStates = null; }
+          matches.textContent = active ? `${count} matching ${count === 1 ? 'item' : 'items'}. Search checks displayed keys and raw values.` : '';
+        };
+        search.addEventListener('input', filter);
+        tree.append(h('h3', { text: 'JSON tree (read-only)' }), h('p', { class: 'hint', text: 'Expand items to inspect original values. Numbers and duplicate keys are preserved; editing happens in the input above.' }), field({ label: 'Search JSON tree', control: search }), matches, rootNode.el);
         status.set('Tree ready. Expand items to inspect.', 'success');
       } catch (e) { status.set(e.message, 'error'); }
     };

@@ -82,6 +82,10 @@ try {
   assert.match(await page.locator('.json-tree').innerText(), /9007199254740993/);
   assert.match(await page.locator('.json-tree').innerText(), /2\.370/);
   assert.equal(await page.locator('.json-tree img').count(), 0);
+  await page.getByLabel('Search JSON tree').fill('9007199254740993');
+  assert.match(await page.locator('.json-tree [role=status]').innerText(), /1 matching item/);
+  assert.equal(await page.locator('.json-tree-value:visible').count(), 1);
+  await page.getByLabel('Search JSON tree').fill('');
   assert.deepEqual((await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v => v.id), [], 'JSON tree mobile accessibility');
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   await page.locator('#tool-app textarea').fill('{}'); assert.equal(await page.locator('.json-tree').innerText(), '');
@@ -95,6 +99,16 @@ try {
   assert.deepEqual((await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v => v.id), [], 'combined date mobile accessibility');
   await go('gst-calculator');
   assert.equal(await page.locator('#tool-app select option[value="40"]').count(), 1);
+  await go('keyword-density-checker');
+  const fileInput = page.getByLabel('Load text file (optional)');
+  await fileInput.setInputFiles({ name: 'draft.txt', mimeType: 'text/plain', buffer: Buffer.from('alpha alpha beta') });
+  await page.locator('#tool-app .status-line').getByText(/Text loaded locally/).waitFor();
+  await page.getByRole('button', { name: 'Count keywords' }).click();
+  assert.match(await page.locator('#tool-app').innerText(), /alpha/);
+  await fileInput.setInputFiles({ name: 'bad.pdf', mimeType: 'application/pdf', buffer: Buffer.from('bad') });
+  assert.match(await page.locator('#tool-app .status-line').innerText(), /Existing content was kept/);
+  assert.equal(await page.locator('#tool-app textarea').inputValue(), 'alpha alpha beta');
+  assert.deepEqual((await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v => v.id), [], 'keyword import mobile accessibility');
   await page.setViewportSize({ width: 1280, height: 800 });
   console.log('✓ mobile JSON tree, combined date workflow and GST rate selection');
 
@@ -102,6 +116,13 @@ try {
   assert.equal(await page.locator('#tool-app').evaluate(el => [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'null')), false);
   assert.ok((await page.locator('#tool-app iframe').boundingBox()).height >= 500, 'preview has ample desktop height');
   const htmlCode = page.locator('#tool-app textarea');
+  await page.locator('#tool-app label.switch').filter({hasText:'Tab inserts spaces'}).click();
+  await htmlCode.fill('abcd'); await htmlCode.evaluate(el => el.setSelectionRange(1, 3)); await htmlCode.press('Tab');
+  assert.equal(await htmlCode.inputValue(), 'a  d');
+  await page.locator('#tool-app label.switch').filter({hasText:'Tab inserts spaces'}).click();
+  await page.getByRole('button',{name:'Reset example'}).click({ trial: true });
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button',{name:'Reset example'}).click();
   const htmlFrame = page.frameLocator('#tool-app iframe');
   await htmlFrame.getByRole('heading', { name: 'Hello, world!' }).waitFor();
   await htmlFrame.getByRole('button', { name: 'Click me' }).click();
@@ -119,7 +140,7 @@ try {
   assert.equal(await htmlFrame.locator('#result').innerText(), 'isolated');
   assert.equal(await fullFrame.locator('#result').innerText(), 'isolated');
   assert.equal(await page.locator('body').getAttribute('data-intruded'), null);
-  await page.locator('#tool-app label.switch').click();
+  await page.locator('#tool-app label.switch').filter({hasText:'Live preview'}).click();
   await htmlCode.fill('<h1>Paused edit</h1>');
   await page.waitForTimeout(600);
   assert.equal(await fullFrame.locator('h1').innerText(), 'Updated');
