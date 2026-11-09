@@ -11,6 +11,25 @@
 
 ---
 
+## Current batch — Keyword and developer workflow improvements
+
+1. Improve the existing GSC-signalled keyword frequency checker rather than
+   add near-duplicate pages: support bounded custom excluded words and selectable
+   result counts, with honest rules for phrase filtering and target counts.
+2. Add local bounded JSON file loading on either side of structural comparison,
+   with stale-read protection and no data replacement on failed import.
+3. Protect existing input/import, exact target counting, density semantics,
+   Unicode handling and CSV download from stale outputs; clarify limits.
+4. Add engine and real-browser tests for exclusions, phrase counts, result caps,
+   download contents and mobile accessibility; run all checks and audit.
+5. Local checks passed: engine/DOM/integrity, full Chromium interactions at
+   mobile/desktop widths, CSV download and file imports, stale-read regression,
+   and npm audit. Browser/device diversity and manual accessibility remain open.
+6. One consolidated PR, CI and Vercel preview before merging; verify production.
+   Search Console evidence informs prioritization but does not guarantee rankings.
+
+---
+
 ## Current batch — PDF rendering workflow and reliability
 
 1. Extend the existing local renderer with bounded selected-page ZIP export,
