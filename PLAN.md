@@ -2,12 +2,31 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 130 (80 guides)
+> `main` par merge = auto-deploy) · **Tools:** 131 (81 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Current batch — Local PDF page to image
+
+1. Evaluate and locally bundle a patched PDF.js renderer and worker with license;
+   load only on the tool page, without sending PDF bytes to a service.
+2. Implement one-page-at-a-time PNG/JPEG rendering with file, page and canvas
+   limits, cancellation/stale-result cleanup, no password prompt, and clear
+   notices about rasterization, supported browsers and rendering limitations.
+3. Exercise real PDF rendering and pixel/download output, rejected files,
+   same-file reload, mobile/accessibility, npm audit and full site checks.
+4. Real Chromium verified PNG and JPEG downloads, output dimensions and PDF
+   content pixels, canvas/file limits, invalid PDFs, clear/reload, external-request
+   absence, all 131 layouts and an axe scan. `npm audit` covers npm dependencies,
+   not this vendored copy; separately monitor upstream PDF.js security advisories
+   and update module and worker together. Complex PDFs and other browsers still
+   need wider coverage.
+5. Ship as one PR only when CI and preview pass; verify production deployment.
 
 ---
 
@@ -23,7 +42,7 @@
    37,616,588 unpacked bytes; its minified main module is 474,284 bytes and
    worker 1,271,915 bytes before transfer compression (other assets may be
    needed). Security history and compatibility, memory, fonts, complex PDFs
-   and real output still need testing. No renderer or PDF-to-image shipped yet.
+   and real output needed testing; see the current PDF batch above.
 5. Run engine, DOM, browser/mobile/accessibility and audit checks, and release
    as one consolidated batch with truthful limitations.
 

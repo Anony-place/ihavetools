@@ -3,7 +3,7 @@
 // Uses pdf-lib (vendored locally at /assets/vendor/pdf-lib.min.js, lazy-loaded
 // only when a PDF action runs). All processing happens in the browser.
 // =============================================================================
-import { h, field, input, switchChip, segControl, btn, actionsRow, statusLine, statsGrid, toast, readFile, downloadBlob, fmtBytes, dropzone, filePill, privacyNote, mountTool } from '../ui.js';
+import { h, field, input, select, switchChip, segControl, btn, actionsRow, statusLine, statsGrid, toast, readFile, downloadBlob, fmtBytes, dropzone, filePill, privacyNote, mountTool } from '../ui.js';
 
 /* ── pdf-lib lazy loader ── */
 let libPromise = null;
@@ -96,6 +96,79 @@ function moveRow(e, dir) {
 }
 
 const defs = {
+  'pdf-to-image'(root) {
+    // PDF.js 6.5.438, Apache-2.0. Module and worker are local, lazy-loaded.
+    let file = null, doc = null, loading = null, rendering = null, revision = 0, job = 0, result = null, imageUrl = null;
+    const status = statusLine('Choose a PDF to begin.');
+    const info = h('p', { class: 'hint' });
+    const preview = h('div', {});
+    const page = input({ type: 'number', min: 1, step: 1, value: '1' });
+    const scale = select({ options: [{v:'1',t:'Standard (72 DPI)'},{v:'1.5',t:'Medium (108 DPI)'},{v:'2',t:'High (144 DPI)'}], value: '1.5' });
+    const format = select({ options: [{v:'png',t:'PNG'}, {v:'jpeg',t:'JPEG'}], value:'png' });
+    const download = btn({ label: 'Download image', icon: 'download', variant: 'secondary', onClick: () => {
+      if (!result) { status.set('Render a page before downloading.', 'warning'); return; }
+      const ok = downloadBlob(result.blob, result.name);
+      status.set(ok ? 'Download requested. Check that your browser saved it.' : 'Could not request the download in this browser.', ok ? 'success' : 'error');
+    } });
+    download.disabled = true;
+    const clearResult = () => { result = null; download.disabled = true; preview.replaceChildren(); if (imageUrl) URL.revokeObjectURL(imageUrl); imageUrl = null; };
+    const cancelRender = () => { job++; if (rendering) { try { rendering.cancel(); } catch {} rendering = null; } clearResult(); };
+    const destroy = object => { if (object) { try { Promise.resolve(object.destroy()).catch(() => {}); } catch {} } };
+    const reset = () => { revision++; cancelRender(); destroy(loading); loading = null; destroy(doc); doc = null; file = null; info.textContent = ''; };
+    const zone = dropzone({ accept: '.pdf,application/pdf', title: 'Choose a PDF or drop it here', sub: 'One PDF, up to 20 MiB; processed locally.', onReject: () => { reset(); zone.clear(); status.set('Selection rejected. Choose a PDF no larger than 20 MiB.', 'error'); }, onFiles: async files => {
+      const chosen = files[0]; reset(); zone.clear();
+      if (!chosen || !/\.pdf$/i.test(chosen.name) || chosen.size > 20 * 1024 * 1024) { status.set('Choose a .pdf file no larger than 20 MiB.', 'error'); return; }
+      const token = revision; status.set('Opening PDF locally…', 'info');
+      try {
+        const lib = await import('/assets/vendor/pdfjs.min.mjs');
+        if (token !== revision) return;
+        lib.GlobalWorkerOptions.workerSrc = '/assets/vendor/pdfjs.worker.min.mjs';
+        const bytes = await readFile(chosen, 'buffer'); if (token !== revision) return;
+        const task = lib.getDocument({ data: new Uint8Array(bytes), isEvalSupported: false, useSystemFonts: true, enableXfa: false });
+        loading = task;
+        const loaded = await task.promise;
+        if (token !== revision) { destroy(loaded); return; }
+        loading = null;
+        if (loaded.numPages < 1 || loaded.numPages > 1000) { destroy(loaded); throw new Error('PDF must contain between 1 and 1,000 pages.'); }
+        doc = loaded; file = chosen; page.value = '1'; page.max = String(loaded.numPages);
+        info.textContent = `${chosen.name} · ${loaded.numPages} pages. Render one page at a time.`;
+        status.set('PDF opened. Choose a page and render it.', 'success');
+      } catch (e) { if (token === revision) { destroy(loading); loading = null; status.set(/password/i.test(`${e.name} ${e.message}`) ? 'Password-protected PDFs are not supported.' : 'Could not open this PDF or load the renderer. Try an unprotected PDF in a current browser.', 'error'); } }
+    } });
+    const run = async () => {
+      if (!doc || !file) { status.set('Choose a PDF first.', 'warning'); return; }
+      cancelRender(); const activeDoc = doc, selectedFile = file, token = revision, action = job;
+      const n = Number(page.value), factor = Number(scale.value), type = format.value;
+      if (!Number.isInteger(n) || n < 1 || n > activeDoc.numPages || ![1,1.5,2].includes(factor) || !['png','jpeg'].includes(type)) { status.set('Choose a valid page and output settings.', 'error'); return; }
+      let canvas;
+      try {
+        status.set(`Rendering page ${n} locally…`, 'info');
+        const pdfPage = await activeDoc.getPage(n); if (token !== revision || action !== job) return;
+        const view = pdfPage.getViewport({ scale: factor }), width = Math.ceil(view.width), height = Math.ceil(view.height);
+        if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1 || width > 8192 || height > 8192 || width * height > 16000000) throw new Error('Page is too large at this resolution. Choose a lower resolution.');
+        canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable in this browser.');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
+        const task = pdfPage.render({ canvasContext: ctx, viewport: view, background: '#ffffff' }); rendering = task;
+        await task.promise; if (token !== revision || action !== job) return;
+        rendering = null; const mime = type === 'png' ? 'image/png' : 'image/jpeg';
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, .92));
+        if (token !== revision || action !== job) return;
+        if (!blob || blob.type !== mime) throw new Error('The browser could not encode this image format.');
+        const stem = selectedFile.name.replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 70) || 'document';
+        result = { blob, name: `${stem}-page-${n}.${type === 'jpeg' ? 'jpg' : 'png'}` };
+        imageUrl = URL.createObjectURL(blob); preview.replaceChildren(h('img', { class: 'img-preview', src: imageUrl, alt: `Rendered preview of PDF page ${n}` })); download.disabled = false;
+        status.set(`Rendered page ${n}: ${width} × ${height} pixels, ${fmtBytes(blob.size)}. Download when ready.`, 'success');
+      } catch (e) { if (token === revision && action === job) { clearResult(); status.set(e.message || 'Could not render this page.', 'error'); } }
+      finally { if (canvas) { canvas.width = 0; canvas.height = 0; } }
+    };
+    [page, scale, format].forEach(el => { el.addEventListener('input', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); el.addEventListener('change', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); });
+    window.addEventListener('pagehide', reset);
+    root.append(zone, info, h('div', { class: 'field-row' }, field({ label: 'Page number', control: page }), field({ label: 'Resolution', control: scale }), field({ label: 'Image format', control: format })),
+      actionsRow(btn({ label: 'Render page', icon: 'image', onClick: run }), download, btn({ label: 'Clear PDF', variant: 'ghost', onClick: () => { reset(); zone.clear(); status.set('PDF cleared.', 'info'); } })), status, preview,
+      privacyNote('Files are processed locally. Pages are rasterized on a white background; text is not selectable. Complex fonts, annotations or forms may render differently; review the image. Password-protected PDFs are not supported.'));
+  },
+
   'pdf-organizer'(root) {
     let source = null, file = null, pages = [], revision = 0, operation = 0;
     window.addEventListener('pagehide', () => { revision++; }, { once: true });

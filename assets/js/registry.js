@@ -1222,6 +1222,22 @@ export const tools = [
     steps: 'Choose how many dice and how many sides (presets for d6 and d20).|Click Roll.|Read each die, the total, and recent roll history.' }),
 
   // ── PDF & Documents ────────────────────────────────────────────────────────
+  T({ id: 'pdf-to-image', name: 'PDF to Image', icon: 'image', engine: 'pdf', categories: ['pdf', 'image'],
+    related: ['image-to-pdf', 'pdf-merge', 'pdf-split', 'pdf-organizer', 'image-converter'],
+    blurb: 'Render a PDF page as a PNG or JPEG locally.',
+    description: 'Convert one PDF page at a time into a PNG or JPEG image locally in your browser, with selectable resolution and preview.',
+    keywords: ['pdf to image', 'pdf to jpg', 'pdf to png', 'convert pdf page to image'],
+    aliases: ['pdf to jpg converter', 'pdf to png converter', 'pdf page to image'], popularity: 68, added: '2026-10-31',
+    steps: 'Choose an unprotected PDF up to 20 MiB.|Select a page, resolution and PNG or JPEG.|Render the page, inspect the preview and download the image.',
+    guide: [
+      { h: 'What this converter does', p: 'This tool rasterizes a selected PDF page to an image on a white background. Text is rendered as pixels and will not be selectable. It does not extract the original embedded images and processes one page at a time.' },
+      { h: 'Limits and fidelity', list: ['PDF files are limited to 20 MiB and 1,000 pages. Output is limited to 8,192 pixels per side and 16 million pixels; lower the resolution if a page is too large.', 'Password-protected PDFs are not supported. Forms, annotations, fonts, transparency and complex documents may look different from a PDF viewer; check the result before sharing.', 'Files are processed locally with a lazily loaded PDF.js renderer. A current compatible browser and an initial connection to load the renderer may be required.'] },
+    ],
+    faqs: [
+      { q: 'Can I convert a PDF to JPG or PNG?', a: 'Yes. Choose an unprotected PDF, select a page and choose JPEG or PNG, then render and download. The output is an image of the page, not an editable PDF.' },
+      { q: 'Does this extract original images or convert every page at once?', a: 'No. This version renders one selected page at a time. It does not extract the original image objects embedded in the PDF.' },
+      { q: 'Is my PDF uploaded?', a: 'The selected PDF is read and rendered locally in your browser. The PDF.js renderer itself is downloaded from this site when first needed.' },
+    ] }),
   T({ id: 'pdf-merge', name: 'PDF Merge', icon: 'layers', engine: 'pdf', categories: ['pdf'],
     related: ["pdf-organizer","image-to-pdf","pdf-split","pdf-rotate"],
     blurb: 'Combine PDFs in order — processed entirely in your browser.',
