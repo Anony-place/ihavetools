@@ -81,10 +81,12 @@
 - Implemented annual SIP step-up, with zero as the backwards-compatible default,
   deposits increasing after each 12 months, shared state, and stale results cleared.
   Unit, DOM and Chromium tests include a 30-month zero-return example (₹32,460).
-- Evaluated the existing local PDF engine and batch image pipeline. Page-number
-  stamping and text watermark are **not implemented or verified**: crop/rotation,
-  fidelity, output positioning and cancellation still need dedicated work and
-  real-file tests. Do not advertise these as available.
+- Added optional batch image text watermark with first-successful-output preview,
+  five positions, opacity, color and relative size. Chromium tests inspect ZIP
+  pixels for all positions, PNG transparency and JPEG, plus invalidation and axe.
+  Other browsers, complex scripts and device limits remain unverified.
+- PDF page-number stamping remains unimplemented: crop/rotation, fidelity and
+  cancellation still need dedicated work and real-file tests.
 - Historical tax calculator remains labelled FY 2025–26; a full primary-source
   audit of all edge cases and any current-year implementation are outstanding.
 - `npm run check`, full Chromium suite and `npm audit` passed for the current
