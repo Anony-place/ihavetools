@@ -257,6 +257,12 @@ await domTest('sip-calculator: shows maturity and growth table', async () => {
   assert.match(app.textContent, /Year-by-year growth/);
   assert.match(app.textContent, /not guaranteed/);
 });
+await domTest('SIP step-up updates contribution and clears stale output', async () => {
+ const app=await loadToolPage('sip-calculator','calculators'), values=app.querySelectorAll('input[type=number]');
+ values[0].value='1000'; values[1].value='0'; values[2].value='2'; values[3].value='10';
+ click(btnByLabel(app,'Calculate SIP')); assert.match(app.textContent,/25,200\.00/);
+ values[3].value='20'; fire(values[3],'input'); assert.equal(app.querySelectorAll('.stat-card').length,0); assert.doesNotMatch(app.textContent,/Year-by-year growth/);
+});
 await domTest('qr-code-generator: mounts and validates empty input', async () => {
   const app = await loadToolPage('qr-code-generator', 'webseo');
   assert.match(app.textContent, /Text or URL to encode/);

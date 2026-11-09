@@ -66,6 +66,17 @@ try {
   }
   console.log(`✓ ${tools.length} full-width desktop workspaces without overflow`);
   await page.setViewportSize({ width: 1280, height: 800 });
+  await go('sip-calculator');
+  await page.getByLabel('Monthly investment', { exact: true }).fill('1000');
+  await page.getByLabel('Expected return % (p.a.)').fill('0');
+  await page.getByLabel('Duration (years)').fill('2.5');
+  await page.getByLabel('Annual step-up (%)').fill('10');
+  await page.getByRole('button', { name: 'Calculate SIP' }).click();
+  assert.match(await page.locator('#tool-app').innerText(), /32,460\.00/);
+  await page.getByLabel('Annual step-up (%)').fill('20');
+  assert.doesNotMatch(await page.locator('#tool-app').innerText(), /Year-by-year growth/);
+  console.log('✓ SIP step-up and stale output');
+
   await go('json-formatter');
   await page.locator('#tool-app textarea').fill('{"big":9007199254740993}');
   await page.getByRole('button', { name: 'Format', exact: true }).click();

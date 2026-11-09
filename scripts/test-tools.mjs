@@ -601,6 +601,16 @@ await test('SIP future value (annuity due)', () => {
   assert.equal(zero.maturity, 12000);
   assert.throws(() => calc.sipCalc({ monthly: 0, annualRatePct: 12, years: 5 }), /greater than zero/);
 });
+await test('SIP step-up contributions and partial year', () => {
+  const x = calc.sipCalc({monthly:1000, annualRatePct:0, years:2.5, stepUpPct:10});
+  assert.ok(Math.abs(x.invested - 32460) < 1e-8); assert.equal(x.maturity,x.invested);
+  assert.deepEqual(x.schedule.map(y => y.year),[1,2,3]);
+  const y = calc.sipCalc({monthly:1000,annualRatePct:12,years:2,stepUpPct:10});
+  let b=0; for(let m=0;m<24;m++) b=(b+(m<12?1000:1100))*1.01;
+  assert.ok(Math.abs(y.maturity-b)<1e-8); assert.ok(Math.abs(y.invested-25200)<1e-8);
+  assert.throws(()=>calc.sipCalc({monthly:100,annualRatePct:2,years:1,stepUpPct:101}),/step-up/);
+  assert.throws(()=>calc.sipCalc({monthly:100,annualRatePct:2,years:1,stepUpPct:NaN}),/step-up/);
+});
 await test('PPF annual compounding', () => {
   const r = calc.ppfCalc({ yearlyDeposit: 150000, annualRatePct: 7.1, years: 15 });
   // F = P × [((1+i)^n − 1)/i] × (1+i) with deposit at start of each year
