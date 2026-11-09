@@ -103,15 +103,22 @@ const defs = {
     const info = h('p', { class: 'hint' });
     const preview = h('div', {});
     const page = input({ type: 'number', min: 1, step: 1, value: '1' });
+    const ranges = input({ type: 'text', placeholder: 'e.g. 1-3, 7', value: '1' });
     const scale = select({ options: [{v:'1',t:'Standard (72 DPI)'},{v:'1.5',t:'Medium (108 DPI)'},{v:'2',t:'High (144 DPI)'}], value: '1.5' });
     const format = select({ options: [{v:'png',t:'PNG'}, {v:'jpeg',t:'JPEG'}], value:'png' });
     const download = btn({ label: 'Download image', icon: 'download', variant: 'secondary', onClick: () => {
-      if (!result) { status.set('Render a page before downloading.', 'warning'); return; }
+      if (!result || result.kind !== 'image') { status.set('Render a page before downloading.', 'warning'); return; }
       const ok = downloadBlob(result.blob, result.name);
       status.set(ok ? 'Download requested. Check that your browser saved it.' : 'Could not request the download in this browser.', ok ? 'success' : 'error');
     } });
     download.disabled = true;
-    const clearResult = () => { result = null; download.disabled = true; preview.replaceChildren(); if (imageUrl) URL.revokeObjectURL(imageUrl); imageUrl = null; };
+    const zipDownload = btn({ label: 'Download ZIP', icon: 'download', variant: 'secondary', onClick: () => {
+      if (!result || result.kind !== 'zip') return;
+      const ok = downloadBlob(result.blob, result.name);
+      status.set(ok ? 'ZIP download requested. Check that your browser saved it.' : 'Could not request the download in this browser.', ok ? 'success' : 'error');
+    } });
+    zipDownload.disabled = true;
+    const clearResult = () => { result = null; download.disabled = true; zipDownload.disabled = true; preview.replaceChildren(); if (imageUrl) URL.revokeObjectURL(imageUrl); imageUrl = null; };
     const cancelRender = () => { job++; if (rendering) { try { rendering.cancel(); } catch {} rendering = null; } clearResult(); };
     const destroy = object => { if (object) { try { Promise.resolve(object.destroy()).catch(() => {}); } catch {} } };
     const reset = () => { revision++; cancelRender(); destroy(loading); loading = null; destroy(doc); doc = null; file = null; info.textContent = ''; };
@@ -130,8 +137,8 @@ const defs = {
         if (token !== revision) { destroy(loaded); return; }
         loading = null;
         if (loaded.numPages < 1 || loaded.numPages > 1000) { destroy(loaded); throw new Error('PDF must contain between 1 and 1,000 pages.'); }
-        doc = loaded; file = chosen; page.value = '1'; page.max = String(loaded.numPages);
-        info.textContent = `${chosen.name} · ${loaded.numPages} pages. Render one page at a time.`;
+        doc = loaded; file = chosen; page.value = '1'; ranges.value = '1'; page.max = String(loaded.numPages);
+        info.textContent = `${chosen.name} · ${loaded.numPages} pages. Preview one page or select pages for a ZIP.`;
         status.set('PDF opened. Choose a page and render it.', 'success');
       } catch (e) { if (token === revision) { destroy(loading); loading = null; status.set(/password/i.test(`${e.name} ${e.message}`) ? 'Password-protected PDFs are not supported.' : 'Could not open this PDF or load the renderer. Try an unprotected PDF in a current browser.', 'error'); } }
     } });
@@ -156,16 +163,59 @@ const defs = {
         if (token !== revision || action !== job) return;
         if (!blob || blob.type !== mime) throw new Error('The browser could not encode this image format.');
         const stem = selectedFile.name.replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 70) || 'document';
-        result = { blob, name: `${stem}-page-${n}.${type === 'jpeg' ? 'jpg' : 'png'}` };
+        result = { kind: 'image', blob, name: `${stem}-page-${n}.${type === 'jpeg' ? 'jpg' : 'png'}` };
         imageUrl = URL.createObjectURL(blob); preview.replaceChildren(h('img', { class: 'img-preview', src: imageUrl, alt: `Rendered preview of PDF page ${n}` })); download.disabled = false;
         status.set(`Rendered page ${n}: ${width} × ${height} pixels, ${fmtBytes(blob.size)}. Download when ready.`, 'success');
       } catch (e) { if (token === revision && action === job) { clearResult(); status.set(e.message || 'Could not render this page.', 'error'); } }
       finally { if (canvas) { canvas.width = 0; canvas.height = 0; } }
     };
-    [page, scale, format].forEach(el => { el.addEventListener('input', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); el.addEventListener('change', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); });
+    const runZip = async () => {
+      if (!doc || !file) { status.set('Choose a PDF first.', 'warning'); return; }
+      cancelRender();
+      const activeDoc = doc, selectedFile = file, token = revision, action = job;
+      const current = () => token === revision && action === job;
+      const factor = Number(scale.value), type = format.value;
+      let pages;
+      try {
+        pages = parseRanges(ranges.value, activeDoc.numPages);
+        if (pages.length > 20) throw new Error('Select at most 20 pages per ZIP.');
+        if (![1, 1.5, 2].includes(factor) || !['png', 'jpeg'].includes(type)) throw new Error('Choose valid output settings.');
+        const { zipSync } = await import('../../vendor/fflate.js');
+        if (!current()) return;
+        const entries = {}, mime = type === 'png' ? 'image/png' : 'image/jpeg';
+        const stem = selectedFile.name.replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 70) || 'document';
+        let total = 0;
+        for (let i = 0; i < pages.length; i++) {
+          const n = pages[i]; status.set(`Rendering page ${n} (${i + 1} of ${pages.length}) locally…`, 'info');
+          const pdfPage = await activeDoc.getPage(n); if (!current()) return;
+          const view = pdfPage.getViewport({ scale: factor }), width = Math.ceil(view.width), height = Math.ceil(view.height);
+          if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1 || width > 8192 || height > 8192 || width * height > 16000000) throw new Error(`Page ${n} is too large at this resolution. Choose a lower resolution.`);
+          const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+          try {
+            const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable in this browser.');
+            const task = pdfPage.render({ canvasContext: ctx, viewport: view, background: '#ffffff' }); rendering = task;
+            await task.promise; if (!current()) return;
+            rendering = null;
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, .92));
+            if (!current()) return;
+            if (!blob || blob.type !== mime) throw new Error(`Could not encode page ${n}.`);
+            total += blob.size;
+            if (total > 50 * 1024 * 1024) throw new Error('Encoded images exceed the 50 MiB ZIP limit. Select fewer pages or lower the resolution.');
+            const bytes = new Uint8Array(await blob.arrayBuffer()); if (!current()) return;
+            entries[`${stem}-page-${String(n).padStart(4, '0')}.${type === 'jpeg' ? 'jpg' : 'png'}`] = bytes;
+          } finally { canvas.width = 0; canvas.height = 0; }
+        }
+        const bytes = zipSync(entries, { level: 0 }); if (!current()) return;
+        result = { kind: 'zip', blob: new Blob([bytes], {type:'application/zip'}), name: `${stem}-pages.zip` };
+        zipDownload.disabled = false;
+        status.set(`Prepared ${pages.length} page${pages.length === 1 ? '' : 's'} in a ZIP (${fmtBytes(result.blob.size)}). Download when ready.`, 'success');
+      } catch (e) { if (current()) { rendering = null; clearResult(); status.set(e.message || 'Could not prepare this ZIP.', 'error'); } }
+    };
+    [page, ranges, scale, format].forEach(el => { el.addEventListener('input', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); el.addEventListener('change', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); });
     window.addEventListener('pagehide', reset);
     root.append(zone, info, h('div', { class: 'field-row' }, field({ label: 'Page number', control: page }), field({ label: 'Resolution', control: scale }), field({ label: 'Image format', control: format })),
-      actionsRow(btn({ label: 'Render page', icon: 'image', onClick: run }), download, btn({ label: 'Clear PDF', variant: 'ghost', onClick: () => { reset(); zone.clear(); status.set('PDF cleared.', 'info'); } })), status, preview,
+      actionsRow(btn({ label: 'Render page', icon: 'image', onClick: run }), download, btn({ label: 'Clear PDF', variant: 'ghost', onClick: () => { reset(); zone.clear(); status.set('PDF cleared.', 'info'); } })), field({ label: 'Pages for ZIP', hint: 'Up to 20 pages and 50 MiB of encoded images; e.g. 1-3, 7. Duplicates are included once.', control: ranges }),
+      actionsRow(btn({ label: 'Prepare ZIP', icon: 'image', onClick: runZip }), zipDownload, btn({ label: 'Cancel rendering', variant: 'ghost', onClick: () => { cancelRender(); status.set('Rendering cancelled; any prepared output was cleared.', 'info'); } })), status, preview,
       privacyNote('Files are processed locally. Pages are rasterized on a white background; text is not selectable. Complex fonts, annotations or forms may render differently; review the image. Password-protected PDFs are not supported.'));
   },
 

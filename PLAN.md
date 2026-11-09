@@ -11,6 +11,25 @@
 
 ---
 
+## Current batch — PDF rendering workflow and reliability
+
+1. Extend the existing local renderer with bounded selected-page ZIP export,
+   retaining single-page preview. Render sequentially, cap pages and total encoded
+   bytes, abort the whole archive on error, invalidate stale work and give a
+   cancel control; never imply original image extraction or guaranteed fidelity.
+2. Audit PDF renderer race/error paths and user-facing limits; preserve privacy,
+   zero-cost local operation, and clear handling of encrypted or oversized files.
+3. Test actual ZIP entries and pixels, limits, invalid ranges, cancellation and
+   re-selection, plus mobile/accessibility and full existing regression suites.
+4. Local verification: full `npm run check`, npm audit and Chromium suite passed;
+   real ZIP entries, PNG content pixels, JPEG output, page limits, cancellation,
+   oversized-page failures and accessibility were exercised. ZIP byte-cap,
+   other browsers, complex documents and physical devices need broader testing.
+5. Release the ZIP workflow after CI and Vercel preview pass, then verify
+   production. Prior PR #53 contains only the single-page renderer.
+
+---
+
 ## Current batch — Local PDF page to image
 
 1. Evaluate and locally bundle a patched PDF.js renderer and worker with license;
