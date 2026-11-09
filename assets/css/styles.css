@@ -667,3 +667,15 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 @media (max-width: 720px) { .html-playground { grid-template-columns: minmax(0, 1fr); } .html-playground-editor textarea, .html-preview-frame { min-height: 320px; height: clamp(320px, 48vh, 560px); } }
 
 .html-preview-open[hidden] { display: none; }
+
+/* Bounded, read-only JSON tree uses native keyboard-operable disclosures. */
+.json-tree:not(:empty) { margin-top: 18px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); overflow: auto; }
+.json-tree h3 { margin: 0 0 8px; }
+.json-tree summary, .json-tree-value { font-family: var(--mono); font-size: .88rem; overflow-wrap: anywhere; }
+.json-tree summary { cursor: pointer; padding-block: 4px; }
+.json-tree-children { padding-left: 20px; border-left: 1px solid var(--border-strong); }
+.json-tree-value { padding-block: 4px; white-space: pre-wrap; }
+
+.date-combined { margin: 16px 0; }
+.date-combined > summary { cursor: pointer; font-weight: 650; }
+.date-combined .field-row { margin-top: 10px; }
