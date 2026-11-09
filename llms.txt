@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 131 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 132 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -78,6 +78,7 @@
 - [Bulk Image Resizer & Compressor](https://i-have-tools.vercel.app/tools/bulk-image-resizer/): Resize or compress a batch of images locally and download a ZIP.
 - [Image Resizer](https://i-have-tools.vercel.app/tools/image-resizer/): Resize images to exact pixels, keeping the aspect ratio.
 - [Image Converter](https://i-have-tools.vercel.app/tools/image-converter/): Convert between PNG, JPG and WebP — transparent → white.
+- [Rotate & Flip Image](https://i-have-tools.vercel.app/tools/image-rotator/): Rotate or mirror an image locally, then download it.
 - [Image Cropper](https://i-have-tools.vercel.app/tools/image-cropper/): Crop images with pixel coordinates or drag selection.
 - [Image Metadata Viewer](https://i-have-tools.vercel.app/tools/image-metadata-viewer/): Inspect EXIF data and PNG chunks — fully offline.
 - [Color Picker](https://i-have-tools.vercel.app/tools/color-picker/): Pick colors, get every format, plus tints and shades.

@@ -483,6 +483,62 @@ try {
   await page.setViewportSize({ width: 1280, height: 800 });
 
   // Exercise the locally bundled renderer and inspect real downloaded pixels.
+  // Check every right-angle and mirror combination against asymmetric pixels.
+  await go('image-rotator');
+  const rgbPixels = Buffer.from([255,0,0, 0,255,0, 0,0,255, 255,255,0, 255,0,255, 0,255,255]);
+  const sourcePng = await sharp(rgbPixels, {raw:{width:2,height:3,channels:3}}).png().toBuffer();
+  const rotateFile = {name:'colors.png',mimeType:'image/png',buffer:sourcePng};
+  await page.locator('#tool-app input[type=file]').setInputFiles(rotateFile);
+  await page.locator('#tool-app .status-line').getByText(/Image ready/).waitFor();
+  const horizontalLabel = page.locator('#tool-app label.switch').filter({hasText:'Flip horizontally'});
+  const verticalLabel = page.locator('#tool-app label.switch').filter({hasText:'Flip vertically'});
+  for (const deg of [0,90,180,270]) for (const flipH of [false,true]) for (const flipV of [false,true]) {
+    await page.getByLabel('Rotation').selectOption(String(deg));
+    if (await horizontalLabel.locator('input').isChecked() !== flipH) await horizontalLabel.click();
+    if (await verticalLabel.locator('input').isChecked() !== flipV) await verticalLabel.click();
+    await page.getByRole('button',{name:'Create preview'}).click();
+    await page.locator('#tool-app .status-line').getByText(/Ready:/).waitFor();
+    const event = page.waitForEvent('download'); await page.getByRole('button',{name:/Download.*PNG/}).click();
+    const actual = await sharp(await readFile(await (await event).path())).removeAlpha().raw().toBuffer({resolveWithObject:true});
+    const width = deg % 180 ? 3 : 2, height = deg % 180 ? 2 : 3;
+    assert.equal(actual.info.width,width); assert.equal(actual.info.height,height);
+    const expected = Buffer.alloc(width * height * 3);
+    for (let y=0;y<3;y++) for (let x=0;x<2;x++) {
+      let dx = deg===0 ? x : deg===90 ? 2-y : deg===180 ? 1-x : y;
+      let dy = deg===0 ? y : deg===90 ? x : deg===180 ? 2-y : 1-x;
+      if (flipH) dx=width-1-dx; if (flipV) dy=height-1-dy;
+      rgbPixels.copy(expected,(dy*width+dx)*3,(y*2+x)*3,(y*2+x+1)*3);
+    }
+    assert.deepEqual(actual.data,expected, `rotation ${deg}, horizontal ${flipH}, vertical ${flipV}`);
+  }
+  await page.getByLabel('Output format').selectOption('jpeg');
+  assert.equal(await page.getByRole('button',{name:/Download.*PNG/}).count(),0);
+  await page.getByRole('button',{name:'Create preview'}).click();
+  await page.locator('#tool-app .status-line').getByText(/Ready:/).waitFor();
+  let rotateEvent = page.waitForEvent('download'); await page.getByRole('button',{name:/Download.*JPEG/}).click();
+  assert.equal((await sharp(await readFile(await (await rotateEvent).path())).metadata()).format,'jpeg');
+  await page.getByLabel('Output format').selectOption('webp'); await page.getByRole('button',{name:'Create preview'}).click();
+  await page.locator('#tool-app .status-line').getByText(/Ready:/).waitFor();
+  rotateEvent = page.waitForEvent('download'); await page.getByRole('button',{name:/Download.*WEBP/}).click();
+  assert.equal((await sharp(await readFile(await (await rotateEvent).path())).metadata()).format,'webp');
+  const transparentPng = await sharp({create:{width:4,height:4,channels:4,background:{r:255,g:0,b:0,alpha:0}}}).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'transparent.png',mimeType:'image/png',buffer:transparentPng});
+  await page.locator('#tool-app .status-line').getByText(/Image ready/).waitFor();
+  await page.getByLabel('Output format').selectOption('jpeg'); await page.getByRole('button',{name:'Create preview'}).click();
+  await page.locator('#tool-app .status-line').getByText(/Ready:/).waitFor();
+  rotateEvent = page.waitForEvent('download'); await page.getByRole('button',{name:/Download.*JPEG/}).click();
+  const whitePixel = await sharp(await readFile(await (await rotateEvent).path())).raw().toBuffer();
+  assert.ok(whitePixel[0] > 245 && whitePixel[1] > 245 && whitePixel[2] > 245, 'transparent JPEG is flattened onto white');
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'bad.png',mimeType:'image/png',buffer:Buffer.from('not an image')});
+  await page.locator('#tool-app .status-line').getByText(/does not look like/).waitFor();
+  assert.equal(await page.getByRole('button',{name:/Download.*JPEG/}).count(),0);
+  await page.locator('#tool-app input[type=file]').setInputFiles(rotateFile);
+  await page.locator('#tool-app .status-line').getByText(/Image ready/).waitFor();
+  await page.setViewportSize({width:320,height:844});
+  assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'image rotation accessibility');
+  await page.setViewportSize({width:1280,height:800});
+  console.log('✓ image quarter turns and mirror combinations, downloaded formats, invalid input and accessibility');
+
   await go('pdf-to-image');
   const renderedPdf = await PDFDocument.create();
   renderedPdf.addPage([100, 200]); renderedPdf.addPage([200, 100]).drawRectangle({x: 0, y: 0, width: 200, height: 100, color: pdfRgb(1, 0, 0)}); renderedPdf.addPage([9000, 100]);

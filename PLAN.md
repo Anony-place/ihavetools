@@ -2,12 +2,34 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 131 (81 guides)
+> `main` par merge = auto-deploy) · **Tools:** 132 (82 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Current batch — Local image rotation and orientation workflow
+
+1. Research existing rotate/flip workflows: competitors offer quarter turns,
+   horizontal/vertical mirrors, output formats and often batch processing;
+   feature lists are not evidence of search volume. Examples:
+   https://browserimagetools.com/rotate-image/ and
+   https://www.onlineimagetool.com/en/rotate-png-jpg-webp-gif
+2. Add one accessible local single-image quarter-turn/mirror tool with explicit
+   format controls, preview, output caps, cancellation/stale-result cleanup,
+   truthful JPEG re-encoding, transparency, metadata and orientation limitations.
+   Do not claim lossless JPEG or automatic EXIF repair. Batch remains future work.
+3. Test exact asymmetric image pixels and dimensions for every rotation and
+   mirroring combination, downloaded formats, bad/oversized inputs, mobile,
+   accessibility, same-file reload and stale operations; run full checks/audit.
+4. Local checks passed: all 16 rotation/mirror combinations against asymmetric
+   downloaded pixels, PNG/JPEG/WebP, JPEG white background, invalid input,
+   stale load/encode, responsive layouts, axe and npm audit. Browser diversity,
+   physical devices and complex real-world color profiles remain unverified.
+5. Ship as one PR only after CI and preview pass; verify production deployment.
 
 ---
 

@@ -1266,6 +1266,29 @@ await domTest('single image tools invalidate pending work and previews on oversi
     if(id==='image-compressor' || id==='image-resizer' || id==='image-converter' || id==='image-cropper') { click(btnByLabel(app,{'image-compressor':'Compress','image-resizer':'Resize','image-converter':'Convert','image-cropper':'Crop'}[id])); assert.match(statusText(document),/Choose an image first/,id); }
   }} finally {global.Image=oldImage;URL.createObjectURL=create;URL.revokeObjectURL=revoke;}
 });
+await domTest('image rotator cancels stale loads and stale encoding', async () => {
+  const oldImage=global.Image, create=URL.createObjectURL, revoke=URL.revokeObjectURL, pending=[];
+  const canvas=window.HTMLCanvasElement.prototype, oldContext=canvas.getContext, oldBlob=canvas.toBlob; let encode;
+  global.Image=class {constructor(){this.naturalWidth=80;this.naturalHeight=40;} set src(v){pending.push(this);}};
+  URL.createObjectURL=()=> 'blob:test'; URL.revokeObjectURL=()=>{};
+  canvas.getContext=()=>({fillRect(){},translate(){},scale(){},rotate(){},drawImage(){}});
+  canvas.toBlob=(cb)=>{encode=cb;};
+  const drop=(zone,file)=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[file]}});zone.dispatchEvent(e);};
+  const good=new File([new Uint8Array([255,216,255,217])],'one.jpg',{type:'image/jpeg'});
+  try {
+    const app=await loadToolPage('image-rotator','image'), zone=app.querySelector('.dropzone');
+    drop(zone,good); await new Promise(r=>setTimeout(r,30)); assert.equal(pending.length,1);
+    click(btnByLabel(app,'Clear image')); pending[0].onload(); await new Promise(r=>setTimeout(r,20));
+    assert.match(statusText(document),/Image cleared/); assert.equal(app.querySelector('.img-preview'),null);
+    drop(zone,good); await new Promise(r=>setTimeout(r,30)); pending[1].onload(); await new Promise(r=>setTimeout(r,20));
+    click(btnByLabel(app,'Create preview')); assert.ok(encode);
+    const angle=app.querySelector('select'); angle.value='180'; fire(angle,'change');
+    encode(new Blob(['png'],{type:'image/png'})); await new Promise(r=>setTimeout(r,20));
+    assert.equal(app.querySelector('.img-preview'),null); assert.match(statusText(document),/Settings changed/);
+    drop(zone,{name:'huge.png',size:201*1024*1024}); assert.match(statusText(document),/Selection rejected/);
+    click(btnByLabel(app,'Create preview')); assert.match(statusText(document),/Choose a supported image/);
+  } finally {global.Image=oldImage;URL.createObjectURL=create;URL.revokeObjectURL=revoke;canvas.getContext=oldContext;canvas.toBlob=oldBlob;}
+});
 await domTest('crop coordinates validate boundaries and aspect changes are synchronous', async () => {
   const oldImage=global.Image, create=URL.createObjectURL, revoke=URL.revokeObjectURL;
   const canvas=window.HTMLCanvasElement.prototype, getContext=canvas.getContext, toBlob=canvas.toBlob;
