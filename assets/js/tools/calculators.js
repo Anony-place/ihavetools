@@ -660,6 +660,8 @@ const defs = {
     };
     root.append(h('div', { class: 'field-row' }, field({ label: 'Starting value', control: from }), field({ label: 'New value', control: to })),
       actionsRow(btn({ label: 'Calculate change', icon: 'trending', onClick: run })), grid, formula, status);
+    const invalidate = () => { grid.replaceChildren(); formula.textContent = ''; status.set('Inputs changed. Calculate again.', 'info'); };
+    from.addEventListener('input', invalidate); to.addEventListener('input', invalidate);
     shareState(root, [['from', from], ['to', to]], run);
   },
 
@@ -764,7 +766,7 @@ const defs = {
   'gst-calculator'(root) {
     const mode = segControl({ options: [{ v: 'add', t: 'Add GST' }, { v: 'remove', t: 'Remove GST' }], value: 'add', ariaLabel: 'Mode' });
     const amount = input({ type: 'number', step: 'any', placeholder: 'e.g. 1000' });
-    const rate = select({ options: [{ v: 5, t: '5%' }, { v: 12, t: '12%' }, { v: 18, t: '18%' }, { v: 28, t: '28%' }, { v: 'custom', t: 'Custom…' }], value: 18 });
+    const rate = select({ options: [{ v: 0, t: '0%' }, { v: 5, t: '5%' }, { v: 12, t: '12% (if applicable)' }, { v: 18, t: '18%' }, { v: 28, t: '28% (if applicable)' }, { v: 40, t: '40% (if applicable)' }, { v: 'custom', t: 'Custom…' }], value: 18 });
     const custom = input({ type: 'number', step: 'any', placeholder: 'rate %', hidden: true });
     rate.addEventListener('change', () => { custom.hidden = rate.value !== 'custom'; });
     const grid = statsGrid();
@@ -786,7 +788,7 @@ const defs = {
     root.append(field({ label: 'Mode', control: mode }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Amount', control: amount, hint: 'Before GST when adding; including GST when extracting.' }),
-        field({ label: 'GST rate', control: rate }),
+        field({ label: 'GST rate', control: rate, hint: 'Choose the applicable rate yourself; presets do not determine the rate for a supply.' }),
         field({ label: 'Custom rate', control: custom })),
       actionsRow(btn({ label: 'Calculate GST', icon: 'receipt', onClick: run })), grid, status);
     clearOnEdit(root, status, grid);

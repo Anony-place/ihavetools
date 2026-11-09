@@ -194,6 +194,27 @@ await test('whitespace tolerated when decoding', () => {
   assert.equal(dev.b64decode('SGVs\nbG8g\nICAg'), 'Hello    ');
 });
 
+await test('JSON tree preserves raw numbers, duplicates and escaping with bounds', () => {
+  const tree = dev.jsonTree('{"big":9007199254740993,"x":2.370,"x":1e400,"a":[true,"<img src=x>"]}');
+  assert.equal(tree.children[0].node.raw, '9007199254740993');
+  assert.equal(tree.children[1].node.raw, '2.370'); assert.equal(tree.children[2].node.raw, '1e400');
+  assert.equal(tree.children[1].key, tree.children[2].key);
+  assert.equal(tree.children[3].node.children[1].node.raw, '"<img src=x>"');
+  assert.throws(() => dev.jsonTree('[1,]'), /Line/);
+  assert.throws(() => dev.jsonTree('['.repeat(65) + '0' + ']'.repeat(65)), /64 levels/);
+  assert.throws(() => dev.jsonTree('[' + '0,'.repeat(3000) + '0]'), /3,000/);
+  assert.throws(() => dev.jsonTree(' '.repeat(250001)), /250,000/);
+});
+await test('combined calendar durations use ordered clamped arithmetic', () => {
+ const iso = d => dt.localDateISO(d);
+ assert.equal(iso(dt.dateAddDuration('2024-01-31',{years:0,months:1,weeks:0,days:1},'add')), '2024-03-01');
+ assert.equal(iso(dt.dateAddDuration('2024-02-29',{years:1,months:1,weeks:0,days:0},'add')), '2025-03-28');
+ assert.equal(iso(dt.dateAddDuration('2024-03-31',{years:0,months:1,weeks:1,days:1},'sub')), '2024-02-21');
+ assert.throws(()=>dt.dateAddDuration('2024-01-01',{years:0,months:0,weeks:0,days:0},'add'),/non-zero/);
+ assert.throws(()=>dt.dateAddDuration('2024-01-01',{years:0,months:1.5,weeks:0,days:0},'add'),/whole number/);
+ assert.throws(()=>dt.dateAddDuration('2100-12-31',{years:0,months:0,weeks:0,days:1},'add'),/outside/);
+});
+
 console.log('\n── URL codec ──');
 await test('component encode/decode', () => {
   assert.equal(dev.urlEncode('a b&c=d', 'component'), 'a%20b%26c%3Dd');

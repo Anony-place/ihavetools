@@ -462,8 +462,10 @@ const defs = {
           btn({ label: 'Add rule', icon: 'check', onClick: () => {
             const d = dis.value.split(',').map((s) => s.trim()).filter(Boolean);
             const a = allow.value.split(',').map((s) => s.trim()).filter(Boolean);
-            rules.push({ agent: agent.value.trim() || '*', disallow: d, allow: a });
-            render(); build(); formWrap.replaceChildren();
+            const candidate = [...rules, { agent: agent.value.trim() || '*', disallow: d, allow: a }];
+            try { buildRobots(candidate, { sitemap: sitemap.value.trim(), crawlDelay: delay.value }); }
+            catch (e) { status.set(e.message, 'error'); return; }
+            rules = candidate; render(); build(); formWrap.replaceChildren();
           } }),
           btn({ label: 'Cancel', variant: 'ghost', onClick: () => formWrap.replaceChildren() })));
       formWrap.replaceChildren(form);

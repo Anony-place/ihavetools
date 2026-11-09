@@ -1591,6 +1591,24 @@ await domTest('HTML preview runs, pauses, clears oversized code and handles unsu
  code.value='<p>new</p>'; click(btnByLabel(app,'Run preview')); click(btnByLabel(app,'Stop preview')); assert.equal(frame.srcdoc,''); assert.equal(live.checked,false);
 });
 
+await domTest('JSON tree preserves raw values, is safe and clears on edits', async () => {
+ const app = await loadToolPage('json-formatter','developer'), inp = app.querySelector('textarea');
+ inp.value = '{"big":9007199254740993,"x":2.370,"x":1e400,"html":"<img src=x>"}'; fire(inp,'input');
+ click(btnByLabel(app,'View tree')); const tree = app.querySelector('.json-tree');
+ assert.match(tree.textContent,/9007199254740993/); assert.match(tree.textContent,/2\.370/); assert.match(tree.textContent,/1e400/); assert.equal(tree.querySelector('img'),null); assert.equal(tree.querySelectorAll('.json-tree-value').length,4);
+ inp.value='{}'; fire(inp,'input'); assert.equal(tree.textContent,'');
+});
+await domTest('percentage results clear on edit and GST presets are explicitly user-selected', async () => {
+ let app = await loadToolPage('percentage-change','calculators'), fields=app.querySelectorAll('input[type=number]');
+ fields[0].value='80'; fields[1].value='100'; click(btnByLabel(app,'Calculate change')); assert.match(app.textContent,/25%/); fields[1].value='90'; fire(fields[1],'input'); assert.equal(app.querySelectorAll('.stat-card').length,0); assert.doesNotMatch(app.textContent,/Formula:/);
+ app=await loadToolPage('gst-calculator','calculators'); assert.ok([...app.querySelectorAll('option')].some(o=>o.value==='40')); assert.ok([...app.querySelectorAll('option')].some(o=>o.value==='0')); assert.match(app.textContent,/applicable rate yourself/);
+});
+await domTest('combined date workflow and invalid robots rules remain editable', async () => {
+ let app=await loadToolPage('date-add-calculator','datetime'); app.querySelector('input[type=date]').value='2024-01-31';
+ const duration=app.querySelector('.date-combined'), values=duration.querySelectorAll('input'); values[1].value='1'; values[3].value='1'; click(btnByLabel(app,'Calculate combined duration')); assert.match(app.textContent,/2024-03-01ISO/);
+ app=await loadToolPage('robots-txt-generator','webseo'); click(btnByLabel(app,'Add rule')); let agent=app.querySelector('input[placeholder^="User-agent"]'), path=app.querySelector('input[placeholder^="/private/"]'); agent.value='Bad agent'; path.value='/foo'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(statusText(document),/User-agent must/); assert.ok(app.contains(agent)); assert.equal(agent.value,'Bad agent'); agent.value='TestBot'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(app.textContent,/UA: TestBot/);
+});
+
 /* ═════════════════ summary ═════════════════ */
 console.log(`\n══════════════════════════════════`);
 console.log(`DOM tests: ${passed} passed, ${failed} failed`);

@@ -75,6 +75,29 @@ try {
   assert.match((await readFile(await (await jsonDownload).path())).toString(), /9007199254740993/);
   console.log('✓ JSON format and actual download preserve numeric token');
 
+  await page.setViewportSize({ width: 320, height: 844 });
+  await go('json-formatter');
+  await page.locator('#tool-app textarea').fill('{"big":9007199254740993,"x":2.370,"x":1e400,"html":"<img src=x>"}');
+  await page.getByRole('button', { name: 'View tree' }).click();
+  assert.match(await page.locator('.json-tree').innerText(), /9007199254740993/);
+  assert.match(await page.locator('.json-tree').innerText(), /2\.370/);
+  assert.equal(await page.locator('.json-tree img').count(), 0);
+  assert.deepEqual((await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v => v.id), [], 'JSON tree mobile accessibility');
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  await page.locator('#tool-app textarea').fill('{}'); assert.equal(await page.locator('.json-tree').innerText(), '');
+  await go('date-add-calculator');
+  await page.locator('#tool-app input[type=date]').fill('2024-01-31');
+  await page.locator('.date-combined summary').click();
+  const dateFields = page.locator('.date-combined input[type=number]');
+  await dateFields.nth(1).fill('1'); await dateFields.nth(3).fill('1');
+  await page.getByRole('button',{ name: 'Calculate combined duration' }).click();
+  assert.match(await page.locator('#tool-app').innerText(), /2024-03-01/);
+  assert.deepEqual((await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v => v.id), [], 'combined date mobile accessibility');
+  await go('gst-calculator');
+  assert.equal(await page.locator('#tool-app select option[value="40"]').count(), 1);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  console.log('✓ mobile JSON tree, combined date workflow and GST rate selection');
+
   await go('html-live-preview');
   assert.equal(await page.locator('#tool-app').evaluate(el => [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'null')), false);
   assert.ok((await page.locator('#tool-app iframe').boundingBox()).height >= 500, 'preview has ample desktop height');

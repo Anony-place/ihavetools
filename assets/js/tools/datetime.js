@@ -61,6 +61,26 @@ export function dateAdd(startStr, amount, unit, direction) {
   return d;
 }
 
+// Apply years and months separately (clamping at each step), then weeks/days.
+export function dateAddDuration(startStr, duration, direction) {
+  let day = parseCalendarDate(startStr);
+  if (!['add', 'sub'].includes(direction)) throw new Error('Choose add or subtract.');
+  const values = ['years', 'months', 'weeks', 'days'].map(key => duration[key]);
+  if (values.some(n => !Number.isSafeInteger(n) || n < 0 || n > 100000)) throw new Error('Each duration must be a whole number from 0 to 100,000.');
+  if (values.every(n => n === 0)) throw new Error('Enter at least one non-zero duration.');
+  const sign = direction === 'sub' ? -1 : 1;
+  const inRange = n => Number.isFinite(n) && n >= parseCalendarDate('1900-01-01') && n <= parseCalendarDate('2100-12-31');
+  for (const months of [values[0] * 12, values[1]]) {
+    if (months) day = addMonthsUTC(day, sign * months);
+    if (!inRange(day)) throw new Error('The result is outside the supported date range (1900–2100).');
+  }
+  day += sign * (values[2] * 7 + values[3]) * DAY_MS;
+  if (!inRange(day)) throw new Error('The result is outside the supported date range (1900–2100).');
+  const iso = dateISO(day), date = new Date(`${iso}T00:00:00`);
+  if (localDateISO(date) !== iso) throw new Error('This local calendar date does not exist in your time zone.');
+  return date;
+}
+
 export function zoneOffset(timeZone, date) {
   const dtf = new Intl.DateTimeFormat('en-US', { timeZone, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const parts = Object.fromEntries(dtf.formatToParts(date).filter((p) => p.type !== 'literal').map((p) => [p.type, p.value]));
@@ -178,16 +198,19 @@ const defs = {
     const dir = select({ options: [{ v: 'add', t: 'Add (after)' }, { v: 'sub', t: 'Subtract (before)' }], value: 'add' });
     const grid = statsGrid();
     const status = statusLine('');
-    const run = () => {
+    const durationInputs = Object.fromEntries(['years', 'months', 'weeks', 'days'].map(key => [key, input({ type: 'number', min: 0, max: 100000, step: 1, value: '0' })]));
+    const run = (combined = false) => {
       try {
-        const d = dateAdd(start.value, Number(amount.value), unit.value, dir.value);
+        const d = combined
+          ? dateAddDuration(start.value, Object.fromEntries(Object.entries(durationInputs).map(([key, el]) => [key, el.value === '' ? NaN : Number(el.value)])), dir.value)
+          : dateAdd(start.value, amount.value === '' ? NaN : Number(amount.value), unit.value, dir.value);
         grid.set([
           { label: 'Resulting date', value: d.toLocaleDateString(undefined, { dateStyle: 'full' }), kind: 'good' },
           { label: 'ISO', value: localDateISO(d) },
           { label: 'Weekday', value: d.toLocaleDateString(undefined, { weekday: 'long' }) },
           { label: 'Unix (s)', value: String(Math.floor(d.getTime() / 1000)) },
         ]);
-        status.set('Calculated ✓ — month-end dates are clamped (Jan 31 + 1 month = Feb 28/29). Unix seconds represent the start of the resulting date in your browser’s local time zone, not UTC midnight.', 'success');
+        status.set(`${combined ? 'Applied years, months, weeks and days in that order. ' : ''}Month-end dates are clamped (Jan 31 + 1 month = Feb 28/29). Unix seconds represent the start of the resulting date in your browser’s local time zone, not UTC midnight.`, 'success');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
@@ -197,7 +220,11 @@ const defs = {
         field({ label: 'Amount', control: amount }),
         field({ label: 'Unit', control: unit }),
         field({ label: 'Direction', control: dir })),
-      actionsRow(btn({ label: 'Calculate', icon: 'calendar-plus', onClick: run })), grid, status);
+      actionsRow(btn({ label: 'Calculate', icon: 'calendar-plus', onClick: () => run(false) })),
+      h('details', { class: 'date-combined' }, h('summary', { text: 'Add or subtract a combined duration' }),
+        h('p', { class: 'hint', text: 'Uses the start date and direction above. Years, then months are applied and clamped separately, then weeks and days.' }),
+        h('div', { class: 'field-row' }, ...Object.entries(durationInputs).map(([key, control]) => field({ label: key[0].toUpperCase() + key.slice(1), control }))),
+        actionsRow(btn({ label: 'Calculate combined duration', variant: 'secondary', onClick: () => run(true) }))), grid, status);
   },
 
   'time-zone-converter'(root) {

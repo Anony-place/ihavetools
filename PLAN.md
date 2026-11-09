@@ -1,13 +1,196 @@
 # iHaveTools — Pura Plan (Complete Roadmap)
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
-> **Updated:** 2026-11-01 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 129 (79 guides)
+> **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
+> `main` par merge = auto-deploy) · **Tools:** 130 (80 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Implementation progress — research-led consolidated batch
+
+- Implemented bounded, read-only JSON tree: original numeric/string tokens and
+  duplicate keys retained, 250,000 characters, 3,000 values and 64 levels;
+  native disclosure controls and untrusted text rendered as text.
+- Added optional combined date arithmetic with years, months, weeks and days
+  applied in that order; month/year stages clamp separately. Existing single-unit
+  workflow remains available.
+- Removed outdated item/rate classifications from GST guidance, added 0% and
+  40% arithmetic presets without implying applicability, kept historical rates
+  and custom entry, and clarified CGST/SGST/IGST limitations. Official context:
+  https://gstcouncil.gov.in/sites/default/files/2025-09/press_release_press_information_bureau_0.pdf
+  and https://gstcouncil.gov.in/sites/default/files/2026-01/monthly_newsletter_december_2025_1_0.pdf
+- Fixed stale percentage-change results on input edits; invalid robots rule
+  submissions preserve the form and do not corrupt existing draft rules.
+- PDF feasibility: `pdfjs-dist` npm metadata reports Apache-2.0 and roughly
+  37.6 MB unpacked for 6.5.438; the production renderer/worker subset and device
+  compatibility still need measurement. A historic PDF.js code execution
+  vulnerability reinforces the need for current dependency/security review:
+  https://github.com/mozilla/pdf.js/security/advisories/GHSA-wgrm-67xf-hhpq .
+  No PDF-to-image tool or HTML editor console is shipped in this batch; defer
+  until a bounded, tested, secure implementation is feasible.
+- Next: verify tests/CI/preview and production; continue remaining planned
+  keyword, HTML editing, PDF renderer and GSC investigation as a later batch.
+
+---
+
+## Market follow-up — GSC signals and competitor workflow comparison
+
+**Evidence:** user-supplied Search Console Web export covering 2026-11-01 to
+2026-11-07: 1,029 property impressions, zero clicks. Top page rows: robots.txt
+252 (position 82.29), keyword density 77 (77.23), QR generator 74 (76.23),
+date add 72 (55), percentage change 17 (9.29). Query row `keyword frequency
+counter`: 18 impressions, position 26.17. These are observational signals,
+not measured market-wide demand, nor causation or a sufficient sample for SEO
+experiments. Page and query rows use different aggregations; don't attribute a
+query to a page without applying a GSC page filter. Desktop 990, mobile 37,
+tablet 2 impressions; mobile experience still needs testing. Sitemap processing
+and Page Indexing report remain pending; don't infer indexed-page counts.
+
+**Practical gaps, checked against competitor documentation and our code:**
+
+1. **Robots.txt generator:** our tool already has multiple agents, presets,
+   sitemap, export and a rule simulator; don't build a duplicate. Competitors
+   offer simpler selection/configuration workflows; audit onboarding, generated
+   defaults and warning clarity, and test real multi-agent/wildcard cases. Keep
+   Google's distinction: robots controls crawling, not reliable privacy or
+   de-indexing. Sources: https://www.commoninja.com/free-tools/seo/robots-txt-generator
+   and https://developers.google.com/search/docs/crawling-indexing/robots/create-robots-txt
+2. **Keyword density:** existing tool supports exact target, 1–3 word phrases,
+   English stop words and CSV; competitor Toolnar additionally documents local
+   text-file input, HTML stripping and per-length tabs. Evaluate file import
+   and usability without silently fetching remote pages or pretending an
+   invented target density improves ranking. Explain tokenization and phrase
+   density denominator; test Unicode and CSV injection before shipping. Source:
+   https://toolnar.com/tool/keyword-density
+3. **Date add/subtract:** existing tool handles one unit at a time and documents
+   end-of-month clamping; timeanddate supports combined years/months/weeks/days
+   and documents calculation order. Evaluate combined durations within the same
+   page with explicit order and leap-year, end-of-month and DST regression
+   tests. Source: https://www.timeanddate.com/date/dateadd-help.html
+4. **Percentage change:** 17 impressions at 9.29 are too few to infer a reliable
+   ranking or diagnose CTR. Existing calculator includes formula, multiplier and
+   reverse change. Verify zero/negative input examples, result invalidation and
+   accessible formatting before altering the page. Compare page-filtered GSC
+   queries over equal complete periods; do not stuff titles or duplicate routes.
+5. **New work:** prioritize feasibility of local PDF page-to-image rendering
+   over a duplicate image resizer. Explicitly distinguish rasterizing pages from
+   extracting embedded images, which iLovePDF offers as separate operations.
+   Budget library size, memory, rendering fidelity, licences and pixel/export
+   tests; no guaranteed compression. Source:
+   https://www.ilovepdf.com/blog/convert-pdf-to-jpg
+6. **Developer work:** CodePen documents separate HTML/CSS/JS panels, live view
+   and console; our single-document sandbox plus live full-window tab already
+   covers a different core workflow. Improve editing affordances without
+   weakening sandbox or promising feature parity. JSON Editor Online explicitly
+   handles numeric precision; our future tree must not silently round or corrupt
+   values. Sources: https://blog.codepen.io/documentation/editor-view/ and
+   https://jsoneditoronline.org/indepth/parse/why-does-json-parse-corrupt-large-numbers/
+
+**Batch order:** research-informed fixes to the four GSC-signal tools, GST
+correctness audit, existing developer workflows and PDF-rendering feasibility
+are one planned consolidated branch/PR. Ship only tested scope; keep local-only
+processing and no paid dependencies. Measure afterwards with matched GSC date,
+search type, page and country filters, focusing on impressions/clicks over
+position alone. Google notes page/property aggregation may differ:
+https://support.google.com/webmasters/answer/17010961?hl=en .
+
+---
+
+## Market research and next consolidated roadmap (2026-11-07)
+
+**Status:** research and planning only; the following items are not shipped yet.
+Catalogue baseline: 130 tools, including PDF merge/split/rotate/organizer and
+image-to-PDF, bulk image resizing/compression, JSON formatting/compare and
+HTML live preview. Recent workspace widening is already deployed. There is no
+measured keyword volume, conversion, competitor traffic, ranking guarantee, in that initial research. A subsequent user-provided seven-day GSC export is summarized above. Competitor feature pages show use cases, not
+proof of search demand or the accuracy of their pricing claims.
+
+### Findings and prioritization
+
+- **Developer workflow — high-confidence product gap:** JSON Editor Online
+  offers tree/code/table views and search; our JSON formatter and compare do not
+  yet provide a dedicated navigable tree. ToolPlanet describes an HTML/CSS/JS
+  playground with console output. Assess improvements to our existing pages
+  before multiplying near-duplicate pages.
+- **PDF workflow — strong competitor coverage, technically heavier:** iLovePDF
+  lists PDF compression and conversion alongside our existing organize/merge
+  tools. We lack PDF-to-image and PDF compression. Rendering PDFs needs a
+  separately evaluated renderer; pdf-lib alone is not a page renderer. Good
+  compression is nontrivial and must not be marketed as lossless or guaranteed.
+- **Image workflow — extend what exists:** iLoveIMG documents batch previews,
+  size changes and crop workflows. Our bulk resizer/compressor already provides
+  batch conversion, contain canvas, target size and ZIP, so do not re-create it.
+  Assess measurable queue usability and export clarity before adding features.
+- **India calculator trust — correctness first:** GST Council's 56th meeting
+  materials recommend changes including 5%, 18% and 40% rates with exceptions;
+  this is not sufficient to classify every product/service. Audit our existing
+  GST presets, explanatory text and dated tax calculator against applicable
+  official notifications before claiming current coverage. Never infer a rate
+  from product name or claim compliance-ready advice without verification.
+- **SEO — optimize useful workflows, not page count:** Google's Search
+  Essentials prioritizes people-first content and crawlable links. Avoid thin
+  duplicate pages or invented search-volume data. GSC Page Indexing screenshot
+  and the >=14-day comparison around 17 Nov remain outstanding, but do not block
+  product work.
+
+### Proposed next batch — one branch, one PR
+
+1. **Reliability and trusted financial information:** audit the current GST and
+   historic income-tax wording, controls and examples against primary sources;
+   correct demonstrable problems only, retain explicit date and limits, test
+   inclusive/exclusive math and avoid suggesting all supply rates are covered.
+2. **Developer experience:** improve existing JSON formatter with a bounded,
+   accessible expandable tree/search if a lossless implementation can preserve
+   original numeric tokens and reject unsafe or deeply nested inputs. If that
+   cannot be ensured, show a clear limitation and do not silently round numbers.
+   Audit HTML playground for practical editing features (e.g. keyboard Tab
+   indentation and clearer errors), preserving its opaque-origin sandbox and
+   explaining that external requests remain possible; no remote execution or
+   shared source URLs. Scope console support only if safe and robust.
+3. **PDF feasibility spike:** evaluate a maintained, locally bundled renderer,
+   license, package size, memory, password handling and mobile performance.
+   If feasible, implement a bounded local PDF-to-image workflow with page
+   selection, transparent failure handling and tested exported pixels; otherwise
+   document the blocker rather than shipping an unreliable converter. Do not
+   promise compression, OCR, PDF editing, or high fidelity to unsupported PDFs.
+4. **Cross-tool usability:** preserve full-width workspace on all tools, check
+   keyboard/mobile layouts, progress, limits, cancellation and stale results;
+   keep privacy statements specific and retain user code only with explicit
+   behavior. No secrets in URLs and no paid services required.
+5. **Release gate:** engine/DOM/integrity, real Chromium interactions and exports,
+   mobile overflow and accessibility, dependency audit, CI and Vercel preview;
+   one consolidated PR, then production deployment verification. Document
+   remaining browser/device/file and financial limitations honestly.
+
+### Later, conditional on evidence
+
+- PDF compression and OCR: only after a separate fidelity, memory, dependency,
+  security and zero-cost feasibility study with representative files.
+- Background removal: possible future research, but local AI model download,
+  browser memory, licensing and segmentation quality make it a separate project;
+  no unsupported claim of AI/background removal now.
+- When GSC data is available, compare equal date windows, queries/pages/countries,
+  clicks and impressions; use low-volume data cautiously and check Indexing →
+  Pages before changing priorities. No paywall, custom domain or billing needed.
+
+### Research sources (accessed 2026-11-07)
+
+- https://jsoneditoronline.org/features/ — two panels, tree/code/table, search/transform.
+- https://toolplanet.dev/tools — examples of JSON and live playground workflows.
+- https://www.ilovepdf.com/pricing — PDF feature categories and batch offerings;
+  limits/prices can change and are not independently certified.
+- https://www.iloveimg.com/help/documentation — image previews, resize and crop.
+- https://gstcouncil.gov.in/sites/default/files/2025-09/press_release_press_information_bureau_0.pdf
+  and https://gstcouncil.gov.in/sites/default/files/2026-01/monthly_newsletter_december_2025_1_0.pdf
+  — official rate-change context; check current notified rates before changes.
+- https://developers.google.com/search/docs/essentials and
+  https://developers.google.com/search/docs/monitor-debug/search-console-start
+  — people-first guidance and GSC reporting.
 
 ---
 

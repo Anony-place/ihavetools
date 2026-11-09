@@ -171,6 +171,38 @@ export function jsonFormat(text, indent = 2) {
   return renderJson(text, width);
 }
 export function jsonMinify(text) { return renderJson(text, 0); }
+
+// Read-only, bounded syntax tree retaining raw scalar tokens and duplicate keys.
+// Validation runs first; no JavaScript number conversion or HTML injection.
+export function jsonTree(text) {
+  if (text.length > 250000) throw new Error('Tree view supports up to 250,000 characters. Format or minify larger input instead.');
+  const validation = validateJson(text);
+  if (!validation.ok) throw new Error(`Line ${validation.line}, column ${validation.column}: ${validation.message}`);
+  let i = 0, count = 0;
+  const whitespace = () => { while (i < text.length && /[\t\n\r ]/.test(text[i])) i++; };
+  const stringToken = () => { const start = i++; while (i < text.length) { if (text[i] === '\\') { i += 2; continue; } if (text[i++] === '"') break; } return text.slice(start, i); };
+  function value(depth) {
+    whitespace();
+    if (++count > 3000) throw new Error('Tree view supports at most 3,000 values. Format or minify larger input instead.');
+    if (depth > 64) throw new Error('Tree view supports up to 64 levels. Format or minify deeper input instead.');
+    const c = text[i];
+    if (c === '{' || c === '[') {
+      i++; const children = []; whitespace(); const close = c === '{' ? '}' : ']';
+      while (text[i] !== close) {
+        let key = null;
+        if (c === '{') { key = stringToken(); whitespace(); i++; }
+        const child = value(depth + 1); children.push({ key, node: child }); whitespace();
+        if (text[i] === ',') { i++; whitespace(); } else break;
+      }
+      i++; return { type: c === '{' ? 'object' : 'array', children };
+    }
+    if (c === '"') return { type: 'value', raw: stringToken() };
+    const start = i; while (i < text.length && !/[\t\n\r ,\]\}]/.test(text[i])) i++;
+    return { type: 'value', raw: text.slice(start, i) };
+  }
+  return value(0);
+}
+
 export function countJsonWhitespace(text) { return (text.match(/\s/g) || []).length; }
 
 // Reject conversions that JSON.parse/stringify would silently corrupt. Decimal
@@ -519,7 +551,8 @@ const defs = {
     const indent = select({ id: 'indent', options: [{ v: 2, t: '2 spaces' }, { v: 4, t: '4 spaces' }, { v: 1, t: '1 space' }, { v: 3, t: '3 spaces' }], value: '2' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Formatted JSON', download: true, downloadName: 'formatted.json', downloadMime: 'application/json;charset=utf-8' });
-    const invalidate = () => { out.placeholder(); status.set('Input or indentation changed. Run again.', 'info'); };
+    const tree = h('div', { class: 'json-tree' });
+    const invalidate = () => { tree.replaceChildren(); out.placeholder(); status.set('Input or indentation changed. Run again.', 'info'); };
     inp.addEventListener('input', invalidate); indent.addEventListener('change', invalidate);
     const run = (mode) => {
       const src = inp.value;
@@ -535,15 +568,32 @@ const defs = {
         status.set(e.line != null ? `Line ${e.line}, column ${e.column}: ${e.message}` : e.message, 'error');
       }
     };
+    const showTree = () => {
+      tree.replaceChildren();
+      try {
+        const data = jsonTree(inp.value);
+        const render = (node, label, depth = 0) => {
+          const prefix = label == null ? 'Root' : label;
+          if (node.type === 'value') return h('div', { class: 'json-tree-value', text: `${prefix}: ${node.raw}` });
+          const details = h('details', { open: depth === 0 }, h('summary', { text: `${prefix}: ${node.type} (${node.children.length})` }));
+          const children = h('div', { class: 'json-tree-children' });
+          node.children.forEach((entry, index) => children.append(render(entry.node, entry.key ?? `[${index}]`, depth + 1)));
+          details.append(children); return details;
+        };
+        tree.append(h('h3', { text: 'JSON tree (read-only)' }), h('p', { class: 'hint', text: 'Expand items to inspect original values. Numbers and duplicate keys are preserved; editing happens in the input above.' }), render(data, null));
+        status.set('Tree ready. Expand items to inspect.', 'success');
+      } catch (e) { status.set(e.message, 'error'); }
+    };
     root.append(
       field({ label: 'JSON input', control: inp }),
       actionsRow(
         btn({ label: 'Format', icon: 'braces', onClick: () => run('format') }),
         btn({ label: 'Minify', variant: 'secondary', icon: 'minimize', onClick: () => run('minify') }),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); inp.focus(); } }),
+        btn({ label: 'View tree', variant: 'secondary', onClick: showTree }),
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; tree.replaceChildren(); out.placeholder(); status.set('Cleared.'); inp.focus(); } }),
         h('span', { style: 'display:inline-flex;align-items:center;gap:8px;margin-left:auto' }, h('label', { for: 'indent', class: 'hint', text: 'Indent' }), indent),
       ),
-      status, h('br'), out.panel,
+      status, tree, h('br'), out.panel,
     );
     inp.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run('format'); });
   },
