@@ -11,6 +11,25 @@
 
 ---
 
+## Current batch — Batch image rotation and workflow reliability
+
+1. Extend the existing bulk resize/compress queue to apply a common quarter-turn
+   and optional output-axis mirrors before fit or padded-canvas placement.
+   Keep default output unchanged; no new duplicate page or lossless JPEG claims.
+2. Preserve queue ordering, partial-failure reporting, ZIP and memory limits,
+   cancellation/stale-output protection, transparency and size-target behavior.
+   Release canvases promptly after encoding and document operation order.
+3. Test decoded ZIP pixels and dimensions for rotations, flips, white/transparent
+   padding, JPEG, queue invalidation, partial failure and mobile accessibility,
+   alongside full engine, browser and security checks.
+4. Local checks passed: all 16 rotation/mirror combinations for two actual ZIP
+   entries, padding and JPEG, partial failure, settings invalidation, pending-load
+   cancellation, mobile axe, full Chromium/engine/DOM checks and npm audit.
+   Other browsers, devices and complex color profiles remain unverified.
+5. Use one consolidated PR and ship only after CI/preview and production verify.
+
+---
+
 ## Current batch — Local image rotation and orientation workflow
 
 1. Research existing rotate/flip workflows: competitors offer quarter turns,
