@@ -250,7 +250,7 @@ function checkDecodable(file, allowed = ['jpeg', 'png', 'webp', 'gif', 'bmp']) {
   if (file.size > 100 * 1024 * 1024) return Promise.reject(new Error('Choose an image no larger than 100 MiB.'));
   return readFile(file.slice(0, 16), 'buffer').then((buf) => {
     const t = sniffImageType(buf);
-    if (!t || !allowed.includes(t)) throw new Error(`“${file.name}” does not look like a supported image${t ? ` (detected: ${t})` : ''}. Supported: JPG, PNG, WebP, GIF, BMP.`);
+    if (!t || !allowed.includes(t)) throw new Error(`“${file.name}” does not look like a supported image${t ? ` (detected: ${t})` : ''}. Supported: ${allowed.map(x => x === 'jpeg' ? 'JPG' : x.toUpperCase()).join(', ')}.`);
     return t;
   });
 }
@@ -625,6 +625,65 @@ const defs = {
   'png-to-jpg'(root) { defs['image-converter'](root, 'jpeg'); },
   'webp-to-png'(root) { defs['image-converter'](root, 'png'); },
   'jpg-to-webp'(root) { defs['image-converter'](root, 'webp'); },
+
+  'image-rotator'(root) {
+    const zone = imageZone({ accept: 'image/jpeg,image/png,image/webp', title: 'Choose a JPG, PNG or WebP image', sub: 'Processed locally — never uploaded' });
+    const angle = select({ options: [{v:'0',t:'No rotation'}, {v:'90',t:'90° clockwise'}, {v:'180',t:'180°'}, {v:'270',t:'90° counterclockwise'}], value:'90' });
+    const flipX = switchChip({ label:'Flip horizontally', checked:false });
+    const flipY = switchChip({ label:'Flip vertically', checked:false });
+    const format = select({ options: [{v:'png',t:'PNG'}, {v:'jpeg',t:'JPEG'}, {v:'webp',t:'WebP'}], value:'png' });
+    const status = statusLine('Choose an image, select a rotation or mirror, then create a preview.');
+    const info = h('p', { class:'hint' });
+    const preview = h('div', {}), previews = previewManager(preview);
+    let file = null, img = null, selection = 0, operation = 0;
+    const invalidate = () => { operation++; previews.clear(); };
+    const reset = () => { selection++; invalidate(); file = null; img = null; info.textContent = ''; zone.resetSelectionUI(); };
+    zone.addEventListener('iht-rejected', () => { reset(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
+    zone.addEventListener('iht-files', async e => {
+      const chosen = e.detail[0]; if (!chosen) return;
+      const token = ++selection; invalidate(); file = null; img = null; info.textContent = '';
+      status.set('Reading image locally…', 'info');
+      try {
+        await checkDecodable(chosen, ['jpeg','png','webp']);
+        const loaded = await loadImage(chosen); if (selection !== token) return;
+        validateCanvasSize(loaded.naturalWidth, loaded.naturalHeight);
+        file = chosen; img = loaded;
+        zone.classList.add('has-file'); zone.replaceChildren(filePill(chosen), h('span', {class:'hint',text:'Click to choose a different file'}), zone.querySelector('input[type=file]'));
+        info.textContent = `Decoded image: ${loaded.naturalWidth} × ${loaded.naturalHeight} px.`;
+        status.set('Image ready. Choose settings and create a preview.', 'success');
+      } catch (err) { if (selection === token) { zone.resetSelectionUI(); status.set(err.message, 'error'); } }
+    });
+    [angle, flipX, flipY, format].forEach(el => el.addEventListener('change', () => { invalidate(); status.set('Settings changed. Create a new preview.', 'info'); }));
+    window.addEventListener('pagehide', () => { selection++; invalidate(); }, {once:true});
+    const run = async () => {
+      if (!file || !img) { status.set('Choose a supported image first.', 'warning'); return; }
+      invalidate(); const token = operation, selected = file, source = img;
+      const deg = Number(angle.value), fmt = format.value, horizontal = flipX.querySelector('input').checked, vertical = flipY.querySelector('input').checked;
+      if (![0,90,180,270].includes(deg) || !Object.hasOwn(MIME_BY_FMT, fmt)) { status.set('Choose valid output settings.', 'error'); return; }
+      let canvas;
+      try {
+        const sw = source.naturalWidth, sh = source.naturalHeight;
+        const width = deg % 180 ? sh : sw, height = deg % 180 ? sw : sh;
+        validateCanvasSize(width, height);
+        canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable in this browser.');
+        if (fmt === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); }
+        ctx.translate(width / 2, height / 2); ctx.scale(horizontal ? -1 : 1, vertical ? -1 : 1); ctx.rotate(deg * Math.PI / 180);
+        ctx.drawImage(source, -sw / 2, -sh / 2); status.set('Creating image locally…', 'info');
+        const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmt], .92);
+        if (token !== operation || file !== selected) return;
+        const name = `rotated-${baseName(selected.name).replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0,70) || 'image'}.${EXT_BY_FMT[fmt]}`;
+        previews.show(blob, url => h('div', {}, h('img', {class:'img-preview', src:url, alt:'Rotated and mirrored image preview'}),
+          h('div', {style:'margin-top:10px'}, h('button', {type:'button',class:'btn btn-primary',onclick:() => downloadImage(blob,name)}, `Download ${width} × ${height} ${fmt.toUpperCase()}`))));
+        status.set(`Ready: ${width} × ${height} px, ${fmtBytes(blob.size)}.`, 'success');
+      } catch (err) { if (token === operation && file === selected) status.set(err.message, 'error'); }
+      finally { if (canvas) { canvas.width = 0; canvas.height = 0; } }
+    };
+    root.append(zone, info, h('div', {class:'field-row'}, field({label:'Rotation',control:angle}), field({label:'Output format',control:format})),
+      h('div', {class:'field-row'}, field({label:'Mirroring after rotation',control:flipX}), field({label:'',control:flipY})),
+      actionsRow(btn({label:'Create preview', icon:'image', onClick:run}), btn({label:'Clear image',variant:'ghost',icon:'x',onClick:() => { reset(); status.set('Image cleared.', 'info'); }})),
+      status, preview, privacyNote('One JPG, PNG or WebP up to 100 MiB. Output is limited to 16,384 px per side and 40 million pixels. Browser decoding may apply orientation; canvas output can discard metadata, color profiles and animation. JPEG and WebP are re-encoded; JPEG uses a white background.'));
+  },
 
   'image-cropper'(root) {
     const zone = imageZone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'Cropped locally — never uploaded' });
