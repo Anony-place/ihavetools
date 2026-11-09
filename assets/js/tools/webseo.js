@@ -3,7 +3,7 @@
 // sitemap-generator, open-graph-preview, url-parser, keyword-density-checker,
 // qr-code-generator, qr-code-scanner, youtube-thumbnail-downloader
 // =============================================================================
-import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, downloadText, downloadBlob, privacyNote, dropzone, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, downloadText, downloadBlob, privacyNote, dropzone, readFile, mountTool } from '../ui.js';
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -592,7 +592,25 @@ const defs = {
     const grid = statsGrid();
     const status = statusLine('');
     const out = h('div', {});
-    let lastCsv = '';
+    let lastCsv = '', importRevision = 0;
+    const file = input({ type: 'file', accept: '.txt,.md,text/plain,text/markdown' });
+    file.addEventListener('change', async () => {
+      const selected = file.files?.[0]; file.value = '';
+      const token = ++importRevision;
+      if (!selected) return;
+      if (!/\.(txt|md)$/i.test(selected.name) || selected.size > 800000) {
+        status.set('Choose a .txt or .md file of at most 800,000 bytes. Existing content was kept.', 'error'); return;
+      }
+      status.set('Reading file locally…', 'info');
+      try {
+        const text = await readFile(selected);
+        if (token !== importRevision) return;
+        if (typeof text !== 'string' || text.length > 200000) { status.set('File exceeds the 200,000-character content limit. Existing content was kept.', 'error'); return; }
+        inp.value = text; lastCsv = ''; grid.replaceChildren(); out.replaceChildren();
+        status.set('Text loaded locally as UTF-8. Press Count keywords to analyse.', 'info');
+      } catch { if (token === importRevision) status.set('Could not read that file. Existing content was kept.', 'error'); }
+    });
+    inp.addEventListener('input', () => { importRevision++; });
     const run = () => {
       const text = inp.value;
       if (!text.trim()) { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Paste some content first.', 'warning'); return; }
@@ -626,6 +644,7 @@ const defs = {
     };
     [inp, target, len, minimum, stop].forEach(el => { const clear = () => { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Inputs changed. Analyse again.', 'info'); }; el.addEventListener('input', clear); el.addEventListener('change', clear); });
     root.append(field({ label: 'Content', control: inp }),
+      field({ label: 'Load text file (optional)', control: file, hint: 'Local .txt or .md, UTF-8, up to 800,000 bytes and 200,000 characters; replaces the content above.' }),
       field({ label: 'Target keyword or phrase', control: target, hint: 'Counted exactly, even if it contains stop words' }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Phrase length', control: len }),

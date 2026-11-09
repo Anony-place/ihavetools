@@ -11,6 +11,24 @@
 
 ---
 
+## Current batch — Developer and keyword workflow improvements
+
+1. Add a local text-file import to Keyword Density with bounded size, clear
+   UTF-8 limitations, stale-read protection and no replacement on rejection.
+2. Improve the HTML playground's editing ergonomics while preserving keyboard
+   navigation and iframe sandbox. Add opt-in Tab indentation only.
+3. Add bounded JSON tree search without changing raw numeric tokens, duplicate
+   keys, HTML safety or the existing formatter's output.
+4. PDF renderer spike: npm metadata for pdfjs-dist 6.5.438 shows Apache-2.0,
+   37,616,588 unpacked bytes; its minified main module is 474,284 bytes and
+   worker 1,271,915 bytes before transfer compression (other assets may be
+   needed). Security history and compatibility, memory, fonts, complex PDFs
+   and real output still need testing. No renderer or PDF-to-image shipped yet.
+5. Run engine, DOM, browser/mobile/accessibility and audit checks, and release
+   as one consolidated batch with truthful limitations.
+
+---
+
 ## Implementation progress — research-led consolidated batch
 
 - Implemented bounded, read-only JSON tree: original numeric/string tokens and
