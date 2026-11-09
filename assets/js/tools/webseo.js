@@ -182,18 +182,20 @@ const tokenizeWords = (text) => String(text || '').toLowerCase().match(/\p{L}[\p
  * capped at 100% for pathological overlapping phrases. A target phrase is
  * counted independently of the stop-word filter and phrase-length setting.
  */
-export function keywordDensity(text, { phraseLength = 1, filterStop = true, minCount = 1, limit = 100, target = '' } = {}) {
+export function keywordDensity(text, { phraseLength = 1, filterStop = true, minCount = 1, limit = 100, target = '', excluded = '' } = {}) {
   if (String(text).length > 200000 || String(target).length > 1000) throw new Error('Input limit: 200,000 characters of content and 1,000 characters in the target phrase.');
+  if (String(excluded).length > 2000) throw new Error('Excluded words are limited to 2,000 characters.');
+  const exclusions = new Set(tokenizeWords(excluded));
   const words = tokenizeWords(text);
   const n = [1, 2, 3].includes(Number(phraseLength)) ? Number(phraseLength) : 1;
   const minimum = Math.max(1, Number(minCount) || 1);
-  const cap = Math.max(1, Number(limit) || 100);
+  const cap = Math.min(500, Math.max(1, Math.floor(Number(limit) || 100)));
   if (!words.length) return { total: 0, totalWords: 0, totalPhrases: 0, distinct: 0, terms: [], top: [], target: null };
 
   const counts = new Map();
   for (let i = 0; i + n <= words.length; i++) {
     const gram = words.slice(i, i + n);
-    if (filterStop && gram.some((g) => STOPWORDS.has(g))) continue;
+    if (gram.some(g => exclusions.has(g) || (filterStop && STOPWORDS.has(g)))) continue;
     const key = gram.join(' ');
     counts.set(key, (counts.get(key) || 0) + 1);
   }
@@ -587,6 +589,8 @@ const defs = {
     const inp = textarea({ rows: 10, mono: false, placeholder: 'Paste your content here…' });
     const target = input({ type: 'text', placeholder: 'Optional — e.g. online tools' });
     const len = select({ options: [{ v: '1', t: 'Single words' }, { v: '2', t: '2-word phrases' }, { v: '3', t: '3-word phrases' }], value: '1' });
+    const excluded = input({ type: 'text', placeholder: 'e.g. brand, example, product', maxlength: 2000 });
+    const limit = select({ options: [{v:'25',t:'25 terms'}, {v:'100',t:'100 terms'}, {v:'500',t:'500 terms'}], value: '100' });
     const minimum = select({ options: [{ v: '1', t: 'All terms' }, { v: '2', t: '2+ times' }, { v: '3', t: '3+ times' }, { v: '5', t: '5+ times' }], value: '1' });
     const stop = switchChip({ label: 'Filter stop words', checked: true });
     const grid = statsGrid();
@@ -618,6 +622,8 @@ const defs = {
         phraseLength: Number(len.value),
         filterStop: stop.querySelector('input').checked,
         minCount: Number(minimum.value),
+        limit: Number(limit.value),
+        excluded: excluded.value,
         target: target.value,
       }); } catch (e) { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set(e.message, 'error'); return; }
       lastCsv = keywordFrequencyCsv(r.terms);
@@ -642,13 +648,15 @@ const defs = {
           : h('span'));
       status.set(`Analysed ${r.totalWords.toLocaleString()} words ✓`, 'success');
     };
-    [inp, target, len, minimum, stop].forEach(el => { const clear = () => { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Inputs changed. Analyse again.', 'info'); }; el.addEventListener('input', clear); el.addEventListener('change', clear); });
+    [inp, target, excluded, len, minimum, limit, stop].forEach(el => { const clear = () => { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Inputs changed. Analyse again.', 'info'); }; el.addEventListener('input', clear); el.addEventListener('change', clear); });
     root.append(field({ label: 'Content', control: inp }),
       field({ label: 'Load text file (optional)', control: file, hint: 'Local .txt or .md, UTF-8, up to 800,000 bytes and 200,000 characters; replaces the content above.' }),
-      field({ label: 'Target keyword or phrase', control: target, hint: 'Counted exactly, even if it contains stop words' }),
+      field({ label: 'Target keyword or phrase', control: target, hint: 'Counted even if it contains excluded or stop words' }),
+      field({ label: 'Exclude words (optional)', control: excluded, hint: 'Separate words with commas or spaces. A phrase containing any excluded word is skipped; target counts are unaffected.' }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Phrase length', control: len }),
         field({ label: 'Show terms occurring', control: minimum }),
+        field({ label: 'Maximum results', control: limit }),
         field({ label: 'Options', control: stop })),
       actionsRow(
         btn({ label: 'Count keywords', icon: 'chart', onClick: run }),

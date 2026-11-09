@@ -1621,6 +1621,20 @@ await domTest('keyword text import preserves content on rejection and ignores st
    choose({name:'huge.txt',size:800001}); assert.match(statusText(document),/Existing content was kept/); assert.equal(box.value,'hello hello');
  } finally {global.FileReader=saved;}
 });
+await domTest('JSON compare imports ignore stale reads after edits and clear', async () => {
+ const app=await loadToolPage('json-compare','developer'), editors=app.querySelectorAll('textarea'), pickers=app.querySelectorAll('input[type=file]');
+ const saved=global.FileReader, pending=[];
+ global.FileReader=class { readAsText(){ pending.push(this); } };
+ const choose=(picker,file)=>{Object.defineProperty(picker,'files',{configurable:true,value:[file]});fire(picker,'change');};
+ try {
+   choose(pickers[0],new File(['x'],'left.json')); editors[0].value='manual'; fire(editors[0],'input');
+   pending[0].result='stale'; pending[0].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'manual');
+   choose(pickers[1],new File(['x'],'right.json')); click(btnByLabel(app,'Clear'));
+   pending[1].result='late'; pending[1].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[1].value,'');
+   choose(pickers[0],new File(['x'],'first.json')); choose(pickers[0],new File(['x'],'second.json'));
+   pending[3].result='new'; pending[3].onload(); await new Promise(r=>setTimeout(r,0)); pending[2].result='old'; pending[2].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'new');
+ } finally { global.FileReader=saved; }
+});
 await domTest('HTML editor opt-in Tab inserts spaces and keeps Shift+Tab navigation', async () => {
  const app=await loadToolPage('html-live-preview','developer'), code=app.querySelector('textarea'), toggle=[...app.querySelectorAll('label.switch')].find(el=>el.textContent.includes('Tab inserts spaces')).querySelector('input');
  code.value='abcd';code.setSelectionRange(1,3);let ev=new window.KeyboardEvent('keydown',{key:'Tab',bubbles:true,cancelable:true});code.dispatchEvent(ev);assert.equal(ev.defaultPrevented,false);assert.equal(code.value,'abcd');

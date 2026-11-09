@@ -972,6 +972,17 @@ await test('keyword frequency target, distinct terms, minimum filter and CSV', (
   assert.deepEqual(repeated.terms.map((t) => t.phrase), ['alpha', 'beta']);
   assert.match(seo.keywordFrequencyCsv(repeated.terms), /^term,count,density_percent\n"alpha",3,50\.0000\n"beta",2,33\.3333\n$/);
 });
+await test('keyword custom exclusions, target independence and capped results', () => {
+  const r = seo.keywordDensity('alpha beta alpha gamma alpha beta', {phraseLength:2, filterStop:false, excluded:'BETA, gamma', target:'alpha beta'});
+  assert.equal(r.terms.length, 0);
+  assert.equal(r.target.count, 2);
+  assert.equal(r.totalWords, 6);
+  assert.equal(seo.keywordDensity('हिन्दी दुनिया हिन्दी', {filterStop:false, excluded:'हिन्दी'}).terms[0].phrase, 'दुनिया');
+  const words = Array.from({length: 510}, (_, i) => `word${String.fromCharCode(97 + Math.floor(i / 26))}${String.fromCharCode(97 + i % 26)}`).join(' ');
+  const capped = seo.keywordDensity(words, {filterStop:false, limit:999});
+  assert.equal(capped.matched, 510); assert.equal(capped.terms.length, 500);
+  assert.throws(() => seo.keywordDensity('hello', {excluded:'x'.repeat(2001)}), /2,000/);
+});
 await test('robots.txt output shape', () => {
   const out = seo.buildRobots([{ agent: '*', disallow: ['/admin/'], allow: ['/admin/public'] }, { agent: 'Googlebot', disallow: [] }], { sitemap: 'https://x.y/sitemap.xml', crawlDelay: 2 });
   assert.match(out, /^User-agent: \*\nDisallow: \/admin\/\nAllow: \/admin\/public\n/);

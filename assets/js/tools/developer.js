@@ -535,7 +535,29 @@ const defs = {
     const right = textarea({ rows: 10, value: '{\n  "tags": ["a", "c"],\n  "name": "Ana",\n  "role": "editor"\n}', placeholder: 'Paste revised JSON…' });
     const status = statusLine('Compare two JSON values. Object key order is ignored; array order matters.');
     const out = resultPanel({ label: 'Structural differences', copy: false });
-    [left, right].forEach(el => el.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Compare again.', 'info'); }));
+    const revisions = [0, 0];
+    const invalidate = () => { out.placeholder(); status.set('Input changed. Compare again.', 'info'); };
+    [left, right].forEach((el, i) => el.addEventListener('input', () => { revisions[i]++; invalidate(); }));
+    const makeFileInput = (editor, i) => {
+      const picker = input({ type: 'file', accept: '.json,application/json' });
+      picker.addEventListener('change', async () => {
+        const selected = picker.files?.[0]; picker.value = '';
+        const token = ++revisions[i];
+        if (!selected) return;
+        if (!/\.json$/i.test(selected.name) || selected.size > 4000000) {
+          status.set('Choose a .json file up to 4,000,000 bytes. Existing input was kept.', 'error'); return;
+        }
+        status.set(`Reading ${i ? 'revised' : 'original'} JSON locally…`, 'info');
+        try {
+          const text = await readFile(selected);
+          if (token !== revisions[i]) return;
+          if (typeof text !== 'string' || text.length > 1000000) { status.set('File exceeds the 1,000,000-character limit. Existing input was kept.', 'error'); return; }
+          editor.value = text; out.placeholder(); status.set('JSON loaded locally as UTF-8. Compare to validate it.', 'info');
+        } catch { if (token === revisions[i]) status.set('Could not read that file. Existing input was kept.', 'error'); }
+      });
+      return picker;
+    };
+    const leftFile = makeFileInput(left, 0), rightFile = makeFileInput(right, 1);
     const preview = (v) => { const text = JSON.stringify(v, (_key, value) => typeof value === 'number' && !Number.isFinite(value) ? String(value) : value); return text.length > 240 ? `${text.slice(0, 240)}…` : text; };
     const run = () => {
       try {
@@ -550,7 +572,8 @@ const defs = {
       } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
     };
     root.append(h('div', { class: 'field-row' }, field({ label: 'Original JSON', control: left }), field({ label: 'Revised JSON', control: right })),
-      actionsRow(btn({ label: 'Compare JSON', icon: 'diff', onClick: run }), btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { left.value = ''; right.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+      h('div', {class:'field-row'}, field({label:'Load original JSON file', control:leftFile, hint:'Local UTF-8 .json, up to 4,000,000 bytes and 1,000,000 characters.'}), field({label:'Load revised JSON file', control:rightFile, hint:'Loading replaces only this side; compare to validate.'})),
+      actionsRow(btn({ label: 'Compare JSON', icon: 'diff', onClick: run }), btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { revisions[0]++; revisions[1]++; left.value = ''; right.value = ''; leftFile.value = ''; rightFile.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, out.panel,
       h('p', { class: 'hint', text: 'Duplicate keys, unsafe integers, overflow, underflow and negative zero are rejected. Decimal numbers may round in JavaScript; use strings for exact comparisons. Inputs stay in your browser.' }));
   },
