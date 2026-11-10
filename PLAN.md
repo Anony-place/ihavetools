@@ -11,6 +11,128 @@
 
 ---
 
+## Market research and next consolidated plan — 2026-10-31
+
+### Evidence and limits
+
+- Current source catalogue: 132 tools, including 6 PDF and 16 image-category
+  tools (categories overlap). Existing PDF-to-image, local batch resize/rotate,
+  JSON tree/compare and keyword-frequency features are already implemented.
+- Competitor feature pages show problems served, not demand volumes, traffic,
+  difficulty or outcomes. No verified India search-volume, Google Trends export,
+  competitor-traffic estimate or new GSC export was available for this research;
+  do not describe the priorities below as measured high-volume rankings.
+- Previous GSC export documented below is labelled 1–7 Nov 2026, later than this
+  session's stated date of 31 Oct 2026. Preserve it as supplied historical
+  context but do not use it as verified current evidence until dates/timezone are
+  reconciled. Page and query aggregates differ; use page-filtered queries.
+- Google Trends is a sampled, relative interest signal, not absolute search
+  volume: https://support.google.com/trends/answer/4365533?hl=en .
+- Google recommends helpful, accurate, people-first content rather than pages
+  made mainly for rankings: https://developers.google.com/search/docs/fundamentals/creating-helpful-content .
+
+### Competitor gaps and opportunity hypotheses
+
+1. **PDF workflows — high priority, demand unquantified.** iLovePDF documents
+   merge, split, compression, PDF-to-JPG, numbering and watermark workflows:
+   https://www.ilovepdf.com/help/documentation and
+   https://www.ilovepdf.com/pricing . PDF24 lists numbering, watermark and OCR:
+   https://www.pdf24.org/en/ . We already have merge, split, organizer, rotate,
+   image-to-PDF and page-to-image; we do not have page-number stamping, PDF
+   compression or OCR. Prioritize page numbering using existing local pdf-lib;
+   preview, rotated pages, mixed sizes, page ranges, encryption, forms and digital
+   signatures require explicit verification. Do not promise document fidelity.
+2. **Image workflow — high priority, demand unquantified.** iLoveIMG advertises
+   image/text watermark, opacity and batch operations:
+   https://www.iloveimg.com/watermark-image . We already offer local bulk resize,
+   compression, rotate/flip and ZIP; explore a local text-watermark option with
+   preview and bounded settings, first without promising image logos, font parity,
+   or irreversible protection. Compare whether it belongs in the existing batch
+   workflow or a genuinely distinct page after usability and test evaluation.
+3. **Developer workflow — medium priority.** JSON Editor Online documents tree,
+   table, search, schema validation and structured diff:
+   https://jsoneditoronline.org/features/ . Our JSON tools already support local
+   formatting, read-only token-preserving tree/search and structural compare;
+   schema validation is a later feasibility spike, not a guaranteed deliverable.
+   Reject unsafe numeric coercion, untrusted remote schema references and eval;
+   do not introduce hosted sharing of private JSON by default.
+4. **India calculator trust — urgent correctness work before expansion.** Our
+   income-tax tool explicitly covers historical FY 2025–26; keep that label.
+   The Income Tax Department says Tax Year 2026–27 uses the Income Tax Act,
+   2025: https://www.incometax.gov.in/iec/foportal/latest-news?mobile-app=1&page=%2C4 .
+   Audit exact current official slabs, deductions, rebate, surcharge, cess and
+   edge cases before offering current-year estimates. Groww shows step-up SIP
+   as a separate workflow: https://groww.in/calculators/step-up-sip-calculator .
+   Explore an optional annual step-up in the existing SIP calculator, with clear
+   timing, rate, zero-return, risk, rounding and no-guaranteed-return assumptions.
+   Review any unsupported historical-return claims; do not infer rates from
+   competitor pages or present estimates as financial/tax advice.
+5. **SEO and measurement — parallel to product work.** Improve existing pages
+   only where it makes the tool clearer, more useful or easier to navigate. Avoid
+   duplicate doorway pages and generic mass-produced claims. Request the GSC
+   Indexing → Pages report when convenient; sitemap URLs are not indexed counts.
+   Compare two equal 14-day windows after the data is available, with date,
+   search type, country/device and page filters recorded. Track clicks and
+   impressions first, CTR/position with sample-size caveats; never equate page
+   impressions with query impressions or promise ranking changes.
+
+### Consolidated batch — release scope and remaining work
+
+- GSC validation export supplied by the user lists 55 pending URLs (49 tools,
+  five categories, homepage). The export timestamps are inconsistent with the
+  session date; treat as a dated snapshot, not a current indexing verdict. All
+  55 are in the locally generated sitemap and their local HTML has no noindex;
+  live robots.txt permits crawling. These checks do not prove crawl or indexing.
+  Use GSC URL Inspection for representative URLs and await validation; don't
+  request mass indexing or change canonical URLs without an identified fault.
+- Income Tax Department AY 2026–27 guidance lists the FY 2025–26 slabs:
+  https://www.incometax.gov.in/iec/foportal/help/individual/return-applicable-1 .
+  Slab thresholds and rates match the calculator for resident individuals, but
+  this is not a complete legal audit of rebates, relief, deductions and edge
+  cases. Added more explicit input limitations and stale-output invalidation;
+  do not relabel as current-year tax or treat estimates as filing advice.
+
+- Implemented annual SIP step-up, with zero as the backwards-compatible default,
+  deposits increasing after each 12 months, shared state, and stale results cleared.
+  Unit, DOM and Chromium tests include a 30-month zero-return example (₹32,460).
+- Added optional batch image text watermark with first-successful-output preview,
+  five positions, opacity, color and relative size. Chromium tests inspect ZIP
+  pixels for all positions, PNG transparency and JPEG, plus invalidation and axe.
+  Other browsers, complex scripts and device limits remain unverified.
+- PDF page-number stamping remains unimplemented: crop/rotation, fidelity and
+  cancellation still need dedicated work and real-file tests.
+- Historical tax calculator remains labelled FY 2025–26; a full primary-source
+  audit of all edge cases and any current-year implementation are outstanding.
+- Vendor security: GitHub advisory GHSA-px8p-9vwx-vf98 affects fflate 0.8.2
+  unzipSync on malformed ZIP64; production only uses zipSync, while tests unzip
+  our own generated ZIPs. Updated local fflate to 0.8.3. PDF.js 6.5.438 and
+  pdf-lib 1.17.1 returned no matching npm GitHub advisories during this review;
+  vendored code is not covered by npm audit and needs ongoing monitoring.
+- The supportable release subset is SIP step-up, image text watermark, tax UI
+  safeguards and the fflate security update. PDF numbering and full tax legal
+  audit are deferred, not shipped. Run checks, CI and preview before merging;
+  verify production after deployment.
+
+### Next single consolidated implementation batch
+
+- Plan and implement bounded local PDF page-numbering if safe and practical;
+  test original vs exported pages, numbering positions with rotated/cropped and
+  differently sized pages, unsupported/encrypted files, stale operations and
+  signature/forms/bookmark caveats. If accuracy cannot be established, defer it.
+- Evaluate text watermark for the existing bulk image queue; only ship if actual
+  PNG/JPEG output, transparency, position, scaling, limits, cancellation and
+  accessibility can be tested. Failed items must remain visible; avoid claims
+  that watermarks protect ownership or prevent copying.
+- Audit SIP assumptions and current income-tax page against primary sources;
+  implement only changes with independently checked expected values and clearly
+  stated scope, retaining the historical tax calculator if new rules are unproven.
+- Run engine, DOM, full real-browser export tests, responsive/axe checks,
+  dependency audit and vendor security review. Keep runtime processing local,
+  no paid services and no default uploads. One PR, CI and Vercel preview; merge
+  and production verification only for the tested, supportable subset.
+
+---
+
 ## Current batch — Batch image rotation and workflow reliability
 
 1. Extend the existing bulk resize/compress queue to apply a common quarter-turn

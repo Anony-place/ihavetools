@@ -132,7 +132,7 @@ export function compoundInterest({ principal, annualRatePct, years, perYear = 12
   if (!Number.isFinite(balance)) throw new Error('Result is too large to calculate.');
   return { finalBalance: balance, totalContributed: contributed, totalInterest: balance - contributed, schedule };
 }
-export function sipCalc({ monthly, annualRatePct, years }) {
+export function sipCalc({ monthly, annualRatePct, years, stepUpPct = 0 }) {
   if (!(monthly > 0)) throw new Error('Monthly investment must be greater than zero.');
   if (!(years > 0)) throw new Error('Duration must be greater than zero.');
   if (!(annualRatePct >= 0)) throw new Error('Expected return cannot be negative.');
@@ -140,15 +140,18 @@ export function sipCalc({ monthly, annualRatePct, years }) {
   const n = Math.round(years * 12);
   if (!Number.isFinite(years) || n < 1 || n > 1200 || Math.abs(years * 12 - n) > 1e-8) throw new Error('Duration must be a whole number of months between 1 and 1200.');
   if (!Number.isFinite(monthly) || monthly > 1e12 || !Number.isFinite(annualRatePct) || annualRatePct > 100) throw new Error('Use a monthly amount up to 1 trillion and a return of at most 100%.');
-  let balance = 0;
+  if (!Number.isFinite(stepUpPct) || stepUpPct < 0 || stepUpPct > 100) throw new Error('Annual step-up must be between 0% and 100%.');
+  let balance = 0, invested = 0, contribution = monthly;
   const schedule = [];
   for (let m = 1; m <= n; m++) {
-    balance = (balance + monthly) * (1 + i); // deposit at the start of each month (annuity due)
+    if (m > 1 && (m - 1) % 12 === 0) contribution *= 1 + stepUpPct / 100;
+    invested += contribution;
+    balance = (balance + contribution) * (1 + i); // start-of-month contribution
+    if (!Number.isFinite(balance) || !Number.isFinite(invested)) throw new Error('Result is too large to calculate.');
     if (m % 12 === 0 || m === n) {
-      schedule.push({ year: Math.ceil(m / 12), invested: monthly * m, balance, gain: balance - monthly * m });
+      schedule.push({ year: Math.ceil(m / 12), invested, balance, gain: balance - invested });
     }
   }
-  const invested = monthly * n;
   return { invested, maturity: balance, gain: balance - invested, months: n, schedule };
 }
 
@@ -958,12 +961,13 @@ const defs = {
     const monthly = input({ type: 'number', step: 'any', placeholder: 'e.g. 10000', value: '10000' });
     const rate = input({ type: 'number', step: 'any', placeholder: 'e.g. 12', value: '12' });
     const years = input({ type: 'number', step: 'any', placeholder: 'e.g. 15', value: '15' });
+    const step = input({ type: 'number', min: 0, max: 100, step: 'any', value: '0' });
     const grid = statsGrid();
     const status = statusLine('');
     const scheduleWrap = h('div', {});
     const run = () => {
       try {
-        const r = sipCalc({ monthly: num(monthly), annualRatePct: num(rate), years: num(years) });
+        const r = sipCalc({ monthly: num(monthly), annualRatePct: num(rate), years: num(years), stepUpPct: num(step) });
         grid.set([
           { label: 'Invested amount', value: money(r.invested) },
           { label: 'Est. gains', value: money(r.gain), kind: 'warn' },
@@ -973,16 +977,18 @@ const defs = {
         scheduleWrap.replaceChildren(
           h('h3', { text: 'Year-by-year growth', style: 'margin:20px 0 10px' }),
           table({ headers: ['Year', 'Invested', 'Est. gains', 'Value'], rows: r.schedule.map((y) => [`Y${y.year}`, money(y.invested), money(y.gain), money(y.balance)]) }));
-        status.set(`Investing ${money(num(monthly))} a month for ${fmtNumber(num(years))} years at ${fmtNumber(num(rate))}% expected return. Estimates only — mutual fund returns are not guaranteed.`, 'success');
+        status.set(`Starting at ${money(num(monthly))} a month with ${fmtNumber(num(step))}% annual step-up for ${fmtNumber(num(years))} years at ${fmtNumber(num(rate))}% expected return. Estimates only — mutual fund returns are not guaranteed.`, 'success');
       } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
       h('div', { class: 'field-row' },
         field({ label: 'Monthly investment', control: monthly }),
         field({ label: 'Expected return % (p.a.)', control: rate }),
-        field({ label: 'Duration (years)', control: years })),
+        field({ label: 'Duration (years)', control: years }),
+        field({ label: 'Annual step-up (%)', control: step, hint: 'Increase the monthly contribution after every 12 deposits. 0% keeps it fixed.' })),
       actionsRow(btn({ label: 'Calculate SIP', icon: 'trending', onClick: run })), grid, scheduleWrap, status);
-    shareState(root, [['monthly', monthly], ['rate', rate], ['years', years]], run);
+    clearOnEdit(root, status, grid, scheduleWrap);
+    shareState(root, [['monthly', monthly], ['rate', rate], ['years', years], ['step', step]], run);
   },
 
   'ppf-calculator'(root) {
@@ -1089,13 +1095,14 @@ const defs = {
       } catch (e) { grid.replaceChildren(); detailWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
-      h('p', { class: 'hint', text: 'Historical estimate for FY 2025–26 (AY 2026–27) only. This calculator does not model Tax Year 2026–27; verify current rules before planning or filing.' }),
+      h('p', { class: 'hint', text: 'Historical estimate for FY 2025–26 (AY 2026–27), resident individuals and ordinary slab-rate income only. This calculator does not model Tax Year 2026–27, capital gains or special-rate income. It does not check whether your deductions are eligible; verify rules before planning or filing.' }),
       h('div', { class: 'field-row' },
         field({ label: 'Gross salary (yearly)', control: salary }),
-        field({ label: 'Other income (yearly)', control: other, hint: 'Interest, rent, freelance…' }),
-        field({ label: 'Deductions (old regime)', control: deductions, hint: '80C + 80D + HRA + home-loan interest…' }),
+        field({ label: 'Other income (yearly)', control: other, hint: 'Ordinary slab-rate taxable income only; exclude capital gains and other special-rate income.' }),
+        field({ label: 'Deductions (old regime)', control: deductions, hint: 'Enter eligible deductions and exemptions only; do not include the standard deduction again. Limits and eligibility are not checked.' }),
         field({ label: 'Age', control: age })),
       actionsRow(btn({ label: 'Calculate tax (FY 2025-26)', icon: 'receipt', onClick: run })), grid, detailWrap, status);
+    clearOnEdit(root, status, grid, detailWrap);
     shareState(root, [['salary', salary], ['other', other], ['deductions', deductions], ['age', age]], run);
   },
 

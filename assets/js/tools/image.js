@@ -370,14 +370,19 @@ const defs = {
     const quality = input({ type: 'number', min: 5, max: 100, value: '85' });
     const target = input({ type: 'number', min: 1, max: 51200, step: 1, placeholder: 'optional' });
     const prefix = input({ type: 'text', maxlength: 40, placeholder: 'optional, e.g. product' });
+    const watermark = input({ type: 'text', maxlength: 80, placeholder: 'Optional text' });
+    const watermarkPosition = select({ options: [{v:'bottom-right',t:'Bottom right'}, {v:'bottom-left',t:'Bottom left'}, {v:'top-right',t:'Top right'}, {v:'top-left',t:'Top left'}, {v:'center',t:'Center'}], value:'bottom-right' });
+    const watermarkSize = input({ type: 'number', min: 2, max: 20, value: '8' });
+    const watermarkOpacity = input({ type: 'number', min: 1, max: 100, value: '70' });
+    const watermarkColor = select({ options: [{v:'white',t:'White'}, {v:'black',t:'Black'}], value:'white' });
     const upscale = switchChip({ label: 'Allow enlargement', checked: false });
     const rotation = select({ options: [{v:'0',t:'No rotation'}, {v:'90',t:'90° clockwise'}, {v:'180',t:'180°'}, {v:'270',t:'90° counterclockwise'}], value:'0' });
     const flipX = switchChip({ label:'Flip horizontally', checked:false });
     const flipY = switchChip({ label:'Flip vertically', checked:false });
     const status = statusLine('Choose images to begin.');
-    const list = h('div', {}), results = h('div', {});
+    const list = h('div', {}), results = h('div', {}), preview = h('div', {}), previews = previewManager(preview);
     let files = [], revision = 0, archive = null;
-    const invalidate = () => { revision++; archive = null; results.replaceChildren(); download.disabled = true; };
+    const invalidate = () => { revision++; archive = null; results.replaceChildren(); previews.clear(); download.disabled = true; };
     const runButton = btn({ label: 'Process images', icon: 'crop', onClick: () => run() });
     const cancel = btn({ label: 'Cancel', variant: 'secondary', onClick: () => { invalidate(); status.set('Cancelled. No partial ZIP is available.', 'info'); } });
     const download = btn({ label: 'Download ZIP', variant: 'secondary', disabled: true, onClick: () => {
@@ -416,7 +421,7 @@ const defs = {
       renderQueue();
       status.set(`${files.length} images selected. Set size and quality, then process.`, 'info');
     });
-    for (const el of [width, height, format, layout, quality, target, prefix, upscale, rotation, flipX, flipY]) for (const ev of (el === prefix ? ['input'] : ['input', 'change'])) el.addEventListener(ev, () => { invalidate(); if (el === format || el === prefix) renderQueue(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
+    for (const el of [width, height, format, layout, quality, target, prefix, upscale, rotation, flipX, flipY, watermark, watermarkPosition, watermarkSize, watermarkOpacity, watermarkColor]) for (const ev of (el === prefix ? ['input'] : ['input', 'change'])) el.addEventListener(ev, () => { invalidate(); if (el === format || el === prefix) renderQueue(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
     window.addEventListener('pagehide', invalidate);
     async function run() {
       invalidate();
@@ -435,8 +440,10 @@ const defs = {
       if (!MIME_BY_FMT[fmt] || (targetKiB == null && (!quality.value || !Number.isFinite(q) || q < 5 || q > 100))) { status.set('Quality must be between 5 and 100 and the format must be supported.', 'error'); return; }
       const deg = Number(rotation.value), horizontal = flipX.querySelector('input').checked, vertical = flipY.querySelector('input').checked;
       if (![0,90,180,270].includes(deg)) { status.set('Choose a valid rotation.', 'error'); return; }
+      const text = watermark.value.trim(), position = watermarkPosition.value, fontPct = Number(watermarkSize.value), opacity = Number(watermarkOpacity.value), color = watermarkColor.value;
+      if (text && (text.length > 80 || /[\x00-\x1f\x7f]/.test(text) || !['bottom-right','bottom-left','top-right','top-left','center'].includes(position) || !['white','black'].includes(color) || !Number.isFinite(fontPct) || fontPct < 2 || fontPct > 20 || !Number.isFinite(opacity) || opacity < 1 || opacity > 100)) { status.set('Watermark needs one line of up to 80 characters, size 2–20% and opacity 1–100%.', 'error'); return; }
       const token = revision, selected = files.slice(), enlarge = upscale.querySelector('input').checked;
-      const entries = {}, rows = []; let total = 0, totalOriginal = 0, larger = 0, successes = 0;
+      const entries = {}, rows = []; let total = 0, totalOriginal = 0, larger = 0, successes = 0, firstPreview = null;
       status.set('Preparing image tools…', 'info');
       try {
         const { zipSync } = await import('../../vendor/fflate.js');
@@ -465,6 +472,19 @@ const defs = {
               const drawW = deg % 180 ? dims.imageHeight : dims.imageWidth, drawH = deg % 180 ? dims.imageWidth : dims.imageHeight;
               ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
             }
+            if (text) {
+              // Draw in output coordinates after rotation, mirror and padding.
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              const size = Math.max(1, Math.min(dims.width, dims.height) * fontPct / 100);
+              const marginX = dims.width * 0.05, marginY = dims.height * 0.05;
+              ctx.globalAlpha = opacity / 100; ctx.fillStyle = color;
+              ctx.font = `bold ${size}px sans-serif`; ctx.textBaseline = 'middle';
+              ctx.textAlign = position === 'center' ? 'center' : position.endsWith('left') ? 'left' : 'right';
+              const x = position === 'center' ? dims.width / 2 : position.endsWith('left') ? marginX : dims.width - marginX;
+              const y = position === 'center' ? dims.height / 2 : position.startsWith('top') ? marginY + size / 2 : dims.height - marginY - size / 2;
+              ctx.fillText(text, x, y, dims.width * 0.9);
+              ctx.globalAlpha = 1;
+            }
             const choice = targetKiB == null ? { blob: await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100) } : await encodeToTarget(qualityValue => canvasToBlob(canvas, MIME_BY_FMT[fmt], qualityValue), targetKiB * 1024, () => revision === token);
             const blob = choice.blob;
             if (revision !== token) return;
@@ -473,6 +493,7 @@ const defs = {
             if (revision !== token) return;
             total += bytes.length; totalOriginal += f.size; if (blob.size > f.size) larger++;
             const name = batchFilename(f.name, i + 1, fmt, namingPrefix); entries[name] = bytes; successes++;
+            if (!firstPreview) firstPreview = { blob, name: f.name };
             rows.push([f.name, `${dims.width} × ${dims.height}`, fmtBytes(f.size), fmtBytes(blob.size), sizeChange(f.size, blob.size), targetKiB == null ? name : `${name} — target met at quality ${choice.quality}%`]);
           } catch (err) { if (revision !== token) return; rows.push([f.name, 'Failed', fmtBytes(f.size), '—', '—', err.message]); }
           finally { if (canvas) { canvas.width = 0; canvas.height = 0; } }
@@ -482,6 +503,7 @@ const defs = {
         if (revision !== token) return;
         archive = new Blob([zip], { type: 'application/zip' });
         results.replaceChildren(h('p', { class: 'hint', text: `Successful image files: ${fmtBytes(totalOriginal)} → ${fmtBytes(total)} (${sizeChange(totalOriginal, total)}). ${larger} output${larger === 1 ? '' : 's'} larger than the original. ZIP overhead is not included.` }), table({ headers: ['File', 'Dimensions', 'Original', 'Output', 'Change', 'Result'], rows }));
+        previews.show(firstPreview.blob, url => h('div', {}, h('p', {class:'hint', text:`Preview of first successful output: ${firstPreview.name}`}), h('img', {class:'img-preview', src:url, alt:'First processed image preview'})));
         download.disabled = false;
         status.set(`${successes} of ${selected.length} images ready in ZIP. ${selected.length - successes} failed.`, successes === selected.length ? 'success' : 'warning');
       } catch (err) { if (revision === token) status.set(`Could not create ZIP: ${err.message}`, 'error'); }
@@ -492,8 +514,9 @@ const defs = {
       field({ label: 'Target per image (KiB)', control: target, hint: 'Optional, whole KiB (1 KiB = 1024 bytes). JPEG/WebP only; searches quality 5–100 at selected dimensions.' }),
       field({ label: 'Filename prefix', control: prefix, hint: 'Optional: up to 40 ASCII letters, numbers, hyphens or underscores.' })),
       h('div', { class: 'field-row' }, field({label:'Rotate all images', control:rotation, hint:'Applied before resizing and padding.'}), field({label:'Mirror after rotation',control:flipX}), field({label:'',control:flipY})),
-      upscale, actionsRow(runButton, cancel, download), status, results,
-      privacyNote('Images are processed locally, not uploaded. The chosen rotation and output-axis mirrors apply to every image before resizing and padding; preview individual photos to choose appropriate settings. Fit mode uses optional bounds; clear both to retain original dimensions. Exact canvas centers the full image with white or transparent padding, without cropping. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
+      h('div', { class: 'field-row' }, field({label:'Watermark text', control:watermark, hint:'Optional; single line up to 80 characters.'}), field({label:'Watermark position', control:watermarkPosition}), field({label:'Watermark size (% of shorter side)', control:watermarkSize}), field({label:'Watermark opacity (%)', control:watermarkOpacity}), field({label:'Watermark color', control:watermarkColor})),
+      upscale, actionsRow(runButton, cancel, download), status, preview, results,
+      privacyNote('Images are processed locally, not uploaded. Optional text is drawn on the final output after rotation and padding; fonts vary by browser, and watermarks do not prevent copying. Check the first output preview and inspect the rest. The chosen rotation and output-axis mirrors apply to every image before resizing and padding; preview individual photos to choose appropriate settings. Fit mode uses optional bounds; clear both to retain original dimensions. Exact canvas centers the full image with white or transparent padding, without cropping. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
   },
 
   'image-resizer'(root) {

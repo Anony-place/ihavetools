@@ -257,6 +257,12 @@ await domTest('sip-calculator: shows maturity and growth table', async () => {
   assert.match(app.textContent, /Year-by-year growth/);
   assert.match(app.textContent, /not guaranteed/);
 });
+await domTest('SIP step-up updates contribution and clears stale output', async () => {
+ const app=await loadToolPage('sip-calculator','calculators'), values=app.querySelectorAll('input[type=number]');
+ values[0].value='1000'; values[1].value='0'; values[2].value='2'; values[3].value='10';
+ click(btnByLabel(app,'Calculate SIP')); assert.match(app.textContent,/25,200\.00/);
+ values[3].value='20'; fire(values[3],'input'); assert.equal(app.querySelectorAll('.stat-card').length,0); assert.doesNotMatch(app.textContent,/Year-by-year growth/);
+});
 await domTest('qr-code-generator: mounts and validates empty input', async () => {
   const app = await loadToolPage('qr-code-generator', 'webseo');
   assert.match(app.textContent, /Text or URL to encode/);
@@ -437,6 +443,14 @@ await domTest('income tax labels historical year and equal regimes correctly', a
  const nums=app.querySelectorAll('input[type=number]'); nums[0].value='400000';nums[1].value='0';nums[2].value='0';click(btnByLabel(app,'Calculate tax'));assert.match(app.textContent,/Neither \(tie\)/);
 });
 
+await domTest('income tax: edits clear stale estimates and show limitations', async () => {
+  const app = await loadToolPage('income-tax-calculator', 'calculators');
+  assert.match(app.textContent, /eligib(le|ility)/i);
+  click(btnByLabel(app, 'Calculate tax (FY 2025-26)'));
+  assert.match(app.textContent, /New regime tax/);
+  const salary = app.querySelector('input[type=number]'); salary.value = '2000000'; fire(salary, 'input');
+  assert.doesNotMatch(app.textContent, /New regime tax|New regime — FY 2025-26 slabs/);
+});
 await domTest('income-tax-calculator: compares both regimes', async () => {
   const app = await loadToolPage('income-tax-calculator', 'calculators');
   const nums = app.querySelectorAll('input[type=number]');

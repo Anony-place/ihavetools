@@ -238,7 +238,7 @@ matrix was available.
   checks pass; npm audit reports zero vulnerabilities. Real-browser coverage is
   run in CI; physical devices, all browser codecs, large real-world files,
   screen readers and exhaustiveness remain unverified.
-- ZIP writer: fflate 0.8.2, MIT licensed and bundled locally under assets/vendor;
+- ZIP writer: fflate 0.8.3, MIT licensed and bundled locally under assets/vendor;
   see FFLATE-LICENSE.txt. It loads only when the batch workflow runs.
 
 ## Image metadata trust and sitemap dates — 2026-11-07

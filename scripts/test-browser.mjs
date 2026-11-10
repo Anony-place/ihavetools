@@ -66,6 +66,17 @@ try {
   }
   console.log(`✓ ${tools.length} full-width desktop workspaces without overflow`);
   await page.setViewportSize({ width: 1280, height: 800 });
+  await go('sip-calculator');
+  await page.getByLabel('Monthly investment', { exact: true }).fill('1000');
+  await page.getByLabel('Expected return % (p.a.)').fill('0');
+  await page.getByLabel('Duration (years)').fill('2.5');
+  await page.getByLabel('Annual step-up (%)').fill('10');
+  await page.getByRole('button', { name: 'Calculate SIP' }).click();
+  assert.match(await page.locator('#tool-app').innerText(), /32,460\.00/);
+  await page.getByLabel('Annual step-up (%)').fill('20');
+  assert.doesNotMatch(await page.locator('#tool-app').innerText(), /Year-by-year growth/);
+  console.log('✓ SIP step-up and stale output');
+
   await go('json-formatter');
   await page.locator('#tool-app textarea').fill('{"big":9007199254740993}');
   await page.getByRole('button', { name: 'Format', exact: true }).click();
@@ -216,6 +227,8 @@ try {
   assert.match(await page.locator('#tool-app').innerText(),/does not model Tax Year 2026/);
   const taxFields=page.locator('#tool-app input[type=number]'); await taxFields.nth(0).fill('400000'); await taxFields.nth(1).fill('0'); await taxFields.nth(2).fill('0');
   await page.getByRole('button',{name:/Calculate tax/}).click(); assert.match(await page.locator('#tool-app').innerText(),/Neither \(tie\)/);
+  await taxFields.nth(0).fill('500000'); assert.doesNotMatch(await page.locator('#tool-app').innerText(),/New regime tax|New regime — FY 2025-26 slabs/);
+  await page.getByRole('button',{name:/Calculate tax/}).click(); await page.getByLabel('Age', {exact:true}).selectOption('60to79'); assert.doesNotMatch(await page.locator('#tool-app').innerText(),/New regime tax/);
   const thumbBytes=await sharp({create:{width:320,height:180,channels:3,background:'#ad1111'}}).jpeg().toBuffer();
   await page.route('https://i.ytimg.com/**', route=>route.fulfill({status:200,contentType:'image/jpeg',headers:{'access-control-allow-origin':'*'},body:thumbBytes}));
   await page.setViewportSize({width:320,height:844}); await go('youtube-thumbnail-downloader');
@@ -597,6 +610,67 @@ try {
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await page.setViewportSize({width:1280,height:800});
   console.log('✓ batch rotation and mirrors: all 16 combinations, ZIP pixels, padding and accessibility');
+
+  // Inspect actual ZIP pixels and the preview for bounded batch text watermarks.
+  await go('bulk-image-resizer');
+  const blankPng = await sharp({create:{width:200,height:100,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles([{name:'transparent.png',mimeType:'image/png',buffer:blankPng}]);
+  await page.getByLabel('Maximum width (px)').fill(''); await page.getByLabel('Maximum height (px)').fill('');
+  await page.getByLabel('Output format').selectOption('png');
+  await page.getByLabel('Watermark text').fill('TEST');
+  await page.getByLabel('Watermark size (% of shorter side)').fill('20');
+  await page.getByLabel('Watermark opacity (%)').fill('50');
+  for (const position of ['top-left','top-right','bottom-left','bottom-right','center']) {
+    await page.getByLabel('Watermark position').selectOption(position);
+    await page.getByRole('button',{name:'Process images'}).click();
+    await page.locator('#tool-app .status-line').getByText(/1 of 1 images ready/).waitFor();
+    assert.equal(await page.getByAltText('First processed image preview').count(), 1);
+    const event = page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
+    const files = unzipSync(new Uint8Array(await readFile(await (await event).path())));
+    const out = await sharp(Buffer.from(files['001-transparent.png'])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    let pixels = 0, sx = 0, sy = 0, maxAlpha = 0;
+    for (let y=0;y<100;y++) for (let x=0;x<200;x++) { const a=out.data[(y*200+x)*4+3]; if (a) {pixels++; sx+=x; sy+=y; maxAlpha=Math.max(maxAlpha,a);} }
+    assert.ok(pixels > 10 && maxAlpha <= 128, `${position} alpha`);
+    const cx=sx/pixels, cy=sy/pixels;
+    assert.ok(position==='center' ? cx>70 && cx<130 && cy>35 && cy<65 : (position.endsWith('left') ? cx<100 : cx>100) && (position.startsWith('top') ? cy<50 : cy>50), `${position}: ${cx},${cy}`);
+  }
+  await page.getByLabel('Rotate all images').selectOption('90');
+  await page.getByLabel('Watermark position').selectOption('top-left');
+  await page.locator('#tool-app input[type=file]').setInputFiles([{name:'transparent.png',mimeType:'image/png',buffer:blankPng},{name:'bad.png',mimeType:'image/png',buffer:Buffer.from('bad')}]);
+  await page.getByRole('button',{name:'Process images'}).click();
+  await page.locator('#tool-app .status-line').getByText(/1 of 2 images ready/).waitFor();
+  assert.match(await page.locator('#tool-app').innerText(), /does not look like a supported image/);
+  const rotatedMarkEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
+  const rotatedMarkZip=unzipSync(new Uint8Array(await readFile(await (await rotatedMarkEvent).path())));
+  const rotatedMark=await sharp(Buffer.from(rotatedMarkZip['001-transparent.png'])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  assert.deepEqual([rotatedMark.info.width,rotatedMark.info.height],[100,200]);
+  let upper=0, lower=0, rotatedX=0;
+  for (let y=0;y<200;y++) for (let x=0;x<100;x++) if (rotatedMark.data[(y*100+x)*4+3]) { if (y<100) { upper++; rotatedX += x; } else lower++; }
+  assert.ok(upper>10 && lower===0 && rotatedX/upper<50, 'watermark uses final output coordinates after rotation');
+  await page.getByLabel('Watermark size (% of shorter side)').fill('21');
+  await page.getByRole('button',{name:'Process images'}).click();
+  assert.match(await page.locator('#tool-app .status-line').innerText(), /size 2–20%/);
+  assert.equal(await page.getByRole('button',{name:'Download ZIP'}).isDisabled(), true);
+  await page.getByLabel('Watermark size (% of shorter side)').fill('20');
+  await page.locator('#tool-app input[type=file]').setInputFiles([{name:'transparent.png',mimeType:'image/png',buffer:blankPng}]);
+  await page.getByLabel('Watermark opacity (%)').fill('100');
+  assert.equal(await page.getByRole('button',{name:'Download ZIP'}).isDisabled(), true);
+  assert.equal(await page.getByAltText('First processed image preview').count(), 0);
+  await page.getByLabel('Output format').selectOption('jpeg');
+  await page.getByLabel('Watermark color').selectOption('black');
+  await page.getByRole('button',{name:'Process images'}).click();
+  await page.locator('#tool-app .status-line').getByText(/1 of 1 images ready/).waitFor();
+  const watermarkJpgEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
+  const jpgZip=unzipSync(new Uint8Array(await readFile(await (await watermarkJpgEvent).path())));
+  const jpegMark=await sharp(Buffer.from(jpgZip['001-transparent.jpg'])).removeAlpha().raw().toBuffer();
+  assert.ok(jpegMark.some(v=>v<100), 'JPEG watermark is visible on white background');
+  await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  assert.equal(await page.getByAltText('First processed image preview').count(), 0);
+  await page.setViewportSize({width:320,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'watermark mobile accessibility');
+  await page.setViewportSize({width:1280,height:800});
+  console.log('✓ batch watermark positions, PNG transparency, JPEG, preview and invalidation');
 
   await go('pdf-to-image');
   const renderedPdf = await PDFDocument.create();

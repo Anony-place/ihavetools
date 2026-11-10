@@ -601,6 +601,16 @@ await test('SIP future value (annuity due)', () => {
   assert.equal(zero.maturity, 12000);
   assert.throws(() => calc.sipCalc({ monthly: 0, annualRatePct: 12, years: 5 }), /greater than zero/);
 });
+await test('SIP step-up contributions and partial year', () => {
+  const x = calc.sipCalc({monthly:1000, annualRatePct:0, years:2.5, stepUpPct:10});
+  assert.ok(Math.abs(x.invested - 32460) < 1e-8); assert.equal(x.maturity,x.invested);
+  assert.deepEqual(x.schedule.map(y => y.year),[1,2,3]);
+  const y = calc.sipCalc({monthly:1000,annualRatePct:12,years:2,stepUpPct:10});
+  let b=0; for(let m=0;m<24;m++) b=(b+(m<12?1000:1100))*1.01;
+  assert.ok(Math.abs(y.maturity-b)<1e-8); assert.ok(Math.abs(y.invested-25200)<1e-8);
+  assert.throws(()=>calc.sipCalc({monthly:100,annualRatePct:2,years:1,stepUpPct:101}),/step-up/);
+  assert.throws(()=>calc.sipCalc({monthly:100,annualRatePct:2,years:1,stepUpPct:NaN}),/step-up/);
+});
 await test('PPF annual compounding', () => {
   const r = calc.ppfCalc({ yearlyDeposit: 150000, annualRatePct: 7.1, years: 15 });
   // F = P × [((1+i)^n − 1)/i] × (1+i) with deposit at start of each year
@@ -640,6 +650,20 @@ await test('income tax: old regime ₹10L taxable, below-60', () => {
   // 2.5–5L@5%=12500, 5–10L@20%=100000 → 112500 + 4% cess = 117000
   assert.ok(Math.abs(r.oldRegime.total - 117000) < 0.01, `got ${r.oldRegime.total}`);
   assert.throws(() => calc.incomeTaxIndia({}), /Enter your salary/);
+});
+await test('income tax FY25-26: resident age bands and surcharge marginal relief', () => {
+  // ₹10L ordinary taxable income, no salary deduction, old regime incl. 4% cess.
+  for (const [ageGroup, expected] of [['below60',117000], ['60to79',114400], ['80plus',104000]]) {
+    const result = calc.incomeTaxIndia({otherIncome:1000000, ageGroup});
+    assert.ok(Math.abs(result.oldRegime.total - expected) < 0.01, ageGroup);
+  }
+  // At ₹50L, new slab tax is ₹10.8L. ₹1 extra is limited by marginal relief
+  // to ₹10.8L + ₹1 before cess instead of the full 10% surcharge.
+  const at = calc.incomeTaxIndia({otherIncome:5000000}).newRegime;
+  const above = calc.incomeTaxIndia({otherIncome:5000001}).newRegime;
+  assert.ok(Math.abs(at.total - 1123200) < 0.01);
+  assert.ok(Math.abs(above.total - 1123201.04) < 0.01);
+  assert.ok(above.surcharge > 0);
 });
 await test('tip with rounding and split', () => {
   const r = calc.tipCalc(84.5, 15, 3);
