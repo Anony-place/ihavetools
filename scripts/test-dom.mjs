@@ -1772,16 +1772,30 @@ await domTest('keyword text import preserves content on rejection and ignores st
 await domTest('JSON compare imports ignore stale reads after edits and clear', async () => {
  const app=await loadToolPage('json-compare','developer'), editors=app.querySelectorAll('textarea'), pickers=app.querySelectorAll('input[type=file]');
  const saved=global.FileReader, pending=[];
- global.FileReader=class { readAsText(){ pending.push(this); } };
+ global.FileReader=class { readAsArrayBuffer(){ pending.push(this); } };
  const choose=(picker,file)=>{Object.defineProperty(picker,'files',{configurable:true,value:[file]});fire(picker,'change');};
  try {
    choose(pickers[0],new File(['x'],'left.json')); editors[0].value='manual'; fire(editors[0],'input');
-   pending[0].result='stale'; pending[0].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'manual');
+   pending[0].result=new TextEncoder().encode('stale').buffer; pending[0].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'manual');
    choose(pickers[1],new File(['x'],'right.json')); click(btnByLabel(app,'Clear'));
-   pending[1].result='late'; pending[1].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[1].value,'');
+   pending[1].result=new TextEncoder().encode('late').buffer; pending[1].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[1].value,'');
    choose(pickers[0],new File(['x'],'first.json')); choose(pickers[0],new File(['x'],'second.json'));
-   pending[3].result='new'; pending[3].onload(); await new Promise(r=>setTimeout(r,0)); pending[2].result='old'; pending[2].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'new');
+   pending[3].result=new TextEncoder().encode('new').buffer; pending[3].onload(); await new Promise(r=>setTimeout(r,0)); pending[2].result=new TextEncoder().encode('old').buffer; pending[2].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'new');
+   editors[0].value='{"a":1}'; editors[1].value='{"a":2}';
+   choose(pickers[0],new File(['x'],'pending.json')); click(btnByLabel(app,'Compare JSON'));
+   pending[4].result=new TextEncoder().encode('{"late":true}').buffer; pending[4].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'{"a":1}');
+   choose(pickers[0],new File(['x'],'invalid.json')); pending[5].result=new Uint8Array([255]).buffer; pending[5].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'{"a":1}'); assert.match(app.textContent,/not valid UTF-8/);
  } finally { global.FileReader=saved; }
+});
+await domTest('JSON Pointer pending imports cannot override lookup or edits', async () => {
+ const app=await loadToolPage('json-pointer-lookup','developer'), editor=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');
+ const saved=global.FileReader, pending=[]; global.FileReader=class { readAsArrayBuffer(){pending.push(this);} };
+ const choose=()=>{Object.defineProperty(picker,'files',{configurable:true,value:[new File(['x'],'data.json')]});fire(picker,'change');};
+ try {
+   choose(); click(btnByLabel(app,'Look up value')); pending[0].result=new TextEncoder().encode('{"late":1}').buffer; pending[0].onload(); await new Promise(r=>setTimeout(r,0)); assert.match(editor.value,/9007199254740993/);
+   choose(); editor.value='{"manual":true}'; fire(editor,'input'); pending[1].result=new TextEncoder().encode('{}').buffer; pending[1].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editor.value,'{"manual":true}');
+   choose(); pending[2].result=new Uint8Array([255]).buffer; pending[2].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editor.value,'{"manual":true}'); assert.match(app.textContent,/not valid UTF-8/);
+ } finally {global.FileReader=saved;}
 });
 await domTest('HTML editor opt-in Tab inserts spaces and keeps Shift+Tab navigation', async () => {
  const app=await loadToolPage('html-live-preview','developer'), code=app.querySelector('textarea'), toggle=[...app.querySelectorAll('label.switch')].find(el=>el.textContent.includes('Tab inserts spaces')).querySelector('input');

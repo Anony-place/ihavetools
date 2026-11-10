@@ -11,6 +11,31 @@
 
 ---
 
+## JSON navigation and comparison batch — 2026-10-31
+
+Plan first: add a local JSON Pointer lookup tool using the existing bounded,
+token-preserving JSON tree; return exact source tokens rather than reserializing
+numbers. Support plain RFC 6901 pointers, escaped keys, strict array indices,
+empty keys and the empty root pointer. Reject duplicate keys, malformed pointers,
+missing paths and inputs beyond documented limits. Do not fetch remote data,
+evaluate code, silently coerce numbers or claim JSONPath/fragment support.
+Also harden existing JSON Compare file imports: reject malformed UTF-8 and prevent
+pending reads from overriding a completed compare; preserve existing input on
+failure. Full workspace, accessible controls, local file handling and ₹0 setup.
+Add real browser extraction/download and race tests plus engine, DOM, mobile,
+axe, regression and audit; one PR and verified release. Competitor features are
+product signals, not measured market demand. JSON Schema validation remains a
+separate feasibility problem, not part of this scope.
+
+Implementation: JSON Pointer lookup and Compare import safeguards added, with
+engine, DOM race, generated-site and browser coverage. `npm run check` and npm
+audit pass. Local Chromium 143 passed the new pointer and compare interactions
+and mobile axe, but the full browser run later timed out in the unrelated PDF
+render test; CI must pass the complete browser suite before merge. Production
+release is pending review and verification.
+
+---
+
 ## Local text comparison and trust batch — 2026-10-31
 
 Plan first: make existing Text Diff useful for real document workflows with two
