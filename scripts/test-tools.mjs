@@ -1721,6 +1721,11 @@ await test('image metadata rejects oversized EXIF values and truncated PNG chunk
 
 console.log('\n── PDF helpers ──');
 await test('range parsing: singles, ranges, mixed, unsorted, reversed', () => {
+  assert.deepEqual(pdf.splitPageGroups(5, 2), [[1,2],[3,4],[5]]);
+  assert.deepEqual(pdf.splitPageGroups(3, 1), [[1],[2],[3]]);
+  assert.deepEqual(pdf.splitPageGroups(2, 100), [[1,2]]);
+  for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(n, 2), /1 to 100 pages/);
+  for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(3, n), /whole number/);
   assert.deepEqual(pdf.parseRanges('1-3, 7, 11-13', 20), [1, 2, 3, 7, 11, 12, 13]);
   assert.deepEqual(pdf.parseRanges('5-3', 20), [3, 4, 5]);
   assert.throws(() => pdf.parseRanges('0', 20), /start at 1/);
@@ -1775,7 +1780,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 83);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 84);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

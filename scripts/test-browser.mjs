@@ -825,6 +825,34 @@ try {
   await page.setViewportSize({width:1280,height:800});
   console.log('✓ batch watermark positions, PNG transparency, JPEG, preview and invalidation');
 
+  // Split PDFs into one ZIP, verify independent page order and dimensions.
+  const splitSource = await PDFDocument.create();
+  for (let n = 1; n <= 5; n++) splitSource.addPage([100 + n * 10, 200]);
+  await go('pdf-split');
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'sample.pdf',mimeType:'application/pdf',buffer:Buffer.from(await splitSource.save())});
+  await page.getByRole('button',{name:'Equal groups (ZIP)'}).click();
+  await page.getByLabel('Pages per file').fill('2');
+  let splitZipEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Split PDF'}).click();
+  let splitFiles=unzipSync(new Uint8Array(await readFile(await (await splitZipEvent).path())));
+  assert.deepEqual(Object.keys(splitFiles),['pages-001-002.pdf','pages-003-004.pdf','page-005.pdf']);
+  let splitWidths=[]; for (const bytes of Object.values(splitFiles)) { const d=await PDFDocument.load(bytes); splitWidths.push(d.getPages().map(p=>p.getWidth())); }
+  assert.deepEqual(splitWidths,[[110,120],[130,140],[150]]);
+  await page.getByRole('button',{name:'Each page (ZIP)'}).click();
+  splitZipEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Split PDF'}).click();
+  splitFiles=unzipSync(new Uint8Array(await readFile(await (await splitZipEvent).path())));
+  assert.deepEqual(Object.keys(splitFiles),['page-001.pdf','page-002.pdf','page-003.pdf','page-004.pdf','page-005.pdf']);
+  for (const [i, bytes] of Object.values(splitFiles).entries()) { const d=await PDFDocument.load(bytes); assert.equal(d.getPageCount(),1); assert.equal(d.getPage(0).getWidth(),110+i*10); }
+  await page.getByRole('button',{name:'Equal groups (ZIP)'}).click(); await page.getByLabel('Pages per file').fill('0');
+  await page.getByRole('button',{name:'Split PDF'}).click(); await page.locator('#tool-app .status-line').getByText(/whole number/).waitFor();
+  const overLimit=await PDFDocument.create(); for(let i=0;i<101;i++) overLimit.addPage([100,100]);
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'large-pages.pdf',mimeType:'application/pdf',buffer:Buffer.from(await overLimit.save())});
+  await page.getByLabel('Pages per file').fill('2'); await page.getByRole('button',{name:'Split PDF'}).click();
+  await page.locator('#tool-app .status-line').getByText(/1 to 100 pages/).waitFor();
+  await page.setViewportSize({width:320,height:844});
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id), []);
+  await page.setViewportSize({width:1280,height:800});
+  console.log('✓ PDF split ZIP: individual pages, grouped files, order, partial group and mobile accessibility');
+
   await go('pdf-to-image');
   const renderedPdf = await PDFDocument.create();
   renderedPdf.addPage([100, 200]); renderedPdf.addPage([200, 100]).drawRectangle({x: 0, y: 0, width: 200, height: 100, color: pdfRgb(1, 0, 0)}); renderedPdf.addPage([9000, 100]);
