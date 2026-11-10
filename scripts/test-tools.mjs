@@ -1255,7 +1255,7 @@ await test('CSV preserves text, rejects duplicate headers and malformed quoted f
  assert.throws(()=>data.csvToJson('a,a\n1,2'),/Duplicate/);assert.throws(()=>data.csvToJson(',column_1\n1,2'),/Duplicate/);
  assert.throws(()=>data.parseCsv('x\n"a"b'),/closing quote/); assert.deepEqual(data.parseCsv('a,b\r1,2').rows,[['1','2']]);
  assert.throws(()=>data.jsonlToJsonArray('{}\n\n{bad}'),/line 3/);
- assert.equal(data.jsonToCsv('[{}]',{columns:['toString']}),'toString\n');
+ assert.equal(data.jsonToCsv('[{}]',{columns:['toString']}),'toString\n""');
 });
 await test('audit: random range boundaries and PNG color-type mapping',()=>{
  assert.throws(()=>sec.randomInt(NaN),/range/);assert.throws(()=>misc.randomNumbers({min:1,max:4294967297,count:1}),/range/);assert.throws(()=>misc.randomNumbers({min:0,max:Number.MAX_SAFE_INTEGER+1,count:1}),/safe whole/);
@@ -1343,6 +1343,15 @@ await test('jsonToCsv escapes correctly', () => {
 await test('jsonToCsv column selection', () => {
   const csv = data.jsonToCsv('[{"a":1,"b":2,"c":3}]', { columns: ['c', 'a'] });
   assert.equal(csv, 'c,a\n3,1');
+});
+await test('JSON to CSV supports headerless pipe output without altering data', () => {
+  const source = '[{"a":"=1+2","b":"a|b"},{"a":"-1","b":"line\\nbreak"}]';
+  const result = data.jsonToCsv(source, {delimiter:'|', includeHeader:false});
+  assert.equal(result, '=1+2|"a|b"\n-1|"line\nbreak"');
+  assert.deepEqual(data.parseCsv(result, {delimiter:'|', headerRow:false}).rows, [['=1+2','a|b'],['-1','line\nbreak']]);
+  const empty = data.jsonToCsv('[{"a":null},{"a":""}]', { includeHeader:false });
+  assert.equal(empty, '""\n""');
+  assert.deepEqual(data.parseCsv(empty,{headerRow:false}).rows, [[''],['']]);
 });
 await test('jsonToCsv rejects non-arrays', () => {
   assert.throws(() => data.jsonToCsv('{"a":1}'), /array/);

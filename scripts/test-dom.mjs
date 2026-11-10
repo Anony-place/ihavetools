@@ -1660,6 +1660,27 @@ await domTest('CSV rejected selection cancels pending read and keeps input expli
  finally {global.FileReader=saved;}
 });
 
+for (const toolId of ['json-to-csv','json-lines-converter']) {
+ await domTest(`${toolId}: local imports keep edited input and reject oversized files`, async () => {
+  const app=await loadToolPage(toolId,'data'); const text=app.querySelector('textarea'), saved=global.FileReader; let reader;
+  global.FileReader=class { readAsArrayBuffer(){reader=this;} };
+  const drop=file=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[file]}});app.querySelector('.dropzone').dispatchEvent(e);};
+  try {
+    drop(new File(['x'],'test.json')); assert.ok(reader);
+    text.value='user typed'; fire(text,'input'); reader.result=new TextEncoder().encode('[1,2]').buffer; reader.onload(); await new Promise(r=>setTimeout(r,10));
+    assert.equal(text.value,'user typed');
+    drop({name:'large.json',size:4*1024*1024+1}); await new Promise(r=>setTimeout(r,10));
+    assert.equal(text.value,'user typed'); assert.match(statusText(document),/Existing input was kept/);
+    drop({name:'other.exe',size:2}); await new Promise(r=>setTimeout(r,10)); assert.match(statusText(document),/supported text file/);
+  } finally {global.FileReader=saved;}
+ });
+}
+await domTest('JSON Lines direction and errors invalidate downloadable result', async () => {
+ const app=await loadToolPage('json-lines-converter','data'); const text=app.querySelector('textarea'), download=btnByLabel(app,'Download result');
+ click(btnByLabel(app,'JSONL → Array')); assert.equal(download.disabled,false);
+ text.value='not json'; fire(text,'input'); assert.equal(download.disabled,true);
+ click(btnByLabel(app,'JSONL → Array')); assert.equal(download.disabled,true); assert.match(statusText(document),/could not be parsed/);
+});
 await domTest('typing duration resets test and rejects characters after deadline', async () => {
  const previous=Object.getOwnPropertyDescriptor(performance,'now'); let now=5000; Object.defineProperty(performance,'now',{configurable:true,value:()=>now});
  try {const app=await loadToolPage('typing-speed-test','misc'), box=app.querySelector('textarea'); click(btnByLabel(app,'30 seconds')); assert.match(app.textContent,/30sTime left/);

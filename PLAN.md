@@ -11,6 +11,35 @@
 
 ---
 
+## Local data conversion workflow batch — 2026-10-31
+
+**Plan first:** improve JSON-to-CSV and JSON Lines workflows alongside the
+existing CSV-to-JSON tool: local bounded file import with safe cancellation,
+clear input retention on read failure, same-file reimport, format-specific
+JSON/JSONL downloads, optional CSV header and pipe delimiter. Preserve existing
+conversion defaults, bounds, numeric fidelity warnings, privacy and full-width
+workspace. File contents never go in URLs or leave the browser. Protect against
+stale async reads and outputs, and keep errors out of downloadable results.
+
+**Evidence and limits:** OWASP explains spreadsheet formula injection and notes
+that no universal CSV sanitization works for all spreadsheet apps and consumers:
+https://owasp.org/www-community/attacks/CSV_Injection . Quoting is not a safety
+mechanism. Do not promise that files are safe for spreadsheets or silently
+change user data; preserve the explicit warning. Feature evidence is not measured
+search demand. Validate file limits, malformed input, options, actual downloads,
+races, keyboard/mobile and axe; run full tests, audit, CI and Vercel preview.
+Use one consolidated PR and release only after verification.
+
+**Implemented:** JSON-to-CSV and JSONL accept bounded local UTF-8 imports,
+reject invalid UTF-8, preserve prior input on failure and discard superseded
+reads. JSON-to-CSV adds pipe delimiter and optional header with unchanged
+defaults and preserves single-column empty records as quoted empty fields; JSONL downloads use .json/.jsonl matching conversion direction.
+Local engine/DOM, full Chromium downloads, narrow-screen axe, and audit pass.
+Real devices, other browsers, assistive technology and spreadsheet-specific
+formula handling remain unverified. CI, preview and production checks are gates.
+
+---
+
 ## PDF numbering customization batch — 2026-10-31
 
 Plan: extend the existing local page-numbering workflow, not a duplicate tool:
