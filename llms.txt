@@ -140,7 +140,7 @@
 - [SWP Calculator](https://i-have-tools.vercel.app/tools/swp-calculator/): Project monthly withdrawals and see when a corpus runs out.
 - [Electricity Cost Calculator](https://i-have-tools.vercel.app/tools/electricity-cost-calculator/): Estimate appliance energy use and electricity cost.
 - [Fuel Cost Calculator](https://i-have-tools.vercel.app/tools/fuel-cost-calculator/): Estimate trip fuel, cost and each passenger’s share.
-- [PDF Page Organizer](https://i-have-tools.vercel.app/tools/pdf-organizer/): Reorder, remove and rotate PDF pages locally.
+- [PDF Page Organizer](https://i-have-tools.vercel.app/tools/pdf-organizer/): Reorder, remove, rotate and optionally number PDF pages locally.
 - [JSON Compare](https://i-have-tools.vercel.app/tools/json-compare/): Compare two JSON values by structure and find changed paths.
 - [Loan Prepayment Calculator](https://i-have-tools.vercel.app/tools/loan-prepayment-calculator/): Compare loan repayment time and interest with extra payments.
 - [Inflation Calculator](https://i-have-tools.vercel.app/tools/inflation-calculator/): Estimate future costs and the purchasing power of money.

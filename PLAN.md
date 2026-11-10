@@ -11,6 +11,29 @@
 
 ---
 
+## PDF numbering feasibility batch — 2026-10-31
+
+Plan first: explore optional local numbering in the existing organizer, not a
+redundant tool page. Default remains unchanged. Use output order and configurable
+starting number; use the visible crop box and final quarter-turn for positioning.
+Reject unsupported/small page geometries and do not claim signatures, forms,
+bookmarks or fidelity are preserved. Invalidate running exports when settings
+change. Verify real rendered output on differently sized, rotated and cropped
+pages, exported text/sequence, invalid input, source preservation, mobile and
+accessibility. Run full checks and browser suite; only merge and deploy verified
+scope in one consolidated PR. If render/fidelity tests fail, defer release.
+
+Implemented optional black bottom-centre numbering with a bounded starting
+number; original output remains the default. Reordered pages use output order,
+and unsupported crop boxes or too-small pages fail before download. Existing
+content can be obscured, black backgrounds can hide numbers, and existing page
+labels are unchanged. Full local checks, real Chromium rendering with cropped
+quarter-turn pages, mobile axe, source/invalid input and stale-output tests pass.
+Other viewers, devices, complex PDFs, signatures/forms and usability remain
+unverified. CI/preview and production verification remain release gates.
+
+---
+
 ## PDF organizer workflow batch — 2026-10-31
 
 **Plan:** improve the existing local PDF organizer rather than publish an

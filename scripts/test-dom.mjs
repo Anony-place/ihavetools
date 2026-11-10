@@ -1001,6 +1001,24 @@ await domTest('PDF organizer ignores an export superseded by page filtering', as
     assert.equal(app.querySelectorAll('.file-row').length,1);
   } finally { URL.createObjectURL = original; }
 });
+await domTest('PDF numbering changes invalidate a pending export', async () => {
+  const lib = await import('pdf-lib'); let release;
+  const wait = new Promise(resolve => { release = resolve; });
+  window.PDFLib = { ...lib, PDFDocument: { create: async () => { await wait; return lib.PDFDocument.create(); }, load: (bytes, ...args) => lib.PDFDocument.load(new Uint8Array(bytes), ...args) } };
+  const src = await lib.PDFDocument.create(); src.addPage([100,200]);
+  const app = await loadToolPage('pdf-organizer','pdf');
+  const e = new window.Event('drop',{bubbles:true,cancelable:true});
+  Object.defineProperty(e,'dataTransfer',{value:{files:[new File([await src.save()],'one.pdf',{type:'application/pdf'})]}});
+  app.querySelector('.dropzone').dispatchEvent(e); await new Promise(r => setTimeout(r,100));
+  let output; const original = URL.createObjectURL; URL.createObjectURL = blob => { output = blob; return 'blob:test'; };
+  try {
+    click(btnByLabel(app,'Export organized PDF'));
+    const setting = [...app.querySelectorAll('input[type=number]')].find(el => el.value === '1');
+    setting.value='7'; setting.dispatchEvent(new window.Event('input',{bubbles:true}));
+    release(); await new Promise(r => setTimeout(r,100));
+    assert.equal(output,undefined,'old numbering settings must not download');
+  } finally { URL.createObjectURL = original; }
+});
 await domTest('PDF merge handles dropped duplicate filenames by identity and removal', async () => {
   const lib = await import('pdf-lib'); window.PDFLib = { ...lib, PDFDocument: { create: (...args) => lib.PDFDocument.create(...args), load: (bytes, ...args) => lib.PDFDocument.load(new Uint8Array(bytes), ...args) } };
   const one = await lib.PDFDocument.create(); one.addPage([100,200]);
