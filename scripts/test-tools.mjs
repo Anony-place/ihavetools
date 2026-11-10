@@ -1721,6 +1721,15 @@ await test('image metadata rejects oversized EXIF values and truncated PNG chunk
 
 console.log('\n── PDF helpers ──');
 await test('range parsing: singles, ranges, mixed, unsorted, reversed', () => {
+  assert.deepEqual(pdf.selectedPdfGroups('each', 200, '3,1,3,7', 2, ''), [[1],[3],[7]]);
+  assert.deepEqual(pdf.selectedPdfGroups('groups', 200, '3,1,5-6', 2, ''), [[1,3],[5,6]]);
+  assert.deepEqual(pdf.selectedPdfGroups('custom', 200, '', 2, '4,2; 2-3; 150'), [[2,4],[2,3],[150]]);
+  assert.throws(() => pdf.selectedPdfGroups('custom', 200, '', 2, '1-100; 1'), /at most 0/);
+  assert.throws(() => pdf.selectedPdfGroups('custom', 10, '', 2, '1;;2'), /semicolons/);
+  assert.throws(() => pdf.selectedPdfGroups('custom', 10, '', 2, '1,,2'), /semicolons/);
+  assert.throws(() => pdf.selectedPdfGroups('each', 200, '1-101', 2, ''), /at most 100/);
+  assert.throws(() => pdf.selectedPdfGroups('each', 200, '', 2, ''), /smaller page selection/);
+  assert.throws(() => pdf.selectedPdfGroups('groups', 10, '', 0, ''), /whole number/);
   assert.deepEqual(pdf.splitPageGroups(5, 2), [[1,2],[3,4],[5]]);
   assert.deepEqual(pdf.splitPageGroups(3, 1), [[1],[2],[3]]);
   assert.deepEqual(pdf.splitPageGroups(2, 100), [[1,2]]);

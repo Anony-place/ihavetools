@@ -837,6 +837,23 @@ try {
   assert.deepEqual(Object.keys(splitFiles),['pages-001-002.pdf','pages-003-004.pdf','page-005.pdf']);
   let splitWidths=[]; for (const bytes of Object.values(splitFiles)) { const d=await PDFDocument.load(bytes); splitWidths.push(d.getPages().map(p=>p.getWidth())); }
   assert.deepEqual(splitWidths,[[110,120],[130,140],[150]]);
+  await page.getByLabel('Pages to extract').fill('1,3,5');
+  splitZipEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Split PDF'}).click();
+  splitFiles=unzipSync(new Uint8Array(await readFile(await (await splitZipEvent).path())));
+  assert.deepEqual(Object.keys(splitFiles),['part-001.pdf','page-005.pdf']);
+  splitWidths=[]; for (const bytes of Object.values(splitFiles)) {const d=await PDFDocument.load(bytes); splitWidths.push(d.getPages().map(p=>p.getWidth()));}
+  assert.deepEqual(splitWidths,[[110,130],[150]]);
+  await page.getByRole('button',{name:'Custom groups (ZIP)'}).click();
+  await page.getByLabel('Custom page groups').fill('2, 4; 1-2; 5');
+  splitZipEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Split PDF'}).click();
+  splitFiles=unzipSync(new Uint8Array(await readFile(await (await splitZipEvent).path())));
+  assert.deepEqual(Object.keys(splitFiles),['part-001.pdf','part-002.pdf','part-003.pdf']);
+  splitWidths=[]; for (const bytes of Object.values(splitFiles)) {const d=await PDFDocument.load(bytes); splitWidths.push(d.getPages().map(p=>p.getWidth()));}
+  assert.deepEqual(splitWidths,[[120,140],[110,120],[150]]);
+  await page.getByLabel('Custom page groups').fill('1;;2'); await page.getByRole('button',{name:'Split PDF'}).click();
+  await page.locator('#tool-app .status-line').getByText(/semicolons/).waitFor();
+  await page.getByLabel('Pages to extract').fill('');
+
   await page.getByRole('button',{name:'Each page (ZIP)'}).click();
   splitZipEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Split PDF'}).click();
   splitFiles=unzipSync(new Uint8Array(await readFile(await (await splitZipEvent).path())));
@@ -848,6 +865,10 @@ try {
   await page.locator('#tool-app input[type=file]').setInputFiles({name:'large-pages.pdf',mimeType:'application/pdf',buffer:Buffer.from(await overLimit.save())});
   await page.getByLabel('Pages per file').fill('2'); await page.getByRole('button',{name:'Split PDF'}).click();
   await page.locator('#tool-app .status-line').getByText(/1 to 100 pages/).waitFor();
+  await page.getByLabel('Pages to extract').fill('100-101');
+  splitZipEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Split PDF'}).click();
+  splitFiles=unzipSync(new Uint8Array(await readFile(await (await splitZipEvent).path())));
+  assert.deepEqual(Object.keys(splitFiles),['pages-100-101.pdf']); assert.equal((await PDFDocument.load(splitFiles['pages-100-101.pdf'])).getPageCount(),2);
   await page.setViewportSize({width:320,height:844});
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id), []);
   await page.setViewportSize({width:1280,height:800});
