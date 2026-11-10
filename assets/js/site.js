@@ -78,7 +78,7 @@ function loadSearchIndex() {
   if (!indexPromise) {
     indexPromise = import('./search-index.js')
       .then((m) => m.SEARCH_INDEX || [])
-      .catch(() => { indexPromise = null; return []; });
+      .catch((error) => { indexPromise = null; throw error; });
   }
   return indexPromise;
 }
@@ -116,55 +116,96 @@ function setupSearch() {
   const input = $('#global-search', box);
   const list = $('.search-results', box);
   if (!input || !list) return;
-  let active = -1;
-  let results = [];
+  const status = $('.search-status', box);
+  const launch = $('.mobile-search-launch');
+  let active = -1, results = [], revision = 0;
 
-  const close = () => { list.hidden = true; active = -1; };
-  const render = (items, q) => {
-    results = items;
-    active = -1;
-    if (!q.trim()) { close(); return; }
-    list.replaceChildren(...(items.length
-      ? items.map((t, i) => h('li', {}, h('a', {
-          href: `/tools/${t.id}/`, dataset: { i: String(i) },
-          onmouseenter: () => setActive(i),
-        },
-          h('span', { html: icon(t.icon), style: 'display:inline-flex;color:var(--text-3)' }),
-          h('span', {}, h('strong', { text: t.name }), h('div', { class: 'sr-cat-inline', style: 'font-size:.76rem;color:var(--text-3)', text: t.c })),
-          h('span', { class: 'sr-cat', text: t.c }))))
-      : [h('li', { class: 'no-results', text: `No tools match “${q}”. Try “json”, “image” or “password”.` })]));
-    list.hidden = false;
+  const close = () => {
+    revision++; list.hidden = true; active = -1; results = [];
+    input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant');
+    if (status) status.textContent = '';
   };
   const setActive = (i) => {
     active = i;
-    $$('a', list).forEach((a) => a.classList.toggle('active', Number(a.dataset.i) === i));
+    $$('[role="option"]', list).forEach((option, index) => {
+      const selected = index === i;
+      option.classList.toggle('active', selected);
+      option.setAttribute('aria-selected', String(selected));
+    });
+    const option = i >= 0 ? list.querySelector(`#search-option-${i}`) : null;
+    if (option) { input.setAttribute('aria-activedescendant', option.id); option.scrollIntoView?.({ block: 'nearest' }); }
+    else input.removeAttribute('aria-activedescendant');
   };
-  const runSearch = () => loadSearchIndex().then((index) => render(searchIndex(index, input.value, 8), input.value));
-  const run = debounce(runSearch, 90);
-
-  input.addEventListener('input', run);
-  input.addEventListener('focus', () => { loadSearchIndex(); if (input.value.trim()) runSearch(); });
+  const render = (items, q) => {
+    results = items; active = -1;
+    if (!q.trim()) { close(); return; }
+    list.replaceChildren(...(items.length
+      ? items.map((t, i) => h('li', { role: 'presentation' }, h('a', {
+          href: `/tools/${t.id}/`, id: `search-option-${i}`, role: 'option', 'aria-selected': 'false', tabindex: '-1',
+          onmouseenter: () => setActive(i),
+        },
+          h('span', { html: icon(t.icon), style: 'display:inline-flex;color:var(--text-3)', 'aria-hidden': 'true' }),
+          h('span', { class: 'search-result-name', text: t.name }),
+          h('span', { class: 'sr-cat', text: t.c }))))
+      : [h('li', { class: 'no-results', role: 'option', 'aria-disabled': 'true', 'aria-selected': 'false', text: `No tools match “${q}”. Try “json”, “image” or “password”.` })]));
+    input.removeAttribute('aria-activedescendant'); list.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+    if (status) status.textContent = items.length ? `${items.length} matching tools. Use arrow keys to choose.` : 'No matching tools.';
+  };
+  const runSearch = async (token = ++revision) => {
+    const query = input.value;
+    if (!query.trim()) { close(); return; }
+    try {
+      const index = await loadSearchIndex();
+      if (token !== revision || input.value !== query) return;
+      render(searchIndex(index, query, 8), query);
+    } catch {
+      if (token !== revision) return;
+      results = []; list.replaceChildren(h('li', {class:'no-results', role:'option', 'aria-disabled':'true', 'aria-selected':'false', text:'Search could not load. Check your connection and try again.'}));
+      list.hidden = false; input.setAttribute('aria-expanded', 'true');
+      if (status) status.textContent = 'Search could not load. Check your connection and try again.';
+    }
+  };
+  const run = debounce((token) => runSearch(token), 90);
+  input.addEventListener('input', () => {
+    const token = ++revision;
+    results = []; active = -1; list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant');
+    if (!input.value.trim()) { close(); return; }
+    run(token);
+  });
+  input.addEventListener('focus', () => { if (input.value.trim()) runSearch(); else loadSearchIndex().catch(() => {}); });
   input.addEventListener('keydown', (e) => {
-    if (list.hidden && ['ArrowDown', 'ArrowUp'].includes(e.key) && input.value.trim()) { runSearch(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(Math.min(active + 1, results.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(Math.max(active - 1, 0)); }
+    if (list.hidden && ['ArrowDown', 'ArrowUp'].includes(e.key) && input.value.trim()) { e.preventDefault(); runSearch(); return; }
+    if (e.key === 'ArrowDown' && results.length) { e.preventDefault(); setActive(Math.min(active + 1, results.length - 1)); }
+    else if (e.key === 'ArrowUp' && results.length) { e.preventDefault(); setActive(Math.max(active - 1, 0)); }
     else if (e.key === 'Enter') {
       const target = results[active >= 0 ? active : 0];
-      if (target) { location.href = `/tools/${target.id}/`; }
-    } else if (e.key === 'Escape') close();
+      if (target) { e.preventDefault(); location.href = `/tools/${target.id}/`; }
+    } else if (e.key === 'Escape') { close(); if (box.classList.contains('is-open')) { box.classList.remove('is-open'); launch?.setAttribute('aria-expanded', 'false'); launch?.focus(); } }
   });
-  document.addEventListener('click', (e) => { if (!box.contains(e.target)) close(); });
+  if (launch) launch.addEventListener('click', (e) => {
+    e.preventDefault();
+    const open = box.classList.toggle('is-open');
+    launch.setAttribute('aria-expanded', String(open));
+    if (open) input.focus(); else { close(); launch.focus(); }
+  });
+  document.addEventListener('click', (e) => {
+    if (!box.contains(e.target) && !launch?.contains(e.target)) {
+      close(); box.classList.remove('is-open'); launch?.setAttribute('aria-expanded', 'false');
+    }
+  });
+  box.addEventListener('focusout', () => setTimeout(() => { if (!box.contains(document.activeElement) && document.activeElement !== launch) close(); }, 0));
 
   // "/" or Ctrl/⌘+K focuses search; prefill from ?q=
   document.addEventListener('keydown', (e) => {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
     if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing)) {
-      if (document.activeElement !== input) { e.preventDefault(); input.focus(); input.select(); }
+      if (document.activeElement !== input) { e.preventDefault(); if (launch && matchMedia('(max-width: 900px)').matches) { box.classList.add('is-open'); launch.setAttribute('aria-expanded', 'true'); } input.focus(); input.select(); }
     }
   });
   const q = new URLSearchParams(location.search).get('q');
   if (q) { input.value = q; runSearch(); }
-  else if ('requestIdleCallback' in window) requestIdleCallback(() => loadSearchIndex(), { timeout: 2500 });
+  else if ('requestIdleCallback' in window) requestIdleCallback(() => loadSearchIndex().catch(() => {}), { timeout: 2500 });
 }
 
 /* ---------- Favourites & recently used (localStorage, this device only) ----------
@@ -223,7 +264,9 @@ async function renderPersonalSections() {
     if (recentSection) recentSection.hidden = true;
     return;
   }
-  const byId = new Map((await loadSearchIndex()).map((e) => [e.id, e]));
+  let index;
+  try { index = await loadSearchIndex(); } catch { return; }
+  const byId = new Map(index.map((e) => [e.id, e]));
   const fill = (section, gridSel, ids) => {
     if (!section) return;
     const grid = $(gridSel, section);

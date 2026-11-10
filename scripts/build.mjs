@@ -99,7 +99,7 @@ const THEME_INIT = `<script>(function(){try{var t=localStorage.getItem('iht-them
    the HTML for crawlers and paint without JS (no layout shift). site.js only
    adds behaviour (theme values, toggles) to these elements. */
 function headerHtml(home, withSearch = false) {
-  const searchHtml = withSearch ? `<div class="search-box header-search"><span class="search-glyph">${icon('search')}</span><label class="sr-only" for="global-search">Search tools</label><input id="global-search" type="search" placeholder="Search ${tools.length} tools… (Ctrl K)" autocomplete="off" aria-controls="search-results"><ul class="search-results" id="search-results" hidden></ul></div>` : (home ? '' : `<a class="btn btn-secondary btn-sm hide-sm" href="${ROOT_PREFIX}" aria-label="Search all tools" style="gap:7px"><span style="display:inline-flex">${icon('search')}</span>Search</a>`);
+  const searchHtml = withSearch ? `<a class="icon-btn mobile-search-launch" href="${ROOT_PREFIX}#all-tools" aria-label="Search tools" aria-expanded="false" aria-controls="header-search-box">${icon('search')}</a><div id="header-search-box" class="search-box header-search" role="search"><span class="search-glyph">${icon('search')}</span><label class="sr-only" for="global-search">Search tools</label><input id="global-search" type="search" placeholder="Search ${tools.length} tools… (Ctrl K)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-results"><ul class="search-results" id="search-results" role="listbox" aria-label="Matching tools" hidden></ul><span class="sr-only search-status" role="status" aria-live="polite"></span></div>` : (home ? '' : `<a class="btn btn-secondary btn-sm hide-sm" href="${ROOT_PREFIX}" aria-label="Search all tools" style="gap:7px"><span style="display:inline-flex">${icon('search')}</span>Search</a>`);
   const drop = `<details class="nav-drop"><summary>Categories <span style="display:inline-flex;width:14px">${icon('arrow-down')}</span></summary><div class="dropdown-panel">${categories.map((c) => `<a href="${ROOT_PREFIX}categories/${c.id}/"><span style="display:inline-flex">${icon(c.icon)}</span>${esc(c.name)}<span class="dd-count">${toolsByCategory(c.id).length}</span></a>`).join('')}</div></details>`;
   const popular6 = tools.slice().sort((a, b) => b.popularity - a.popularity).slice(0, 6);
   // Mobile menu links are text-only: 22 fewer icon references per page.
@@ -110,7 +110,7 @@ function headerHtml(home, withSearch = false) {
     <nav class="main-nav" aria-label="Primary">${drop}<a href="${ROOT_PREFIX}#all-tools">All tools</a><a href="${ROOT_PREFIX}about/">About</a></nav>
     <div class="header-actions">${searchHtml}<button class="icon-btn theme-toggle" type="button" aria-label="Switch to dark theme">${icon('moon')}</button><button class="nav-toggle" type="button" aria-expanded="false" aria-label="Open menu">${icon('menu')}</button></div>
   </div>
-  <nav class="mobile-nav" aria-label="Mobile menu"><h3>Popular tools</h3>${mobileList(popular6, (t) => `${ROOT_PREFIX}tools/${t.id}/`)}<h3>Categories</h3>${mobileList(categories, (c) => `${ROOT_PREFIX}categories/${c.id}/`)}</nav>
+  <nav class="mobile-nav" aria-label="Mobile menu"><h3>Quick links</h3>${mobileList(popular6, (t) => `${ROOT_PREFIX}tools/${t.id}/`)}<h3>Categories</h3>${mobileList(categories, (c) => `${ROOT_PREFIX}categories/${c.id}/`)}</nav>
 </header>`;
 }
 
@@ -222,20 +222,20 @@ function buildHome() {
   const content = `
 <section class="hero">
   <div class="container">
-    <div class="hero-badges">
-      <span class="badge">${icon('check')} ${tools.length} free tools</span>
-      <span class="badge">${icon('shield-check')} Runs in your browser</span>
-      <span class="badge">${icon('zap')} No sign-up, no limits</span>
-    </div>
     <h1>Free Online Tools for Everyday Work</h1>
-    <p class="lede">Every tool you need. Nothing you don't. ${tools.length} free, fast, privacy-first tools for developers, students and everyday work — search once, use instantly, no sign-up.</p>
-    <div class="search-box">
+    <p class="lede">Find the right tool for your next task. ${tools.length} free tools, ready in your browser.</p>
+    <div class="search-box" role="search">
       <span class="search-glyph">${icon('search')}</span>
       <label class="sr-only" for="global-search">Search tools</label>
-      <input id="global-search" type="search" placeholder="Search ${tools.length} tools — try “json”, “compress” or “password”…" autocomplete="off" aria-controls="search-results">
-      <kbd>/</kbd>
-      <ul class="search-results" id="search-results" hidden></ul>
+      <input id="global-search" type="search" placeholder="Search tools, e.g. PDF or JSON…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-results">
+      <kbd aria-hidden="true">/</kbd>
+      <ul class="search-results" id="search-results" role="listbox" aria-label="Matching tools" hidden></ul>
+      <span class="sr-only search-status" role="status" aria-live="polite"></span>
     </div>
+    <nav class="quick-links" aria-label="Quick access to tools">
+      <span>Try a tool</span><a href="/tools/pdf-merge/">Merge PDF</a><a href="/tools/image-compressor/">Compress image</a><a href="/tools/json-formatter/">Format JSON</a><a href="/tools/emi-calculator/">Calculate EMI</a>
+    </nav>
+    <div class="hero-badges"><span class="badge">${icon('check')} ${tools.length} free tools</span><span class="badge">${icon('shield-check')} Runs in your browser</span><span class="badge">${icon('zap')} No sign-up</span></div>
   </div>
 </section>
 
@@ -260,7 +260,7 @@ function buildHome() {
 <section class="section">
   <div class="container">
     <div class="section-head">
-      <div><h2>Popular tools</h2><p class="section-sub">The tools people reach for most.</p></div>
+      <div><h2>Explore tools</h2><p class="section-sub">A selection of useful tools to get you started.</p></div>
       <a class="section-link" href="#all-tools">All ${tools.length} tools ↓</a>
     </div>
     <div class="card-grid">${popular.slice(0, 8).map(toolCard).join('')}</div>
@@ -417,7 +417,7 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
     <section><h2>Why use the iHaveTools ${esc(t.name)}?</h2>
       <ul>
         <li><strong>Private by design</strong> — ${esc(privacy)}</li>
-        <li><strong>Free and unlimited</strong> — no sign-up, no watermarks, no daily limits and nothing to install.</li>
+        <li><strong>Free to use</strong> — no sign-up or automatic branding. Individual tools have file and device limits.</li>
         <li><strong>Works everywhere</strong> — any modern browser on a phone, tablet or computer, ready the moment the page opens.</li>
       </ul>
       ${aliasList.length ? `<p>People also search for this tool as ${aliasList.map((a) => `“${esc(a)}”`).join(', ')} — it is the same free online tool. ${esc(t.name)} is part of our <a href="/categories/${cat.id}/">${esc(cat.name)} tools</a> collection.</p>` : `<p>${esc(t.name)} is part of our <a href="/categories/${cat.id}/">${esc(cat.name)} tools</a> collection — ${tools.length} free browser-based tools in total.</p>`}
@@ -578,8 +578,9 @@ function build404() {
   <div class="search-box" style="max-width:480px">
     <span class="search-glyph">${icon('search')}</span>
     <label class="sr-only" for="global-search">Search tools</label>
-    <input id="global-search" type="search" placeholder="Search tools…">
-    <ul class="search-results" hidden></ul>
+    <input id="global-search" type="search" placeholder="Search tools…" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-results">
+    <ul class="search-results" id="search-results" role="listbox" aria-label="Matching tools" hidden></ul>
+    <span class="sr-only search-status" role="status" aria-live="polite"></span>
   </div>
   <p style="margin-top:22px"><a class="btn btn-primary" href="${ROOT_PREFIX}">Browse all tools</a></p>
 </div>`,
