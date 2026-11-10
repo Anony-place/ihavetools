@@ -953,7 +953,7 @@ await domTest('JSON compare reports structural paths safely and rejects invalid 
   a.value = '{"b":2,"a":1}'; b.value = '{"a":1,"b":2}'; click(btnByLabel(app, 'Compare JSON'));
   assert.match(app.textContent, /No structural differences/);
   b.value = '{"a":1,"b":"<img src=x onerror=alert(1)>"}'; click(btnByLabel(app, 'Compare JSON'));
-  assert.match(app.textContent, /CHANGED \/b/); assert.equal(app.querySelector('.result-body img'), null);
+  assert.match(app.textContent, /CHANGED pointer "\/b"/); assert.equal(app.querySelector('.result-body img'), null);
   b.value = '{'; click(btnByLabel(app, 'Compare JSON')); assert.match(app.textContent, /Right JSON is invalid/);
 });
 await domTest('PDF organizer accepts a drop, reorders, rotates, removes and exports actual PDF', async () => {
@@ -1786,6 +1786,18 @@ await domTest('JSON compare imports ignore stale reads after edits and clear', a
    pending[4].result=new TextEncoder().encode('{"late":true}').buffer; pending[4].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'{"a":1}');
    choose(pickers[0],new File(['x'],'invalid.json')); pending[5].result=new Uint8Array([255]).buffer; pending[5].onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(editors[0].value,'{"a":1}'); assert.match(app.textContent,/not valid UTF-8/);
  } finally { global.FileReader=saved; }
+});
+await domTest('JSON compare formats and swaps safely and invalidates reports', async () => {
+ const app=await loadToolPage('json-compare','developer'), editors=app.querySelectorAll('textarea'), picker=app.querySelector('input[type=file]');
+ const copy=btnByLabel(app,'Copy report'), download=btnByLabel(app,'Download report');
+ editors[0].value='{"n":9007199254740993}'; click(btnByLabel(app,'Format original')); assert.match(editors[0].value,/9007199254740993/);
+ editors[0].value='{"a":1}'; editors[1].value='{"a":2}'; click(btnByLabel(app,'Compare JSON')); assert.equal(copy.disabled,false); assert.equal(download.disabled,false);
+ click(btnByLabel(app,'Swap sides')); assert.equal(editors[0].value,'{"a":2}'); assert.equal(copy.disabled,true); assert.equal(download.disabled,true);
+ click(btnByLabel(app,'Compare JSON')); assert.match(resultText(document),/Before: 2/); assert.match(resultText(document),/After: 1/);
+ editors[0].value='{bad'; click(btnByLabel(app,'Format original')); assert.equal(editors[0].value,'{bad'); assert.equal(download.disabled,true);
+ const saved=global.FileReader; let pending; global.FileReader=class {readAsArrayBuffer(){pending=this;}};
+ try { editors[0].value='{"safe":1}'; Object.defineProperty(picker,'files',{configurable:true,value:[new File(['x'],'a.json')]}); fire(picker,'change'); click(btnByLabel(app,'Format original')); pending.result=new TextEncoder().encode('{"late":1}').buffer; pending.onload(); await new Promise(r=>setTimeout(r,0)); assert.match(editors[0].value,/safe/); }
+ finally {global.FileReader=saved;}
 });
 await domTest('JSON Pointer pending imports cannot override lookup or edits', async () => {
  const app=await loadToolPage('json-pointer-lookup','developer'), editor=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');

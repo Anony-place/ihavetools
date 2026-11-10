@@ -4,7 +4,7 @@
 // url-encoder, uuid-generator, timestamp-converter, hash-generator,
 // regex-tester, jwt-decoder, html-formatter, css-formatter, js-formatter
 // =============================================================================
-import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, errorBanner, statsGrid, table, copyButton, downloadButton, privacyNote, toast, readFile, fmtBytes, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, errorBanner, statsGrid, table, copyButton, downloadButton, privacyNote, toast, readFile, fmtBytes, mountTool, copyText, downloadBlob } from '../ui.js';
 
 /* ═══════════════════════════ JSON engine (RFC 8259) ═══════════════════════════ */
 export function validateJson(text) {
@@ -480,6 +480,30 @@ export function compareJson(leftText, rightText, { maxNodes = 100000, maxChanges
   return changes;
 }
 
+// Reports are bounded previews for people, not JSON Patch or complete values.
+export function jsonCompareReport(changes) {
+  const counts = { added: 0, removed: 0, changed: 0 };
+  const preview = value => {
+    const text = JSON.stringify(value);
+    return text.length > 240 ? `${text.slice(0, 240)}… [value truncated]` : text;
+  };
+  const pathLabel = path => {
+    const quoted = JSON.stringify(path);
+    return quoted.length > 2048 ? `${quoted.slice(0, 2048)}… [path truncated]` : quoted;
+  };
+  const lines = changes.flatMap(change => {
+    counts[change.type]++;
+    return [`${change.type.toUpperCase()} pointer ${pathLabel(change.path)}${change.path === '' ? ' (root)' : ''}`,
+      ...(change.type !== 'added' ? [`  Before: ${preview(change.left)}`] : []),
+      ...(change.type !== 'removed' ? [`  After: ${preview(change.right)}`] : [])];
+  });
+  return ['JSON structural comparison report — review only, not a JSON Patch',
+    `Added: ${counts.added}; removed: ${counts.removed}; changed: ${counts.changed}`,
+    'Object key order ignored; arrays compared by index. Decimal numbers may round.',
+    'Long values and paths are truncated. Report may contain sensitive data.', '',
+    ...(lines.length ? lines : ['No structural differences.'])].join('\n');
+}
+
 const defs = {
   'html-live-preview'(root) {
     const starter = `<!doctype html>
@@ -595,16 +619,20 @@ const defs = {
     const right = textarea({ rows: 10, value: '{\n  "tags": ["a", "c"],\n  "name": "Ana",\n  "role": "editor"\n}', placeholder: 'Paste revised JSON…' });
     const status = statusLine('Compare two JSON values. Object key order is ignored; array order matters.');
     const out = resultPanel({ label: 'Structural differences', copy: false });
-    const revisions = [0, 0];
+    const revisions = [0, 0]; let report = '';
+    const copy = btn({label:'Copy report', variant:'secondary', onClick:async () => { const text = report; if (!text) return; const ok = await copyText(text); if (report === text) status.set(ok ? 'Report copied.' : 'Copy failed. Try downloading the report.', ok ? 'success' : 'error'); }});
+    const download = btn({label:'Download report', variant:'secondary', icon:'download', onClick:() => { if (!report) return; const ok = downloadBlob(new Blob([report], {type:'text/plain;charset=utf-8'}), 'json-comparison-report.txt'); status.set(ok ? 'Report download requested. Check your browser downloads.' : 'Could not start the download.', ok ? 'success' : 'error'); }});
+    copy.disabled = download.disabled = true;
+    const clearReport = () => { report = ''; out.placeholder(); copy.disabled = download.disabled = true; };
     window.addEventListener('pagehide', () => { revisions[0]++; revisions[1]++; }, {once:true});
-    const invalidate = () => { out.placeholder(); status.set('Input changed. Compare again.', 'info'); };
+    const invalidate = () => { clearReport(); status.set('Input changed. Compare again.', 'info'); };
     [left, right].forEach((el, i) => el.addEventListener('input', () => { revisions[i]++; invalidate(); }));
     const makeFileInput = (editor, i) => {
       const picker = input({ type: 'file', accept: '.json,application/json' });
       picker.addEventListener('change', async () => {
         const selected = picker.files?.[0]; picker.value = '';
         if (!selected) return;
-        const token = ++revisions[i]; out.placeholder();
+        const token = ++revisions[i]; clearReport();
         if (!/\.json$/i.test(selected.name) || selected.size > 4000000) {
           status.set('Choose a .json file up to 4,000,000 bytes. Existing input was kept.', 'error'); return;
         }
@@ -620,25 +648,28 @@ const defs = {
       return picker;
     };
     const leftFile = makeFileInput(left, 0), rightFile = makeFileInput(right, 1);
-    const preview = (v) => { const text = JSON.stringify(v, (_key, value) => typeof value === 'number' && !Number.isFinite(value) ? String(value) : value); return text.length > 240 ? `${text.slice(0, 240)}…` : text; };
+    const formatSide = (editor, i) => {
+      revisions[i]++; clearReport();
+      try {
+        const formatted = jsonFormat(editor.value, 2);
+        if (formatted.length > 1000000) throw new Error('Formatted JSON exceeds the 1,000,000-character comparison limit.');
+        editor.value = formatted; status.set(`${i ? 'Revised' : 'Original'} JSON formatted without changing tokens. Compare again.`, 'success');
+      } catch (e) { status.set(`Could not format ${i ? 'revised' : 'original'} JSON: ${e.message} Existing input was kept.`, 'error'); }
+    };
     const run = () => {
-      revisions[0]++; revisions[1]++; out.placeholder();
+      revisions[0]++; revisions[1]++; clearReport();
       try {
         const differences = compareJson(left.value, right.value);
-        if (!differences.length) { out.set('No structural differences.'); status.set('The parsed JSON values match.', 'success'); return; }
-        const view = h('div', {});
-        differences.forEach((d) => view.append(h('div', { class: 'diff-line' },
-          h('strong', { text: `${d.type.toUpperCase()} ${d.path || '(root)'}` }),
-          d.type !== 'added' ? h('pre', { text: `Before: ${preview(d.left)}` }) : null,
-          d.type !== 'removed' ? h('pre', { text: `After: ${preview(d.right)}` }) : null)));
-        out.set(view); status.set(`${differences.length} difference${differences.length === 1 ? '' : 's'} found. Paths are JSON Pointers; long values are shortened.`, 'success');
-      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+        report = jsonCompareReport(differences);
+        out.set(report); copy.disabled = download.disabled = false;
+        status.set(differences.length ? `${differences.length} difference${differences.length === 1 ? '' : 's'} found. Review the report below.` : 'The parsed JSON values match.', 'success');
+      } catch (e) { clearReport(); status.set(e.message, 'error'); }
     };
     root.append(h('div', { class: 'field-row' }, field({ label: 'Original JSON', control: left }), field({ label: 'Revised JSON', control: right })),
       h('div', {class:'field-row'}, field({label:'Load original JSON file', control:leftFile, hint:'Local UTF-8 .json, up to 4,000,000 bytes and 1,000,000 characters.'}), field({label:'Load revised JSON file', control:rightFile, hint:'Loading replaces only this side; compare to validate.'})),
-      actionsRow(btn({ label: 'Compare JSON', icon: 'diff', onClick: run }), btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { revisions[0]++; revisions[1]++; left.value = ''; right.value = ''; leftFile.value = ''; rightFile.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+      actionsRow(btn({ label: 'Compare JSON', icon: 'diff', onClick: run }), btn({label:'Format original', variant:'secondary', onClick:() => formatSide(left, 0)}), btn({label:'Format revised', variant:'secondary', onClick:() => formatSide(right, 1)}), btn({label:'Swap sides', variant:'secondary', onClick:() => { revisions[0]++; revisions[1]++; [left.value, right.value] = [right.value, left.value]; clearReport(); status.set('Inputs swapped. Compare again.', 'info'); }}), btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { revisions[0]++; revisions[1]++; left.value = ''; right.value = ''; leftFile.value = ''; rightFile.value = ''; clearReport(); status.set('Cleared.'); } }), copy, download),
       status, out.panel,
-      h('p', { class: 'hint', text: 'Duplicate keys, unsafe integers, overflow, underflow and negative zero are rejected. Decimal numbers may round in JavaScript; use strings for exact comparisons. Inputs stay in your browser.' }));
+      h('p', { class: 'hint', text: 'Duplicate keys, unsafe integers, overflow, underflow and negative zero are rejected. Decimal numbers may round in JavaScript; use strings for exact comparisons. The review report is not a patch; long paths and values are shortened and may contain sensitive data. Inputs stay in your browser.' }));
   },
 
   'json-formatter'(root) {
