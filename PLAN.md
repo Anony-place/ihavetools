@@ -11,6 +11,50 @@
 
 ---
 
+## UX and discovery batch — research and plan (2026-10-31)
+
+**Goal:** make finding and completing a tool task clearer on mobile and desktop,
+without reducing tool workspace width, compromising local processing or copying
+competitors' branding. One consolidated PR; measure task outcomes rather than
+claiming rankings or market volume.
+
+**Evidence:** iLoveIMG and iLovePDF organize tasks by clear categories and
+specific action-oriented tool names (https://www.iloveimg.com/ and
+https://www.ilovepdf.com/); Smallpdf surfaces common workflows prominently
+(https://smallpdf.com/). Those feature listings are not proof of demand or
+search volume. NN/g recommends keeping frequently needed actions visible and
+only disclosing secondary options (https://www.nngroup.com/articles/progressive-disclosure/).
+Google recommends a clear main content area and a good mobile page experience,
+not an SEO ranking guarantee (https://developers.google.com/search/docs/appearance/page-experience).
+The supplied GSC data is site-specific and its dates are inconsistent with this
+session's date; do not use it to assert current market demand.
+
+**Observed opportunities:** tool-page search disappears entirely on mobile;
+homepage cards hide descriptive text on small screens; homepage search results
+lack explicit expanded/active-result feedback for assistive technology; hero
+puts badges ahead of the actual task. Improve these first, with clear direct
+access to existing image/PDF/calculator tools rather than inventing features.
+
+**Implementation and release gates:** preserve static/crawlable links and full
+workspace width; support keyboard and screen readers, narrow screens, long text,
+light/dark, reduced motion, no-JS fallback, and existing local privacy promises.
+Test actual search/navigation, focus, mobile and desktop layout, axe, all tools'
+mounts and widths; run build/integrity, real-browser tests and audit. Document
+remaining gaps; use one PR and release only after CI and preview succeed.
+No user testing or field Core Web Vitals data is available yet.
+
+**Implemented in this batch:** task-first homepage with four direct, static tool
+links, compact responsive layout, visible mobile card descriptions, and honest
+limits copy. Added mobile header search with a no-JS browse fallback; search now
+reports results, supports arrow-key selection and Escape, handles failed index
+loading, and guards against stale async results. No changes to calculation or file
+processing behavior. Full local build/integrity and Chromium coverage run across
+132 tool widths; search tests include keyboard, no-JS fallback and axe in both
+themes. User/device/assistive-technology testing and field performance remain
+outstanding. CI, preview and production verification are release gates.
+
+---
+
 ## Market research and next consolidated plan — 2026-10-31
 
 ### Evidence and limits

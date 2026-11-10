@@ -231,7 +231,7 @@ test('header navigation is static HTML (crawlable without JS)', () => {
   const home = readFileSync(join(ROOT, 'index.html'), 'utf8');
   assert.match(home, /href="\/categories\/pdf\/"/, 'category links must be in static HTML');
   assert.match(home, /href="\/about\/"/, 'about link must be in static HTML');
-  assert.match(home, /class="mobile-nav"[^>]*><h3>Popular tools<\/h3>/, 'mobile nav must be pre-rendered');
+  assert.match(home, /class="mobile-nav"[^>]*><h3>Quick links<\/h3>/, 'mobile nav must be pre-rendered');
 });
 test('trust pages exist and are linked from the footer', () => {
   for (const id of ['about', 'privacy-policy', 'terms']) {
