@@ -2,12 +2,37 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 132 (82 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (83 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## JSON comparison workflow batch — 2026-10-31
+
+Plan first: improve the existing JSON Compare rather than publish a duplicate
+page. Competitor feature research shows formatting, swapping and review reports
+are common workflows (https://formatter.org/json-compare and
+https://jsonedit.com/compare-two-json); this is feature evidence, not measured
+market demand. Add side-specific token-preserving formatting, swap, concise
+added/removed/changed counts, and a copy/download text report. The report is a
+review summary, not an executable JSON Patch: represent paths as quoted JSON strings (including empty root and escaped
+control characters), clearly label truncated paths and value previews and
+numeric precision limitations, and warn about sensitive data. Never claim exact
+decimal comparison. Preserve side-specific import race protection; editing,
+formatting, swap, failed compare and clear must invalidate old reports. Keep
+processing local and existing limits; test boundaries, UI, stale async reads,
+actual downloads, mobile accessibility, CI and deployment. One consolidated PR,
+no paid services, no ranking promises. GSC comparison and tax audit remain open.
+
+Implemented formatting, swap, summary and bounded review report. Engine, DOM,
+full generated-site checks and npm audit pass. Local Chromium 143 passed JSON
+Compare interaction, download and mobile axe checks, then timed out in an
+unrelated PDF rendering test; full CI browser run and deployment verification are
+required before release. Other browsers and physical devices are unverified.
 
 ---
 

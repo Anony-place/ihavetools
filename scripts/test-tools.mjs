@@ -1934,6 +1934,17 @@ await test('PDF organizer exports reordered, removed and rotated real PDF pages'
   await assert.rejects(pdf.organizePdf(lib, source, []), /at least one/);
   await assert.rejects(pdf.organizePdf(lib, source, [{ index: 3, rotation: 0 }]), /Invalid/);
 });
+await test('JSON comparison report distinguishes root, escapes paths and labels truncation', () => {
+  const changes = dev.compareJson('{"a/b":1,"gone":true}', '{"a/b":2,"new":null}');
+  const report = dev.jsonCompareReport(changes);
+  assert.match(report, /not a JSON Patch/); assert.match(report, /Added: 1; removed: 1; changed: 1/);
+  assert.match(report, /CHANGED pointer "\/a~1b"/);
+  assert.match(dev.jsonCompareReport(dev.compareJson('1','2')), /pointer "" \(root\)/);
+  assert.match(dev.jsonCompareReport([{type:'added', path:'/a\nb', right:'x'.repeat(300)}]), /\\n/);
+  assert.match(dev.jsonCompareReport([{type:'added', path:'/'+'x'.repeat(3000), right:'x'.repeat(300)}]), /path truncated/);
+  assert.match(dev.jsonCompareReport([{type:'added', path:'/x', right:'x'.repeat(300)}]), /value truncated/);
+  assert.match(dev.jsonCompareReport([]), /No structural differences/);
+});
 await test('PDF organizer numbering validates bounds and leaves source unchanged', async () => {
   const lib = await import('pdf-lib'); const src = await lib.PDFDocument.create();
   src.addPage([200,300]); src.addPage([300,400]);
