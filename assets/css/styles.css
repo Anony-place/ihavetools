@@ -582,7 +582,7 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 .strength-meter > div { height: 100%; width: 0; border-radius: 999px; transition: width 0.25s ease, background 0.25s ease; }
 .diff-line { padding: 10px 12px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .diff-line pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0; }
-.diff-view { font-family: var(--mono); font-size: 0.85rem; line-height: 1.7; }
+.diff-view { font-family: var(--mono); font-size: 0.85rem; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 .diff-view .d-add { background: var(--success-soft); color: var(--success); display: block; padding: 0 8px; }
 .diff-view .d-del { background: var(--danger-soft); color: var(--danger); display: block; padding: 0 8px; text-decoration: line-through; }
 .diff-view .d-same { display: block; padding: 0 8px; color: var(--text-2); }

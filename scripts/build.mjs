@@ -49,7 +49,7 @@ function privacyFor(tool) {
 
 function faqsFor(tool) {
   const faqs = tool.faqs?.length ? [...tool.faqs] : [
-    { q: `Is ${tool.name} free to use?`, a: 'Yes — it is completely free, with no sign-up, no watermarks and no usage limits.' },
+    { q: `Is ${tool.name} free to use?`, a: 'Yes — it is free to use without signing up. Individual tools have processing and device limits.' },
     { q: 'How is my data handled?', a: privacyFor(tool) },
   ];
   // Every tool also gets FAQs built from its own description/aliases, so
@@ -479,8 +479,8 @@ ${body}
 </section>`;
   const pages = [
     {
-      id: 'about', title: 'About iHaveTools', desc: metaDesc(`About iHaveTools — ${tools.length} free online tools that run entirely in your browser. No sign-up, no uploads, no limits. How it works and why it is private.`),
-      lede: `${tools.length} free tools. No sign-up, no uploads, no limits — tools run in your browser.`,
+      id: 'about', title: 'About iHaveTools', desc: metaDesc(`About iHaveTools — ${tools.length} free online tools with local processing, no sign-up and clear limits. Learn how the tools work.`),
+      lede: `${tools.length} free tools. No sign-up; most processing happens in your browser, with clear tool and device limits.`,
       body: `
     <section><h2>What is iHaveTools?</h2>
     <p>iHaveTools is a collection of ${tools.length} free online tools for everyday work: calculators, converters, text and image utilities, PDF tools and developer helpers. Every tool works instantly in your web browser — there is no account to create, nothing to install and nothing to pay.</p></section>
@@ -489,7 +489,7 @@ ${body}
     <section><h2>Our principles</h2>
     <ul>
       <li><strong>Private by design</strong> — processing is primarily local; sharing and external services have exceptions. See the <a href="/privacy-policy/">Privacy Policy</a>.</li>
-      <li><strong>Free and unlimited</strong> — no sign-up walls, watermarks or daily limits.</li>
+      <li><strong>Free to use</strong> — no sign-up required. Tools have processing and device limits.</li>
       <li><strong>Fast</strong> — static pages, no frameworks, no trackers in your way.</li>
       <li><strong>Honest</strong> — every tool listed on this site genuinely works; there are no empty placeholder pages.</li>
     </ul></section>

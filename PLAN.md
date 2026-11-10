@@ -11,6 +11,32 @@
 
 ---
 
+## Local text comparison and trust batch — 2026-10-31
+
+Plan first: make existing Text Diff useful for real document workflows with two
+independent local UTF-8 file inputs, per-side stale-read protection, line-numbered
+results, an optional changes-only view, and copy/download of a plain-text report.
+Keep exact line comparison and existing size limits; do not call the report a
+patch, imply word-level diff or upload data. Preserve text on failed import;
+clear/swap/compare must prevent pending reads from overwriting user work. Fix
+misleading generated generic FAQ claims of unlimited usage: free does not mean
+no processing/device limits. Competitor workflows are feature signals, not
+measured search demand. Test real files, invalid UTF-8, concurrent reads, swaps,
+line numbering, final newlines, report downloads, mobile/axe and regression
+coverage. One consolidated PR; full checks, audit, CI and preview before merge,
+then verify production.
+
+Implemented local dual-file comparison, line numbers, changes-only view and
+copy/download of a labelled non-patch report. Strict UTF-8 decoding, file/size
+limits and side-specific revision guards retain user input on failure and prevent
+stale reads after typing, swap, clear or compare. Generic FAQ and About page no
+longer promise unlimited usage. Full checks, real Chromium file/report tests,
+mobile axe and npm audit pass. Other browsers, physical devices, screen-reader
+sessions and user testing remain open. CI/preview and production are release
+gates.
+
+---
+
 ## Local data conversion workflow batch — 2026-10-31
 
 **Plan first:** improve JSON-to-CSV and JSON Lines workflows alongside the
