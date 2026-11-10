@@ -1122,6 +1122,22 @@ await domTest('PDF split ZIP cancels on group-size change during read', async ()
     const size=app.querySelector('input[type=number]'); size.value='1'; fire(size,'input'); release(); await new Promise(r=>setTimeout(r,100)); assert.equal(output,false); assert.match(statusText(document),/Settings changed/);
   } finally {URL.createObjectURL=original;}
 });
+await domTest('PDF custom ZIP cancels when group definitions change during export', async () => {
+  const lib=await import('pdf-lib'); const doc=await lib.PDFDocument.create(); doc.addPage(); doc.addPage();
+  const bytes=await doc.save(); let calls=0, release;
+  window.PDFLib={...lib,PDFDocument:{create:(...a)=>lib.PDFDocument.create(...a),load:(b,...a)=>{
+    const load=()=>lib.PDFDocument.load(new Uint8Array(b),...a);
+    if (++calls===2) return new Promise(resolve=>{release=()=>resolve(load());}); return load();
+  }}};
+  const app=await loadToolPage('pdf-split','pdf'); const e=new window.Event('drop',{bubbles:true,cancelable:true});
+  Object.defineProperty(e,'dataTransfer',{value:{files:[new File([bytes],'split.pdf',{type:'application/pdf'})]}}); app.querySelector('.dropzone').dispatchEvent(e);
+  let output=false; const original=URL.createObjectURL; URL.createObjectURL=()=>{output=true;return 'blob:test';};
+  try {
+    click(btnByLabel(app,'Custom groups (ZIP)')); const fields=app.querySelectorAll('input[type=text]'); fields[1].value='1;2'; fire(fields[1],'input');
+    click(btnByLabel(app,'Split PDF')); await new Promise(r=>setTimeout(r,150)); assert.ok(release);
+    fields[1].value='2'; fire(fields[1],'input'); release(); await new Promise(r=>setTimeout(r,100)); assert.equal(output,false); assert.match(statusText(document),/Settings changed/);
+  } finally {URL.createObjectURL=original;}
+});
 await domTest('PDF merge cancels an export when the file list changes', async () => {
   const lib = await import('pdf-lib'); const doc = await lib.PDFDocument.create(); doc.addPage(); const bytes = await doc.save(); let release;
   window.PDFLib = {...lib, PDFDocument: {create: (...a) => new Promise(resolve => {release=() => resolve(lib.PDFDocument.create(...a));}), load: (b,...a) => lib.PDFDocument.load(new Uint8Array(b),...a)}};

@@ -1296,21 +1296,22 @@ export const tools = [
   T({ id: 'pdf-split', name: 'PDF Split', icon: 'scissors', engine: 'pdf', categories: ['pdf'],
     related: ["pdf-organizer","image-to-pdf","pdf-merge","pdf-rotate"],
     blurb: 'Extract pages or split a PDF into separate files in a ZIP.',
-    description: 'Extract selected pages into one PDF, or split the whole PDF into individual pages or equal-sized groups in a ZIP. Processing is local in your browser.',
+    description: 'Extract selected pages into one PDF, or split selected pages into individual PDFs, equal groups or custom groups in a ZIP. Processing is local in your browser.',
     keywords: ['pdf', 'split', 'extract pages', 'page range', 'separate', 'documents'],
     aliases: ['split pdf', 'extract pdf pages', 'separate pdf'],
     popularity: 76, featured: true, added: '2026-09-18',
-    steps: 'Choose an unencrypted PDF.|Select range extraction, individual pages, or equal groups and enter the relevant setting.|Click Split PDF and inspect the downloaded PDF or ZIP.',
+    steps: 'Choose an unencrypted PDF.|Choose range extraction, individual pages, equal groups or custom groups and enter the relevant settings.|Click Split PDF and inspect the downloaded PDF or ZIP.',
     faqs: [
-      {q:'How does the ZIP work?', a:'Individual-page and equal-group modes split the whole document and request one ZIP download. Open it to access the PDFs. The last group may be shorter.'},
-      {q:'What limits apply?', a:'Input files are limited to 200 MiB. ZIP modes support up to 100 pages and 100 MiB of generated PDF content. Large documents may require more device memory. Range extraction creates one PDF instead.'},
+      {q:'How does the ZIP work?', a:'Individual-page and equal-group modes use selected pages, or the whole document if the selection is blank. Custom groups are specified separately. All ZIP modes request one download; the last equal group may be shorter.'},
+      {q:'What limits apply?', a:'Input files are limited to 200 MiB. ZIP modes support up to 100 page copies and 100 MiB of generated PDF content; overlapping custom groups count each copy. Large documents may require more device memory. Range extraction creates one PDF instead.'},
       {q:'Are PDFs uploaded?', a:'No. The PDF and ZIP are processed locally in your browser.'},
       {q:'Will forms and signatures survive?', a:'Copied pages may lose forms, bookmarks and attachments; digital signatures will not remain valid. Inspect all exported files. Password-protected PDFs are not supported.'},
     ],
     guide: [
       {h:'Extract selected pages', p:'Choose Extract pages into one PDF and enter page numbers or ranges such as 1-3, 7. Pages are deduplicated and returned in original order in one new PDF.'},
-      {h:'Split into a ZIP', p:'Choose Each page for individual PDFs, or Equal groups and enter pages per file. ZIP modes use the whole document; for five pages with groups of two, the files contain pages 1–2, 3–4 and 5.'},
-      {h:'Limits and safe review', list:['ZIP modes allow up to 100 pages and 100 MiB of generated PDF content; ZIP overhead adds to the final archive size.', 'The input limit is 200 MiB; practical device memory limits may be lower.', 'Password-protected PDFs cannot be opened. Forms, bookmarks, attachments and signatures may not be preserved. Inspect the output before sharing.', 'Files are processed locally. Sharing the ZIP shares its contents, including any sensitive pages.']},
+      {h:'Split selected pages into a ZIP', p:'Choose Each page for individual PDFs, or Equal groups and enter pages per file. Enter a page selection or leave it blank for the whole document. Pages are deduplicated and sorted; for 1, 3, 5-6 in groups of two, the files contain pages 1 and 3, then 5 and 6.'},
+      {h:'Make custom groups', p:'Choose Custom groups and separate groups with semicolons, for example 1-3; 5, 7-8. Each group becomes a separate numbered PDF; groups follow the entered order. Pages within each group are sorted and deduplicated. Groups may overlap and every copy counts toward the ZIP limit.'},
+      {h:'Limits and safe review', list:['ZIP modes allow up to 100 page copies and 100 MiB of generated PDF content; ZIP overhead adds to the final archive size.', 'The input limit is 200 MiB; practical device memory limits may be lower.', 'Password-protected PDFs cannot be opened. Forms, bookmarks, attachments and signatures may not be preserved. Inspect the output before sharing.', 'Files are processed locally. Sharing the ZIP shares its contents, including any sensitive pages.']},
     ] }),
 
   // ── Phase 2: high-demand finance (India) + Image to PDF ───────────────────

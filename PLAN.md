@@ -11,6 +11,34 @@
 
 ---
 
+## Selective PDF ZIP and custom ranges batch — 2026-10-31
+
+Plan first: extend the existing local PDF Split workflow for selected pages and
+custom groups rather than adding a duplicate tool. iLovePDF describes separating
+one page or a set into independent files (https://www.ilovepdf.com/split_pdf);
+PDF24 describes selective extraction (https://tools.pdf24.org/en/split-pdf).
+These are product feature observations, not measured demand. Support a selected
+page list for single-page or fixed-size ZIP output and semicolon-separated custom
+sets, including discontiguous and intentionally overlapping sets. Keep group
+order explicit and page order ascending; unique part names avoid ZIP collisions.
+Limit total generated page copies to 100, including overlap, and PDF payload to
+100 MiB; support bounded selection from larger source documents. Retain existing
+one-PDF extraction, privacy, fidelity caveats, cancellation, and atomic download.
+Test malformed input, resource limits, overlapping and noncontiguous sets, actual
+ZIP/PDF contents, cancellation, mobile accessibility and regression. One PR,
+full CI/preview, then merge and production verify. No paid services, no claims of
+measured demand or ranking. GSC comparison and tax audit remain outstanding.
+
+Implemented selected-page and custom-group ZIP export, including bounded
+selection from documents larger than 100 pages, explicit overlap accounting and
+stable part names. Engine, DOM cancellation, generated-site and audit checks pass.
+Local Chromium 143 verified actual ZIP/PDF contents, custom overlap and mobile
+axe; the full local run later timed out in the unrelated PDF-to-image render
+test. Full CI browser suite and production verification remain required. Other
+browsers, physical devices and complex PDFs are unverified.
+
+---
+
 ## PDF split workflow batch — 2026-10-31
 
 Plan first: improve PDF Split in one consolidated batch. iLovePDF documents
@@ -32,7 +60,8 @@ limits and one atomic download. Unit, DOM cancellation and generated-site checks
 pass; npm audit found no vulnerabilities. Local Chromium 143 verified ZIP
 contents, ordering, partial groups and mobile axe; the full local run later timed
 out on the unrelated PDF-to-image render test. Full CI browser suite, preview and
-production verification are required before release. Other browsers, physical
+production verification were required before release. PR #67 subsequently passed
+full CI, merged and was verified on Vercel production. Other browsers, physical
 devices and complex PDFs remain unverified.
 
 ---

@@ -21,7 +21,7 @@ export function loadPdfLib() {
 }
 
 /* ── pure helpers (unit-tested) ── */
-export function parseRanges(text, pageCount) {
+export function parseRanges(text, pageCount, maxPages = Infinity) {
   const s = String(text).trim();
   if (!s) throw new Error('Enter the pages to extract, for example: 1-3, 7, 11-13');
   const wanted = new Set();
@@ -34,12 +34,13 @@ export function parseRanges(text, pageCount) {
       if (a > b) [a, b] = [b, a];
       if (a < 1) throw new Error(`Range “${part}” starts before page 1.`);
       if (b > pageCount) throw new Error(`Range “${part}” exceeds the document (${pageCount} pages).`);
-      for (let p = a; p <= b; p++) wanted.add(p);
+      for (let p = a; p <= b; p++) { wanted.add(p); if (wanted.size > maxPages) throw new Error(`Select at most ${maxPages} pages for ZIP output.`); }
     } else if (/^\d+$/.test(part)) {
       const p = Number(part);
       if (p < 1) throw new Error('Page numbers start at 1.');
       if (p > pageCount) throw new Error(`Page ${p} does not exist — this document has ${pageCount} pages.`);
       wanted.add(p);
+      if (wanted.size > maxPages) throw new Error(`Select at most ${maxPages} pages for ZIP output.`);
     } else throw new Error(`“${part}” is not a page or range. Use forms like 3 or 4-9, separated by commas.`);
   }
   const list = [...wanted].sort((a, b) => a - b);
@@ -52,6 +53,32 @@ export function splitPageGroups(pageCount, groupSize) {
   if (!Number.isInteger(groupSize) || groupSize < 1 || groupSize > 100) throw new Error('Pages per file must be a whole number from 1 to 100.');
   const groups = [];
   for (let start = 1; start <= pageCount; start += groupSize) groups.push(Array.from({length: Math.min(groupSize, pageCount - start + 1)}, (_, i) => start + i));
+  return groups;
+}
+/** Explicit ZIP selections are limited by total copied pages, including overlaps. */
+export function selectedPdfGroups(mode, pageCount, selection, groupSize, custom) {
+  if (!Number.isSafeInteger(pageCount) || pageCount < 1) throw new Error('The PDF has no pages.');
+  if (mode === 'custom') {
+    const parts = String(custom).split(';');
+    if (parts.some(part => !part.trim() || part.split(',').some(piece => !piece.trim()))) throw new Error('Enter each custom group as pages or ranges, separated by semicolons.');
+    if (parts.length > 100) throw new Error('ZIP output supports at most 100 page copies.');
+    let total = 0;
+    return parts.map(part => {
+      const pages = parseRanges(part, pageCount, 100 - total);
+      total += pages.length;
+      return pages;
+    });
+  }
+  if (!['each', 'groups'].includes(mode)) throw new Error('Choose a valid split mode.');
+  if (mode === 'groups' && (!Number.isInteger(groupSize) || groupSize < 1 || groupSize > 100)) throw new Error('Pages per file must be a whole number from 1 to 100.');
+  let pages;
+  if (String(selection).trim()) pages = parseRanges(selection, pageCount, 100);
+  else {
+    if (pageCount > 100) throw new Error('ZIP splitting supports 1 to 100 pages. Enter a smaller page selection.');
+    pages = Array.from({length:pageCount}, (_, i) => i + 1);
+  }
+  const size = mode === 'each' ? 1 : groupSize, groups = [];
+  for (let i = 0; i < pages.length; i += size) groups.push(pages.slice(i, i + size));
   return groups;
 }
 export function describeBytes(n) { return fmtBytes(n); }
@@ -487,8 +514,9 @@ const defs = {
       zone.replaceChildren(h('span', { class: 'dz-title', text: 'Choose a PDF or drop it here' }), zone.querySelector('input[type=file]'));
       zone.clear(); status.set('Selection rejected. Choose a PDF within the 200 MB limit.', 'error');
     });
-    const mode = segControl({ options: [{ v: 'extract', t: 'Extract pages into one PDF' }, { v: 'each', t: 'Each page (ZIP)' }, { v: 'groups', t: 'Equal groups (ZIP)' }], value: 'extract', ariaLabel: 'Split mode', onChange: () => settingsChanged() });
+    const mode = segControl({ options: [{ v: 'extract', t: 'Extract pages into one PDF' }, { v: 'each', t: 'Each page (ZIP)' }, { v: 'groups', t: 'Equal groups (ZIP)' }, { v: 'custom', t: 'Custom groups (ZIP)' }], value: 'extract', ariaLabel: 'Split mode', onChange: () => settingsChanged() });
     const ranges = input({ type: 'text', class: 'input mono', placeholder: 'e.g. 1-3, 7, 11-13' });
+    const customGroups = input({type:'text', class:'input mono', placeholder:'e.g. 1-3; 5, 7-8'});
     const groupSize = input({type:'number', min:1, max:100, step:1, value:'2'});
     const status = statusLine('Choose a PDF to begin.');
     const info = h('p', { class: 'hint' });
@@ -496,7 +524,7 @@ const defs = {
     let file = null, pageCount = null, revision = 0, operation = 0;
     window.addEventListener('pagehide', () => { revision++; operation++; }, { once: true });
     const settingsChanged = () => { operation++; grid.replaceChildren(); status.set('Settings changed. Start again; downloads already requested cannot be recalled.', 'info'); };
-    ranges.addEventListener('input', settingsChanged); groupSize.addEventListener('input', settingsChanged);
+    ranges.addEventListener('input', settingsChanged); groupSize.addEventListener('input', settingsChanged); customGroups.addEventListener('input', settingsChanged);
     const inspect = async (token = ++operation) => {
       const chosen = file, version = revision;
       const current = () => version === revision && token === operation;
@@ -520,7 +548,7 @@ const defs = {
       grid.replaceChildren();
       const chosen = file, version = revision, token = ++operation;
       const current = () => version === revision && token === operation;
-      const selection = ranges.value, pagesPerFile = Number(groupSize.value);
+      const selection = ranges.value, pagesPerFile = Number(groupSize.value), custom = customGroups.value;
       const selectedMode = mode.getValue();
       status.set('Loading the PDF engine…', 'info');
       const count = pageCount ?? await inspect(token);
@@ -541,29 +569,29 @@ const defs = {
           grid.set([{ label: 'Pages extracted', value: String(pages.length), kind: 'good' }, { label: 'Output size', value: fmtBytes(blob.size) }]);
           status.set(`Extracted ${pages.length} pages — download started ✓`, 'success');
         } else {
-          if (!['each', 'groups'].includes(selectedMode)) throw new Error('Choose a valid split mode.');
-          const groups = splitPageGroups(count, selectedMode === 'each' ? 1 : pagesPerFile);
+          const groups = selectedPdfGroups(selectedMode, count, selection, pagesPerFile, custom);
           const { zipSync } = await import('../../vendor/fflate.js'); if (!current()) return;
           const bytes = await readFile(chosen, 'buffer'); if (!current()) return;
           const src = await PDFLib.PDFDocument.load(bytes); if (!current()) return;
           const entries = {}; let total = 0;
-          for (const pages of groups) {
+          for (const [index, pages] of groups.entries()) {
             if (!current()) return;
             const first = pages[0], last = pages[pages.length - 1];
-            status.set(`Preparing pages ${first}–${last} locally…`, 'info');
+            status.set(`Preparing PDF ${index + 1} of ${groups.length} locally…`, 'info');
             const out = await PDFLib.PDFDocument.create();
             const copied = await out.copyPages(src, pages.map(p => p - 1));
             copied.forEach(page => out.addPage(page));
             const output = await out.save(); if (!current()) return;
             total += output.length;
             if (total > 100 * 1024 * 1024) throw new Error('Generated PDFs exceed the 100 MiB ZIP content limit. Use Extract pages for smaller selections.');
-            const name = first === last ? `page-${String(first).padStart(3, '0')}.pdf` : `pages-${String(first).padStart(3, '0')}-${String(last).padStart(3, '0')}.pdf`;
+            const contiguous = pages.every((p, i) => p === first + i);
+            const name = selectedMode === 'custom' || !contiguous ? `part-${String(index + 1).padStart(3, '0')}.pdf` : first === last ? `page-${String(first).padStart(3, '0')}.pdf` : `pages-${String(first).padStart(3, '0')}-${String(last).padStart(3, '0')}.pdf`;
             entries[name] = output;
           }
           const zip = zipSync(entries, {level:0}); if (!current()) return;
           const blob = new Blob([zip], {type:'application/zip'});
           if (!downloadBlob(blob, 'split-pdf-pages.zip')) throw new Error('Could not start the ZIP download in this browser.');
-          grid.set([{label:'PDF files', value:String(groups.length), kind:'good'}, {label:'Pages', value:String(count)}, {label:'ZIP size', value:fmtBytes(blob.size)}]);
+          grid.set([{label:'PDF files', value:String(groups.length), kind:'good'}, {label:'Page copies', value:String(groups.reduce((sum, pages) => sum + pages.length, 0))}, {label:'ZIP size', value:fmtBytes(blob.size)}]);
           status.set(`Prepared ${groups.length} PDF file${groups.length === 1 ? '' : 's'} in one ZIP. Download requested; inspect the files.`, 'success');
         }
       } catch (e) { if (current()) { grid.replaceChildren(); status.set(e.message, 'error'); } }
@@ -572,13 +600,14 @@ const defs = {
     root.append(zone, info,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
         field({ label: 'Mode', control: mode }),
-        field({ label: 'Pages to extract', control: ranges, hint: 'Only used in “Extract” mode' }),
-        field({ label: 'Pages per file', control: groupSize, hint: 'Only used for equal groups; whole number from 1 to 100.' })),
+        field({ label: 'Pages to extract', control: ranges, hint: 'Required for Extract; optional for Each page or Equal groups (blank means all). Not used for Custom groups.' }),
+        field({ label: 'Pages per file', control: groupSize, hint: 'Only used for equal groups; whole number from 1 to 100.' }),
+        field({ label: 'Custom page groups', control: customGroups, hint: 'Custom groups only. Separate groups with semicolons, e.g. 1-3; 5, 7-8.' })),
       actionsRow(
         btn({ label: 'Inspect PDF', variant: 'secondary', icon: 'info', onClick: () => inspect() }),
         btn({ label: 'Split PDF', icon: 'scissors', onClick: run })),
       grid, status,
-      h('p', {class:'hint', text:'ZIP modes split the whole document, up to 100 pages and 100 MiB of generated PDF data. The last group may be smaller. Extract mode creates one PDF from selected pages. Review every output file.'}),
+      h('p', {class:'hint', text:'ZIP modes allow up to 100 page copies and 100 MiB of generated PDF data. Custom groups can overlap; each page copy counts. Pages within each group are deduplicated and sorted. Review every output file.'}),
       privacyNote('Processed locally, never uploaded. Copied pages may not preserve forms, bookmarks, attachments or digital signatures; inspect your output.'));
   },
 
