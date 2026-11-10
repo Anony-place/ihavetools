@@ -78,6 +78,20 @@
 
 ### Batch progress (in progress; not ready to release)
 
+- GSC validation export supplied by the user lists 55 pending URLs (49 tools,
+  five categories, homepage). The export timestamps are inconsistent with the
+  session date; treat as a dated snapshot, not a current indexing verdict. All
+  55 are in the locally generated sitemap and their local HTML has no noindex;
+  live robots.txt permits crawling. These checks do not prove crawl or indexing.
+  Use GSC URL Inspection for representative URLs and await validation; don't
+  request mass indexing or change canonical URLs without an identified fault.
+- Income Tax Department AY 2026–27 guidance lists the FY 2025–26 slabs:
+  https://www.incometax.gov.in/iec/foportal/help/individual/return-applicable-1 .
+  Slab thresholds and rates match the calculator for resident individuals, but
+  this is not a complete legal audit of rebates, relief, deductions and edge
+  cases. Added more explicit input limitations and stale-output invalidation;
+  do not relabel as current-year tax or treat estimates as filing advice.
+
 - Implemented annual SIP step-up, with zero as the backwards-compatible default,
   deposits increasing after each 12 months, shared state, and stale results cleared.
   Unit, DOM and Chromium tests include a 30-month zero-return example (₹32,460).

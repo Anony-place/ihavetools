@@ -227,6 +227,8 @@ try {
   assert.match(await page.locator('#tool-app').innerText(),/does not model Tax Year 2026/);
   const taxFields=page.locator('#tool-app input[type=number]'); await taxFields.nth(0).fill('400000'); await taxFields.nth(1).fill('0'); await taxFields.nth(2).fill('0');
   await page.getByRole('button',{name:/Calculate tax/}).click(); assert.match(await page.locator('#tool-app').innerText(),/Neither \(tie\)/);
+  await taxFields.nth(0).fill('500000'); assert.doesNotMatch(await page.locator('#tool-app').innerText(),/New regime tax|New regime — FY 2025-26 slabs/);
+  await page.getByRole('button',{name:/Calculate tax/}).click(); await page.getByLabel('Age', {exact:true}).selectOption('60to79'); assert.doesNotMatch(await page.locator('#tool-app').innerText(),/New regime tax/);
   const thumbBytes=await sharp({create:{width:320,height:180,channels:3,background:'#ad1111'}}).jpeg().toBuffer();
   await page.route('https://i.ytimg.com/**', route=>route.fulfill({status:200,contentType:'image/jpeg',headers:{'access-control-allow-origin':'*'},body:thumbBytes}));
   await page.setViewportSize({width:320,height:844}); await go('youtube-thumbnail-downloader');

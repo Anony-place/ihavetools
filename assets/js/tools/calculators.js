@@ -1095,13 +1095,14 @@ const defs = {
       } catch (e) { grid.replaceChildren(); detailWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
-      h('p', { class: 'hint', text: 'Historical estimate for FY 2025–26 (AY 2026–27) only. This calculator does not model Tax Year 2026–27; verify current rules before planning or filing.' }),
+      h('p', { class: 'hint', text: 'Historical estimate for FY 2025–26 (AY 2026–27), resident individuals and ordinary slab-rate income only. This calculator does not model Tax Year 2026–27, capital gains or special-rate income. It does not check whether your deductions are eligible; verify rules before planning or filing.' }),
       h('div', { class: 'field-row' },
         field({ label: 'Gross salary (yearly)', control: salary }),
-        field({ label: 'Other income (yearly)', control: other, hint: 'Interest, rent, freelance…' }),
-        field({ label: 'Deductions (old regime)', control: deductions, hint: '80C + 80D + HRA + home-loan interest…' }),
+        field({ label: 'Other income (yearly)', control: other, hint: 'Ordinary slab-rate taxable income only; exclude capital gains and other special-rate income.' }),
+        field({ label: 'Deductions (old regime)', control: deductions, hint: 'Enter eligible deductions and exemptions only; do not include the standard deduction again. Limits and eligibility are not checked.' }),
         field({ label: 'Age', control: age })),
       actionsRow(btn({ label: 'Calculate tax (FY 2025-26)', icon: 'receipt', onClick: run })), grid, detailWrap, status);
+    clearOnEdit(root, status, grid, detailWrap);
     shareState(root, [['salary', salary], ['other', other], ['deductions', deductions], ['age', age]], run);
   },
 
