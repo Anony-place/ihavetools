@@ -76,7 +76,7 @@
    impressions first, CTR/position with sample-size caveats; never equate page
    impressions with query impressions or promise ranking changes.
 
-### Batch progress (in progress; not ready to release)
+### Consolidated batch — release scope and remaining work
 
 - GSC validation export supplied by the user lists 55 pending URLs (49 tools,
   five categories, homepage). The export timestamps are inconsistent with the
@@ -103,9 +103,15 @@
   cancellation still need dedicated work and real-file tests.
 - Historical tax calculator remains labelled FY 2025–26; a full primary-source
   audit of all edge cases and any current-year implementation are outstanding.
-- `npm run check`, full Chromium suite and `npm audit` passed for the current
-  work. Vendored library security, CI, preview and production verification remain
-  to be checked before release. Keep subsequent work in the same draft PR.
+- Vendor security: GitHub advisory GHSA-px8p-9vwx-vf98 affects fflate 0.8.2
+  unzipSync on malformed ZIP64; production only uses zipSync, while tests unzip
+  our own generated ZIPs. Updated local fflate to 0.8.3. PDF.js 6.5.438 and
+  pdf-lib 1.17.1 returned no matching npm GitHub advisories during this review;
+  vendored code is not covered by npm audit and needs ongoing monitoring.
+- The supportable release subset is SIP step-up, image text watermark, tax UI
+  safeguards and the fflate security update. PDF numbering and full tax legal
+  audit are deferred, not shipped. Run checks, CI and preview before merging;
+  verify production after deployment.
 
 ### Next single consolidated implementation batch
 

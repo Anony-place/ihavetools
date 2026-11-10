@@ -19,7 +19,7 @@ suite enforces this.
 
 - **PDF tools** — merge, split, rotate and organize PDF pages in the browser via
   [pdf-lib](https://github.com/Hopding/pdf-lib) (bundled locally, no CDN).
-  Bulk image ZIP files use locally bundled [fflate](https://github.com/101arrowz/fflate) 0.8.2 (MIT; see `assets/vendor/FFLATE-LICENSE.txt`).
+  Bulk image ZIP files use locally bundled [fflate](https://github.com/101arrowz/fflate) 0.8.3 (MIT; see `assets/vendor/FFLATE-LICENSE.txt`).
 - **Image tools** — compression, resizing, format conversion, cropping and
   EXIF inspection using the browser's own canvas and decoders.
 - **Audio / Video tools** — tone generation, audio trimming, speed/volume

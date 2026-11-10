@@ -651,6 +651,20 @@ await test('income tax: old regime ₹10L taxable, below-60', () => {
   assert.ok(Math.abs(r.oldRegime.total - 117000) < 0.01, `got ${r.oldRegime.total}`);
   assert.throws(() => calc.incomeTaxIndia({}), /Enter your salary/);
 });
+await test('income tax FY25-26: resident age bands and surcharge marginal relief', () => {
+  // ₹10L ordinary taxable income, no salary deduction, old regime incl. 4% cess.
+  for (const [ageGroup, expected] of [['below60',117000], ['60to79',114400], ['80plus',104000]]) {
+    const result = calc.incomeTaxIndia({otherIncome:1000000, ageGroup});
+    assert.ok(Math.abs(result.oldRegime.total - expected) < 0.01, ageGroup);
+  }
+  // At ₹50L, new slab tax is ₹10.8L. ₹1 extra is limited by marginal relief
+  // to ₹10.8L + ₹1 before cess instead of the full 10% surcharge.
+  const at = calc.incomeTaxIndia({otherIncome:5000000}).newRegime;
+  const above = calc.incomeTaxIndia({otherIncome:5000001}).newRegime;
+  assert.ok(Math.abs(at.total - 1123200) < 0.01);
+  assert.ok(Math.abs(above.total - 1123201.04) < 0.01);
+  assert.ok(above.surcharge > 0);
+});
 await test('tip with rounding and split', () => {
   const r = calc.tipCalc(84.5, 15, 3);
   assert.ok(Math.abs(r.tip - 12.675) < 1e-9);
