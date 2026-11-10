@@ -2074,7 +2074,7 @@ export const tools = [
     description: 'Organize pages of a PDF in your browser: reorder numbered pages, remove unwanted pages, rotate individual pages and export a new document without uploading it.',
     keywords: ['pdf page organizer', 'reorder pdf pages', 'delete pdf pages', 'organize pdf', 'remove pdf pages'],
     aliases: ['organize pdf pages', 'rearrange pdf pages', 'delete pages from pdf'], popularity: 82, added: '2026-11-05',
-    steps: 'Choose an unencrypted PDF and wait for its numbered page list.|Use the arrow, rotate and remove buttons; restore the original list if needed.|Export a new PDF and check it before sharing.',
+    steps: 'Choose an unencrypted PDF and wait for its numbered page list.|Use the arrow, rotate and remove buttons, or keep ranges, odd or even original pages and reverse the current order; restore the original list if needed.|Export a new PDF and check it before sharing.',
     faqs: [
       { q: 'Is my PDF uploaded?', a: 'No. The PDF is read and processed in your browser using the locally loaded pdf-lib library. The document itself is not sent to a server.' },
       { q: 'Can I see page thumbnails?', a: 'No. This organizer lists the original page numbers and output positions rather than rendering thumbnails. Check page numbers in a PDF viewer before organizing.' },
@@ -2083,6 +2083,7 @@ export const tools = [
     ],
     guide: [
       { h: 'Organize a PDF by page number', p: 'The list begins in original order. Arrow buttons change output order, rotate adds a clockwise 90-degree turn, and remove excludes a page from the new PDF. The original file remains unchanged. Restore original pages resets the list and all added rotations.' },
+      { h: 'Filter or reverse pages', p: 'Enter original page numbers such as 1-3, 7 and apply the filter to keep matching pages from the current list. Odd and even filters also use original page numbers. Existing order and rotations stay intact. Removed pages do not return unless you restore the original list. Reverse changes the current order without changing rotations.' },
       { h: 'Example: keep pages 3 and 1', p: 'For a three-page PDF, remove page 2 and move page 3 above page 1. The output contains page 3 first and page 1 second. Rotating page 3 adds to its existing page rotation; it does not change the source file.' },
       { h: 'Review before sending', list: ['Page numbers refer to the original document; this tool does not render previews.', 'Check output carefully for forms, links, bookmarks, attachments and other document-level features that may not survive page copying.', 'A digital signature applies to the original document and will not validate the new copy.', 'Removing a page is not a way to redact content on retained pages. Use a dedicated, verified redaction process for sensitive information.'] },
     ] }),
