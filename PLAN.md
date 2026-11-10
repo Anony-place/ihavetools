@@ -2,12 +2,38 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (83 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (84 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## PDF split workflow batch — 2026-10-31
+
+Plan first: improve PDF Split in one consolidated batch. iLovePDF documents
+splitting a page or set into independent PDF files (https://www.ilovepdf.com/split_pdf);
+https://ilovedocstools.com/split/ describes fixed-size groups and ZIP delivery.
+These are competitor feature observations, not measured demand. Replace fragile
+multiple automatic download requests with one local ZIP, add equal-sized groups
+and retain the existing single-PDF range extraction. Bound ZIP exports to 100
+pages and 100 MiB generated PDFs; file input remains limited to 200 MiB. Use safe,
+unique filenames and stable page order, reject invalid group sizes and encrypted
+PDFs, cancel stale results, and explicitly warn about document-level features and
+signatures. Test generated PDF pages, ZIP filenames and contents, partial groups,
+limits, cancellation, mobile accessibility and regression. Keep all processing
+local and free; one PR, CI/preview then merge and production verification. GSC
+comparison and full tax audit remain open and do not block this work.
+
+Implemented ZIP splitting for individual pages and equal groups, with explicit
+limits and one atomic download. Unit, DOM cancellation and generated-site checks
+pass; npm audit found no vulnerabilities. Local Chromium 143 verified ZIP
+contents, ordering, partial groups and mobile axe; the full local run later timed
+out on the unrelated PDF-to-image render test. Full CI browser suite, preview and
+production verification are required before release. Other browsers, physical
+devices and complex PDFs remain unverified.
 
 ---
 
@@ -33,6 +59,7 @@ full generated-site checks and npm audit pass. Local Chromium 143 passed JSON
 Compare interaction, download and mobile axe checks, then timed out in an
 unrelated PDF rendering test; full CI browser run and deployment verification are
 required before release. Other browsers and physical devices are unverified.
+PR #66 subsequently passed full CI and was merged and verified on Vercel.
 
 ---
 

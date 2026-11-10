@@ -1295,12 +1295,23 @@ export const tools = [
     steps: 'Drop or choose a PDF file.|Pick the rotation angle and whether to rotate all pages or a range.|Click Rotate PDF, then download the result.' }),
   T({ id: 'pdf-split', name: 'PDF Split', icon: 'scissors', engine: 'pdf', categories: ['pdf'],
     related: ["pdf-organizer","image-to-pdf","pdf-merge","pdf-rotate"],
-    blurb: 'Extract page ranges or split a PDF into separate files.',
-    description: 'Extract selected pages or ranges (e.g. 1-3, 7, 11-13) from a PDF into a new document, or split every page into its own file — all in your browser.',
+    blurb: 'Extract pages or split a PDF into separate files in a ZIP.',
+    description: 'Extract selected pages into one PDF, or split the whole PDF into individual pages or equal-sized groups in a ZIP. Processing is local in your browser.',
     keywords: ['pdf', 'split', 'extract pages', 'page range', 'separate', 'documents'],
     aliases: ['split pdf', 'extract pdf pages', 'separate pdf'],
     popularity: 76, featured: true, added: '2026-09-18',
-    steps: 'Drop or choose a PDF file.|Enter the pages or ranges to extract, or choose “split every page”.|Click Split PDF, then download the result.' }),
+    steps: 'Choose an unencrypted PDF.|Select range extraction, individual pages, or equal groups and enter the relevant setting.|Click Split PDF and inspect the downloaded PDF or ZIP.',
+    faqs: [
+      {q:'How does the ZIP work?', a:'Individual-page and equal-group modes split the whole document and request one ZIP download. Open it to access the PDFs. The last group may be shorter.'},
+      {q:'What limits apply?', a:'Input files are limited to 200 MiB. ZIP modes support up to 100 pages and 100 MiB of generated PDF content. Large documents may require more device memory. Range extraction creates one PDF instead.'},
+      {q:'Are PDFs uploaded?', a:'No. The PDF and ZIP are processed locally in your browser.'},
+      {q:'Will forms and signatures survive?', a:'Copied pages may lose forms, bookmarks and attachments; digital signatures will not remain valid. Inspect all exported files. Password-protected PDFs are not supported.'},
+    ],
+    guide: [
+      {h:'Extract selected pages', p:'Choose Extract pages into one PDF and enter page numbers or ranges such as 1-3, 7. Pages are deduplicated and returned in original order in one new PDF.'},
+      {h:'Split into a ZIP', p:'Choose Each page for individual PDFs, or Equal groups and enter pages per file. ZIP modes use the whole document; for five pages with groups of two, the files contain pages 1–2, 3–4 and 5.'},
+      {h:'Limits and safe review', list:['ZIP modes allow up to 100 pages and 100 MiB of generated PDF content; ZIP overhead adds to the final archive size.', 'The input limit is 200 MiB; practical device memory limits may be lower.', 'Password-protected PDFs cannot be opened. Forms, bookmarks, attachments and signatures may not be preserved. Inspect the output before sharing.', 'Files are processed locally. Sharing the ZIP shares its contents, including any sensitive pages.']},
+    ] }),
 
   // ── Phase 2: high-demand finance (India) + Image to PDF ───────────────────
   T({ id: 'sip-calculator', name: 'SIP Calculator', icon: 'trending', engine: 'calculators', categories: ['calculators'],
