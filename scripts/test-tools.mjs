@@ -1915,6 +1915,9 @@ await test('PDF organizer numbering validates bounds and leaves source unchanged
   const pages = [{index:1,rotation:0},{index:0,rotation:0}];
   await assert.rejects(pdf.organizePdf(lib, src, pages, {start:0}), /Starting number/);
   await assert.rejects(pdf.organizePdf(lib, src, pages, {start:999999}), /Starting number/);
+  for (const settings of [{start:1,size:7},{start:1,size:37},{start:1,size:12.5},{start:1,position:'middle'},{start:1,color:'red'},{start:1,skipFirst:'yes'}]) await assert.rejects(pdf.organizePdf(lib, src, pages, settings), /valid number position/);
+  await assert.rejects(pdf.organizePdf(lib, src, [pages[0]], {start:1,skipFirst:true}), /At least one/);
+  assert.equal((await lib.PDFDocument.load(await pdf.organizePdf(lib, src, pages, {start:999999,skipFirst:true}))).getPageCount(),2);
   const result = await lib.PDFDocument.load(await pdf.organizePdf(lib, src, pages, {start:11}));
   assert.equal(result.getPageCount(),2); assert.equal(result.getPage(0).getWidth(),300);
   assert.equal(src.getPageCount(),2); assert.equal(src.getPage(0).getWidth(),200);

@@ -1019,6 +1019,20 @@ await domTest('PDF numbering changes invalidate a pending export', async () => {
     assert.equal(output,undefined,'old numbering settings must not download');
   } finally { URL.createObjectURL = original; }
 });
+await domTest('Numbering settings do not cancel a pending PDF load', async () => {
+  const lib = await import('pdf-lib'); let release;
+  const wait = new Promise(resolve => { release = resolve; });
+  window.PDFLib = { ...lib, PDFDocument: { create: (...args) => lib.PDFDocument.create(...args), load: async (bytes, ...args) => { await wait; return lib.PDFDocument.load(new Uint8Array(bytes), ...args); } } };
+  const src = await lib.PDFDocument.create(); src.addPage([100,200]);
+  const app = await loadToolPage('pdf-organizer','pdf');
+  const e = new window.Event('drop',{bubbles:true,cancelable:true});
+  Object.defineProperty(e,'dataTransfer',{value:{files:[new File([await src.save()],'one.pdf',{type:'application/pdf'})]}});
+  app.querySelector('.dropzone').dispatchEvent(e);
+  const position=app.querySelector('select'); position.value='top-left'; position.dispatchEvent(new window.Event('change',{bubbles:true}));
+  release(); await new Promise(r => setTimeout(r,100));
+  assert.equal(app.querySelectorAll('.file-row').length,1,app.textContent);
+  assert.equal(position.value,'top-left');
+});
 await domTest('PDF merge handles dropped duplicate filenames by identity and removal', async () => {
   const lib = await import('pdf-lib'); window.PDFLib = { ...lib, PDFDocument: { create: (...args) => lib.PDFDocument.create(...args), load: (bytes, ...args) => lib.PDFDocument.load(new Uint8Array(bytes), ...args) } };
   const one = await lib.PDFDocument.create(); one.addPage([100,200]);

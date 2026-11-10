@@ -63,23 +63,31 @@ export async function organizePdf(PDFLib, source, pages, numbering = null) {
   if (!pages.length) throw new Error('Keep at least one page.');
   const count = source.getPageCount();
   if (pages.some((p) => !Number.isInteger(p.index) || p.index < 0 || p.index >= count || ![0, 90, 180, 270].includes(p.rotation))) throw new Error('Invalid page selection or rotation.');
-  if (numbering && (!Number.isInteger(numbering.start) || numbering.start < 1 || numbering.start + pages.length - 1 > 999999)) throw new Error('Starting number must be a whole number from 1 to 999999, and the final number must not exceed 999999.');
+  if (numbering) {
+    numbering = { position: 'bottom-center', size: 12, color: 'black', skipFirst: false, ...numbering };
+    if (typeof numbering.skipFirst !== 'boolean' || !['top-left','top-center','top-right','bottom-left','bottom-center','bottom-right'].includes(numbering.position) || !['black','white'].includes(numbering.color) || !Number.isInteger(numbering.size) || numbering.size < 8 || numbering.size > 36) throw new Error('Choose a valid number position, color and whole font size from 8 to 36 points.');
+    const numberedCount = pages.length - (numbering.skipFirst ? 1 : 0);
+    if (!numberedCount) throw new Error('At least one output page must be numbered; disable skip first page.');
+    if (!Number.isInteger(numbering.start) || numbering.start < 1 || numbering.start + numberedCount - 1 > 999999) throw new Error('Starting number must be a whole number from 1 to 999999, and the final number must not exceed 999999.');
+  }
   const out = await PDFLib.PDFDocument.create();
   const copied = await out.copyPages(source, pages.map((p) => p.index));
   const font = numbering ? await out.embedFont(PDFLib.StandardFonts.Helvetica) : null;
   copied.forEach((page, i) => {
     const angle = ((page.getRotation().angle + pages[i].rotation) % 360 + 360) % 360;
     page.setRotation(PDFLib.degrees(angle));
-    if (numbering) {
+    if (numbering && !(numbering.skipFirst && i === 0)) {
       const box = page.getCropBox(), media = page.getMediaBox();
       if (![0,90,180,270].includes(angle) || ![box.x, box.y, box.width, box.height, media.x, media.y, media.width, media.height].every(Number.isFinite) || box.width <= 0 || box.height <= 0 || box.x < media.x || box.y < media.y || box.x + box.width > media.x + media.width || box.y + box.height > media.y + media.height) throw new Error(`Page ${i + 1} has an unsupported crop box or rotation.`);
-      const text = String(numbering.start + i), size = 12, margin = 18;
+      const text = String(numbering.start + i - (numbering.skipFirst ? 1 : 0)), size = numbering.size, margin = 18;
       const width = angle % 180 ? box.height : box.width, height = angle % 180 ? box.width : box.height;
       const textWidth = font.widthOfTextAtSize(text, size);
       if (width < textWidth + margin * 2 || height < margin * 2 + size) throw new Error(`Page ${i + 1} is too small for a page number.`);
-      const x = (width - textWidth) / 2, y = margin;
+      const [vertical, horizontal] = numbering.position.split('-');
+      const x = horizontal === 'left' ? margin : horizontal === 'right' ? width - margin - textWidth : (width - textWidth) / 2;
+      const y = vertical === 'top' ? height - margin - font.heightAtSize(size, { descender: false }) : margin;
       const [px, py] = angle === 0 ? [x,y] : angle === 90 ? [box.width-y,x] : angle === 180 ? [box.width-x,box.height-y] : [y,box.height-x];
-      page.drawText(text, { x: box.x + px, y: box.y + py, size, font, rotate: PDFLib.degrees(angle), color: PDFLib.rgb(0,0,0) });
+      page.drawText(text, { x: box.x + px, y: box.y + py, size, font, rotate: PDFLib.degrees(angle), color: numbering.color === 'white' ? PDFLib.rgb(1,1,1) : PDFLib.rgb(0,0,0) });
     }
     out.addPage(page);
   });
@@ -241,8 +249,12 @@ const defs = {
     const ranges = input({ type: 'text', placeholder: 'e.g. 1-3, 7' });
     const numbered = switchChip({ label: 'Add page numbers', checked: false });
     const startNumber = input({ type: 'number', min: 1, max: 999999, step: 1, value: '1' });
-    numbered.addEventListener('change', () => { revision++; status.set('Numbering settings changed.', 'info'); });
-    startNumber.addEventListener('input', () => { revision++; status.set('Numbering settings changed.', 'info'); });
+    const numberPosition = select({ options: [{v:'bottom-center',t:'Bottom centre'},{v:'bottom-left',t:'Bottom left'},{v:'bottom-right',t:'Bottom right'},{v:'top-center',t:'Top centre'},{v:'top-left',t:'Top left'},{v:'top-right',t:'Top right'}], value: 'bottom-center' });
+    const numberSize = input({ type:'number', min:8, max:36, step:1, value:'12' });
+    const numberColor = select({ options:[{v:'black',t:'Black'},{v:'white',t:'White'}], value:'black' });
+    const skipFirst = switchChip({ label:'Leave first output page unnumbered', checked:false });
+    const numberingChanged = () => { operation++; status.set('Numbering settings changed.', 'info'); };
+    for (const el of [numbered, startNumber, numberPosition, numberSize, numberColor, skipFirst]) { el.addEventListener('input', numberingChanged); el.addEventListener('change', numberingChanged); }
     const render = () => {
       list.replaceChildren(...pages.map((p, i) => {
         const row = h('div', { class: 'file-row' },
@@ -292,15 +304,16 @@ const defs = {
       if (!source || !file) { status.set('Choose a PDF first.', 'warning'); return; }
       if (!pages.length) { status.set('Keep at least one page, or restore the original.', 'warning'); return; }
       const doc = source, selected = pages.map(p => ({ ...p })), name = file.name, token = revision, action = ++operation;
+      const settings = numbered.querySelector('input').checked ? { start: Number(startNumber.value), position: numberPosition.value, size: Number(numberSize.value), color: numberColor.value, skipFirst: skipFirst.querySelector('input').checked } : null;
       status.set('Creating your PDF locally…', 'info');
       try {
-        const lib = await loadPdfLib(); const bytes = await organizePdf(lib, doc, selected, numbered.querySelector('input').checked ? { start: Number(startNumber.value) } : null);
+        const lib = await loadPdfLib(); const bytes = await organizePdf(lib, doc, selected, settings);
         if (token !== revision || action !== operation) return;
         const saved = downloadBlob(new Blob([bytes], { type: 'application/pdf' }), `organized-${name.replace(/\.pdf$/i, '')}.pdf`);
         status.set(saved ? `Exported ${selected.length} pages — download started.` : 'Could not start the download in this browser.', saved ? 'success' : 'error');
       } catch (e) { if (token === revision && action === operation) status.set(e.message, 'error'); }
     };
-    root.append(zone, info, field({ label: 'Keep original pages', control: ranges, hint: 'Example: 1-3, 7. Filters use original page numbers and keep the current order and rotations; restore first to recover removed pages.' }), actionsRow(btn({ label: 'Apply page filter', variant: 'secondary', onClick: keepRanges }), btn({ label: 'Keep odd pages', variant: 'secondary', onClick: () => keepParity(1) }), btn({ label: 'Keep even pages', variant: 'secondary', onClick: () => keepParity(0) }), btn({ label: 'Reverse page order', variant: 'secondary', onClick: reverse })), list, numbered, field({ label: 'Starting page number', control: startNumber, hint: 'When enabled, numbers follow output order at the bottom centre in black. Existing page content can be covered; review every page.' }), actionsRow(btn({ label: 'Export organized PDF', icon: 'download', onClick: run }), btn({ label: 'Restore original pages', variant: 'secondary', icon: 'refresh', onClick: reset })), status,
+    root.append(zone, info, field({ label: 'Keep original pages', control: ranges, hint: 'Example: 1-3, 7. Filters use original page numbers and keep the current order and rotations; restore first to recover removed pages.' }), actionsRow(btn({ label: 'Apply page filter', variant: 'secondary', onClick: keepRanges }), btn({ label: 'Keep odd pages', variant: 'secondary', onClick: () => keepParity(1) }), btn({ label: 'Keep even pages', variant: 'secondary', onClick: () => keepParity(0) }), btn({ label: 'Reverse page order', variant: 'secondary', onClick: reverse })), list, numbered, field({ label: 'Starting page number', control: startNumber, hint: 'Numbers follow output order. Existing page content can be covered; review every exported page.' }), h('div', { class: 'field-row' }, field({ label:'Number position', control:numberPosition }), field({ label:'Number size (points)', control:numberSize }), field({ label:'Number color', control:numberColor })), skipFirst, h('p', { class:'hint', text:'Skipping leaves the first output page unnumbered; the starting number appears on the second output page. Choose a contrasting color.' }), actionsRow(btn({ label: 'Export organized PDF', icon: 'download', onClick: run }), btn({ label: 'Restore original pages', variant: 'secondary', icon: 'refresh', onClick: reset })), status,
       privacyNote('Your PDF is processed locally. Page copying may not preserve bookmarks, forms, attachments or digital signatures; inspect the output.'));
   },
 

@@ -874,7 +874,7 @@ try {
   const numberedEvent = page.waitForEvent('download');
   await page.getByRole('button',{name:'Export organized PDF'}).click();
   const numberedDownload = await readFile(await (await numberedEvent).path());
-  const renders = await page.evaluate(async bytes => {
+  const renderNumbered = async (bytes, dark=false) => page.evaluate(async ({bytes,dark}) => {
     const pdfjs = await import('/assets/vendor/pdfjs.min.mjs');
     pdfjs.GlobalWorkerOptions.workerSrc = '/assets/vendor/pdfjs.worker.min.mjs';
     const doc = await pdfjs.getDocument({data:new Uint8Array(bytes),isEvalSupported:false}).promise;
@@ -882,18 +882,41 @@ try {
     for(let i=1;i<=doc.numPages;i++) {
       const p=await doc.getPage(i), v=p.getViewport({scale:1});
       const c=document.createElement('canvas'); c.width=Math.ceil(v.width); c.height=Math.ceil(v.height);
-      const ctx=c.getContext('2d'); await p.render({canvasContext:ctx,viewport:v,background:'#ffffff'}).promise;
+      const ctx=c.getContext('2d'); await p.render({canvasContext:ctx,viewport:v,background: dark ? '#000000' : '#ffffff'}).promise;
       const data=ctx.getImageData(0,0,c.width,c.height).data; let minX=c.width,maxX=-1,minY=c.height,maxY=-1;
-      for(let y=0;y<c.height;y++) for(let x=0;x<c.width;x++) { const k=(y*c.width+x)*4; if(data[k]<180 && data[k+1]<180 && data[k+2]<180) {minX=Math.min(minX,x); maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);} }
+      for(let y=0;y<c.height;y++) for(let x=0;x<c.width;x++) { const k=(y*c.width+x)*4; if(dark ? data[k]>200 && data[k+1]>200 && data[k+2]>200 : data[k]<180 && data[k+1]<180 && data[k+2]<180) {minX=Math.min(minX,x); maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);} }
       const content=await p.getTextContent(); output.push({width:c.width,height:c.height,minX,maxX,minY,maxY,text:content.items.map(t=>t.str).join('')});
     }
     return output;
-  }, Array.from(numberedDownload));
+  }, {bytes:Array.from(bytes),dark});
+  const renders = await renderNumbered(numberedDownload);
   for (let i=0;i<4;i++) {
     const r=renders[i]; assert.equal(r.text,String(11+i));
     assert.ok(r.maxX>=r.minX && Math.abs((r.minX+r.maxX)/2-r.width/2)<4, JSON.stringify(r));
     assert.ok(r.minY>=r.height-36 && r.maxY<=r.height-14, JSON.stringify(r));
   }
+  // Every corner/centre is checked against actual rendered pixel bounds at all rotations.
+  await page.getByLabel('Number size (points)').fill('18');
+  for (const position of ['top-left','top-center','top-right','bottom-left','bottom-center','bottom-right']) {
+    await page.getByLabel('Number position').selectOption(position);
+    const event=page.waitForEvent('download'); await page.getByRole('button',{name:'Export organized PDF'}).click();
+    const output=await renderNumbered(await readFile(await (await event).path()));
+    for (let i=0;i<4;i++) {
+      const r=output[i]; assert.equal(r.text,String(11+i)); assert.ok(r.maxX>=r.minX,JSON.stringify(r));
+      if(position.endsWith('left')) assert.ok(r.minX>=17 && r.minX<26,JSON.stringify(r));
+      else if(position.endsWith('right')) assert.ok(r.width-r.maxX>=17 && r.width-r.maxX<26,JSON.stringify(r));
+      else assert.ok(Math.abs((r.minX+r.maxX)/2-r.width/2)<4,JSON.stringify(r));
+      if(position.startsWith('top')) assert.ok(r.minY>=16 && r.minY<32,JSON.stringify(r));
+      else assert.ok(r.maxY<=r.height-17 && r.maxY>r.height-28,JSON.stringify(r));
+    }
+  }
+  await page.locator('#tool-app').getByText('Leave first output page unnumbered',{exact:true}).click();
+  await page.getByLabel('Number color').selectOption('white');
+  const whiteEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Export organized PDF'}).click();
+  const white=await renderNumbered(await readFile(await (await whiteEvent).path()),true);
+  assert.equal(white[0].text,''); assert.equal(white[0].maxX,-1);
+  for(let i=1;i<4;i++) { assert.equal(white[i].text,String(10+i)); assert.ok(white[i].maxX>=white[i].minX,JSON.stringify(white[i])); }
+  console.log('✓ PDF numbering: six positions, four rotations, crop boxes, size, white text and skipped cover');
   await go('pdf-split'); await page.locator('#tool-app input[type=file]').setInputFiles(pdfInput);
   await page.getByLabel('Pages to extract').fill('2');
   pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Split PDF'}).click();

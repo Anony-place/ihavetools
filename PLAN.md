@@ -11,6 +11,30 @@
 
 ---
 
+## PDF numbering customization batch — 2026-10-31
+
+Plan: extend the existing local page-numbering workflow, not a duplicate tool:
+provide six visible-page positions, bounded font size, black/white contrast and
+an optional unnumbered first output page (numbering starts on the next page).
+Defaults preserve existing behavior. Reject invalid settings and too-small or
+unsupported pages; numbers can overlap content and copied PDFs can lose
+signatures, forms or bookmarks. Keep processing local and full-width. Snapshot
+settings per export and invalidate stale work without cancelling document loading.
+Test all position/rotation combinations via real rendered cropped PDFs, numbering
+sequence, skip semantics, input limits, stale work, mobile/axe and existing tools.
+Run full check, Chromium suite, audit and CI; use one PR and release only after
+preview and production verification. No measured search-volume claim.
+
+Implemented: all six positions, sizes 8–36 pt, black/white and optional
+unnumbered first output page; defaults are backward-compatible. Changes during
+export invalidate it; settings changes during file loading no longer discard the
+load. Full check, npm audit and Chromium pass. Actual PDF.js pixel and text
+checks cover six positions across four rotations/cropped mixed-size pages, size,
+white text and skipped cover. Source/file fidelity beyond tested cases, other
+browsers/viewers and physical/assistive-technology testing remain open.
+
+---
+
 ## PDF numbering feasibility batch — 2026-10-31
 
 Plan first: explore optional local numbering in the existing organizer, not a
