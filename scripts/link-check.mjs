@@ -233,6 +233,12 @@ test('header navigation is static HTML (crawlable without JS)', () => {
   assert.match(home, /href="\/about\/"/, 'about link must be in static HTML');
   assert.match(home, /class="mobile-nav"[^>]*><h3>Quick links<\/h3>/, 'mobile nav must be pre-rendered');
 });
+test('generic trust copy does not promise unlimited tool usage', () => {
+  for (const file of htmlFiles) {
+    const html = readFileSync(file, 'utf8');
+    assert.doesNotMatch(html, /no usage limits|free and unlimited|no sign-up, no uploads, no limits/i, `${rel(file)} makes an unbounded usage claim`);
+  }
+});
 test('trust pages exist and are linked from the footer', () => {
   for (const id of ['about', 'privacy-policy', 'terms']) {
     assert.ok(existsSync(join(ROOT, id, 'index.html')), `missing /${id}/`);

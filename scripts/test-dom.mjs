@@ -1681,6 +1681,21 @@ await domTest('JSON Lines direction and errors invalidate downloadable result', 
  text.value='not json'; fire(text,'input'); assert.equal(download.disabled,true);
  click(btnByLabel(app,'JSONL → Array')); assert.equal(download.disabled,true); assert.match(statusText(document),/could not be parsed/);
 });
+await domTest('text diff file races, swap and report invalidation', async () => {
+ const app=await loadToolPage('text-diff','text'); const [a,b]=app.querySelectorAll('textarea'), zones=app.querySelectorAll('.dropzone');
+ const saved=global.FileReader, readers=[]; global.FileReader=class {readAsArrayBuffer(){readers.push(this);}};
+ const drop=(i,file)=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[file]}});zones[i].dispatchEvent(e);};
+ const complete=(i,text)=>{readers[i].result=new TextEncoder().encode(text).buffer; readers[i].onload();};
+ try {
+  drop(0,new File(['a'],'a.txt')); drop(1,new File(['b'],'b.txt')); assert.equal(readers.length,2);
+  complete(1,'second'); complete(0,'first'); await new Promise(r=>setTimeout(r,10)); assert.equal(a.value,'first'); assert.equal(b.value,'second');
+  click(btnByLabel(app,'Compare')); assert.match(app.textContent,/A:1 B:– - first/); assert.match(app.textContent,/A:– B:1 \+ second/);
+  assert.equal(btnByLabel(app,'Download report').disabled,false); a.value='new'; fire(a,'input'); assert.equal(btnByLabel(app,'Download report').disabled,true);
+  drop(0,new File(['a'],'a.txt')); click(btnByLabel(app,'Swap sides')); complete(2,'old read'); await new Promise(r=>setTimeout(r,10)); assert.equal(a.value,'second'); assert.equal(b.value,'new');
+  drop(1,{name:'huge.txt',size:3*1024*1024}); await new Promise(r=>setTimeout(r,10)); assert.equal(b.value,'new'); assert.match(statusText(document),/Existing text was kept/);
+  drop(1,new File(['a'],'bad.txt')); readers[3].result=new Uint8Array([255]).buffer; readers[3].onload(); await new Promise(r=>setTimeout(r,10)); assert.equal(b.value,'new'); assert.match(statusText(document),/not valid UTF-8/);
+ } finally {global.FileReader=saved;}
+});
 await domTest('typing duration resets test and rejects characters after deadline', async () => {
  const previous=Object.getOwnPropertyDescriptor(performance,'now'); let now=5000; Object.defineProperty(performance,'now',{configurable:true,value:()=>now});
  try {const app=await loadToolPage('typing-speed-test','misc'), box=app.querySelector('textarea'); click(btnByLabel(app,'30 seconds')); assert.match(app.textContent,/30sTime left/);

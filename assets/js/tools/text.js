@@ -4,7 +4,7 @@
 // remove-duplicate-lines, text-sorter, text-diff, slug-generator,
 // lorem-ipsum-generator
 // =============================================================================
-import { h, field, input, textarea, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, privacyNote, mountTool } from '../ui.js';
+import { h, field, input, textarea, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, privacyNote, mountTool, dropzone, readFile, downloadBlob } from '../ui.js';
 
 /* ═══════════════════════════ Text statistics ═══════════════════════════ */
 export function textStats(text) {
@@ -395,30 +395,61 @@ const defs = {
     const b = textarea({ rows: 10, placeholder: 'Changed text…' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Differences', copy: false });
-    const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
-    root.addEventListener('input', invalidate);
-    root.addEventListener('change', invalidate);
+    const onlyChanges = switchChip({ label: 'Show changed lines only', checked: false });
+    const versions = [0, 0]; let report = '';
+    window.addEventListener('pagehide', () => { versions[0]++; versions[1]++; }, { once:true });
+    const clearReport = () => { report = ''; out.placeholder(); copy.disabled = true; download.disabled = true; };
+    const copy = btn({ label:'Copy report', variant:'secondary', onClick: async () => {
+      const text = report; if (!text) return;
+      const ok = await copyText(text); if (report === text) status.set(ok ? 'Report copied.' : 'Copy failed; select the displayed result and copy manually.', ok ? 'success' : 'error');
+    } });
+    const download = btn({ label:'Download report', variant:'secondary', icon:'download', onClick: () => {
+      if (!report) return; const ok = downloadBlob(new Blob([report], {type:'text/plain;charset=utf-8'}), 'text-diff-report.txt');
+      status.set(ok ? 'Report download requested. Check your browser downloads.' : 'Could not start the download.', ok ? 'success' : 'error');
+    } });
+    copy.disabled = download.disabled = true;
+    const invalidate = side => { if (side !== null) versions[side]++; clearReport(); status.set('Input or settings changed. Compare again.', 'info'); };
+    a.addEventListener('input', () => invalidate(0)); b.addEventListener('input', () => invalidate(1));
+    onlyChanges.addEventListener('change', () => invalidate(null));
+    const makeImport = (side, control, title) => {
+      const zone = dropzone({ accept: '.txt,.md,.csv,.json,.log,text/plain,application/json,text/csv', title, sub: 'UTF-8 text, up to 2 MiB and 500,000 characters; read locally.',
+        onReject: () => { versions[side]++; zone.clear(); clearReport(); status.set('File rejected. Existing text was kept; choose a file up to 2 MiB.', 'error'); },
+        onFiles: async files => {
+          zone.clear(); const token = ++versions[side]; clearReport();
+          try {
+            const file = files[0]; if (!file || file.size > 2 * 1024 * 1024) throw new Error('File exceeds 2 MiB.');
+            status.set(`Reading ${side ? 'changed' : 'original'} file locally…`, 'info');
+            const bytes = await readFile(file, 'buffer'); if (token !== versions[side]) return;
+            let text; try { text = new TextDecoder('utf-8', {fatal:true}).decode(bytes); } catch { throw new Error('File is not valid UTF-8 text.'); }
+            if (text.length > 500000) throw new Error('File exceeds 500,000 characters.');
+            control.value = text; clearReport(); status.set(`${side ? 'Changed' : 'Original'} file loaded. Compare when ready.`, 'success');
+          } catch (e) { if (token === versions[side]) { clearReport(); status.set(`${e.message} Existing text was kept.`, 'error'); } }
+        } });
+      return zone;
+    };
+    const zoneA = makeImport(0, a, 'Choose original text file');
+    const zoneB = makeImport(1, b, 'Choose changed text file');
     const run = () => {
-      if (!a.value && !b.value) { status.set('Paste text in both boxes.', 'warning'); return; }
+      versions[0]++; versions[1]++; clearReport();
+      if (!a.value && !b.value) { status.set('Enter text in at least one box.', 'warning'); return; }
       try {
-        const ops = diffLines(a.value, b.value);
-        const sum = diffSummary(ops);
-        if (sum.unchanged) { out.set('The two texts are identical.', { placeholderMode: false }); status.set('No differences found — the texts match.', 'success'); return; }
-        const view = h('div', { class: 'diff-view' },
-          ops.map((o) => h('span', {
-            class: o.type === 'add' ? 'd-add' : o.type === 'del' ? 'd-del' : 'd-same',
-            text: (o.type === 'add' ? '+ ' : o.type === 'del' ? '− ' : '  ') + o.line,
-          })));
-        out.set(view);
-        status.set(`${sum.add} line${sum.add === 1 ? '' : 's'} added, ${sum.del} removed, ${sum.same} unchanged.`, 'info');
-      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+        const ops = diffLines(a.value, b.value), sum = diffSummary(ops);
+        const shown = onlyChanges.querySelector('input').checked ? ops.filter(o => o.type !== 'same') : ops;
+        const lines = shown.map(o => `A:${o.a ?? '–'} B:${o.b ?? '–'} ${o.type === 'add' ? '+' : o.type === 'del' ? '-' : ' '} ${o.line}`);
+        report = ['Text comparison report (line endings normalized; not a patch)', `Added: ${sum.add}, removed: ${sum.del}, unchanged: ${sum.same}`, onlyChanges.querySelector('input').checked ? 'Showing changed lines only' : 'Showing all lines', '', ...(lines.length ? lines : ['No changed lines.'])].join('\n');
+        const view = h('div', { class: 'diff-view' }, shown.map((o, i) => h('span', { class: o.type === 'add' ? 'd-add' : o.type === 'del' ? 'd-del' : 'd-same', text: lines[i] })));
+        if (shown.length) out.set(view); else out.set('No changed lines in this view.');
+        copy.disabled = download.disabled = false;
+        status.set(sum.unchanged ? 'No differences found — the texts match.' : `${sum.add} line${sum.add === 1 ? '' : 's'} added, ${sum.del} removed, ${sum.same} unchanged.`, sum.unchanged ? 'success' : 'info');
+      } catch (e) { clearReport(); status.set(e.message, 'error'); }
     };
     root.append(
-      h('div', { class: 'field-row' }, field({ label: 'Original', control: a }), field({ label: 'Changed', control: b })),
-      h('p', { class: 'hint', text: 'Line endings are normalized; a final newline counts as an extra blank line. Limit: 4,000 lines per side, 4 million table cells and 500,000 total characters.' }),
+      h('div', { class: 'field-row' }, h('div', {}, field({ label: 'Original', control: a }), zoneA), h('div', {}, field({ label: 'Changed', control: b }), zoneB)),
+      onlyChanges,
+      h('p', { class: 'hint', text: 'A = original line, B = changed line. A dash means no line on that side. Exact line comparison; line endings are normalized and a final newline counts as an extra blank line. Limits: 4,000 lines per side, 4 million table cells and 500,000 combined characters. The report is not a patch.' }),
       actionsRow(btn({ label: 'Compare', icon: 'diff', onClick: run }),
-        btn({ label: 'Swap sides', variant: 'secondary', onClick: () => { [a.value, b.value] = [b.value, a.value]; out.placeholder(); status.set('Inputs swapped. Compare again.', 'info'); } }),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { a.value = ''; b.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+        btn({ label: 'Swap sides', variant: 'secondary', onClick: () => { versions[0]++; versions[1]++; [a.value, b.value] = [b.value, a.value]; clearReport(); status.set('Inputs swapped. Compare again.', 'info'); } }),
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { versions[0]++; versions[1]++; a.value = ''; b.value = ''; zoneA.clear(); zoneB.clear(); clearReport(); status.set('Cleared.'); } }), copy, download),
       status, h('br'), out.panel);
   },
 
