@@ -1909,6 +1909,20 @@ await test('PDF organizer exports reordered, removed and rotated real PDF pages'
   await assert.rejects(pdf.organizePdf(lib, source, []), /at least one/);
   await assert.rejects(pdf.organizePdf(lib, source, [{ index: 3, rotation: 0 }]), /Invalid/);
 });
+await test('PDF organizer numbering validates bounds and leaves source unchanged', async () => {
+  const lib = await import('pdf-lib'); const src = await lib.PDFDocument.create();
+  src.addPage([200,300]); src.addPage([300,400]);
+  const pages = [{index:1,rotation:0},{index:0,rotation:0}];
+  await assert.rejects(pdf.organizePdf(lib, src, pages, {start:0}), /Starting number/);
+  await assert.rejects(pdf.organizePdf(lib, src, pages, {start:999999}), /Starting number/);
+  const result = await lib.PDFDocument.load(await pdf.organizePdf(lib, src, pages, {start:11}));
+  assert.equal(result.getPageCount(),2); assert.equal(result.getPage(0).getWidth(),300);
+  assert.equal(src.getPageCount(),2); assert.equal(src.getPage(0).getWidth(),200);
+  const small = await lib.PDFDocument.create(); small.addPage([20,20]);
+  await assert.rejects(pdf.organizePdf(lib, small, [{index:0,rotation:0}], {start:1}), /too small/);
+  const outside = await lib.PDFDocument.create(); outside.addPage([200,200]).setCropBox(-10,0,210,200);
+  await assert.rejects(pdf.organizePdf(lib, outside, [{index:0,rotation:0}], {start:1}), /unsupported crop box/);
+});
 await test('batch-7 pages have guides, search coverage and three inbound links', () => {
   for (const id of ['pdf-organizer', 'json-compare']) {
     const tool = registry.getTool(id); assert.ok(tool.guide.length >= 3 && tool.faqs.length >= 3);

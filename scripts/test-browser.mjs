@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import AxeBuilder from '@axe-core/playwright';
 import sharp from 'sharp';
 import jsQR from 'jsqr';
-import { PDFDocument, rgb as pdfRgb } from 'pdf-lib';
+import { PDFDocument, degrees, rgb as pdfRgb } from 'pdf-lib';
 import { unzipSync } from '../assets/vendor/fflate.js';
 import { encodeWav } from '../assets/js/tools/audio.js';
 import { tools } from '../assets/js/registry.js';
@@ -856,6 +856,44 @@ try {
   let pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Export organized PDF'}).click();
   let result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));
   assert.equal(result.getPage(0).getWidth(),200); assert.equal(result.getPage(0).getRotation().angle,90);
+  // Render numbered mixed-size and cropped pages at each quarter-turn, not just metadata.
+  const numberedSource = await PDFDocument.create();
+  for (const [i,angle] of [0,90,180,270].entries()) {
+    const p = numberedSource.addPage([350+i*10,450+i*10]); p.setCropBox(20,30,250+i*10,300+i*10); p.setRotation(degrees(angle));
+  }
+  const numberedBytes = Buffer.from(await numberedSource.save());
+  await go('pdf-organizer');
+  await page.locator('#tool-app input[type=file]').setInputFiles([{name:'rotated.pdf',mimeType:'application/pdf',buffer:numberedBytes}]);
+  await page.getByRole('button',{name:'Move page 2 up'}).waitFor();
+  await page.locator('#tool-app').getByText('Add page numbers',{exact:true}).click();
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[], 'numbering accessibility');
+  await page.getByLabel('Starting page number').fill('0');
+  await page.getByRole('button',{name:'Export organized PDF'}).click();
+  await page.locator('#tool-app .status-line').getByText(/Starting number must/).waitFor();
+  await page.getByLabel('Starting page number').fill('11');
+  const numberedEvent = page.waitForEvent('download');
+  await page.getByRole('button',{name:'Export organized PDF'}).click();
+  const numberedDownload = await readFile(await (await numberedEvent).path());
+  const renders = await page.evaluate(async bytes => {
+    const pdfjs = await import('/assets/vendor/pdfjs.min.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = '/assets/vendor/pdfjs.worker.min.mjs';
+    const doc = await pdfjs.getDocument({data:new Uint8Array(bytes),isEvalSupported:false}).promise;
+    const output=[];
+    for(let i=1;i<=doc.numPages;i++) {
+      const p=await doc.getPage(i), v=p.getViewport({scale:1});
+      const c=document.createElement('canvas'); c.width=Math.ceil(v.width); c.height=Math.ceil(v.height);
+      const ctx=c.getContext('2d'); await p.render({canvasContext:ctx,viewport:v,background:'#ffffff'}).promise;
+      const data=ctx.getImageData(0,0,c.width,c.height).data; let minX=c.width,maxX=-1,minY=c.height,maxY=-1;
+      for(let y=0;y<c.height;y++) for(let x=0;x<c.width;x++) { const k=(y*c.width+x)*4; if(data[k]<180 && data[k+1]<180 && data[k+2]<180) {minX=Math.min(minX,x); maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);} }
+      const content=await p.getTextContent(); output.push({width:c.width,height:c.height,minX,maxX,minY,maxY,text:content.items.map(t=>t.str).join('')});
+    }
+    return output;
+  }, Array.from(numberedDownload));
+  for (let i=0;i<4;i++) {
+    const r=renders[i]; assert.equal(r.text,String(11+i));
+    assert.ok(r.maxX>=r.minX && Math.abs((r.minX+r.maxX)/2-r.width/2)<4, JSON.stringify(r));
+    assert.ok(r.minY>=r.height-36 && r.maxY<=r.height-14, JSON.stringify(r));
+  }
   await go('pdf-split'); await page.locator('#tool-app input[type=file]').setInputFiles(pdfInput);
   await page.getByLabel('Pages to extract').fill('2');
   pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Split PDF'}).click();

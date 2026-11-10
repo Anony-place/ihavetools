@@ -59,14 +59,28 @@ export function fitRect(imgW, imgH, pageW, pageH, margin = 0) {
 }
 
 /** Copy selected pages in order and add clockwise rotations; does not alter input. */
-export async function organizePdf(PDFLib, source, pages) {
+export async function organizePdf(PDFLib, source, pages, numbering = null) {
   if (!pages.length) throw new Error('Keep at least one page.');
   const count = source.getPageCount();
   if (pages.some((p) => !Number.isInteger(p.index) || p.index < 0 || p.index >= count || ![0, 90, 180, 270].includes(p.rotation))) throw new Error('Invalid page selection or rotation.');
+  if (numbering && (!Number.isInteger(numbering.start) || numbering.start < 1 || numbering.start + pages.length - 1 > 999999)) throw new Error('Starting number must be a whole number from 1 to 999999, and the final number must not exceed 999999.');
   const out = await PDFLib.PDFDocument.create();
   const copied = await out.copyPages(source, pages.map((p) => p.index));
+  const font = numbering ? await out.embedFont(PDFLib.StandardFonts.Helvetica) : null;
   copied.forEach((page, i) => {
-    page.setRotation(PDFLib.degrees((page.getRotation().angle + pages[i].rotation) % 360));
+    const angle = ((page.getRotation().angle + pages[i].rotation) % 360 + 360) % 360;
+    page.setRotation(PDFLib.degrees(angle));
+    if (numbering) {
+      const box = page.getCropBox(), media = page.getMediaBox();
+      if (![0,90,180,270].includes(angle) || ![box.x, box.y, box.width, box.height, media.x, media.y, media.width, media.height].every(Number.isFinite) || box.width <= 0 || box.height <= 0 || box.x < media.x || box.y < media.y || box.x + box.width > media.x + media.width || box.y + box.height > media.y + media.height) throw new Error(`Page ${i + 1} has an unsupported crop box or rotation.`);
+      const text = String(numbering.start + i), size = 12, margin = 18;
+      const width = angle % 180 ? box.height : box.width, height = angle % 180 ? box.width : box.height;
+      const textWidth = font.widthOfTextAtSize(text, size);
+      if (width < textWidth + margin * 2 || height < margin * 2 + size) throw new Error(`Page ${i + 1} is too small for a page number.`);
+      const x = (width - textWidth) / 2, y = margin;
+      const [px, py] = angle === 0 ? [x,y] : angle === 90 ? [box.width-y,x] : angle === 180 ? [box.width-x,box.height-y] : [y,box.height-x];
+      page.drawText(text, { x: box.x + px, y: box.y + py, size, font, rotate: PDFLib.degrees(angle), color: PDFLib.rgb(0,0,0) });
+    }
     out.addPage(page);
   });
   return out.save();
@@ -225,6 +239,10 @@ const defs = {
     const status = statusLine('Choose a PDF to begin.'), list = h('div', { class: 'file-list', role: 'region', 'aria-label': 'PDF pages' });
     const info = h('p', { class: 'hint' });
     const ranges = input({ type: 'text', placeholder: 'e.g. 1-3, 7' });
+    const numbered = switchChip({ label: 'Add page numbers', checked: false });
+    const startNumber = input({ type: 'number', min: 1, max: 999999, step: 1, value: '1' });
+    numbered.addEventListener('change', () => { revision++; status.set('Numbering settings changed.', 'info'); });
+    startNumber.addEventListener('input', () => { revision++; status.set('Numbering settings changed.', 'info'); });
     const render = () => {
       list.replaceChildren(...pages.map((p, i) => {
         const row = h('div', { class: 'file-row' },
@@ -276,13 +294,13 @@ const defs = {
       const doc = source, selected = pages.map(p => ({ ...p })), name = file.name, token = revision, action = ++operation;
       status.set('Creating your PDF locally…', 'info');
       try {
-        const lib = await loadPdfLib(); const bytes = await organizePdf(lib, doc, selected);
+        const lib = await loadPdfLib(); const bytes = await organizePdf(lib, doc, selected, numbered.querySelector('input').checked ? { start: Number(startNumber.value) } : null);
         if (token !== revision || action !== operation) return;
         const saved = downloadBlob(new Blob([bytes], { type: 'application/pdf' }), `organized-${name.replace(/\.pdf$/i, '')}.pdf`);
         status.set(saved ? `Exported ${selected.length} pages — download started.` : 'Could not start the download in this browser.', saved ? 'success' : 'error');
       } catch (e) { if (token === revision && action === operation) status.set(e.message, 'error'); }
     };
-    root.append(zone, info, field({ label: 'Keep original pages', control: ranges, hint: 'Example: 1-3, 7. Filters use original page numbers and keep the current order and rotations; restore first to recover removed pages.' }), actionsRow(btn({ label: 'Apply page filter', variant: 'secondary', onClick: keepRanges }), btn({ label: 'Keep odd pages', variant: 'secondary', onClick: () => keepParity(1) }), btn({ label: 'Keep even pages', variant: 'secondary', onClick: () => keepParity(0) }), btn({ label: 'Reverse page order', variant: 'secondary', onClick: reverse })), list, actionsRow(btn({ label: 'Export organized PDF', icon: 'download', onClick: run }), btn({ label: 'Restore original pages', variant: 'secondary', icon: 'refresh', onClick: reset })), status,
+    root.append(zone, info, field({ label: 'Keep original pages', control: ranges, hint: 'Example: 1-3, 7. Filters use original page numbers and keep the current order and rotations; restore first to recover removed pages.' }), actionsRow(btn({ label: 'Apply page filter', variant: 'secondary', onClick: keepRanges }), btn({ label: 'Keep odd pages', variant: 'secondary', onClick: () => keepParity(1) }), btn({ label: 'Keep even pages', variant: 'secondary', onClick: () => keepParity(0) }), btn({ label: 'Reverse page order', variant: 'secondary', onClick: reverse })), list, numbered, field({ label: 'Starting page number', control: startNumber, hint: 'When enabled, numbers follow output order at the bottom centre in black. Existing page content can be covered; review every page.' }), actionsRow(btn({ label: 'Export organized PDF', icon: 'download', onClick: run }), btn({ label: 'Restore original pages', variant: 'secondary', icon: 'refresh', onClick: reset })), status,
       privacyNote('Your PDF is processed locally. Page copying may not preserve bookmarks, forms, attachments or digital signatures; inspect the output.'));
   },
 
