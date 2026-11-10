@@ -185,7 +185,7 @@ export function jsonTree(text) {
     whitespace();
     if (++count > 3000) throw new Error('Tree view supports at most 3,000 values. Format or minify larger input instead.');
     if (depth > 64) throw new Error('Tree view supports up to 64 levels. Format or minify deeper input instead.');
-    const c = text[i];
+    const start = i, c = text[i];
     if (c === '{' || c === '[') {
       i++; const children = []; whitespace(); const close = c === '{' ? '}' : ']';
       while (text[i] !== close) {
@@ -194,13 +194,40 @@ export function jsonTree(text) {
         const child = value(depth + 1); children.push({ key, node: child }); whitespace();
         if (text[i] === ',') { i++; whitespace(); } else break;
       }
-      i++; return { type: c === '{' ? 'object' : 'array', children };
+      i++; return { type: c === '{' ? 'object' : 'array', children, start, end: i };
     }
-    if (c === '"') return { type: 'value', raw: stringToken() };
-    const start = i; while (i < text.length && !/[\t\n\r ,\]\}]/.test(text[i])) i++;
-    return { type: 'value', raw: text.slice(start, i) };
+    if (c === '"') { const raw = stringToken(); return { type: 'value', raw, start, end:i }; }
+    while (i < text.length && !/[\t\n\r ,\]\}]/.test(text[i])) i++;
+    return { type: 'value', raw: text.slice(start, i), start, end:i };
   }
   return value(0);
+}
+
+/** Resolve a plain RFC 6901 pointer without converting or reserializing values. */
+export function jsonPointerLookup(text, pointer) {
+  if (pointer.length > 10000) throw new Error('Pointer exceeds 10,000 characters.');
+  if (pointer && !pointer.startsWith('/')) throw new Error('A JSON Pointer must be empty for the root or start with /. URI fragments and JSONPath are not supported.');
+  const segments = pointer === '' ? [] : pointer.slice(1).split('/').map(part => {
+    if (/~(?![01])/.test(part)) throw new Error('Invalid pointer escape: use ~0 for ~ and ~1 for /.');
+    return part.replace(/~1/g, '/').replace(/~0/g, '~');
+  });
+  if (text.length > 250000) throw new Error('Lookup supports up to 250,000 characters.');
+  let validation;
+  try { validation = validateJson(text); } catch { throw new Error('JSON is too deeply nested to inspect safely.'); }
+  if (!validation.ok) throw new Error(`Line ${validation.line}, column ${validation.column}: ${validation.message}`);
+  if (validation.duplicateKeys.length) throw new Error('Duplicate object keys make lookup ambiguous. Use unique keys.');
+  let node = jsonTree(text);
+  for (const part of segments) {
+    if (node.type === 'object') {
+      const match = node.children.find(child => JSON.parse(child.key) === part);
+      if (!match) throw new Error('Pointer does not exist in this document.');
+      node = match.node;
+    } else if (node.type === 'array') {
+      if (!/^(0|[1-9]\d*)$/.test(part) || !Number.isSafeInteger(Number(part)) || Number(part) >= node.children.length) throw new Error('Array index must be a valid zero-based index without leading zeroes.');
+      node = node.children[Number(part)].node;
+    } else throw new Error('Pointer cannot traverse a scalar value.');
+  }
+  return text.slice(node.start, node.end);
 }
 
 export function countJsonWhitespace(text) { return (text.match(/\s/g) || []).length; }
@@ -530,36 +557,72 @@ const defs = {
     send(starter);
   },
 
+  'json-pointer-lookup'(root) {
+    const code = textarea({ rows: 12, value:'{\n  "items": [{"name": "Ada", "id": 9007199254740993}]\n}', placeholder:'Paste JSON…' });
+    const pointer = input({ type:'text', value:'/items/0/id', placeholder:'Empty for root; e.g. /items/0/name' });
+    const file = input({ type:'file', accept:'.json,application/json' });
+    const status = statusLine('Enter a plain JSON Pointer and look up the value.');
+    const out = resultPanel({ label:'Selected JSON value', download:true, downloadName:'selected.json', downloadMime:'application/json;charset=utf-8' });
+    let revision = 0;
+    window.addEventListener('pagehide', () => { revision++; }, { once:true });
+    code.addEventListener('input', () => { revision++; out.placeholder(); status.set('JSON changed. Look up again.', 'info'); });
+    pointer.addEventListener('input', () => { out.placeholder(); status.set('Pointer changed. Look up again.', 'info'); });
+    file.addEventListener('change', async () => {
+      const selected = file.files?.[0]; file.value = ''; if (!selected) return;
+      const token = ++revision; out.placeholder();
+      try {
+        if (!/\.json$/i.test(selected.name) || selected.size > 1048576) throw new Error('Choose a .json file up to 1 MiB.');
+        status.set('Reading JSON locally…', 'info');
+        const bytes = await readFile(selected, 'buffer'); if (token !== revision) return;
+        let text; try { text = new TextDecoder('utf-8', {fatal:true}).decode(bytes); } catch { throw new Error('File is not valid UTF-8.'); }
+        if (text.length > 250000) throw new Error('File exceeds 250,000 characters.');
+        code.value = text; out.placeholder(); status.set('JSON loaded locally. Look up to validate it.', 'success');
+      } catch (e) { if (token === revision) status.set(`${e.message} Existing JSON was kept.`, 'error'); }
+    });
+    const run = () => {
+      revision++; out.placeholder();
+      try { const raw = jsonPointerLookup(code.value, pointer.value); out.set(raw); status.set('Value found. Original JSON tokens and inner whitespace are preserved.', 'success'); }
+      catch (e) { status.set(e.message, 'error'); }
+    };
+    root.append(field({label:'JSON document',control:code}), field({label:'Load local JSON file',control:file, hint:'UTF-8 .json, up to 1 MiB and 250,000 characters. Existing text is kept on failure.'}),
+      field({label:'JSON Pointer',control:pointer,hint:'Empty pointer selects the root; / selects an empty object key. Escape ~ as ~0 and / as ~1.'}),
+      actionsRow(btn({label:'Look up value',icon:'search',onClick:run}), btn({label:'Clear',variant:'ghost',icon:'x',onClick:() => {revision++; code.value='';pointer.value='';file.value='';out.placeholder();status.set('Cleared.');}})),
+      status, out.panel, h('p',{class:'hint',text:'Plain JSON Pointer only; not JSONPath or a URI fragment. Duplicate keys are rejected. Limit: 250,000 input characters, 3,000 values, 64 tree levels and 10,000 pointer characters. Files stay in your browser.'}));
+  },
+
   'json-compare'(root) {
     const left = textarea({ rows: 10, value: '{\n  "name": "Ana",\n  "active": true,\n  "tags": ["a", "b"]\n}', placeholder: 'Paste original JSON…' });
     const right = textarea({ rows: 10, value: '{\n  "tags": ["a", "c"],\n  "name": "Ana",\n  "role": "editor"\n}', placeholder: 'Paste revised JSON…' });
     const status = statusLine('Compare two JSON values. Object key order is ignored; array order matters.');
     const out = resultPanel({ label: 'Structural differences', copy: false });
     const revisions = [0, 0];
+    window.addEventListener('pagehide', () => { revisions[0]++; revisions[1]++; }, {once:true});
     const invalidate = () => { out.placeholder(); status.set('Input changed. Compare again.', 'info'); };
     [left, right].forEach((el, i) => el.addEventListener('input', () => { revisions[i]++; invalidate(); }));
     const makeFileInput = (editor, i) => {
       const picker = input({ type: 'file', accept: '.json,application/json' });
       picker.addEventListener('change', async () => {
         const selected = picker.files?.[0]; picker.value = '';
-        const token = ++revisions[i];
         if (!selected) return;
+        const token = ++revisions[i]; out.placeholder();
         if (!/\.json$/i.test(selected.name) || selected.size > 4000000) {
           status.set('Choose a .json file up to 4,000,000 bytes. Existing input was kept.', 'error'); return;
         }
         status.set(`Reading ${i ? 'revised' : 'original'} JSON locally…`, 'info');
         try {
-          const text = await readFile(selected);
+          const bytes = await readFile(selected, 'buffer');
           if (token !== revisions[i]) return;
-          if (typeof text !== 'string' || text.length > 1000000) { status.set('File exceeds the 1,000,000-character limit. Existing input was kept.', 'error'); return; }
+          let text; try { text = new TextDecoder('utf-8', {fatal:true}).decode(bytes); } catch { throw new Error('File is not valid UTF-8.'); }
+          if (text.length > 1000000) { status.set('File exceeds the 1,000,000-character limit. Existing input was kept.', 'error'); return; }
           editor.value = text; out.placeholder(); status.set('JSON loaded locally as UTF-8. Compare to validate it.', 'info');
-        } catch { if (token === revisions[i]) status.set('Could not read that file. Existing input was kept.', 'error'); }
+        } catch (e) { if (token === revisions[i]) status.set(`${e.message || 'Could not read that file.'} Existing input was kept.`, 'error'); }
       });
       return picker;
     };
     const leftFile = makeFileInput(left, 0), rightFile = makeFileInput(right, 1);
     const preview = (v) => { const text = JSON.stringify(v, (_key, value) => typeof value === 'number' && !Number.isFinite(value) ? String(value) : value); return text.length > 240 ? `${text.slice(0, 240)}…` : text; };
     const run = () => {
+      revisions[0]++; revisions[1]++; out.placeholder();
       try {
         const differences = compareJson(left.value, right.value);
         if (!differences.length) { out.set('No structural differences.'); status.set('The parsed JSON values match.', 'success'); return; }

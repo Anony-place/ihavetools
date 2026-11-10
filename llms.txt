@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 132 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 133 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -141,6 +141,7 @@
 - [Electricity Cost Calculator](https://i-have-tools.vercel.app/tools/electricity-cost-calculator/): Estimate appliance energy use and electricity cost.
 - [Fuel Cost Calculator](https://i-have-tools.vercel.app/tools/fuel-cost-calculator/): Estimate trip fuel, cost and each passenger’s share.
 - [PDF Page Organizer](https://i-have-tools.vercel.app/tools/pdf-organizer/): Reorder, remove, rotate and optionally number PDF pages locally.
+- [JSON Pointer Lookup](https://i-have-tools.vercel.app/tools/json-pointer-lookup/): Find a JSON value with an RFC 6901 pointer without changing its tokens.
 - [JSON Compare](https://i-have-tools.vercel.app/tools/json-compare/): Compare two JSON values by structure and find changed paths.
 - [Loan Prepayment Calculator](https://i-have-tools.vercel.app/tools/loan-prepayment-calculator/): Compare loan repayment time and interest with extra payments.
 - [Inflation Calculator](https://i-have-tools.vercel.app/tools/inflation-calculator/): Estimate future costs and the purchasing power of money.

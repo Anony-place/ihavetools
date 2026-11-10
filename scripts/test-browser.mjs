@@ -223,6 +223,22 @@ try {
   assert.equal(await page.getByLabel('Original JSON', {exact:true}).inputValue(), '{"a":1,"b":2}');
   console.log('✓ local JSON compare file loading, validation, clear and same-file reload');
 
+  await go('json-pointer-lookup');
+  await page.getByRole('button', {name:'Look up value'}).click();
+  assert.match(await page.locator('#tool-app').innerText(), /9007199254740993/);
+  const pointerDownload = page.waitForEvent('download');
+  await page.locator('#tool-app .result-panel').getByRole('button',{name:'Download'}).click();
+  assert.equal(await readFile(await (await pointerDownload).path(), 'utf8'), '9007199254740993');
+  await page.getByLabel('JSON Pointer').fill('/items/0/name');
+  await page.getByRole('button', {name:'Look up value'}).click();
+  assert.match(await page.locator('#tool-app').innerText(), /"Ada"/);
+  await page.getByLabel('Load local JSON file').setInputFiles({name:'bad.json',mimeType:'application/json',buffer:Buffer.from([0xff])});
+  await page.locator('#tool-app .status-line').getByText(/not valid UTF-8/).waitFor();
+  await page.setViewportSize({width:320,height:844});
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v => v.id), []);
+  await page.setViewportSize({width:1280,height:800});
+  console.log('✓ JSON Pointer exact output, import validation and mobile accessibility');
+
   await go('html-live-preview');
   assert.equal(await page.locator('#tool-app').evaluate(el => [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'null')), false);
   assert.ok((await page.locator('#tool-app iframe').boundingBox()).height >= 500, 'preview has ample desktop height');

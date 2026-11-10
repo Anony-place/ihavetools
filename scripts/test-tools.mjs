@@ -38,6 +38,22 @@ const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
 
+await test('JSON Pointer resolves exact tokens, escaped keys and root', () => {
+  const doc = '  {"a/b":{"~key":[9007199254740993, 1e+999, "\\u0041"]}, "":null, "01":true}  ';
+  assert.equal(dev.jsonPointerLookup(doc, '/a~1b/~0key/0'), '9007199254740993');
+  assert.equal(dev.jsonPointerLookup(doc, '/a~1b/~0key/1'), '1e+999');
+  assert.equal(dev.jsonPointerLookup(doc, '/a~1b/~0key/2'), '"\\u0041"');
+  assert.equal(dev.jsonPointerLookup(doc, '/'), 'null');
+  assert.equal(dev.jsonPointerLookup(doc, '/01'), 'true');
+  assert.equal(dev.jsonPointerLookup(doc, ''), doc.trim());
+  for (const pointer of ['a', '#/a', '/a~2b', '/a~', '/a~1b/~0key/01', '/a~1b/~0key/-', '/a~1b/~0key/3', '/01/x']) assert.throws(() => dev.jsonPointerLookup(doc, pointer));
+  assert.throws(() => dev.jsonPointerLookup('{"a":1,"\\u0061":2}', '/a'), /Duplicate/);
+  assert.throws(() => dev.jsonPointerLookup('null', '/' + 'a'.repeat(10000)), /10,000/);
+  assert.throws(() => dev.jsonPointerLookup(' '.repeat(250001), ''), /250,000/);
+  assert.throws(() => dev.jsonPointerLookup('['.repeat(66)+'0'+']'.repeat(66), ''), /64 levels/);
+  assert.throws(() => dev.jsonPointerLookup('['+'0,'.repeat(3000)+'0]', ''), /3,000/);
+});
+
 console.log('\n── Registry integrity ──');
 await test('every tool has required metadata', () => {
   for (const t of registry.tools) {
@@ -1758,8 +1774,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 132);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 82);
+  assert.equal(registry.tools.length, 133);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 83);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
