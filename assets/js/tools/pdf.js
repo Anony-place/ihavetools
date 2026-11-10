@@ -224,6 +224,7 @@ const defs = {
     window.addEventListener('pagehide', () => { revision++; }, { once: true });
     const status = statusLine('Choose a PDF to begin.'), list = h('div', { class: 'file-list', role: 'region', 'aria-label': 'PDF pages' });
     const info = h('p', { class: 'hint' });
+    const ranges = input({ type: 'text', placeholder: 'e.g. 1-3, 7' });
     const render = () => {
       list.replaceChildren(...pages.map((p, i) => {
         const row = h('div', { class: 'file-row' },
@@ -248,6 +249,27 @@ const defs = {
         source = doc; file = chosen; reset(); status.set(`Loaded ${chosen.name}. Reorder, rotate or remove pages, then export.`, 'success');
       } catch (e) { if (token === revision) status.set(/encrypt/i.test(String(e)) ? 'Password-protected PDFs cannot be processed. Remove protection first.' : `Could not open PDF: ${e.message}`, 'error'); }
     }, undefined, () => { revision++; source = null; file = null; pages = []; list.replaceChildren(); info.textContent = ''; zone.clear(); status.set('Selection rejected. Choose a PDF within the 200 MB limit.', 'error'); });
+    const keepRanges = () => {
+      if (!source) { status.set('Choose a PDF first.', 'warning'); return; }
+      try {
+        const wanted = new Set(parseRanges(ranges.value, source.getPageCount()));
+        const kept = pages.filter(p => wanted.has(p.index + 1));
+        if (!kept.length) throw new Error('None of those original pages remain in the current list. Restore original pages first.');
+        revision++; pages = kept; render();
+        status.set(`Kept ${pages.length} selected page${pages.length === 1 ? '' : 's'} in their current order.`, 'success');
+      } catch (e) { status.set(e.message, 'error'); }
+    };
+    const keepParity = (parity) => {
+      if (!source) { status.set('Choose a PDF first.', 'warning'); return; }
+      const kept = pages.filter(p => (p.index + 1) % 2 === parity);
+      if (!kept.length) { status.set('No matching original pages remain. Restore original pages first.', 'warning'); return; }
+      revision++; pages = kept; render();
+      status.set(`Kept ${pages.length} ${parity ? 'odd' : 'even'} original page${pages.length === 1 ? '' : 's'} in current order.`, 'success');
+    };
+    const reverse = () => {
+      if (!source || !pages.length) { status.set('Choose a PDF and keep at least one page first.', 'warning'); return; }
+      revision++; pages.reverse(); render(); status.set('Current page order reversed.', 'info');
+    };
     const run = async () => {
       if (!source || !file) { status.set('Choose a PDF first.', 'warning'); return; }
       if (!pages.length) { status.set('Keep at least one page, or restore the original.', 'warning'); return; }
@@ -260,7 +282,7 @@ const defs = {
         status.set(saved ? `Exported ${selected.length} pages — download started.` : 'Could not start the download in this browser.', saved ? 'success' : 'error');
       } catch (e) { if (token === revision && action === operation) status.set(e.message, 'error'); }
     };
-    root.append(zone, info, list, actionsRow(btn({ label: 'Export organized PDF', icon: 'download', onClick: run }), btn({ label: 'Restore original pages', variant: 'secondary', icon: 'refresh', onClick: reset })), status,
+    root.append(zone, info, field({ label: 'Keep original pages', control: ranges, hint: 'Example: 1-3, 7. Filters use original page numbers and keep the current order and rotations; restore first to recover removed pages.' }), actionsRow(btn({ label: 'Apply page filter', variant: 'secondary', onClick: keepRanges }), btn({ label: 'Keep odd pages', variant: 'secondary', onClick: () => keepParity(1) }), btn({ label: 'Keep even pages', variant: 'secondary', onClick: () => keepParity(0) }), btn({ label: 'Reverse page order', variant: 'secondary', onClick: reverse })), list, actionsRow(btn({ label: 'Export organized PDF', icon: 'download', onClick: run }), btn({ label: 'Restore original pages', variant: 'secondary', icon: 'refresh', onClick: reset })), status,
       privacyNote('Your PDF is processed locally. Page copying may not preserve bookmarks, forms, attachments or digital signatures; inspect the output.'));
   },
 

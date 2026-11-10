@@ -11,6 +11,30 @@
 
 ---
 
+## PDF organizer workflow batch — 2026-10-31
+
+**Plan:** improve the existing local PDF organizer rather than publish an
+untested page-number stamping tool. Let users quickly keep original page ranges
+and reverse the current selection, with explicit ordering and restoration
+semantics. Preserve manual rotation/order where applicable, prevent stale exports,
+provide clear validation and keyboard-accessible controls, and document that page
+ranges refer to original pages. Empty or invalid selections must not destroy work.
+Keep existing 500-page bound, full-width layout and no-upload model. Test real PDF
+output, selection/order, invalid ranges, reset, mobile/axe and existing behavior;
+run full checks, Chromium suite and audit. One consolidated PR; release only
+after CI and production verification. Competitor workflows are inspiration, not
+measured demand. PDF stamping and current-year tax work remain deferred pending
+fidelity and primary-source verification.
+
+**Implemented:** range, odd/even and reverse controls operate on the current
+selection, preserving existing rotations; invalid or empty filters leave it
+unchanged. Restoring is required to recover removed pages. Documentation and
+real-PDF tests cover filters, reverse, invalid input, rotation preservation,
+stale export invalidation and mobile axe. Local full check, Chromium suite and
+npm audit pass; device/browser diversity and actual user testing remain open.
+
+---
+
 ## UX and discovery batch — research and plan (2026-10-31)
 
 **Goal:** make finding and completing a tool task clearer on mobile and desktop,

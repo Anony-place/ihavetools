@@ -964,7 +964,16 @@ await domTest('PDF organizer accepts a drop, reorders, rotates, removes and expo
   const event = new window.Event('drop', { bubbles: true, cancelable: true }); Object.defineProperty(event, 'dataTransfer', { value: { files: [file] } });
   app.querySelector('.dropzone').dispatchEvent(event); await new Promise(r => setTimeout(r, 100));
   assert.equal(app.querySelectorAll('.file-row').length, 3, app.textContent);
-  click(app.querySelector('[aria-label="Remove page 2"]'));
+  const ranges = app.querySelector('input[type=text]');
+  ranges.value = '1, 4'; click(btnByLabel(app, 'Apply page filter'));
+  assert.equal(app.querySelectorAll('.file-row').length, 3, 'invalid range leaves pages intact');
+  ranges.value = '1, 3'; click(btnByLabel(app, 'Apply page filter'));
+  assert.equal(app.querySelectorAll('.file-row').length, 2);
+  click(btnByLabel(app, 'Keep even pages'));
+  assert.equal(app.querySelectorAll('.file-row').length, 2, 'empty parity leaves pages intact');
+  click(btnByLabel(app, 'Reverse page order'));
+  assert.match(app.querySelector('.file-row').textContent, /Original page 3/);
+  click(btnByLabel(app, 'Reverse page order'));
   click(app.querySelector('[aria-label="Move page 3 up"]'));
   click(app.querySelector('[aria-label="Rotate page 3 clockwise"]'));
   let output; const original = URL.createObjectURL; URL.createObjectURL = (blob) => { output = blob; return 'blob:test'; };
@@ -972,6 +981,24 @@ await domTest('PDF organizer accepts a drop, reorders, rotates, removes and expo
     assert.ok(output, 'download was not created'); const result = await lib.PDFDocument.load(await output.arrayBuffer());
     assert.equal(result.getPageCount(), 2); assert.equal(result.getPage(0).getWidth(), 300); assert.equal(result.getPage(0).getRotation().angle, 90);
     click(btnByLabel(app, 'Restore original')); assert.equal(app.querySelectorAll('.file-row').length, 3);
+  } finally { URL.createObjectURL = original; }
+});
+await domTest('PDF organizer ignores an export superseded by page filtering', async () => {
+  const lib = await import('pdf-lib'); let release;
+  const wait = new Promise(resolve => { release = resolve; });
+  window.PDFLib = { ...lib, PDFDocument: { create: async () => { await wait; return lib.PDFDocument.create(); }, load: (bytes, ...args) => lib.PDFDocument.load(new Uint8Array(bytes), ...args) } };
+  const src = await lib.PDFDocument.create(); src.addPage([100,200]); src.addPage([200,300]);
+  const app = await loadToolPage('pdf-organizer','pdf');
+  const e = new window.Event('drop',{bubbles:true,cancelable:true});
+  Object.defineProperty(e,'dataTransfer',{value:{files:[new File([await src.save()],'two.pdf',{type:'application/pdf'})]}});
+  app.querySelector('.dropzone').dispatchEvent(e); await new Promise(r => setTimeout(r,100));
+  let output; const original = URL.createObjectURL; URL.createObjectURL = blob => { output = blob; return 'blob:test'; };
+  try {
+    click(btnByLabel(app,'Export organized PDF'));
+    click(btnByLabel(app,'Keep even pages'));
+    release(); await new Promise(r => setTimeout(r,100));
+    assert.equal(output,undefined,'stale export must not download');
+    assert.equal(app.querySelectorAll('.file-row').length,1);
   } finally { URL.createObjectURL = original; }
 });
 await domTest('PDF merge handles dropped duplicate filenames by identity and removal', async () => {
