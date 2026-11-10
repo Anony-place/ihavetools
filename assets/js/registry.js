@@ -1214,14 +1214,14 @@ export const tools = [
     keywords: ['json', 'csv', 'convert', 'json to csv', 'export', 'spreadsheet'],
     aliases: ['json2csv', 'convert json to csv', 'json to excel'],
     popularity: 72, added: '2026-06-16',
-    steps: 'Paste a JSON array of objects.|Set the delimiter; optionally pick which columns to include.|Convert, then copy or download the CSV.' }),
+    steps: 'Paste a JSON array of objects or load a local .json file.|Choose a delimiter, whether to include a header, and optional columns.|Convert, then copy or download the CSV. Treat untrusted spreadsheet cells as text.' }),
   T({ id: 'json-lines-converter', name: 'JSON Lines Converter', icon: 'brackets', engine: 'data', categories: ['data', 'developer'],
     blurb: 'Convert JSON ⇄ JSON Lines (NDJSON) with per-line validation.',
     description: 'Convert a JSON array to JSON Lines (one value per line) and back. Duplicate keys and unsafe integers are rejected; decimal numbers may round.',
     keywords: ['jsonl', 'ndjson', 'json lines', 'convert', 'streaming json'],
     aliases: ['jsonl', 'ndjson', 'json lines'],
     popularity: 58, added: '2026-09-14',
-    steps: 'Paste JSON or JSON Lines.|Click the direction you need (To JSONL or To JSON).|Copy the result or download it as a file.' }),
+    steps: 'Paste JSON or JSON Lines, or load a local .json, .jsonl, .ndjson or .txt file.|Choose the conversion direction.|Copy the result or download it with the matching file extension.' }),
 
   // ── Miscellaneous ──────────────────────────────────────────────────────────
   T({ id: 'random-number-generator', name: 'Random Number Generator', icon: 'shuffle', engine: 'misc', categories: ['misc'],

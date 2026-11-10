@@ -4,7 +4,7 @@
 // embedded commas/newlines) — no naive splitting.
 // =============================================================================
 import { parseConversionJson } from './developer.js';
-import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, readFile, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, readFile, dropzone, downloadBlob, mountTool } from '../ui.js';
 
 // Bounds apply to pasted input as well as uploaded text. They are deliberately
 // independent of file size because small sparse inputs can expand dramatically.
@@ -109,9 +109,12 @@ export function jsonToCsv(jsonText, { delimiter = ',', columns = null, includeHe
     if (s.includes('"') || s.includes(delimiter) || /[\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
   };
+  // Quote a single empty field so a one-column empty record is not confused
+  // with a missing/trailing line, especially when the header is omitted.
+  const line = values => values.map(cell).join(delimiter) || '""';
   const lines = [];
-  if (includeHeader) lines.push(headers.map(cell).join(delimiter));
-  for (const o of objs) lines.push(headers.map((hd) => cell(Object.hasOwn(o, hd) ? o[hd] : undefined)).join(delimiter));
+  if (includeHeader) lines.push(line(headers));
+  for (const o of objs) lines.push(line(headers.map((hd) => Object.hasOwn(o, hd) ? o[hd] : undefined)));
   return lines.join('\n');
 }
 
@@ -167,6 +170,29 @@ export function prettyJsonBounded(value) {
   return JSON.stringify(value, null, 2);
 }
 
+// Import is intentionally separate from conversion: JSONL has two directions.
+// A revision invalidates pending reads when users edit, change options or leave.
+function localDataImport({ inp, out, status, revision, accept, title, extensions }) {
+  const zone = dropzone({ accept, title, sub: 'UTF-8 text only, up to 4 MiB and 1,000,000 characters. Read locally.',
+    onReject: () => { revision.value++; zone.clear(); out.placeholder(); status.set('Selection rejected. Existing input was kept; choose a file up to 4 MiB.', 'error'); },
+    onFiles: async files => {
+      zone.clear(); const token = ++revision.value; out.placeholder();
+      try {
+        const file = files[0];
+        if (!file || !extensions.test(file.name)) throw new Error('Choose a supported text file.');
+        if (file.size > 4 * 1024 * 1024) throw new Error('File exceeds 4 MiB.');
+        status.set('Reading file locally…', 'info');
+        const bytes = await readFile(file, 'buffer');
+        if (token !== revision.value) return;
+        let text;
+        try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch { throw new Error('File is not valid UTF-8 text.'); }
+        if (text.length > MAX_TEXT) throw new Error('File exceeds 1,000,000 characters.');
+        inp.value = text; status.set('File loaded locally. Choose a conversion action.', 'success');
+      } catch (e) { if (token === revision.value) { out.placeholder(); status.set(`${e.message} Existing input was kept.`, 'error'); } }
+    } });
+  return zone;
+}
+
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
   'csv-to-json'(root) {
@@ -220,58 +246,75 @@ const defs = {
 
   'json-to-csv'(root) {
     const inp = textarea({ rows: 10, value: '[{"name":"Ada","role":"engineer","city":"London"},{"name":"Grace","role":"Admiral, USN","city":"New York"}]', placeholder: 'Paste a JSON array of objects…' });
-    const delim = select({ options: [{ v: ',', t: 'Comma ,' }, { v: ';', t: 'Semicolon ;' }, { v: '\t', t: 'Tab' }], value: ',' });
+    const delim = select({ options: [{ v: ',', t: 'Comma ,' }, { v: ';', t: 'Semicolon ;' }, { v: '\t', t: 'Tab' }, { v: '|', t: 'Pipe |' }], value: ',' });
     const cols = input({ type: 'text', placeholder: 'e.g. name, city (blank = all columns)' });
+    const header = switchChip({ label: 'Include header row', checked: true });
     const status = statusLine('CSV quoting does not prevent spreadsheet formula execution. Treat untrusted cells as text when opening in spreadsheet software.');
     const out = resultPanel({ label: 'CSV', download: true, downloadName: 'data.csv', downloadMime: 'text/csv;charset=utf-8' });
-    const invalidate = () => { out.placeholder(); status.set('Input or options changed. Convert again.', 'info'); };
-    [inp, delim, cols].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
+    const revision = { value: 0 };
+    window.addEventListener('pagehide', () => { revision.value++; }, { once:true });
+    const invalidate = () => { revision.value++; out.placeholder(); status.set('Input or options changed. Convert again.', 'info'); };
+    [inp, delim, cols, header].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     const run = () => {
+      revision.value++;
       try {
         const csv = jsonToCsv(inp.value, {
           delimiter: delim.value,
+          includeHeader: header.querySelector('input').checked,
           columns: cols.value.split(',').map((s) => s.trim()).filter(Boolean),
         });
         out.set(csv);
         status.set('CSV created. Quoting does not prevent spreadsheet formula execution; treat untrusted values as text.', 'info');
       } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
     };
-    root.append(field({ label: 'JSON array', control: inp }),
+    const zone = localDataImport({ inp, out, status, revision, accept: '.json,application/json,text/plain', title: 'Choose a JSON file or drop it here', extensions: /\.json$/i });
+    root.append(field({ label: 'JSON array', control: inp }), zone,
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Delimiter', control: delim }),
-        field({ label: 'Columns', control: cols, hint: 'Optional — order included columns' })),
+        field({ label: 'Columns', control: cols, hint: 'Optional — order included columns' }), field({ label: 'Header', control: header })),
       actionsRow(btn({ label: 'Convert to CSV', icon: 'table', onClick: run })),
-      status, h('p', { class: 'hint', text: 'Missing, null and empty-string values all become empty cells; nested values become JSON text. Decimal numbers may round; use strings for exact values. Quoting does not prevent spreadsheet formulas. Limit: 10,000 rows, 256 columns, 250,000 cells.' }), h('br'), out.panel);
+      status, h('p', { class: 'hint', text: 'Missing, null and empty-string values all become empty cells; nested values become JSON text. Decimal numbers may round; use strings for exact values. Quoting does not prevent spreadsheet formulas. Limit: 1,000,000 input characters, 10,000 rows, 256 columns, 250,000 cells; file import up to 4 MiB.' }), h('br'), out.panel);
   },
 
   'json-lines-converter'(root) {
     const inp = textarea({ rows: 10, value: '{"name":"Ada","year":1815}\n{"name":"Grace","year":1906}', placeholder: 'Paste JSON or JSON Lines…' });
     const status = statusLine('JSONL is one JSON value per line — the format of choice for logs and streaming data.');
-    const out = resultPanel({ label: 'Result', download: true, downloadName: 'converted.txt' });
-    inp.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Convert again.', 'info'); });
+    const out = resultPanel({ label: 'Result' });
+    const revision = { value: 0 }; let resultKind = null;
+    window.addEventListener('pagehide', () => { revision.value++; }, { once:true });
+    const download = btn({ label: 'Download result', icon: 'download', variant: 'secondary', onClick: () => {
+      if (!resultKind || !out.text) return;
+      const ok = downloadBlob(new Blob([out.text], {type: resultKind === 'json' ? 'application/json;charset=utf-8' : 'application/x-ndjson;charset=utf-8'}), resultKind === 'json' ? 'converted.json' : 'converted.jsonl');
+      status.set(ok ? 'Download requested; check your browser downloads.' : 'Could not start the download.', ok ? 'success' : 'error');
+    } });
+    download.disabled = true;
+    const resetResult = () => { resultKind = null; download.disabled = true; out.placeholder(); };
+    inp.addEventListener('input', () => { revision.value++; resetResult(); status.set('Input changed. Convert again.', 'info'); });
+    const zone = localDataImport({ inp, out: { placeholder: resetResult }, status, revision, accept: '.json,.jsonl,.ndjson,.txt,application/json,text/plain', title: 'Choose a JSON or JSON Lines file', extensions: /\.(json|jsonl|ndjson|txt)$/i });
     const runTo = (dir) => {
+      revision.value++; resetResult();
       try {
         if (dir === 'to-jsonl') {
-          out.set(jsonArrayToJsonl(inp.value), );
+          out.set(jsonArrayToJsonl(inp.value)); resultKind = 'jsonl'; download.disabled = false;
           out.panel.querySelector('.result-body pre').style.whiteSpace = 'pre';
           status.set('Array → JSON Lines ✓', 'success');
         } else {
           out.panel.querySelector('.result-body pre').style.whiteSpace = 'pre-wrap';
           const arr = jsonlToJsonArray(inp.value);
-          out.set(prettyJsonBounded(arr));
+          out.set(prettyJsonBounded(arr)); resultKind = 'json'; download.disabled = false;
           status.set(`${arr.length} records parsed ✓`, 'success');
         }
       } catch (e) {
-        out.placeholder();
+        resetResult();
         status.set(e.message, 'error');
         // Do not put errors in the downloadable result panel.
       }
     };
-    root.append(field({ label: 'Input (JSON array or JSON Lines)', control: inp }),
+    root.append(field({ label: 'Input (JSON array or JSON Lines)', control: inp }), zone,
       actionsRow(
         btn({ label: 'Array → JSONL', icon: 'brackets', onClick: () => runTo('to-jsonl') }),
-        btn({ label: 'JSONL → Array', variant: 'secondary', icon: 'braces', onClick: () => runTo('to-json') })),
-      status, h('p', { class: 'hint', text: 'Duplicate object keys and unsafe integers are rejected. Decimal numbers use binary floating-point and may round; use strings for exact values. Limit: 1,000,000 input characters, 10,000 lines or records and 10,000,000 formatted output characters.' }), h('br'), out.panel);
+        btn({ label: 'JSONL → Array', variant: 'secondary', icon: 'braces', onClick: () => runTo('to-json') }), download),
+      status, h('p', { class: 'hint', text: 'Duplicate object keys and unsafe integers are rejected. Decimal numbers use binary floating-point and may round; use strings for exact values. Limit: 1,000,000 input characters, 10,000 lines or records and 10,000,000 formatted output characters; file import up to 4 MiB.' }), h('br'), out.panel);
   },
 };
 
