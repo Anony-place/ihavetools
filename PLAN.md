@@ -11,6 +11,21 @@
 
 ---
 
+## PDF-to-image export controls batch
+
+Plan first: [PDF24](https://tools.pdf24.org/en/pdf-to-images) offers resolution,
+quality and grayscale; this describes competitor features, not market demand.
+Extend our existing local PDF-to-Image tool with JPEG quality, color/grayscale,
+extra clockwise quarter-turn rotation and an additional high-resolution preset.
+Apply the same validated options to single-page preview/download and multi-page
+ZIP, keep white background and existing pixel/size limits, invalidate pending
+results on settings edits, and explain pixel memory and rendering fidelity limits.
+Verify actual decoded image pixels, dimensions, ZIP entries, invalid settings,
+render cancellation, accessibility, full CI, preview and production. One PR,
+no paid service. GSC comparison and tax audit remain unverified.
+
+---
+
 ## Image-to-PDF layout and safety batch
 
 Plan first: [iLovePDF](https://www.ilovepdf.com/jpg_to_pdf) describes page

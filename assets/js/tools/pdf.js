@@ -107,6 +107,24 @@ export function fitRect(imgW, imgH, pageW, pageH, margin = 0) {
   return { x: (pageW - w) / 2, y: (pageH - h) / 2, width: w, height: h };
 }
 
+/** Validated PDF raster export settings shared by single and ZIP paths. */
+export function pdfRasterOptions(scale, format, quality, color, rotation) {
+  if (![1,1.5,2,3].includes(scale) || !['png','jpeg'].includes(format) || !['color','gray'].includes(color) || ![0,90,180,270].includes(rotation)) throw new Error('Choose valid image output settings.');
+  if (format === 'jpeg' && (!Number.isInteger(quality) || quality < 1 || quality > 100)) throw new Error('JPEG quality must be a whole number from 1 to 100.');
+  return {scale, format, quality:format === 'jpeg' ? quality / 100 : undefined, color, rotation};
+}
+export function grayscalePixels(data) {
+  for (let i = 0; i < data.length; i += 4) {
+    const luminance = Math.round(0.2126 * data[i] + 0.7152 * data[i+1] + 0.0722 * data[i+2]);
+    data[i] = data[i+1] = data[i+2] = luminance;
+  }
+  return data;
+}
+function rasterGrayscale(ctx, width, height) {
+  const pixels = ctx.getImageData(0, 0, width, height);
+  grayscalePixels(pixels.data); ctx.putImageData(pixels, 0, 0);
+}
+
 /** Page geometry in points. Image-size mode uses one point per pixel. */
 export function imagePdfLayout(width, height, size, orientation, margin) {
   if (![width,height].every(n => Number.isSafeInteger(n) && n > 0) || width * height > 40000000) throw new Error('Image exceeds 40 million pixels or has invalid dimensions.');
@@ -188,8 +206,12 @@ const defs = {
     const preview = h('div', {});
     const page = input({ type: 'number', min: 1, step: 1, value: '1' });
     const ranges = input({ type: 'text', placeholder: 'e.g. 1-3, 7', value: '1' });
-    const scale = select({ options: [{v:'1',t:'Standard (72 DPI)'},{v:'1.5',t:'Medium (108 DPI)'},{v:'2',t:'High (144 DPI)'}], value: '1.5' });
+    const scale = select({ options: [{v:'1',t:'Standard (72 DPI)'},{v:'1.5',t:'Medium (108 DPI)'},{v:'2',t:'High (144 DPI)'},{v:'3',t:'Very high (216 DPI)'}], value: '1.5' });
     const format = select({ options: [{v:'png',t:'PNG'}, {v:'jpeg',t:'JPEG'}], value:'png' });
+    const quality = input({type:'number',min:1,max:100,step:1,value:'92',disabled:true});
+    const color = select({options:[{v:'color',t:'Color'},{v:'gray',t:'Grayscale'}],value:'color'});
+    const rotation = select({options:[{v:'0',t:'No extra rotation'},{v:'90',t:'90° clockwise'},{v:'180',t:'180°'},{v:'270',t:'270° clockwise'}],value:'0'});
+    const readOptions = () => pdfRasterOptions(Number(scale.value),format.value,quality.value === '' ? NaN : Number(quality.value),color.value,Number(rotation.value));
     const download = btn({ label: 'Download image', icon: 'download', variant: 'secondary', onClick: () => {
       if (!result || result.kind !== 'image') { status.set('Render a page before downloading.', 'warning'); return; }
       const ok = downloadBlob(result.blob, result.name);
@@ -229,21 +251,24 @@ const defs = {
     const run = async () => {
       if (!doc || !file) { status.set('Choose a PDF first.', 'warning'); return; }
       cancelRender(); const activeDoc = doc, selectedFile = file, token = revision, action = job;
-      const n = Number(page.value), factor = Number(scale.value), type = format.value;
-      if (!Number.isInteger(n) || n < 1 || n > activeDoc.numPages || ![1,1.5,2].includes(factor) || !['png','jpeg'].includes(type)) { status.set('Choose a valid page and output settings.', 'error'); return; }
+      const n = Number(page.value); let options;
+      if (!Number.isInteger(n) || n < 1 || n > activeDoc.numPages) { status.set('Choose a valid page and output settings.', 'error'); return; }
+      try { options = readOptions(); } catch(e) { status.set(e.message,'error'); return; }
+      const {scale:factor,format:type,quality:jpegQuality,color:colorMode,rotation:extraRotation} = options;
       let canvas;
       try {
         status.set(`Rendering page ${n} locally…`, 'info');
         const pdfPage = await activeDoc.getPage(n); if (token !== revision || action !== job) return;
-        const view = pdfPage.getViewport({ scale: factor }), width = Math.ceil(view.width), height = Math.ceil(view.height);
+        const view = pdfPage.getViewport({ scale: factor, rotation: ((pdfPage.rotate + extraRotation) % 360 + 360) % 360 }), width = Math.ceil(view.width), height = Math.ceil(view.height);
         if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1 || width > 8192 || height > 8192 || width * height > 16000000) throw new Error('Page is too large at this resolution. Choose a lower resolution.');
         canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable in this browser.');
         ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height);
         const task = pdfPage.render({ canvasContext: ctx, viewport: view, background: '#ffffff' }); rendering = task;
         await task.promise; if (token !== revision || action !== job) return;
-        rendering = null; const mime = type === 'png' ? 'image/png' : 'image/jpeg';
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, .92));
+        rendering = null; if (colorMode === 'gray') rasterGrayscale(ctx, width, height);
+        const mime = type === 'png' ? 'image/png' : 'image/jpeg';
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, jpegQuality));
         if (token !== revision || action !== job) return;
         if (!blob || blob.type !== mime) throw new Error('The browser could not encode this image format.');
         const stem = selectedFile.name.replace(/\.pdf$/i, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 70) || 'document';
@@ -258,12 +283,11 @@ const defs = {
       cancelRender();
       const activeDoc = doc, selectedFile = file, token = revision, action = job;
       const current = () => token === revision && action === job;
-      const factor = Number(scale.value), type = format.value;
       let pages;
       try {
         pages = parseRanges(ranges.value, activeDoc.numPages);
         if (pages.length > 20) throw new Error('Select at most 20 pages per ZIP.');
-        if (![1, 1.5, 2].includes(factor) || !['png', 'jpeg'].includes(type)) throw new Error('Choose valid output settings.');
+        const {scale:factor,format:type,quality:jpegQuality,color:colorMode,rotation:extraRotation} = readOptions();
         const { zipSync } = await import('../../vendor/fflate.js');
         if (!current()) return;
         const entries = {}, mime = type === 'png' ? 'image/png' : 'image/jpeg';
@@ -272,15 +296,15 @@ const defs = {
         for (let i = 0; i < pages.length; i++) {
           const n = pages[i]; status.set(`Rendering page ${n} (${i + 1} of ${pages.length}) locally…`, 'info');
           const pdfPage = await activeDoc.getPage(n); if (!current()) return;
-          const view = pdfPage.getViewport({ scale: factor }), width = Math.ceil(view.width), height = Math.ceil(view.height);
+          const view = pdfPage.getViewport({ scale: factor, rotation: ((pdfPage.rotate + extraRotation) % 360 + 360) % 360 }), width = Math.ceil(view.width), height = Math.ceil(view.height);
           if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1 || width > 8192 || height > 8192 || width * height > 16000000) throw new Error(`Page ${n} is too large at this resolution. Choose a lower resolution.`);
           const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
           try {
             const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable in this browser.');
             const task = pdfPage.render({ canvasContext: ctx, viewport: view, background: '#ffffff' }); rendering = task;
             await task.promise; if (!current()) return;
-            rendering = null;
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, .92));
+            rendering = null; if (colorMode === 'gray') rasterGrayscale(ctx, width, height);
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, jpegQuality));
             if (!current()) return;
             if (!blob || blob.type !== mime) throw new Error(`Could not encode page ${n}.`);
             total += blob.size;
@@ -295,9 +319,11 @@ const defs = {
         status.set(`Prepared ${pages.length} page${pages.length === 1 ? '' : 's'} in a ZIP (${fmtBytes(result.blob.size)}). Download when ready.`, 'success');
       } catch (e) { if (current()) { rendering = null; clearResult(); status.set(e.message || 'Could not prepare this ZIP.', 'error'); } }
     };
-    [page, ranges, scale, format].forEach(el => { el.addEventListener('input', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); el.addEventListener('change', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); });
+    format.addEventListener('change', () => { quality.disabled = format.value !== 'jpeg'; });
+    [page, ranges, scale, format, quality, color, rotation].forEach(el => { el.addEventListener('input', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); el.addEventListener('change', () => { cancelRender(); status.set('Settings changed. Render again.', 'info'); }); });
     window.addEventListener('pagehide', reset);
-    root.append(zone, info, h('div', { class: 'field-row' }, field({ label: 'Page number', control: page }), field({ label: 'Resolution', control: scale }), field({ label: 'Image format', control: format })),
+    root.append(zone, info, h('div', { class: 'field-row' }, field({ label: 'Page number', control: page }), field({ label: 'Resolution', control: scale }), field({ label: 'Image format', control: format }), field({label:'JPEG quality (1–100)',control:quality,hint:'Only used for JPEG.'}), field({label:'Color mode',control:color}), field({label:'Extra clockwise rotation',control:rotation})),
+      h('p',{class:'hint',text:'Rotation is added to each page’s existing PDF rotation. Grayscale is an approximate RGB luminance conversion on the rendered white background; it increases memory use. JPEG quality is a browser encoder hint; file size and visual quality vary.'}),
       actionsRow(btn({ label: 'Render page', icon: 'image', onClick: run }), download, btn({ label: 'Clear PDF', variant: 'ghost', onClick: () => { reset(); zone.clear(); status.set('PDF cleared.', 'info'); } })), field({ label: 'Pages for ZIP', hint: 'Up to 20 pages and 50 MiB of encoded images; e.g. 1-3, 7. Duplicates are included once.', control: ranges }),
       actionsRow(btn({ label: 'Prepare ZIP', icon: 'image', onClick: runZip }), zipDownload, btn({ label: 'Cancel rendering', variant: 'ghost', onClick: () => { cancelRender(); status.set('Rendering cancelled; any prepared output was cleared.', 'info'); } })), status, preview,
       privacyNote('Files are processed locally. Pages are rasterized on a white background; text is not selectable. Complex fonts, annotations or forms may render differently; review the image. Password-protected PDFs are not supported.'));

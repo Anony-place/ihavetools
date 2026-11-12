@@ -1782,6 +1782,11 @@ await test('range parsing: singles, ranges, mixed, unsorted, reversed', () => {
   assert.deepEqual(pdf.splitPageGroups(2, 100), [[1,2]]);
   for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(n, 2), /1 to 100 pages/);
   for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(3, n), /whole number/);
+  assert.deepEqual(pdf.pdfRasterOptions(3,'jpeg',80,'gray',90),{scale:3,format:'jpeg',quality:0.8,color:'gray',rotation:90});
+  assert.equal(pdf.pdfRasterOptions(1,'png',NaN,'color',0).quality,undefined);
+  assert.throws(()=>pdf.pdfRasterOptions(2,'jpeg',0,'color',0),/quality/);
+  assert.throws(()=>pdf.pdfRasterOptions(2,'jpeg',92,'gray',45),/settings/);
+  assert.deepEqual([...pdf.grayscalePixels(new Uint8ClampedArray([255,0,0,255,0,255,0,100]))],[54,54,54,255,182,182,182,100]);
   assert.deepEqual(pdf.imagePdfLayout(200,100,'letter','portrait',0), {width:612,height:792,rect:{x:0,y:243,width:612,height:306}});
   assert.equal(pdf.imagePdfLayout(200,100,'a4','auto',36).width,841.89);
   assert.equal(pdf.imagePdfLayout(100,200,'a4','landscape',36).width,841.89);
