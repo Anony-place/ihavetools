@@ -1045,11 +1045,11 @@ export const tools = [
     related: ['meta-tag-generator', 'robots-txt-generator', 'sitemap-generator', 'keyword-density-checker', 'open-graph-preview', 'slug-generator'] }),
   T({ id: 'keyword-density-checker', name: 'Keyword Density & Frequency Checker', icon: 'chart', engine: 'webseo', categories: ['web-seo', 'text'],
     blurb: 'Count keyword frequency and density for words and phrases.',
-    description: 'Paste text or load a local text file to count words and 2–3 word phrases, check a target, filter English stop words or custom exclusions, and download displayed results as CSV.',
+    description: 'Paste text or load a local text file to count words and 2–3 word phrases, compare target phrases, filter English stop words or custom exclusions, and download displayed results as CSV.',
     keywords: ['keyword frequency counter', 'keyword density checker', 'keyword counter', 'keyword density', 'word frequency', 'seo content', 'word count', 'ngrams'],
     aliases: ['keyword frequency counter', 'word frequency counter', 'keyword counter', 'keyword frequency checker'],
     popularity: 61, added: '2026-09-14',
-    steps: 'Paste your content or load a local UTF-8 .txt or .md file.|Optionally enter one target keyword or phrase, then choose phrase length, filters and the maximum number of results.|Review exact counts, density and distinct terms — or download the displayed frequency table as CSV.',
+    steps: 'Paste your content or load a local UTF-8 .txt or .md file.|Optionally enter a single target or compare up to 20 target phrases, one per line, then choose phrase length and filters.|Review counts and density; download the displayed frequency table or target list as separate CSV files.',
     related: ['word-counter', 'meta-tag-generator', 'slug-generator', 'character-counter', 'robots-txt-generator', 'sitemap-generator'],
     faqs: [
       { q: 'What is the ideal keyword density?', a: 'There is no universal percentage that guarantees better rankings. Use density as a sanity check: the dominant terms should match the page’s topic naturally, and the same exact phrase repeated unnaturally can make copy read like keyword stuffing. Clear coverage of the reader’s questions matters more than hitting a magic number.' },
@@ -1070,6 +1070,7 @@ export const tools = [
         'Compare 1-word and 2–3-word views: single words show themes, while phrases reveal canned wording and repeated calls to action.',
         'Do not chase a universal “ideal density”. A short product page, a technical specification and a long guide can all be relevant at very different densities.',
       ] },
+      { h: 'Compare several target phrases', p: 'Enter up to 20 phrases, one per line. The comparison counts each unique lowercase token sequence, even when automatic-table stop words or exclusions are enabled. Overlapping matches count, and absent phrases show zero. Numbers and punctuation are not searchable as tokens: iPhone 15 is treated as iphone. The target CSV contains this comparison separately from the displayed frequency table. For long content and target lists, an operation limit may require shorter input.' },
       { h: 'Counting rules and honest limits', list: [
         'Counting is case-insensitive and recognises Unicode letters. Internal apostrophes and hyphens can remain part of a word.',
         'Numbers and symbols are not counted as words, so a target such as “iPhone 15” is effectively matched on its letters (“iphone”).',

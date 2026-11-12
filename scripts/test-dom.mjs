@@ -1816,15 +1816,24 @@ await domTest('combined date workflow and invalid robots rules remain editable',
  app=await loadToolPage('robots-txt-generator','webseo'); click(btnByLabel(app,'Add rule')); let agent=app.querySelector('input[placeholder^="User-agent"]'), path=app.querySelector('input[placeholder="/private/  (comma-separate multiple)"]'); agent.value='Bad agent'; path.value='/foo'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(statusText(document),/User-agent must/); assert.ok(app.contains(agent)); assert.equal(agent.value,'Bad agent'); agent.value='TestBot'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(app.textContent,/UA: TestBot/);
 });
 
+await domTest('keyword target list compares and invalidates reports', async () => {
+ const app=await loadToolPage('keyword-density-checker','webseo'), [content,targets]=app.querySelectorAll('textarea');
+ content.value='alpha alpha alpha beta'; targets.value='alpha alpha\nALPHA ALPHA\nbeta\nmissing'; fire(targets,'input'); click(btnByLabel(app,'Count keywords'));
+ const rows=app.querySelectorAll('table'); assert.equal(rows.length,2); assert.match(rows[1].textContent,/alpha alpha2/); assert.match(rows[1].textContent,/missing0/); assert.equal(rows[1].querySelectorAll('tbody tr').length,3);
+ targets.value='123';fire(targets,'input');assert.equal(app.querySelectorAll('table').length,0);click(btnByLabel(app,'Count keywords'));assert.match(statusText(document),/at least one word/);
+ click(btnByLabel(app,'Download target CSV'));assert.match(statusText(document),/Analyse a target list/);
+});
 await domTest('keyword text import preserves content on rejection and ignores stale reads', async () => {
  const app=await loadToolPage('keyword-density-checker','webseo'), box=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');
  const saved=global.FileReader; let reader;
- global.FileReader=class { readAsText(){ reader=this; } };
+ global.FileReader=class { readAsArrayBuffer(){ reader=this; } };
  const choose=file=>{Object.defineProperty(picker,'files',{configurable:true,value:[file]});fire(picker,'change');};
  try {
-   box.value='existing'; choose(new File(['x'],'draft.txt')); assert.ok(reader); box.value='new edit'; fire(box,'input'); reader.result='late overwrite'; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'new edit');
+   box.value='existing'; choose(new File(['x'],'draft.txt')); assert.ok(reader); box.value='new edit'; fire(box,'input'); reader.result=new TextEncoder().encode('late overwrite').buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'new edit');
    choose(new File(['x'],'bad.pdf')); assert.match(statusText(document),/Existing content was kept/); assert.equal(box.value,'new edit');
-   choose(new File(['hello'],'draft.txt')); reader.result='hello hello'; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'hello hello'); click(btnByLabel(app,'Count keywords')); assert.match(app.textContent,/hello/);
+   choose(new File(['hello'],'draft.txt')); reader.result=new TextEncoder().encode('hello hello').buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'hello hello'); click(btnByLabel(app,'Count keywords')); assert.match(app.textContent,/hello/);
+   choose(new File(['x'],'bad.txt')); reader.result=new Uint8Array([255]).buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.match(statusText(document),/not valid UTF-8/); assert.equal(box.value,'hello hello');
+   choose(new File(['x'],'slow.txt')); click(btnByLabel(app,'Count keywords')); reader.result=new TextEncoder().encode('late').buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'hello hello');
    choose({name:'huge.txt',size:800001}); assert.match(statusText(document),/Existing content was kept/); assert.equal(box.value,'hello hello');
  } finally {global.FileReader=saved;}
 });

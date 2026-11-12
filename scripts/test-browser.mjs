@@ -174,7 +174,20 @@ try {
   assert.match(await page.locator('#tool-app').innerText(), /alpha/);
   await fileInput.setInputFiles({ name: 'bad.pdf', mimeType: 'application/pdf', buffer: Buffer.from('bad') });
   assert.match(await page.locator('#tool-app .status-line').innerText(), /Existing content was kept/);
-  assert.equal(await page.locator('#tool-app textarea').inputValue(), 'alpha alpha beta');
+  assert.equal(await page.getByLabel('Content', {exact:true}).inputValue(), 'alpha alpha beta');
+  await fileInput.setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from([255,254])});
+  await page.locator('#tool-app .status-line').getByText(/not valid UTF-8/).waitFor();
+  assert.equal(await page.getByLabel('Content',{exact:true}).inputValue(),'alpha alpha beta');
+  await page.getByLabel('Compare target phrases (optional)').fill('alpha alpha\nALPHA ALPHA\nbeta\nmissing');
+  await page.getByRole('button',{name:'Count keywords'}).click();
+  const targetTable=page.locator('#tool-app table').last(); assert.equal(await targetTable.locator('tbody tr').count(),3);
+  assert.match(await targetTable.innerText(),/alpha alpha\s+1\s+66.67%/); assert.match(await targetTable.innerText(),/missing\s+0/);
+  const phraseCsvEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Download target CSV'}).click();
+  const phraseCsvFile=await phraseCsvEvent; assert.equal(phraseCsvFile.suggestedFilename(),'keyword-targets.csv');
+  assert.match((await readFile(await phraseCsvFile.path())).toString(),/"alpha alpha",1,66.6667/);
+  await page.getByLabel('Compare target phrases (optional)').fill('');
+  await page.getByRole('button',{name:'Download target CSV'}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/Analyse a target list/);
+
   await page.getByLabel('Exclude words (optional)').fill('ALPHA');
   await page.getByLabel('Target keyword or phrase').fill('alpha');
   await page.getByRole('button', {name:'Count keywords'}).click();
