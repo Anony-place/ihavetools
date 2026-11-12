@@ -1782,6 +1782,12 @@ await test('range parsing: singles, ranges, mixed, unsorted, reversed', () => {
   assert.deepEqual(pdf.splitPageGroups(2, 100), [[1,2]]);
   for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(n, 2), /1 to 100 pages/);
   for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(3, n), /whole number/);
+  assert.deepEqual(pdf.mergePageSelection('3, 1-2, 2', 4), [0,1,2]);
+  assert.deepEqual(pdf.mergePageSelection('', 2), [0,1]);
+  assert.throws(()=>pdf.mergePageSelection('1,,2', 4), /empty items/);
+  assert.throws(()=>pdf.mergePageSelection('1-501', 501), /500 selected pages/);
+  assert.throws(()=>pdf.mergePageSelection('', 1, 0), /500 selected pages/);
+  assert.throws(()=>pdf.mergePageSelection('4', 3), /does not exist/);
   assert.deepEqual(pdf.parseRanges('1-3, 7, 11-13', 20), [1, 2, 3, 7, 11, 12, 13]);
   assert.deepEqual(pdf.parseRanges('5-3', 20), [3, 4, 5]);
   assert.throws(() => pdf.parseRanges('0', 20), /start at 1/);

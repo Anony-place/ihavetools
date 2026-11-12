@@ -47,6 +47,20 @@ export function parseRanges(text, pageCount, maxPages = Infinity) {
   if (!list.length) throw new Error('No pages selected.');
   return list;
 }
+/** Optional merge ranges are deduplicated and sorted, with a strict output cap. */
+export function mergePageSelection(selection, pageCount, remaining = 500) {
+  if (!Number.isSafeInteger(pageCount) || pageCount < 1) throw new Error('The PDF has no pages.');
+  if (!Number.isSafeInteger(remaining) || remaining < 0 || remaining > 500) throw new Error('Invalid merge page limit.');
+  const value = String(selection).trim();
+  if (!value) {
+    if (pageCount > remaining) throw new Error('Merge supports at most 500 selected pages across all files.');
+    return Array.from({length:pageCount}, (_, i) => i);
+  }
+  if (value.split(',').some(part => !part.trim())) throw new Error('Enter pages or ranges separated by commas, without empty items.');
+  try { return parseRanges(value, pageCount, remaining).map(page => page - 1); }
+  catch (err) { if (/Select at most/.test(err.message)) throw new Error('Merge supports at most 500 selected pages across all files.'); throw err; }
+}
+
 /** Consecutive one-based page groups, bounded for client-side ZIP generation. */
 export function splitPageGroups(pageCount, groupSize) {
   if (!Number.isInteger(pageCount) || pageCount < 1 || pageCount > 100) throw new Error('ZIP splitting supports 1 to 100 pages. Use Extract pages for larger documents.');
@@ -445,23 +459,34 @@ const defs = {
     const listWrap = h('div', { class: 'file-list' });
     const status = statusLine('Add two or more PDFs. Use ↑/↓ to reorder.');
     const grid = statsGrid();
-    const onFiles = (incoming) => {
-      for (const f of incoming) {
-        if (!/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { status.set(`“${f.name}” is not a PDF file.`, 'error'); continue; }
-        listWrap.append(pdfFilesRow(f, updateGrid));
-      }
-      updateGrid();
-      const count = listWrap.children.length;
-      if (count) status.set(`${count} PDF${count === 1 ? '' : 's'} ready. Reorder if needed, then Merge.`, 'info');
-    };
-    const zone = makeZone(true, onFiles, 'Choose PDF files or drop them here', () => { revision++; grid.replaceChildren(); zone.clear(); status.set('Selection rejected: each file must be within 200 MB. Existing list was kept; start again.', 'error'); });
     const updateGrid = () => { revision++; status.set('List updated. Start the action when ready.', 'info'); grid.set([
       { label: 'Files', value: String(listWrap.children.length) },
       { label: 'Total size', value: fmtBytes([...listWrap.children].reduce((s, row) => s + row.file.size, 0)) },
     ]); };
+    const onFiles = (incoming) => {
+      const existing = [...listWrap.children];
+      const invalid = incoming.find(f => !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf');
+      const bytes = [...existing.map(row => row.file), ...incoming].reduce((sum, f) => sum + f.size, 0);
+      if (invalid || existing.length + incoming.length > 20 || bytes > 200 * 1024 * 1024) {
+        revision++; grid.replaceChildren();
+        status.set(invalid ? `“${invalid.name}” is not a PDF. No files were added.` : 'Queue limit: at most 20 files and 200 MiB total. No files were added.', 'error'); return;
+      }
+      for (const f of incoming) {
+        const row = pdfFilesRow(f, updateGrid);
+        row.classList.add('pdf-merge-row');
+        const pages = input({type:'text',placeholder:'All pages (e.g. 1-3, 5)', 'aria-label':`Pages for ${f.name}`});
+        pages.addEventListener('input', updateGrid); row.pageRange = pages;
+        row.append(h('div', {class:'merge-page-range'}, h('span',{text:'Pages (optional)'}), pages));
+        listWrap.append(row);
+      }
+      updateGrid();
+      const count = listWrap.children.length;
+      status.set(`${count} PDF${count === 1 ? '' : 's'} ready. Reorder if needed, then Merge.`, 'info');
+    };
+    const zone = makeZone(true, onFiles, 'Choose PDF files or drop them here', () => { revision++; grid.replaceChildren(); zone.clear(); status.set('Selection rejected: each file must be within 200 MiB. Existing list was kept.', 'error'); });
     const run = async () => {
       grid.replaceChildren();
-      const ordered = [...listWrap.querySelectorAll('.file-row')].map((r) => r.file);
+      const ordered = [...listWrap.querySelectorAll('.file-row')].map(row => ({file:row.file, range:row.pageRange.value}));
       const version = revision, token = ++operation;
       const current = () => version === revision && token === operation;
       if (ordered.length < 2) { status.set('Add at least two PDF files to merge.', 'warning'); return; }
@@ -470,16 +495,23 @@ const defs = {
         const PDFLib = await loadPdfLib();
         const out = await PDFLib.PDFDocument.create();
         let pages = 0;
-        for (const f of ordered) {
+        for (const item of ordered) {
+          const f = item.file;
           if (!current()) return;
           const bytes = await readFile(f, 'buffer');
+          if (!current()) return;
           let src;
           try { src = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: false }); }
           catch (err) {
             if (/encrypt/i.test(String(err))) throw new Error(`“${f.name}” is password-protected. Remove the password first, then merge.`);
             throw new Error(`“${f.name}” could not be read as a PDF — the file may be corrupted.`);
           }
-          const copied = await out.copyPages(src, src.getPageIndices());
+          if (!current()) return;
+          let indices;
+          try { indices = mergePageSelection(item.range, src.getPageCount(), 500 - pages); }
+          catch (e) { throw new Error(`“${f.name}”: ${e.message}`); }
+          const copied = await out.copyPages(src, indices);
+          if (!current()) return;
           copied.forEach((p) => out.addPage(p));
           pages += copied.length;
         }
@@ -487,6 +519,7 @@ const defs = {
         status.set('Writing the merged PDF…', 'info');
         const outBytes = await out.save();
         if (!current()) return;
+        if (outBytes.byteLength > 200 * 1024 * 1024) throw new Error('Merged output exceeds 200 MiB; choose fewer pages or smaller files.');
         const blob = new Blob([outBytes], { type: 'application/pdf' });
         if (!downloadBlob(blob, 'merged.pdf')) throw new Error('Could not start the download in this browser.');
         grid.set([{ label: 'Pages merged', value: String(pages), kind: 'good' }, { label: 'Output size', value: fmtBytes(blob.size) }]);
@@ -494,6 +527,7 @@ const defs = {
       } catch (e) { if (current()) status.set(e.message, 'error'); }
     };
     root.append(zone, listWrap,
+      h('p', {class:'hint', text:'Up to 20 PDFs, 200 MiB combined, 500 selected pages and 200 MiB output. Optional ranges select pages in ascending order; duplicates are included once per file. Leave blank for all pages. Processing may require substantial device memory.'}),
       actionsRow(
         btn({ label: 'Merge PDFs', icon: 'layers', onClick: run }),
         btn({ label: 'Clear list', variant: 'ghost', icon: 'x', onClick: () => { listWrap.replaceChildren(); updateGrid(); status.set('Cleared.'); } })),
