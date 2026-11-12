@@ -225,6 +225,29 @@ export function keywordDensity(text, { phraseLength = 1, filterStop = true, minC
   return { total: words.length, totalWords: words.length, totalPhrases, distinct: counts.size, matched: matchedTerms.length, terms, top: terms, target: targetResult };
 }
 
+/** Count a small, normalized list of phrases independently of table filters. */
+export function keywordTargetList(text, targets) {
+  if (String(text).length > 200000) throw new Error('Content exceeds the 200,000-character limit.');
+  if (String(targets).length > 2000) throw new Error('Target list exceeds 2,000 characters.');
+  const lines = String(targets).split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (lines.length > 20) throw new Error('Enter at most 20 target phrases.');
+  const unique = new Map();
+  for (const line of lines) {
+    const tokens = tokenizeWords(line);
+    if (!tokens.length) throw new Error('Each target must contain at least one word made of letters.');
+    const key = tokens.join(' ');
+    if (!unique.has(key)) unique.set(key, tokens);
+  }
+  const words = tokenizeWords(text);
+  const work = [...unique.values()].reduce((sum,tokens) => sum + tokens.length * words.length, 0);
+  if (work > 2000000) throw new Error('Target list is too long for this content. Reduce the targets or content.');
+  return [...unique].map(([phrase,tokens]) => {
+    let count = 0;
+    for (let i=0; i+tokens.length<=words.length; i++) if (tokens.every((word,j)=>words[i+j]===word)) count++;
+    return {phrase,count,density:words.length ? Math.min(100,count*tokens.length/words.length*100) : 0};
+  });
+}
+
 export function keywordFrequencyCsv(terms = []) {
   const cell = (value) => `"${String(value).replace(/"/g, '""')}"`;
   return [
@@ -592,6 +615,7 @@ const defs = {
   'keyword-density-checker'(root) {
     const inp = textarea({ rows: 10, mono: false, placeholder: 'Paste your content here…' });
     const target = input({ type: 'text', placeholder: 'Optional — e.g. online tools' });
+    const targets = textarea({rows:3, placeholder:'One phrase per line, e.g.\nonline tools\nkeyword research'});
     const len = select({ options: [{ v: '1', t: 'Single words' }, { v: '2', t: '2-word phrases' }, { v: '3', t: '3-word phrases' }], value: '1' });
     const excluded = input({ type: 'text', placeholder: 'e.g. brand, example, product', maxlength: 2000 });
     const limit = select({ options: [{v:'25',t:'25 terms'}, {v:'100',t:'100 terms'}, {v:'500',t:'500 terms'}], value: '100' });
@@ -600,7 +624,7 @@ const defs = {
     const grid = statsGrid();
     const status = statusLine('');
     const out = h('div', {});
-    let lastCsv = '', importRevision = 0;
+    let lastCsv = '', targetCsv = '', importRevision = 0;
     const file = input({ type: 'file', accept: '.txt,.md,text/plain,text/markdown' });
     file.addEventListener('change', async () => {
       const selected = file.files?.[0]; file.value = '';
@@ -611,26 +635,29 @@ const defs = {
       }
       status.set('Reading file locally…', 'info');
       try {
-        const text = await readFile(selected);
+        const bytes = await readFile(selected, 'buffer');
         if (token !== importRevision) return;
+        let text; try { text = new TextDecoder('utf-8', {fatal:true}).decode(bytes); } catch { status.set('File is not valid UTF-8. Existing content was kept.', 'error'); return; }
         if (typeof text !== 'string' || text.length > 200000) { status.set('File exceeds the 200,000-character content limit. Existing content was kept.', 'error'); return; }
-        inp.value = text; lastCsv = ''; grid.replaceChildren(); out.replaceChildren();
+        inp.value = text; lastCsv = ''; targetCsv = ''; grid.replaceChildren(); out.replaceChildren();
         status.set('Text loaded locally as UTF-8. Press Count keywords to analyse.', 'info');
       } catch { if (token === importRevision) status.set('Could not read that file. Existing content was kept.', 'error'); }
     });
     inp.addEventListener('input', () => { importRevision++; });
     const run = () => {
+      importRevision++;
       const text = inp.value;
-      if (!text.trim()) { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Paste some content first.', 'warning'); return; }
-      let r; try { r = keywordDensity(text, {
+      if (!text.trim()) { lastCsv = ''; targetCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Paste some content first.', 'warning'); return; }
+      let r, list; try { list = keywordTargetList(text, targets.value); r = keywordDensity(text, {
         phraseLength: Number(len.value),
         filterStop: stop.querySelector('input').checked,
         minCount: Number(minimum.value),
         limit: Number(limit.value),
         excluded: excluded.value,
         target: target.value,
-      }); } catch (e) { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set(e.message, 'error'); return; }
+      }); } catch (e) { lastCsv = ''; targetCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set(e.message, 'error'); return; }
       lastCsv = keywordFrequencyCsv(r.terms);
+      targetCsv = list.length ? keywordFrequencyCsv(list) : '';
       const stats = [
         { label: 'Total words', value: r.totalWords.toLocaleString(), kind: 'good' },
         { label: 'Distinct terms', value: r.distinct.toLocaleString() },
@@ -649,13 +676,15 @@ const defs = {
           : h('p', { class: 'hint', text: 'No terms match the current minimum-frequency filter.' }),
         r.matched > r.terms.length
           ? h('p', { class: 'hint', text: `Showing the top ${r.terms.length} of ${r.matched.toLocaleString()} matching terms. Download the CSV for the displayed rows.` })
-          : h('span'));
+          : h('span'),
+        ...(list.length ? [h('h3',{text:'Target phrase comparison'}), h('p',{class:'hint',text:'One row per unique normalized target; counts include overlapping matches and ignore phrase-table filters.'}), table({headers:['Target','Frequency','Density'],rows:list.map(t=>[t.phrase,String(t.count),`${t.density.toFixed(2)}%`])})] : []));
       status.set(`Analysed ${r.totalWords.toLocaleString()} words ✓`, 'success');
     };
-    [inp, target, excluded, len, minimum, limit, stop].forEach(el => { const clear = () => { lastCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Inputs changed. Analyse again.', 'info'); }; el.addEventListener('input', clear); el.addEventListener('change', clear); });
+    [inp, target, targets, excluded, len, minimum, limit, stop].forEach(el => { const clear = () => { lastCsv = ''; targetCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Inputs changed. Analyse again.', 'info'); }; el.addEventListener('input', clear); el.addEventListener('change', clear); });
     root.append(field({ label: 'Content', control: inp }),
       field({ label: 'Load text file (optional)', control: file, hint: 'Local .txt or .md, UTF-8, up to 800,000 bytes and 200,000 characters; replaces the content above.' }),
       field({ label: 'Target keyword or phrase', control: target, hint: 'Counted even if it contains excluded or stop words' }),
+      field({label:'Compare target phrases (optional)', control:targets, hint:'Up to 20 lines and 2,000 characters. Duplicate normalized phrases are counted once; numbers and symbols are ignored.'}),
       field({ label: 'Exclude words (optional)', control: excluded, hint: 'Separate words with commas or spaces. A phrase containing any excluded word is skipped; target counts are unaffected.' }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Phrase length', control: len }),
@@ -664,6 +693,11 @@ const defs = {
         field({ label: 'Options', control: stop })),
       actionsRow(
         btn({ label: 'Count keywords', icon: 'chart', onClick: run }),
+        btn({ label: 'Download target CSV', variant:'secondary', onClick: () => {
+          if (!targetCsv) { status.set('Analyse a target list before downloading its CSV.', 'warning'); return; }
+          const ok = downloadText(targetCsv, 'keyword-targets.csv', 'text/csv;charset=utf-8');
+          status.set(ok ? 'Target CSV download requested.' : 'Could not request the target CSV download.', ok ? 'info' : 'error');
+        }}),
         btn({ label: 'Download CSV', variant: 'secondary', icon: 'download', onClick: () => {
           if (!lastCsv) { status.set('Analyse some content before downloading the CSV.', 'warning'); return; }
           if (!downloadText(lastCsv, 'keyword-frequency.csv', 'text/csv;charset=utf-8')) { status.set('Could not request the CSV download in this browser.', 'error'); return; }

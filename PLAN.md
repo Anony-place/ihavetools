@@ -11,6 +11,24 @@
 
 ---
 
+## Keyword editing workflow batch — 2026-10-31
+
+Plan: improve the existing Keyword Density & Frequency Checker, not duplicate
+pages. [SEO Review Tools](https://www.seoreviewtools.com/keyword-density-checker/)
+describes text/phrase frequency and filters; that is competitor feature evidence,
+not measured market demand. Support an optional bounded list of target phrases,
+independent of automatic phrase filters, with a separate local CSV report. Retain
+the existing single target, overlap rules and honest tokenization/density limits.
+Reject invalid targets and bounded work rather than freeze; clear stale output on
+edits and protect imports from races and malformed UTF-8. Tests cover Unicode,
+zero/overlap, duplicates, quotas, import rejection, CSV, mobile and accessibility.
+[Google](https://developers.google.com/search/docs/essentials/spam-policies#keyword-stuffing)
+warns against keyword stuffing; no ideal density or ranking promise. Local only,
+no paid services. One consolidated PR, full CI and preview before production.
+Search Console chronology and market volume remain unverified; tax audit pending.
+
+---
+
 ## Bulk image cover-crop batch — 2026-10-31
 
 Plan: extend the established bulk image workflow, not create a duplicate page.

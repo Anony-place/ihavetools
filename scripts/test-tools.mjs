@@ -1005,6 +1005,17 @@ await test('2-word phrases counted', () => {
   const r = seo.keywordDensity('online tools are great online tools forever', { phraseLength: 2, filterStop: false });
   assert.ok(r.top.some((t) => t.phrase === 'online tools' && t.count === 2));
 });
+await test('target phrase comparison normalizes, deduplicates, overlaps and bounds work', () => {
+  const r=seo.keywordTargetList('Alpha alpha alpha हिन्दी दुनिया', 'ALPHA alpha\nalpha alpha\nहिन्दी दुनिया\nmissing');
+  assert.equal(r.length,3); assert.deepEqual(r[0],{phrase:'alpha alpha',count:2,density:80});
+  assert.equal(r[1].count,1); assert.equal(r[2].count,0);
+  assert.deepEqual(seo.keywordTargetList('', 'test')[0],{phrase:'test',count:0,density:0});
+  assert.throws(()=>seo.keywordTargetList('text','123 !!!'),/at least one word/);
+  assert.throws(()=>seo.keywordTargetList('text',Array(21).fill('x').join('\n')),/20 target/);
+  assert.throws(()=>seo.keywordTargetList('x '.repeat(10000),Array(20).fill('x '.repeat(11)).map((s,i)=>s+String.fromCharCode(97+i)).join('\n')),/too long/);
+  assert.throws(()=>seo.keywordTargetList('x','a'.repeat(2001)),/2,000/);
+  assert.match(seo.keywordFrequencyCsv(r), /"alpha alpha",2,80.0000/);
+});
 await test('keyword frequency target, distinct terms, minimum filter and CSV', () => {
   const text = `${'word '.repeat(192)}${'keyword research '.repeat(4)}`;
   const r = seo.keywordDensity(text, { phraseLength: 1, filterStop: true, target: 'Keyword Research' });
