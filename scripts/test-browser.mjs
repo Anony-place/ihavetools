@@ -174,7 +174,7 @@ try {
   assert.match(await page.locator('#tool-app').innerText(), /alpha/);
   await fileInput.setInputFiles({ name: 'bad.pdf', mimeType: 'application/pdf', buffer: Buffer.from('bad') });
   assert.match(await page.locator('#tool-app .status-line').innerText(), /Existing content was kept/);
-  assert.equal(await page.locator('#tool-app textarea').inputValue(), 'alpha alpha beta');
+  assert.equal(await page.getByLabel('Content', {exact:true}).inputValue(), 'alpha alpha beta');
   await fileInput.setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from([255,254])});
   await page.locator('#tool-app .status-line').getByText(/not valid UTF-8/).waitFor();
   assert.equal(await page.getByLabel('Content',{exact:true}).inputValue(),'alpha alpha beta');
