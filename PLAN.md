@@ -27,6 +27,18 @@ student and developer tools and document evidence separately from measured
 market demand; no fabricated volume, paid service or ranking guarantee. One
 consolidated PR: tests, security audit, CI/preview, merge and production verify.
 
+### Continued growth batch — JSON validation workflow
+
+Competitor evidence in MARKET-RESEARCH.md identifies local file loading and
+validation as established workflows, not a measured demand estimate. Improve
+the existing JSON Validator instead of publishing duplicate pages: add bounded
+UTF-8 local JSON import, preserve existing text on failure, guard stale async
+reads, and a keyboard-accessible jump to the first error. Invalidate stale
+results immediately on edit; explain limits and duplicate-key warning. Test
+errors, async races, mobile and accessibility alongside the three earlier tools.
+Keep everything local and free. One existing PR; CI and preview before merge,
+production checks afterward. No claim that these changes guarantee traffic.
+
 ---
 
 ## Selective PDF ZIP and custom ranges batch — 2026-10-31
@@ -52,8 +64,8 @@ selection from documents larger than 100 pages, explicit overlap accounting and
 stable part names. Engine, DOM cancellation, generated-site and audit checks pass.
 Local Chromium 143 verified actual ZIP/PDF contents, custom overlap and mobile
 axe; the full local run later timed out in the unrelated PDF-to-image render
-test. Full CI browser suite and production verification remain required. Other
-browsers, physical devices and complex PDFs are unverified.
+test. PR #68 passed full CI, merged, and the updated page was verified on
+production. Other browsers, physical devices and complex PDFs are unverified.
 
 ---
 

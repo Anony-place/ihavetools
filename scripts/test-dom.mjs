@@ -120,6 +120,20 @@ await domTest('json-validator: live flagging', async () => {
   await new Promise((r) => setTimeout(r, 500));
   assert.match(statusText(document), /Invalid JSON/);
 });
+await domTest('JSON validator import, jump, invalidation and stale reads', async () => {
+ const app=await loadToolPage('json-validator','developer'), text=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');
+ const saved=global.FileReader, pending=[]; global.FileReader=class {readAsArrayBuffer(){pending.push(this);}};
+ const choose=(name,size=1)=>{Object.defineProperty(picker,'files',{configurable:true,value:[{name,size}]});fire(picker,'change');};
+ const finish=async (idx, bytes)=>{pending[idx].result=bytes;pending[idx].onload();await new Promise(r=>setTimeout(r,0));};
+ try {
+  text.value='{"keep":1}';choose('bad.txt');assert.match(statusText(document),/Existing input was kept/);assert.equal(text.value,'{"keep":1}');
+  choose('invalid.json');await finish(0,new Uint8Array([0xff]).buffer);assert.match(statusText(document),/valid UTF-8/);assert.equal(text.value,'{"keep":1}');
+  choose('broken.json');await finish(1,new TextEncoder().encode('{\n "a": }').buffer);assert.match(statusText(document),/Invalid JSON.*line 2/); click(btnByLabel(app,'Go to error')); assert.equal(document.activeElement,text);assert.equal(text.selectionStart,8);
+  text.value='{"a":1,"a":2}';fire(text,'input');assert.equal(btnByLabel(app,'Go to error'),undefined);click(btnByLabel(app,'Validate'));assert.match(statusText(document),/duplicate.*overwrite/i);
+  choose('late.json');text.value='{"new":true}';fire(text,'input');await finish(2,new TextEncoder().encode('{"old":true}').buffer);assert.equal(text.value,'{"new":true}');
+  choose('late.json');click(btnByLabel(app,'Clear'));await finish(3,new TextEncoder().encode('{"old":true}').buffer);assert.equal(text.value,'');assert.match(statusText(document),/Cleared/);
+ } finally {global.FileReader=saved;}
+});
 await domTest('base64-encoder: unicode round trip via UI', async () => {
   const app = await loadToolPage('base64-encoder', 'developer');
   const ta = app.querySelector('textarea');

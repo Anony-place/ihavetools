@@ -755,28 +755,46 @@ const defs = {
 
   'json-validator'(root) {
     const inp = textarea({ rows: 12, placeholder: 'Paste JSON to validate…' });
+    const file = input({type:'file', accept:'.json,application/json'});
     const status = statusLine('Ready.');
     const detail = h('div', {});
+    let timer, revision = 0;
+    const invalidate = () => { clearTimeout(timer); detail.replaceChildren(); };
+    window.addEventListener('pagehide', () => { revision++; clearTimeout(timer); }, {once:true});
     const run = () => {
+      clearTimeout(timer);
       const src = inp.value;
       detail.replaceChildren();
       if (!src.trim()) { status.set('Paste some JSON first.', 'warning'); return; }
       const v = validateJson(src);
       if (v.ok) {
         if (v.duplicateKeys?.length) {
-          status.set(`Valid JSON ✓ (with duplicate object keys: ${v.duplicateKeys.slice(0, 4).join(', ')}${v.duplicateKeys.length > 4 ? '…' : ''})`, 'warning');
+          status.set(`Valid JSON ✓ (with duplicate object keys: ${v.duplicateKeys.slice(0, 4).join(', ')}${v.duplicateKeys.length > 4 ? '…' : ''}). Other parsers may overwrite values.`, 'warning');
         } else status.set('Valid JSON ✓ — the document parses cleanly.', 'success');
       } else {
         status.set(`${/limit/.test(v.message) ? 'Unable to validate' : 'Invalid JSON'} — line ${v.line}, column ${v.column}`, 'error');
         detail.append(errorBanner(v.message, `Line ${v.line}, column ${v.column}. Fix this spot and validate again.`));
+        if (!/limit/.test(v.message)) detail.append(btn({label:'Go to error', variant:'secondary', onClick:() => { inp.focus(); inp.setSelectionRange(v.position, v.position); }}));
       }
     };
+    file.addEventListener('change', async () => {
+      const selected = file.files?.[0]; file.value = ''; if (!selected) return;
+      const token = ++revision; invalidate();
+      try {
+        if (!/\.json$/i.test(selected.name) || selected.size > 4000000) throw new Error('Choose a .json file up to 4,000,000 bytes.');
+        status.set('Reading JSON locally…', 'info');
+        const bytes = await readFile(selected, 'buffer'); if (token !== revision) return;
+        let text; try { text = new TextDecoder('utf-8', {fatal:true}).decode(bytes); } catch { throw new Error('File is not valid UTF-8.'); }
+        if (text.length > 1000000) throw new Error('File exceeds the 1,000,000-character limit.');
+        inp.value = text; run();
+      } catch (e) { if (token === revision) status.set(`${e.message || 'Could not read that file.'} Existing input was kept.`, 'error'); }
+    });
     root.append(field({ label: 'JSON to validate', control: inp }),
-      actionsRow(btn({ label: 'Validate', icon: 'check-circle', onClick: run }),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; detail.replaceChildren(); status.set('Cleared.'); } })),
-      status, detail);
-    let t;
-    inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 400); });
+      field({label:'Load local JSON file', control:file, hint:'UTF-8 .json, up to 4,000,000 bytes and 1,000,000 characters. Existing text is kept on failure.'}),
+      actionsRow(btn({ label: 'Validate', icon: 'check-circle', onClick: () => { revision++; run(); } }),
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { revision++; invalidate(); inp.value = ''; file.value = ''; status.set('Cleared.'); inp.focus(); } })),
+      status, detail, privacyNote('Files are read and validated in your browser. Syntax validation does not validate a JSON Schema.'));
+    inp.addEventListener('input', () => { revision++; invalidate(); status.set('Input changed. Checking shortly…', 'info'); timer = setTimeout(run, 400); });
   },
 
   'json-minifier'(root) {
