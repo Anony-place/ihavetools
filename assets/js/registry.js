@@ -890,7 +890,7 @@ export const tools = [
     keywords: ['convert image', 'jpg to png', 'png to jpg', 'webp', 'image format', 'heic alternative'],
     aliases: ['jpg to png', 'png to jpg', 'webp converter', 'png converter', 'jpeg converter', 'image format converter'],
     popularity: 80, added: '2026-09-16',
-    steps: 'Drop or choose an image.|Pick the output format and, for JPEG, a transparency background.|Click Convert, then download the converted file.' }),
+    steps: 'Drop or choose an image.|Pick the output format and, for JPEG, a transparency background. Set quality for JPEG or WebP.|Click Convert, then download the converted file.' }),
   T({ id: 'image-rotator', name: 'Rotate & Flip Image', icon: 'image', engine: 'image', categories: ['image'],
     related: ['image-cropper', 'image-resizer', 'image-converter', 'bulk-image-resizer', 'image-metadata-viewer'],
     blurb: 'Rotate or mirror an image locally, then download it.',

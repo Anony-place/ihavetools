@@ -24,6 +24,9 @@ unsupported browser encoders instead of mislabelling PNG fallback (see
 [MDN](https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toBlob)).
 Test real exported formats, pixels, alpha, JPEG background, UI invalidation,
 limits and mobile accessibility; one PR, CI and preview before production.
+Also fix the existing Image Converter’s inaccurate quality claim by actually
+providing bounded JPEG/WebP quality controls, including preset converter pages;
+reject invalid quality, invalidate stale output and test actual encoded files.
 No paid dependencies or ranking/volume claims. Historical GSC comparison,
 chronology reconciliation and tax audit remain outstanding.
 

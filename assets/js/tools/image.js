@@ -600,10 +600,12 @@ const defs = {
     const zone = imageZone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'JPG, PNG, WebP, GIF, BMP — converted locally' });
     const fmtSel = select({ options: [{ v: 'png', t: 'PNG' }, { v: 'jpeg', t: 'JPEG' }, { v: 'webp', t: 'WebP' }], value: 'png' });
     if (preset) fmtSel.value = preset;
+    const quality = input({type:'number', min:5, max:100, step:1, value:'92'});
+    quality.disabled = fmtSel.value === 'png';
     const bgPicker = input({ type: 'color', value: '#ffffff' });
     const bgRow = field({ label: 'Background (for transparent → JPEG)', control: bgPicker });
     bgRow.hidden = fmtSel.value !== 'jpeg';
-    fmtSel.addEventListener('change', () => { bgRow.hidden = fmtSel.value !== 'jpeg'; });
+    fmtSel.addEventListener('change', () => { bgRow.hidden = fmtSel.value !== 'jpeg'; quality.disabled = fmtSel.value === 'png'; });
     const status = statusLine('Choose an image to begin.');
     const info = h('p', { class: 'hint' });
     const preview = h('div', {}), previews = previewManager(preview);
@@ -624,12 +626,15 @@ const defs = {
         status.set(preset ? `Loaded ${f.name}. Click Convert to ${EXT_BY_FMT[preset].toUpperCase()}.` : `Loaded ${f.name}. Choose the output format.`, 'info');
       } catch (err) { if (file === f && selectionRevision === loadToken) { file = null; status.set(err.message, 'error'); } }
     });
-    [fmtSel, bgPicker].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
+    [fmtSel, bgPicker, quality].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file) { status.set('Choose an image first.', 'warning'); return; }
       previews.clear();
+      const format = fmtSel.value, q = Number(quality.value);
+      if (!Object.hasOwn(MIME_BY_FMT, format)) { status.set('Choose a supported output format.', 'error'); return; }
+      if (format !== 'png' && (!quality.value || !Number.isInteger(q) || q < 5 || q > 100)) { status.set('Quality must be a whole number from 5 to 100.', 'warning'); return; }
       status.set('Converting…', 'info');
-      const selected = file, format = fmtSel.value, token = ++revision;
+      const selected = file, token = ++revision;
       try {
         await checkDecodable(selected);
         const img = await loadImage(selected);
@@ -640,7 +645,7 @@ const defs = {
         const ctx = canvas.getContext('2d');
         if (format === 'jpeg') { ctx.fillStyle = bgPicker.value; ctx.fillRect(0, 0, canvas.width, canvas.height); }
         ctx.drawImage(img, 0, 0);
-        const blob = await canvasToBlob(canvas, MIME_BY_FMT[format], 0.92);
+        const blob = await canvasToBlob(canvas, MIME_BY_FMT[format], format === 'png' ? undefined : q / 100);
         if (file !== selected || revision !== token) return;
         lastBlob = blob;
         previews.show(blob, (url) => h('div', {},
@@ -652,7 +657,7 @@ const defs = {
     root.append(zone, info,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
         preset ? field({ label: 'Output format', control: h('p', { class: 'hint', text: `${EXT_BY_FMT[preset].toUpperCase()} — fixed on this page. Need another format? Use the Image Converter tool.`, style: 'margin:8px 0' }) }) : field({ label: 'Convert to', control: fmtSel }),
-        bgRow),
+        bgRow, field({label:'Quality (5–100)', control:quality, hint:'For JPEG and WebP; PNG ignores quality.'})),
       actionsRow(btn({ label: preset ? `Convert to ${EXT_BY_FMT[preset].toUpperCase()}` : 'Convert', icon: 'swap', onClick: run })),
       status, preview,
       privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation; JPEG flattens transparency onto the chosen background. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
