@@ -1428,10 +1428,15 @@ await domTest('crop coordinates validate boundaries and aspect changes are synch
   global.Image=class {constructor(){this.naturalWidth=80;this.naturalHeight=40;} set src(v){queueMicrotask(()=>this.onload());}};
   URL.createObjectURL=()=> 'blob:test';URL.revokeObjectURL=()=>{};canvas.getContext=()=>({drawImage(){},fillRect(){},clearRect(){},strokeRect(){}});canvas.toBlob=(cb,mime)=>cb(new Blob(['png'],{type:mime}));
   try {const app=await loadToolPage('image-cropper','image');const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[new File([new Uint8Array([255,216,255,217])],'x.jpg')]}});app.querySelector('.dropzone').dispatchEvent(e); await new Promise(r=>setTimeout(r,40));
-    const inputs=app.querySelectorAll('input[type=number]');assert.deepEqual([...inputs].map(v=>v.value),['0','0','80','40']);
+    const inputs=app.querySelectorAll('input[type=number]');assert.deepEqual([...inputs].map(v=>v.value),['0','0','80','40','90']);
     click(btnByLabel(app,'1:1'));assert.equal(inputs[2].value,'40');assert.equal(inputs[3].value,'40'); click(btnByLabel(app,'Crop')); await new Promise(r=>setTimeout(r,20));assert.ok(app.querySelector('.img-preview'));
+    const format=app.querySelector('select'), quality=inputs[4];assert.equal(quality.disabled,true);format.value='jpeg';fire(format,'change');assert.equal(quality.disabled,false);assert.equal(app.querySelector('.img-preview'),null);quality.value='101';click(btnByLabel(app,'Crop'));assert.match(statusText(document),/Quality must/);quality.value='90';click(btnByLabel(app,'Crop'));await new Promise(r=>setTimeout(r,20));assert.match(app.textContent,/Download 40 × 40 JPEG/);
+    click(btnByLabel(app,'Select full image'));assert.equal(inputs[2].value,'80');assert.equal(app.querySelector('.img-preview'),null);click(btnByLabel(app,'9:16'));assert.equal(inputs[2].value,'23');assert.equal(inputs[3].value,'40');
     inputs[0].value='70';fire(inputs[0],'input');assert.equal(app.querySelector('.img-preview'),null);click(btnByLabel(app,'Crop'));assert.match(statusText(document),/within the image/);
     inputs[0].value='0'; inputs[2].value='1'; inputs[3].value='1'; fire(inputs[2],'input'); click(btnByLabel(app,'Crop'));await new Promise(r=>setTimeout(r,20));assert.match(statusText(document),/Cropped to 1 × 1/);
+    let pending;canvas.toBlob=cb=>{pending=cb;};click(btnByLabel(app,'Crop'));format.value='webp';fire(format,'change');pending(new Blob(['late'],{type:'image/jpeg'}));await new Promise(r=>setTimeout(r,0));assert.equal(app.querySelector('.img-preview'),null);assert.match(statusText(document),/settings changed/i);
+    canvas.toBlob=cb=>cb(new Blob(['fallback'],{type:'image/png'}));click(btnByLabel(app,'Crop'));await new Promise(r=>setTimeout(r,0));assert.match(statusText(document),/does not support encoding/);assert.equal(app.querySelector('.img-preview'),null);
+
   } finally {global.Image=oldImage;URL.createObjectURL=create;URL.revokeObjectURL=revoke;canvas.getContext=getContext;canvas.toBlob=toBlob;}
 });
 

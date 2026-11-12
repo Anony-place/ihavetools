@@ -11,6 +11,27 @@
 
 ---
 
+## Image crop workflow batch — 2026-10-31
+
+Plan: improve the existing local image cropper instead of adding duplicate pages.
+[iLoveIMG](https://www.iloveimg.com/crop-image) demonstrates pixel-rectangle
+cropping; this is competitor feature evidence, not measured demand. Add PNG,
+JPEG and WebP export with lossy quality control, a white background for JPEG,
+more portrait/landscape aspect presets and reset selection. Preserve pixel
+coordinates, bounded output, local processing and stale-output cancellation.
+Clearly disclose animation, transparency, metadata and encoder caveats; detect
+unsupported browser encoders instead of mislabelling PNG fallback (see
+[MDN](https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toBlob)).
+Test real exported formats, pixels, alpha, JPEG background, UI invalidation,
+limits and mobile accessibility; one PR, CI and preview before production.
+Also fix the existing Image Converter’s inaccurate quality claim by actually
+providing bounded JPEG/WebP quality controls, including preset converter pages;
+reject invalid quality, invalidate stale output and test actual encoded files.
+No paid dependencies or ranking/volume claims. Historical GSC comparison,
+chronology reconciliation and tax audit remain outstanding.
+
+---
+
 ## Search-signal usability and market research batch — 2026-10-31
 
 Plan first: audit the three GSC-observed pages, then research competitor features
