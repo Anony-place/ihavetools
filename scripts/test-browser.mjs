@@ -613,7 +613,7 @@ try {
   await page.getByLabel('Maximum height (px)').fill('25');
   assert.equal(await page.getByRole('button', { name: 'Download ZIP' }).isDisabled(), true);
   console.log('✓ batch compression with original dimensions and truthful size comparison');
-  // Cover mode: inspect actual ZIP pixels, per-file failures and output-axis alignment.
+  // Cover mode: inspect actual ZIP coverPixels, per-file failures and output-axis alignment.
   const coverRaw=Buffer.alloc(80*40*4);
   for(let y=0;y<40;y++) for(let x=0;x<80;x++) {const i=(y*80+x)*4;coverRaw[i]=x<40?255:0;coverRaw[i+2]=x<40?0:255;coverRaw[i+3]=255;}
   const stripes=await sharp(coverRaw,{raw:{width:80,height:40,channels:4}}).png().toBuffer();
@@ -627,18 +627,18 @@ try {
     const evt=page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
     const z=unzipSync(new Uint8Array(await readFile(await (await evt).path())));return sharp(Buffer.from(z['001-stripes.png'])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
   };
-  let pixels=await readCover(); assert.deepEqual([pixels.info.width,pixels.info.height],[40,40]); assert.deepEqual([...pixels.data.subarray(0,4)],[255,0,0,255]);
+  let coverPixels=await readCover(); assert.deepEqual([coverPixels.info.width,coverPixels.info.height],[40,40]); assert.deepEqual([...coverPixels.data.subarray(0,4)],[255,0,0,255]);
   await page.getByLabel('Crop position').selectOption('right'); assert.equal(await page.getByRole('button',{name:'Download ZIP'}).isDisabled(),true);
   await page.getByRole('button',{name:'Process images'}).click(); await page.locator('#tool-app .status-line').getByText(/1 of 2 images ready/).waitFor();
-  pixels=await readCover(); assert.deepEqual([...pixels.data.subarray(0,4)],[0,0,255,255]);
+  coverPixels=await readCover(); assert.deepEqual([...coverPixels.data.subarray(0,4)],[0,0,255,255]);
   await page.getByLabel('Rotate all images').selectOption('90'); await page.getByLabel('Crop position').selectOption('top');
   await page.getByRole('button',{name:'Process images'}).click(); await page.locator('#tool-app .status-line').getByText(/1 of 2 images ready/).waitFor();
-  pixels=await readCover(); assert.deepEqual([...pixels.data.subarray(0,4)],[255,0,0,255]);
+  coverPixels=await readCover(); assert.deepEqual([...coverPixels.data.subarray(0,4)],[255,0,0,255]);
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'cover crop mobile accessibility');
-  await page.getByLabel('Allow enlargement').check(); await page.getByRole('button',{name:'Process images'}).click(); await page.locator('#tool-app .status-line').getByText(/2 of 2 images ready/).waitFor();
+  await page.locator('#tool-app label.switch').filter({hasText:'Allow enlargement'}).click(); await page.getByRole('button',{name:'Process images'}).click(); await page.locator('#tool-app .status-line').getByText(/2 of 2 images ready/).waitFor();
   await page.getByLabel('Maximum width (px)').fill(''); await page.getByRole('button',{name:'Process images'}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/requires both/);
-  await page.getByLabel('Layout').selectOption('fit'); await page.getByLabel('Allow enlargement').uncheck(); await page.getByLabel('Rotate all images').selectOption('0'); await page.getByLabel('Maximum width (px)').fill('');
-  console.log('✓ cover crop ZIP pixels, rotation, anchors, enlargement and mobile accessibility');
+  await page.getByLabel('Layout').selectOption('fit'); await page.locator('#tool-app label.switch').filter({hasText:'Allow enlargement'}).click(); await page.getByLabel('Rotate all images').selectOption('0'); await page.getByLabel('Maximum width (px)').fill('');
+  console.log('✓ cover crop ZIP coverPixels, rotation, anchors, enlargement and mobile accessibility');
   const transparent = await sharp({ create: { width: 4, height: 3, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
   await page.locator('#tool-app input[type=file]').setInputFiles({ name: 'alpha.png', mimeType: 'image/png', buffer: transparent });
   await page.getByLabel('Maximum height (px)').fill('');
