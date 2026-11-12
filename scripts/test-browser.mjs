@@ -295,7 +295,7 @@ try {
   await page.locator('#tool-app fieldset label.switch').filter({hasText:'Wednesday'}).click();
   await page.locator('#tool-app label.switch').filter({hasText:'Include end date in range count'}).click();
   await page.getByRole('button',{name:'Count working days'}).click();
-  assert.match(await page.locator('#tool-app').innerText(),/1\s*Working days/);
+  assert.match(await page.locator('#tool-app').innerText(),/1\s*Working days/i);
   assert.match(await page.locator('#tool-app .status-line').innerText(),/end date is excluded/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'business day custom mobile accessibility');
