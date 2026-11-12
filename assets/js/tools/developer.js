@@ -256,7 +256,9 @@ const B64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
 
 export function b64encode(text, urlSafe = false) {
   for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); if (c >= 0xd800 && c <= 0xdbff) { if (i + 1 >= text.length || text.charCodeAt(i + 1) < 0xdc00 || text.charCodeAt(i + 1) > 0xdfff) throw new Error('Input contains an unpaired UTF-16 surrogate.'); i++; } else if (c >= 0xdc00 && c <= 0xdfff) throw new Error('Input contains an unpaired UTF-16 surrogate.'); }
-  const bytes = new TextEncoder().encode(text);
+  return b64encodeBytes(new TextEncoder().encode(text), urlSafe);
+}
+export function b64encodeBytes(bytes, urlSafe = false) {
   let bin = '';
   const CHUNK = 0x8000;
   for (let k = 0; k < bytes.length; k += CHUNK) bin += String.fromCharCode(...bytes.subarray(k, k + CHUNK));
@@ -265,7 +267,7 @@ export function b64encode(text, urlSafe = false) {
   return out;
 }
 
-export function b64decode(text) {
+export function b64decodeBytes(text) {
   let s = text.trim().replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
   if (!s) throw new Error('Nothing to decode — the input is empty.');
   if (!B64_RE.test(s)) {
@@ -280,6 +282,10 @@ export function b64decode(text) {
   if (btoa(bin).replace(/=+$/, '') !== s.replace(/=+$/, '')) throw new Error('This is not valid Base64: non-zero padding bits.');
   const bytes = new Uint8Array(bin.length);
   for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+  return bytes;
+}
+export function b64decode(text) {
+  const bytes = b64decodeBytes(text);
   try { return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); }
   catch { throw new Error('The Base64 decoded to bytes that are not valid UTF-8 text. If this was binary data, use a file tool instead.'); }
 }
@@ -827,13 +833,50 @@ const defs = {
       try {
         const src = inp.value;
         if (!src.trim()) { status.set('Paste something first.', 'warning'); out.placeholder(); return; }
+        if (src.length > 1000000) throw new Error('Text exceeds 1,000,000 UTF-16 code units.');
         const result = mode === 'encode' ? b64encode(src, urlSafe.querySelector('input').checked) : b64decode(src);
         out.set(result);
         status.set(`${mode === 'encode' ? 'Encoded' : 'Decoded'} ✓ (${result.length.toLocaleString()} characters).`, 'success');
       } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
     };
-    root.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Run the conversion again.', 'info'); });
-    root.addEventListener('change', () => { out.placeholder(); status.set('Settings changed. Run the conversion again.', 'info'); });
+    inp.addEventListener('input', () => { out.placeholder(); status.set('Input changed. Run the conversion again.', 'info'); });
+    urlSafe.addEventListener('change', () => { out.placeholder(); status.set('Settings changed. Run the conversion again.', 'info'); });
+    const file = input({type:'file'});
+    const fileMode = select({options:[{v:'encode',t:'Encode binary file to Base64 text'}, {v:'decode',t:'Decode Base64 text file to binary'}],value:'encode'});
+    const fileStatus = statusLine('Choose a file to begin.');
+    let revision = 0, prepared = null;
+    const download = btn({label:'Download prepared file',variant:'secondary',icon:'download',disabled:true,onClick:()=>{
+      if (!prepared) return;
+      const ok=downloadBlob(prepared.blob,prepared.name);
+      fileStatus.set(ok?'Download requested. Check your browser downloads.':'Could not start download.',ok?'success':'error');
+    }});
+    const invalidateFile = () => {revision++; prepared=null; download.disabled=true; fileStatus.set('File or settings changed. Prepare again.','info');};
+    file.addEventListener('change',invalidateFile);
+    fileMode.addEventListener('change',invalidateFile);
+    urlSafe.addEventListener('change',invalidateFile);
+    window.addEventListener('pagehide',()=>{revision++;prepared=null;},{once:true});
+    const prepare = async () => {
+      const token=++revision; prepared=null; download.disabled=true;
+      const selected=file.files?.[0];
+      if (!selected) {fileStatus.set('Choose a file first.','warning');return;}
+      const mode=fileMode.value, safe=urlSafe.querySelector('input').checked;
+      const maxFile=mode==='decode'?3145728:2097152;
+      if (!selected.size || selected.size > maxFile) {fileStatus.set(`Choose a non-empty file up to ${mode==='decode'?'3':'2'} MiB.`, 'error');return;}
+      try {
+        fileStatus.set('Reading file locally…','info');
+        const bytes = new Uint8Array(await readFile(selected,'buffer')); if(token!==revision)return;
+        if (mode==='encode') {
+          const result=b64encodeBytes(bytes,safe);
+          prepared={blob:new Blob([result],{type:'text/plain;charset=utf-8'}),name:'encoded-base64.txt'};
+        } else if (mode==='decode') {
+          let encoded; try { encoded=new TextDecoder('utf-8',{fatal:true}).decode(bytes); } catch {throw new Error('Base64 file must be valid UTF-8 text.');}
+          const result=b64decodeBytes(encoded);
+          if(result.length > 2097152) throw new Error('Decoded file exceeds 2 MiB.');
+          prepared={blob:new Blob([result],{type:'application/octet-stream'}),name:'decoded-file.bin'};
+        } else throw new Error('Choose a valid file operation.');
+        download.disabled=false; fileStatus.set('File prepared locally. Review before downloading.','success');
+      } catch(e) {if(token===revision) fileStatus.set(e.message || 'Could not read file.','error');}
+    };
     root.append(field({ label: 'Input', control: inp }),
       actionsRow(
         btn({ label: 'Encode → Base64', icon: 'arrow-right', onClick: () => run('encode') }),
@@ -841,7 +884,13 @@ const defs = {
         urlSafe,
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } }),
       ),
-      status, h('br'), out.panel);
+      h('p',{class:'hint',text:'Text limit: 1,000,000 UTF-16 code units. Text is UTF-8; Base64 is encoding, not encryption.'}),
+      status, h('br'), out.panel,
+      h('h3',{text:'Binary file conversion'}),
+      field({label:'File operation',control:fileMode}), field({label:'Choose file',control:file,hint:'Binary input: up to 2 MiB. Base64 text input: up to 3 MiB and 2 MiB decoded; one UTF-8 payload.'}),
+      h('p',{class:'hint',text:'URL-safe output applies to encoding. Whitespace is ignored when decoding; data URLs and separate per-line payloads are not supported. Decoded files use a generic .bin extension. Do not run untrusted decoded files.'}),
+      actionsRow(btn({label:'Prepare file',icon:'file',onClick:prepare}),download,btn({label:'Clear file',variant:'ghost',icon:'x',onClick:()=>{file.value='';invalidateFile();fileStatus.set('File cleared.','info');}})),
+      fileStatus, privacyNote('Text and files are processed locally in your browser.'));
   },
 
   'url-encoder'(root) {

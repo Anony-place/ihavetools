@@ -1737,6 +1737,21 @@ await domTest('text sorter handles simple separators and invalidates settings', 
  box.value='a,'.repeat(50000); fire(box,'input'); click(btnByLabel(app,'Sort')); assert.match(statusText(document),/50,000 items/);
 });
 
+await domTest('base64 binary file workflow validates and cancels stale reads', async () => {
+ const app=await loadToolPage('base64-encoder','developer'), picker=app.querySelector('input[type=file]'), mode=app.querySelector('select');
+ const saved=global.FileReader; let reader;
+ global.FileReader=class {readAsArrayBuffer(){reader=this;}};
+ const choose=file=>{Object.defineProperty(picker,'files',{configurable:true,value:[file]});fire(picker,'change');};
+ try {
+  choose(new File(['x'],'data.bin')); click(btnByLabel(app,'Prepare file')); assert.ok(reader);
+  click(btnByLabel(app,'Clear file')); reader.result=new Uint8Array([0,255]).buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(btnByLabel(app,'Download prepared file').disabled,true);
+  choose(new File(['x'],'data.bin')); click(btnByLabel(app,'Prepare file')); reader.result=new Uint8Array([0,255]).buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(btnByLabel(app,'Download prepared file').disabled,false);
+  mode.value='decode'; fire(mode,'change'); assert.equal(btnByLabel(app,'Download prepared file').disabled,true);
+  click(btnByLabel(app,'Prepare file')); reader.result=new Uint8Array([255]).buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.match(app.textContent,/valid UTF-8/);
+  choose({name:'huge',size:3145729}); click(btnByLabel(app,'Prepare file')); assert.match(app.textContent,/3 MiB/); assert.equal(btnByLabel(app,'Download prepared file').disabled,true);
+ } finally {global.FileReader=saved;}
+});
+
 await domTest('line counter reports zero blank lines on empty input', async () => {
  const app=await loadToolPage('line-counter','text'); assert.match(app.textContent,/0Empty/); assert.match(app.textContent,/0Total lines/);
 });

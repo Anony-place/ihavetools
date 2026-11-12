@@ -115,11 +115,11 @@ export const tools = [
     steps: 'Paste your JSON into the input box.|Click Minify.|Copy the compact result or download it as a .json file.' }),
   T({ id: 'base64-encoder', name: 'Base64 Encoder & Decoder', icon: 'binary', engine: 'developer', categories: ['developer'],
     blurb: 'Unicode-safe Base64 encoding and decoding, with URL-safe output.',
-    description: 'Encode text to Base64 or decode Base64 back to text. Full Unicode support, optional URL-safe alphabet, and validation of malformed input.',
+    description: 'Encode UTF-8 text or binary files to Base64, or decode Base64 back to text or a binary file locally. Supports URL-safe output and validates malformed input.',
     keywords: ['base64', 'encode', 'decode', 'btoa', 'atob', 'unicode', 'url safe'],
     aliases: ['base64', 'base 64', 'b64'],
     popularity: 90, featured: true, added: '2026-06-02',
-    steps: 'Paste text or Base64 into the input box.|Pick Encode or Decode, and URL-safe output if you need it.|Copy the result. Invalid Base64 is reported clearly.',
+    steps: 'Paste text to encode or decode, or select a file and operation.|Optionally select URL-safe output for encoding.|Copy text output or prepare and download the converted file.',
     guide: [
       { h: 'How Base64 turns 3 bytes into 4 characters',
         p: 'Base64 takes binary data three bytes (24 bits) at a time and re-slices it into four 6-bit chunks, each printed as one of 64 safe characters (A–Z, a–z, 0–9, + and /). If the last group has only 1 or 2 bytes, “=” padding fills it out — which is why valid Base64 length is always a multiple of 4:',
@@ -130,6 +130,7 @@ export const tools = [
         ] } },
       { h: 'The cost: exactly one-third bigger',
         p: 'Because every 3 bytes become 4 characters, Base64 output is always 4 × ceil(n ÷ 3) characters — about 33% larger than the original. A 1 MB file becomes ~1.33 MB of Base64. That overhead is the price of pushing arbitrary binary through channels built for text: email (MIME attachments), JSON fields, data: URLs, XML, and the three dotted segments of a JWT are all Base64 under the hood.' },
+      { h: 'Local files and limits', p: 'Binary files up to 2 MiB can be encoded locally to a Base64 text download. Decode a UTF-8 text file up to 3 MiB containing one Base64 payload to a generic .bin file up to 2 MiB; whitespace is ignored, but data URLs and separately encoded lines are not supported. Review the bytes and extension before use and never run untrusted decoded files. Text input is limited to 1,000,000 UTF-16 code units.' },
       { h: 'URL-safe Base64, and one warning', list: [
         'Standard Base64 uses + and /, which break inside URLs and filenames. The URL-safe variant (this tool’s toggle, and what JWTs use) swaps them for − and _ and usually drops the = padding.',
         'Base64 is an encoding, not encryption: anyone can decode it instantly — this page just did. It hides bytes from casual view, never from an attacker; do not “protect” passwords or secrets with it.',

@@ -246,6 +246,23 @@ try {
     await page.getByRole('button',{name:'Clear',exact:true}).click(); assert.equal(await box.inputValue(),'');
   }
   console.log('✓ line and character counters local files and mobile accessibility');
+  await go('base64-encoder');
+  const b64File=page.getByLabel('Choose file'), b64Mode=page.getByLabel('File operation');
+  await b64File.setInputFiles({name:'bytes.bin',mimeType:'application/octet-stream',buffer:Buffer.from([0,255,128,1,2,3])});
+  await page.getByRole('button',{name:'Prepare file'}).click();
+  await page.locator('#tool-app .status-line').getByText(/File prepared locally/).waitFor();
+  let b64Download=page.waitForEvent('download'); await page.getByRole('button',{name:'Download prepared file'}).click();
+  let savedFile=await b64Download; assert.equal(savedFile.suggestedFilename(),'encoded-base64.txt'); assert.equal(await readFile(await savedFile.path(),'utf8'),'AP+AAQID');
+  await b64Mode.selectOption('decode'); assert.equal(await page.getByRole('button',{name:'Download prepared file'}).isDisabled(),true);
+  await b64File.setInputFiles({name:'encoded.txt',mimeType:'text/plain',buffer:Buffer.from('AP+AAQID')});
+  await page.getByRole('button',{name:'Prepare file'}).click(); await page.locator('#tool-app .status-line').getByText(/File prepared locally/).waitFor();
+  b64Download=page.waitForEvent('download'); await page.getByRole('button',{name:'Download prepared file'}).click(); savedFile=await b64Download;
+  assert.equal(savedFile.suggestedFilename(),'decoded-file.bin'); assert.deepEqual(await readFile(await savedFile.path()),Buffer.from([0,255,128,1,2,3]));
+  await b64File.setInputFiles({name:'bad.txt',mimeType:'text/plain',buffer:Buffer.from('Zh==')}); await page.getByRole('button',{name:'Prepare file'}).click();
+  await page.locator('#tool-app .status-line').getByText(/padding bits/).waitFor(); assert.equal(await page.getByRole('button',{name:'Download prepared file'}).isDisabled(),true);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'base64 file mobile accessibility');
+  console.log('✓ Base64 binary round-trip, invalid input and mobile accessibility');
   await go('keyword-density-checker');
   const fileInput = page.getByLabel('Load text file (optional)');
   await fileInput.setInputFiles({ name: 'draft.txt', mimeType: 'text/plain', buffer: Buffer.from('alpha alpha beta') });

@@ -185,6 +185,10 @@ await test('JSON tools limit nesting and reject unsafe structural comparisons', 
 
 console.log('\n── Base64 ──');
 await test('ascii round-trip', () => {
+  const bytes = Uint8Array.from([0, 255, 128, 1, 2, 3]);
+  assert.equal(dev.b64encodeBytes(bytes), 'AP+AAQID');
+  assert.deepEqual(dev.b64decodeBytes('AP-AAQID'), bytes);
+  assert.throws(() => dev.b64decodeBytes('Zh=='), /padding bits/);
   assert.equal(dev.b64encode('Hello, world!'), 'SGVsbG8sIHdvcmxkIQ==');
   assert.equal(dev.b64decode('SGVsbG8sIHdvcmxkIQ=='), 'Hello, world!');
 });
