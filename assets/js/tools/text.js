@@ -133,7 +133,7 @@ function validateListText(text) {
   if (text.length > 1000000) throw new Error('Text exceeds 1,000,000 UTF-16 code units.');
   if (text.split(/\r\n|\r|\n/).length > 50000) throw new Error('Text exceeds 50,000 lines.');
 }
-function listFileImport(inp, status, invalidate) {
+function listFileImport(inp, status, invalidate, loadedMessage = 'File loaded locally. Run the tool to update results.') {
   const file = input({type:'file', accept:'.txt,.md,text/plain,text/markdown'});
   let revision = 0;
   inp.addEventListener('input', () => { revision++; });
@@ -148,7 +148,7 @@ function listFileImport(inp, status, invalidate) {
       status.set('Reading file locally…', 'info');
       const bytes = await readFile(chosen, 'buffer'); if (token !== revision) return;
       let text; try { text = new TextDecoder('utf-8', {fatal:true}).decode(bytes); } catch { throw new Error('File is not valid UTF-8.'); }
-      validateListText(text); inp.value = text; invalidate(); status.set('File loaded locally. Run the tool to update results.', 'success');
+      validateListText(text); inp.value = text; invalidate(); status.set(loadedMessage, 'success');
     } catch (err) { if (token === revision) status.set(`${err.message || 'Could not read file.'} Existing text was kept.`, 'error'); }
   });
   return {file, cancel: () => { revision++; file.value = ''; }};
@@ -346,6 +346,9 @@ const defs = {
     const grid = statsGrid();
     const custom = input({type:'number',min:1,max:1000000,step:1,placeholder:'Optional'});
     const customStatus = statusLine('');
+    const status = statusLine('');
+    let summary = '';
+    const imported = listFileImport(inp, status, () => render(), 'File loaded locally.');
     const meters = h('div', { style: 'margin-top:14px' });
     const LIMITS = [
       { name: 'X (Twitter) post', limit: 280 },
@@ -355,6 +358,9 @@ const defs = {
       { name: 'Instagram caption', limit: 2200 },
     ];
     const render = () => {
+      summary = ''; grid.replaceChildren(); meters.replaceChildren(); customStatus.set('', 'info');
+      try { validateListText(inp.value); } catch (e) { status.set(e.message, 'error'); return; }
+      status.set('', 'info');
       const s = textStats(inp.value);
       grid.set([
         { label: 'Characters', value: s.chars.toLocaleString() },
@@ -366,6 +372,7 @@ const defs = {
       const customLimit = custom.value === '' ? null : Number(custom.value);
       const valid = customLimit === null || (Number.isSafeInteger(customLimit) && customLimit >= 1 && customLimit <= 1000000);
       customStatus.set(valid ? '' : 'Custom limit must be a whole number from 1 to 1,000,000.', valid ? 'info' : 'error');
+      summary = `Characters: ${s.chars}\nCharacters without whitespace: ${s.charsNoSpaces}\nLetters: ${s.letters}\nNumbers: ${s.digits}\nWords: ${s.words}`;
       const limits = valid && customLimit !== null ? [{name:'Custom code-point limit',limit:customLimit}, ...LIMITS] : LIMITS;
       meters.replaceChildren(...limits.map((l) => {
         const pct = Math.min(100, (s.chars / l.limit) * 100);
@@ -379,29 +386,41 @@ const defs = {
     custom.addEventListener('input',render);
     render();
     root.append(h('div', { class: 'field-row', style: 'display:block' }, grid),
-      field({ label: 'Your text', control: inp }), field({label:'Custom character limit (optional)',control:custom,hint:'Counts code points, including whitespace; verify the target service’s counting rules.'}), customStatus, h('p', { class: 'hint', text: 'Counts Unicode code points, not grapheme clusters. Platform meters are rough references only: SMS encoding, X weighted characters and search-result pixel widths differ.' }), meters,
-      actionsRow(btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; render(); } })));
+      field({ label: 'Your text', control: inp, hint: 'Maximum 1,000,000 UTF-16 code units and 50,000 lines.' }),
+      field({ label: 'Load text file (optional)', control: imported.file, hint: 'Local UTF-8 .txt or .md, up to 4,000,000 bytes; replaces the text.' }), field({label:'Custom character limit (optional)',control:custom,hint:'Counts code points, including whitespace; verify the target service’s counting rules.'}), customStatus, h('p', { class: 'hint', text: 'Counts Unicode code points, not grapheme clusters. Platform meters are rough references only: SMS encoding, X weighted characters and search-result pixel widths differ.' }), meters,
+      actionsRow(btn({label:'Copy statistics',variant:'secondary',icon:'copy',onClick:async()=>{if(!summary){status.set('Fix the text before copying.','warning');return;} const ok=await copyText(summary); toast(ok?'Statistics copied':'Copy failed',ok?'success':'error');}}),
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; render(); } })), status, privacyNote('Text and files are processed locally in your browser.'));
   },
 
   'line-counter'(root) {
     const inp = textarea({ rows: 12, placeholder: 'Paste text to count lines…' });
-    const grid = statsGrid();
+    const grid = statsGrid(), status = statusLine('');
+    let summary = '';
+    const imported = listFileImport(inp, status, () => render(), 'File loaded locally.');
     const render = () => {
+      summary = ''; grid.replaceChildren();
+      try { validateListText(inp.value); } catch (e) { status.set(e.message, 'error'); return; }
+      status.set('', 'info');
       const s = textStats(inp.value);
       grid.set([
-        { label: 'Total lines', value: (inp.value ? s.lines : 0).toLocaleString() },
+        { label: 'Total lines', value: s.lines.toLocaleString() },
         { label: 'Non-empty', value: s.nonEmptyLines.toLocaleString() },
         { label: 'Empty', value: s.blankLines.toLocaleString() },
         { label: 'Longest line', value: s.longestLine.toLocaleString() },
         { label: 'Characters', value: s.chars.toLocaleString() },
         { label: 'Words', value: s.words.toLocaleString() },
       ]);
+      summary = `Total lines: ${s.lines}\nNon-empty lines: ${s.nonEmptyLines}\nEmpty lines: ${s.blankLines}\nLongest line (code points): ${s.longestLine}\nCharacters (code points): ${s.chars}\nWords: ${s.words}`;
     };
     inp.addEventListener('input', render);
     render();
     root.append(h('div', { class: 'field-row', style: 'display:block' }, grid),
-      field({ label: 'Text', control: inp }),
-      actionsRow(btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; render(); } })));
+      field({ label: 'Text', control: inp, hint: 'Maximum 1,000,000 UTF-16 code units and 50,000 lines.' }),
+      field({ label: 'Load text file (optional)', control: imported.file, hint: 'Local UTF-8 .txt or .md, up to 4,000,000 bytes; replaces the text.' }),
+      h('p', {class:'hint', text:'Empty input has zero lines. A final line break adds an empty line; whitespace-only lines are empty. Longest line and character counts use Unicode code points, not grapheme clusters.'}),
+      actionsRow(btn({label:'Copy statistics',variant:'secondary',icon:'copy',onClick:async()=>{if(!summary){status.set('Fix the text before copying.','warning');return;} const ok=await copyText(summary); toast(ok?'Statistics copied':'Copy failed',ok?'success':'error');}}),
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; render(); } })),
+      status, privacyNote('Text and files are processed locally in your browser.'));
   },
 
   'case-converter'(root) {

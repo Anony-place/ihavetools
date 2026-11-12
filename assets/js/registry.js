@@ -321,7 +321,7 @@ export const tools = [
     keywords: ['character count', 'letters', 'twitter limit', 'sms length', 'meta description length'],
     aliases: ['letter counter', 'character count', 'twitter character counter'],
     popularity: 77, added: '2026-06-01',
-    steps: 'Type or paste text into the box.|Set an optional custom code-point limit; meters update live and platform examples are approximate.|Use Clear to start over.',
+    steps: 'Type, paste or locally load a UTF-8 text file.|Set an optional custom code-point limit; platform meters are approximate.|Copy statistics or clear the text.',
     faqs: [
       { q: 'Do spaces count as characters?', a: 'This tool shows Unicode code-point counts with and without whitespace. Platform rules vary: X weights some characters and links differently, and forms may count UTF-16 units or bytes.' },
       { q: 'Why does one emoji sometimes count as more than 1?', a: 'This tool counts Unicode characters (code points). A simple emoji like 😀 counts as 1 here, but joined sequences — 👨‍👩‍👧 (three people + joiners), flags (two regional letters), skin-tone variants — are several code points displayed as one picture, so they count as several. Platforms each have their own rules on top (X, for example, weighs most emoji as 2).' },
@@ -352,7 +352,8 @@ export const tools = [
     keywords: ['line count', 'lines', 'count lines', 'newline', 'log lines'],
     aliases: ['count lines', 'line count'],
     popularity: 60, added: '2026-09-14',
-    steps: 'Paste your text into the box.|Line statistics update instantly.|Use Clear to start over.' }),
+    steps: 'Paste text or load a local UTF-8 .txt or .md file.|Review live line statistics.|Copy statistics or clear the text.',
+    guide: [{h:'Counting rules and limits',p:'Empty input has zero lines. A final line break adds an empty line, and whitespace-only lines are empty. Longest line and character counts use Unicode code points rather than grapheme clusters; words are whitespace-separated. Input is limited to 1,000,000 UTF-16 code units and 50,000 lines. Files must be valid UTF-8 .txt or .md up to 4,000,000 bytes; Markdown is counted as plain text and processed locally.'}] }),
   T({ id: 'case-converter', name: 'Case Converter', icon: 'case', engine: 'text', categories: ['text'],
     blurb: 'UPPER, lower, Title, Sentence, camelCase, snake_case and more.',
     description: 'Convert pasted or locally imported text between eleven cases, including camelCase, snake_case and kebab-case, then copy or download the result.',
