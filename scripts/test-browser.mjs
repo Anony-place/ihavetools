@@ -877,7 +877,7 @@ try {
     await page.getByLabel('Watermark position').selectOption(position);
     await page.getByRole('button',{name:'Process images'}).click();
     await page.locator('#tool-app .status-line').getByText(/1 of 1 images ready/).waitFor();
-    assert.equal(await page.getByAltText('First processed image preview').count(), 1);
+    assert.equal(await page.getByAltText('Processed preview: 001-transparent.png').count(), 1);
     const event = page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
     const files = unzipSync(new Uint8Array(await readFile(await (await event).path())));
     const out = await sharp(Buffer.from(files['001-transparent.png'])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
@@ -908,7 +908,7 @@ try {
   await page.locator('#tool-app input[type=file]').setInputFiles([{name:'transparent.png',mimeType:'image/png',buffer:blankPng}]);
   await page.getByLabel('Watermark opacity (%)').fill('100');
   assert.equal(await page.getByRole('button',{name:'Download ZIP'}).isDisabled(), true);
-  assert.equal(await page.getByAltText('First processed image preview').count(), 0);
+  assert.equal(await page.getByAltText('Processed preview: 001-transparent.png').count(), 0);
   await page.getByLabel('Output format').selectOption('jpeg');
   await page.getByLabel('Watermark color').selectOption('black');
   await page.getByRole('button',{name:'Process images'}).click();
@@ -918,7 +918,7 @@ try {
   const jpegMark=await sharp(Buffer.from(jpgZip['001-transparent.jpg'])).removeAlpha().raw().toBuffer();
   assert.ok(jpegMark.some(v=>v<100), 'JPEG watermark is visible on white background');
   await page.getByRole('button',{name:'Cancel',exact:true}).click();
-  assert.equal(await page.getByAltText('First processed image preview').count(), 0);
+  assert.equal(await page.getByAltText('Processed preview: 001-transparent.png').count(), 0);
   await page.setViewportSize({width:320,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'watermark mobile accessibility');
