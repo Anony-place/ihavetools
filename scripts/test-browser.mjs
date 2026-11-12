@@ -166,6 +166,24 @@ try {
   assert.deepEqual((await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v => v.id), [], 'combined date mobile accessibility');
   await go('gst-calculator');
   assert.equal(await page.locator('#tool-app select option[value="40"]').count(), 1);
+  for (const id of ['remove-duplicate-lines','text-sorter']) {
+    await go(id);
+    const listInput=page.locator('#tool-app textarea'), listFile=page.getByLabel('Load text file (optional)');
+    await listFile.setInputFiles({name:'list.txt',mimeType:'text/plain',buffer:Buffer.from('B\na\nB')});
+    await page.locator('#tool-app .status-line').getByText(/File loaded locally/).waitFor();
+    if (id==='remove-duplicate-lines') await page.getByRole('button',{name:'Keep last'}).click();
+    await page.getByRole('button',{name:id==='text-sorter'?'Sort':'Remove duplicates',exact:true}).click();
+    const output=page.locator('#tool-app .result-body pre');
+    assert.equal(await output.textContent(),id==='text-sorter'?'a\nB\nB':'a\nB');
+    const downloadPromise=page.waitForEvent('download'); await page.locator('#tool-app .result-panel').getByRole('button',{name:'Download'}).click();
+    const download=await downloadPromise; assert.equal(download.suggestedFilename(),id==='text-sorter'?'sorted-lines.txt':'unique-lines.txt');
+    assert.equal(await readFile(await download.path(),'utf8'),id==='text-sorter'?'a\nB\nB':'a\nB');
+    await listFile.setInputFiles({name:'bad.txt',mimeType:'text/plain',buffer:Buffer.from([255])});
+    await page.locator('#tool-app .status-line').getByText(/not valid UTF-8/).waitFor(); assert.equal(await listInput.inputValue(),'B\na\nB');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} mobile accessibility`);
+  }
+  console.log('✓ list tools local files, downloads, invalidation and mobile accessibility');
   await go('word-counter');
   const wcInput=page.getByLabel('Your text',{exact:true}), wcFile=page.getByLabel('Load text file (optional)');
   await wcFile.setInputFiles({name:'draft.md',mimeType:'text/markdown',buffer:Buffer.from('one two three')});

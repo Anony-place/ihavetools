@@ -1625,6 +1625,11 @@ await test('bulk fit, output filenames, search and discovery', () => {
   assert.ok(registry.searchTools('bulk image compressor', 20).some(t => t.id === 'bulk-image-resizer'));
   assert.ok(registry.tools.filter(t => registry.relatedTools(t,6).some(r => r.id === 'bulk-image-resizer')).length >= 3);
 });
+await test('dedupe keeps last original occurrence and preserves blank lines', () => {
+ assert.deepEqual(text.dedupeLines(' A \nB\na\n\nB\n', {keep:'last',trim:true,caseInsensitive:true}), ['a','','B','']);
+ assert.deepEqual(text.dedupeLines('a\rA\r \ra', {keep:'last',caseInsensitive:true,keepEmpty:false}), ['a']);
+ assert.throws(()=>text.dedupeLines('a',{keep:'middle'}),/first or last/);
+});
 await test('word time and optional goals validate boundaries', () => {
   assert.equal(text.wordTime(0,200),'0 sec'); assert.equal(text.wordTime(1,130),'5 sec');
   assert.equal(text.wordTime(200,200),'1 min'); assert.equal(text.wordTime(130,130),'1 min');
@@ -1824,7 +1829,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 84);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 86);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
