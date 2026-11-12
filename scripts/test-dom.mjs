@@ -210,6 +210,31 @@ await domTest('word-counter: live stats update', async () => {
   assert.match(grid, /5Words/);
   assert.match(grid, /Reading time/);
 });
+await domTest('word counter goals, speed, safe import and cancellation', async () => {
+ const app=await loadToolPage('word-counter','text'), text=app.querySelector('textarea'), nums=app.querySelectorAll('input[type=number]'), picker=app.querySelector('input[type=file]');
+ text.value='hello world';fire(text,'input');nums[2].value='5';fire(nums[2],'input');assert.match(app.textContent,/3 more words to minimum/);
+ nums[3].value='1';fire(nums[3],'input');assert.match(statusText(document),/cannot exceed/);assert.doesNotMatch(app.textContent,/2Words/);
+ nums[3].value='10';nums[0].value='0';fire(nums[0],'input');assert.match(statusText(document),/Pace/);nums[0].value='200';fire(nums[0],'input');assert.match(app.textContent,/2Words/);
+ const saved=global.FileReader, pending=[]; global.FileReader=class {readAsArrayBuffer(){pending.push(this);}};
+ const choose=(name,size=1)=>{Object.defineProperty(picker,'files',{configurable:true,value:[{name,size}]});fire(picker,'change');};
+ const finish=async (i,buf)=>{pending[i].result=buf;pending[i].onload();await new Promise(r=>setTimeout(r,0));};
+ try {
+  choose('bad.pdf');assert.match(statusText(document),/Existing text was kept/);assert.equal(text.value,'hello world');
+  choose('bad.txt');await finish(0,new Uint8Array([255]).buffer);assert.match(statusText(document),/valid UTF-8/);assert.equal(text.value,'hello world');
+  choose('late.txt');text.value='new';fire(text,'input');await finish(1,new TextEncoder().encode('old').buffer);assert.equal(text.value,'new');
+  choose('late.txt');click(btnByLabel(app,'Clear'));await finish(2,new TextEncoder().encode('old').buffer);assert.equal(text.value,'');
+  choose('ok.md');await finish(3,new TextEncoder().encode('one two three').buffer);assert.equal(text.value,'one two three');assert.match(app.textContent,/3Words/);
+  choose('huge.txt',4000001);assert.match(statusText(document),/Existing text was kept/);assert.equal(text.value,'one two three');
+  text.value='x'.repeat(1000001);fire(text,'input');assert.match(statusText(document),/exceeds 1,000,000/);assert.doesNotMatch(app.textContent,/3Words/);
+ } finally {global.FileReader=saved;}
+});
+await domTest('character counter custom code-point limit', async () => {
+ const app=await loadToolPage('character-counter','text'), text=app.querySelector('textarea'), custom=app.querySelector('input[type=number]');
+ text.value='😀a';fire(text,'input');custom.value='1';fire(custom,'input');assert.match(app.textContent,/Custom code-point limit — 2 \/ 1 \(over limit\)/);
+ custom.value='2';fire(custom,'input');assert.match(app.textContent,/Custom code-point limit — 2 \/ 2/);
+ custom.value='0';fire(custom,'input');assert.match(statusText(document),/Custom limit must/);assert.doesNotMatch(app.textContent,/Custom code-point limit —/);
+ custom.value='';fire(custom,'input');assert.doesNotMatch(app.textContent,/Custom code-point limit —/);
+});
 await domTest('case-converter: all mode buttons work', async () => {
   const app = await loadToolPage('case-converter', 'text');
   const ta = app.querySelector('textarea');

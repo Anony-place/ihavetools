@@ -11,6 +11,25 @@
 
 ---
 
+## Word-counter writing workflow batch — 2026-10-31
+
+Plan first: [WordCounter](https://wordcounter.net/) illustrates common writing
+workflows including goals, upload and time estimates; this is competitor feature
+evidence, not market volume. Improve our existing word counter with bounded local
+UTF-8 .txt/.md import, configurable reading and speaking rates, optional minimum
+and maximum word goals, and a coherent copyable summary. Retain existing basic
+counts, but explain whitespace-token words, code-point characters, sentence and
+Markdown limitations, and estimated time rounding; no ranking or precise speed
+claims. Reject malformed files and invalid options, preserve input on failed
+imports, cancel stale async reads, and clear results on oversized input. Test
+boundaries, Unicode, goals, rate maths, race conditions, imported input, mobile
+layout/accessibility, CI and Vercel preview. One consolidated PR, no paid service.
+Also add a custom code-point character limit to the related Character Counter,
+with honest platform and search-snippet caveats and boundary tests.
+Market volume, GSC chronology and tax audit remain open.
+
+---
+
 ## Keyword editing workflow batch — 2026-10-31
 
 Plan: improve the existing Keyword Density & Frequency Checker, not duplicate
