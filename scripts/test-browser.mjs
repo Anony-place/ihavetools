@@ -1449,6 +1449,9 @@ try {
   assert.match(await offlinePage.locator('body').innerText(), /offline/i);
   console.log('✓ real service worker: visited page offline, unvisited fallback, query excluded');
   console.log('Real browser checks passed. Physical devices, browser diversity and assistive technology are not covered.');
+} catch (error) {
+  if (process.env.GITHUB_ACTIONS) console.log(`::error::${String(error.stack || error).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
+  throw error;
 } finally {
   await browser?.close();
   await new Promise(resolveClose => server.close(resolveClose));
