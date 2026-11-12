@@ -216,6 +216,22 @@ try {
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'word counter mobile accessibility');
   await page.getByRole('button',{name:'Clear',exact:true}).click();assert.equal(await wcInput.inputValue(),'');
   console.log('✓ word goals, pace validation, local import and mobile accessibility');
+  for (const id of ['line-counter','character-counter']) {
+    await go(id);
+    const box=page.getByLabel(id==='line-counter'?'Text':'Your text',{exact:true});
+    const file=page.getByLabel('Load text file (optional)');
+    await file.setInputFiles({name:'draft.txt',mimeType:'text/plain',buffer:Buffer.from('one\n  \n')});
+    await page.locator('#tool-app .status-line').getByText(/File loaded locally/).waitFor();
+    if (id==='line-counter') assert.match(await page.locator('#tool-app').innerText(),/3\s*Total lines/i);
+    else assert.match(await page.locator('#tool-app').innerText(),/7\s*Characters/i);
+    await file.setInputFiles({name:'bad.txt',mimeType:'text/plain',buffer:Buffer.from([255])});
+    await page.locator('#tool-app .status-line').getByText(/not valid UTF-8/).waitFor();
+    assert.equal(await box.inputValue(),'one\n  \n');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} mobile accessibility`);
+    await page.getByRole('button',{name:'Clear',exact:true}).click(); assert.equal(await box.inputValue(),'');
+  }
+  console.log('✓ line and character counters local files and mobile accessibility');
   await go('keyword-density-checker');
   const fileInput = page.getByLabel('Load text file (optional)');
   await fileInput.setInputFiles({ name: 'draft.txt', mimeType: 'text/plain', buffer: Buffer.from('alpha alpha beta') });

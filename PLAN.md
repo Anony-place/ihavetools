@@ -2,12 +2,25 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (88 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (89 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Text counter consistency batch — plan
+
+Improve Character Counter and Line Counter together: bounded live processing,
+local strict UTF-8 text import, copyable current statistics, and explicit line,
+Unicode and platform-limit semantics. Invalidate stale import reads on edits,
+clear and navigation; preserve existing text on failed imports. Add regression
+tests for limits, final newline, Unicode and import failure; run checks and one
+CI-verified PR before production verification. Existing platform examples are
+heuristics, not guaranteed service limits. No paid service. Historical GSC
+comparison and tax audit remain unverified.
 
 ---
 

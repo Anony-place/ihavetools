@@ -1731,6 +1731,36 @@ await domTest('line counter reports zero blank lines on empty input', async () =
  const app=await loadToolPage('line-counter','text'); assert.match(app.textContent,/0Empty/); assert.match(app.textContent,/0Total lines/);
 });
 
+await domTest('text counters handle boundaries and invalidate oversized results', async () => {
+  for (const id of ['line-counter', 'character-counter']) {
+    const app=await loadToolPage(id,'text'), text=app.querySelector('textarea');
+    assert.ok(app.querySelector('input[type=file]'));
+    text.value='😀\n  \n'; fire(text,'input');
+    if (id === 'line-counter') { assert.match(app.textContent,/3Total lines/); assert.match(app.textContent,/2Empty/); assert.match(app.textContent,/2Longest line/); }
+    else assert.match(app.textContent,/5Characters/);
+    text.value='x'.repeat(1000001); fire(text,'input');
+    assert.match(app.textContent,/1,000,000/); assert.doesNotMatch(app.textContent,/Total lines|No spaces/);
+    click(btnByLabel(app,'Copy statistics')); assert.match(app.textContent,/Fix the text/);
+    click(btnByLabel(app,'Clear')); assert.equal(text.value,''); assert.doesNotMatch(app.textContent,/Fix the text/);
+  }
+});
+
+await domTest('text counter imports preserve edits and reject invalid UTF-8', async () => {
+ for (const id of ['line-counter', 'character-counter']) {
+  const app=await loadToolPage(id,'text'), box=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');
+  const saved=global.FileReader; let reader;
+  global.FileReader=class { readAsArrayBuffer(){reader=this;} };
+  const choose=file=>{Object.defineProperty(picker,'files',{configurable:true,value:[file]});fire(picker,'change');};
+  try {
+   box.value='original'; fire(box,'input'); choose(new File(['x'],'slow.txt'));
+   box.value='edited'; fire(box,'input'); reader.result=new TextEncoder().encode('late').buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'edited');
+   choose(new File(['x'],'bad.txt')); reader.result=new Uint8Array([255]).buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.match(app.textContent,/not valid UTF-8/); assert.equal(box.value,'edited');
+   choose(new File(['x'],'good.md')); reader.result=new TextEncoder().encode('one\ntwo').buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'one\ntwo'); assert.match(app.textContent,/loaded locally/);
+   choose(new File(['x'],'slow.txt')); click(btnByLabel(app,'Clear')); reader.result=new TextEncoder().encode('late').buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'');
+  } finally {global.FileReader=saved;}
+ }
+});
+
 await domTest('SEO generators reject unsafe input and invalidate old downloads', async () => {
  let app=await loadToolPage('sitemap-generator','webseo'), ta=app.querySelector('textarea'); ta.value='https://a.test/'; fire(ta,'input'); click(btnByLabel(app,'Generate sitemap')); assert.match(resultText(document),/a.test/);
  ta.value='https://b.test/'; fire(ta,'input'); assert.doesNotMatch(resultText(document),/a.test/); ta.value='https://a.test/\nhttps://b.test/'; click(btnByLabel(app,'Generate sitemap')); assert.match(statusText(document),/same scheme/);
