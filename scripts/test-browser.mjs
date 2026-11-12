@@ -205,7 +205,8 @@ try {
   await page.getByLabel('Lines to sort').fill(' B, a,B,,');
   await page.getByLabel('Input separator').selectOption('comma');
   await page.getByLabel('Output separator').selectOption('semicolon');
-  await page.getByLabel('Trim each item').check(); await page.getByLabel('Remove duplicates').check();
+  await page.locator('#tool-app label.switch').filter({hasText:'Trim each item'}).click();
+  await page.locator('#tool-app label.switch').filter({hasText:'Remove duplicates'}).click();
   await page.getByRole('button',{name:'Sort',exact:true}).click();
   assert.equal(await page.locator('#tool-app .result-body pre').textContent(),';;a;B');
   const sorterDownload=page.waitForEvent('download'); await page.locator('#tool-app .result-panel').getByRole('button',{name:'Download'}).click();
