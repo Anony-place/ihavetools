@@ -1299,6 +1299,18 @@ await domTest('PDF organizer clears old document after a rejected selection', as
   drop(file); await new Promise(r=>setTimeout(r,80)); assert.equal(app.querySelectorAll('.file-row').length,1);
   drop({name:'large.pdf',size:201*1024*1024}); assert.equal(app.querySelectorAll('.file-row').length,0); click(btnByLabel(app,'Export organized PDF')); assert.match(statusText(document),/Choose a PDF first/);
 });
+await domTest('Image to PDF validates queue and layout, cancels settings changes', async () => {
+ const lib=await import('pdf-lib');let release;
+ window.PDFLib={...lib,PDFDocument:{create:(...a)=>new Promise(resolve=>{release=()=>resolve(lib.PDFDocument.create(...a));})}};
+ const app=await loadToolPage('image-to-pdf','pdf');const drop=files=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files}});app.querySelector('.dropzone').dispatchEvent(e);};
+ drop([new File(['a'],'a.png',{type:'image/png'})]);
+ drop([{name:'bad.txt',type:'text/plain',size:1}]);assert.equal(app.querySelectorAll('.file-row').length,1);assert.match(statusText(document),/No files were added/);
+ drop([{name:'huge.png',type:'image/png',size:20*1024*1024+1}]);assert.match(statusText(document),/20 MiB each/);assert.equal(app.querySelectorAll('.file-row').length,1);
+ drop(Array.from({length:20},(_,i)=>({name:`${i}.png`,type:'image/png',size:1})));assert.match(statusText(document),/20 images/);assert.equal(app.querySelectorAll('.file-row').length,1);
+ const margin=app.querySelector('input[type=number]');margin.value='145';fire(margin,'input');click(btnByLabel(app,'Convert to PDF'));assert.match(statusText(document),/whole margin/);
+ margin.value='0';fire(margin,'input');let output=false;const original=URL.createObjectURL;URL.createObjectURL=()=>{output=true;return 'blob:test';};
+ try {click(btnByLabel(app,'Convert to PDF'));await new Promise(r=>setTimeout(r,30));assert.ok(release);const orientation=app.querySelector('select');orientation.value='landscape';fire(orientation,'change');release();await new Promise(r=>setTimeout(r,100));assert.equal(output,false);assert.match(statusText(document),/Layout changed/);} finally {URL.createObjectURL=original;}
+});
 await domTest('Image to PDF page-size changes cancel pending conversion', async () => {
   const lib=await import('pdf-lib'); let release;
   window.PDFLib={...lib, PDFDocument:{create:(...a)=>new Promise(resolve=>{release=()=>resolve(lib.PDFDocument.create(...a));})}};

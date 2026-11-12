@@ -1782,6 +1782,13 @@ await test('range parsing: singles, ranges, mixed, unsorted, reversed', () => {
   assert.deepEqual(pdf.splitPageGroups(2, 100), [[1,2]]);
   for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(n, 2), /1 to 100 pages/);
   for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(3, n), /whole number/);
+  assert.deepEqual(pdf.imagePdfLayout(200,100,'letter','portrait',0), {width:612,height:792,rect:{x:0,y:243,width:612,height:306}});
+  assert.equal(pdf.imagePdfLayout(200,100,'a4','auto',36).width,841.89);
+  assert.equal(pdf.imagePdfLayout(100,200,'a4','landscape',36).width,841.89);
+  assert.deepEqual(pdf.imagePdfLayout(200,100,'original','landscape',144),{width:200,height:100,rect:{x:0,y:0,width:200,height:100}});
+  assert.throws(()=>pdf.imagePdfLayout(100,200,'a4','auto',145),/margin/);
+  assert.throws(()=>pdf.imagePdfLayout(10000,5000,'a4','auto',36),/40 million/);
+  assert.throws(()=>pdf.imagePdfLayout(14401,1,'original','auto',36),/14,400/);
   assert.deepEqual(pdf.mergePageSelection('3, 1-2, 2', 4), [0,1,2]);
   assert.deepEqual(pdf.mergePageSelection('', 2), [0,1]);
   assert.throws(()=>pdf.mergePageSelection('1,,2', 4), /empty items/);
