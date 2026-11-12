@@ -172,7 +172,7 @@ try {
   await page.locator('#tool-app .status-line').getByText(/File loaded locally/).waitFor();
   assert.match(await page.locator('#tool-app').innerText(),/3\s*Words/);
   await page.getByLabel('Minimum word goal (optional)').fill('5'); assert.match(await page.locator('#tool-app').innerText(),/2 more words to minimum/);
-  await page.getByLabel('Maximum word goal (optional)').fill('4'); await wcInput.fill('one two three four five'); assert.match(await page.locator('#tool-app').innerText(),/1 word over maximum/);
+  await page.getByLabel('Minimum word goal (optional)').fill('4'); await page.getByLabel('Maximum word goal (optional)').fill('4'); await wcInput.fill('one two three four five'); assert.match(await page.locator('#tool-app').innerText(),/1 word over maximum/);
   await page.getByLabel('Reading pace (words/min)').fill('0'); assert.match(await page.locator('#tool-app .status-line').innerText(),/Pace/);
   await page.getByLabel('Reading pace (words/min)').fill('200');
   await wcFile.setInputFiles({name:'bad.txt',mimeType:'text/plain',buffer:Buffer.from([255])}); await page.locator('#tool-app .status-line').getByText(/not valid UTF-8/).waitFor();
