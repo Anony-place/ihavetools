@@ -11,6 +11,21 @@
 
 ---
 
+## PDF merge selection and safety batch
+
+Plan first: [iLovePDF](https://www.ilovepdf.com/merge_pdf) shows ordered PDF
+combination, a competitor feature signal rather than demand evidence. Extend the
+existing local merger with optional per-file page ranges, preserving file order and
+ascending selected page order. Bound the queue to 20 files / 200 MiB total, selected
+pages to 500 and output to 200 MiB; reject invalid batches without silently dropping
+files. Invalidate pending work on selection, range, clear or reorder changes; verify
+real merged page order, invalid ranges, limits, cancellation, mobile accessibility,
+CI, preview and production. Explain loss of document-level features and that these
+limits do not guarantee a device has sufficient memory. One PR, no paid service.
+GSC comparison and tax audit remain unverified.
+
+---
+
 ## Slug and case editing workflow batch
 
 Plan first: enhance existing Slug Generator and Case Converter together. Google’s

@@ -1134,6 +1134,18 @@ try {
   await page.locator('#tool-app input[type=file]').setInputFiles(samePdf);
   assert.equal(await page.locator('#tool-app .file-row').count(),2,'same PDF can be added twice');
 
+  await page.getByRole('button', {name:'Clear list'}).click();
+  const selectDoc=await PDFDocument.create();selectDoc.addPage([100,200]);selectDoc.addPage([200,200]);selectDoc.addPage([300,200]);const selectBytes=Buffer.from(await selectDoc.save());
+  await page.locator('#tool-app input[type=file]').setInputFiles([{name:'first.pdf',mimeType:'application/pdf',buffer:selectBytes},{name:'second.pdf',mimeType:'application/pdf',buffer:selectBytes}]);
+  await page.getByLabel('Pages for first.pdf').fill('3,1');await page.getByLabel('Pages for second.pdf').fill('2');
+  await page.locator('#tool-app .file-row').nth(1).getByRole('button',{name:'Move up'}).click();
+  const mergeSelected=page.waitForEvent('download');await page.getByRole('button',{name:'Merge PDFs'}).click();const selectedOutput=await PDFDocument.load(await readFile(await (await mergeSelected).path()));
+  assert.deepEqual(selectedOutput.getPages().map(p=>p.getWidth()),[200,100,300]);
+  await page.getByLabel('Pages for first.pdf').fill('9');await page.getByRole('button',{name:'Merge PDFs'}).click();await page.locator('#tool-app .status-line').getByText(/first.pdf.*does not exist/).waitFor();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'PDF merge mobile accessibility');
+  console.log('✓ PDF merge per-file selections, ordering, errors and mobile accessibility');
+
   const twoPages = await PDFDocument.create(); twoPages.addPage([100,200]); twoPages.addPage([200,300]);
   const twoBytes = Buffer.from(await twoPages.save());
   const pdfInput = [{name:'two.pdf',mimeType:'application/pdf',buffer:twoBytes}];

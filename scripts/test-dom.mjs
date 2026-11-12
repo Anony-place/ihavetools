@@ -1133,6 +1133,23 @@ await domTest('PDF merge handles dropped duplicate filenames by identity and rem
   } finally { URL.createObjectURL = original; }
 });
 
+await domTest('PDF merge selects pages, rejects invalid queue and cancels changed ranges', async () => {
+ const lib=await import('pdf-lib');window.PDFLib={...lib,PDFDocument:{create:(...a)=>lib.PDFDocument.create(...a),load:(b,...a)=>lib.PDFDocument.load(new Uint8Array(b),...a)}};
+ const doc=await lib.PDFDocument.create();doc.addPage([100,200]);doc.addPage([200,300]);doc.addPage([300,400]);const bytes=await doc.save();
+ const app=await loadToolPage('pdf-merge','pdf');const drop=files=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files}});app.querySelector('.dropzone').dispatchEvent(e);};
+ drop([new File([bytes],'a.pdf',{type:'application/pdf'}),new File([bytes],'b.pdf',{type:'application/pdf'})]);
+ const ranges=app.querySelectorAll('.merge-page-range input');ranges[0].value='3,1';fire(ranges[0],'input');ranges[1].value='2';fire(ranges[1],'input');
+ let output=null;const original=URL.createObjectURL;URL.createObjectURL=b=>{output=b;return 'blob:test';};
+ try {
+  click(btnByLabel(app,'Merge PDFs'));await new Promise(r=>setTimeout(r,150));assert.ok(output,app.textContent);let result=await lib.PDFDocument.load(await output.arrayBuffer());assert.deepEqual(result.getPages().map(p=>p.getWidth()),[100,300,200]);
+  output=null;ranges[0].value='9';fire(ranges[0],'input');click(btnByLabel(app,'Merge PDFs'));await new Promise(r=>setTimeout(r,100));assert.match(statusText(document),/a.pdf.*does not exist/);assert.equal(output,null);
+  drop([{name:'wrong.txt',type:'text/plain',size:1}]);assert.equal(app.querySelectorAll('.file-row').length,2);assert.match(statusText(document),/No files were added/);
+  drop(Array.from({length:19},(_,i)=>({name:`${i}.pdf`,type:'application/pdf',size:1})));assert.equal(app.querySelectorAll('.file-row').length,2);assert.match(statusText(document),/20 files/);
+  drop([{name:'huge.pdf',type:'application/pdf',size:200*1024*1024}]);assert.equal(app.querySelectorAll('.file-row').length,2);assert.match(statusText(document),/200 MiB total/);
+  let release;window.PDFLib={...lib,PDFDocument:{create:(...a)=>new Promise(resolve=>{release=()=>resolve(lib.PDFDocument.create(...a));})}};
+  ranges[0].value='1';fire(ranges[0],'input');click(btnByLabel(app,'Merge PDFs'));await new Promise(r=>setTimeout(r,20));assert.ok(release);ranges[0].value='2';fire(ranges[0],'input');release();await new Promise(r=>setTimeout(r,100));assert.equal(output,null);
+ } finally {URL.createObjectURL=original;}
+});
 await domTest('PDF rotate and split produce parseable pages with expected dimensions and rotation', async () => {
   const lib = await import('pdf-lib'); window.PDFLib = {...lib, PDFDocument: {create: (...a) => lib.PDFDocument.create(...a), load: (b,...a) => lib.PDFDocument.load(new Uint8Array(b),...a)}};
   const src = await lib.PDFDocument.create(); src.addPage([100,200]); src.addPage([200,300]);

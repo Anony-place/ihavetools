@@ -1270,14 +1270,15 @@ export const tools = [
   T({ id: 'pdf-merge', name: 'PDF Merge', icon: 'layers', engine: 'pdf', categories: ['pdf'],
     related: ["pdf-organizer","image-to-pdf","pdf-split","pdf-rotate"],
     blurb: 'Combine PDFs in order — processed entirely in your browser.',
-    description: 'Merge multiple PDF files into one document, in your chosen order. Files are processed locally with pdf-lib; nothing is uploaded to any server.',
+    description: 'Merge PDF files in your chosen order, optionally selecting pages from each file. Files are processed locally; queue and output limits apply.',
     keywords: ['pdf', 'merge', 'combine', 'join', 'concatenate', 'documents'],
     aliases: ['merge pdf', 'combine pdf', 'join pdf'],
     popularity: 88, featured: true, added: '2026-09-18',
-    steps: 'Drop or choose two or more PDF files.|Reorder them with the arrow buttons if needed.|Click Merge PDFs, then download the combined file.',
+    steps: 'Drop or choose two or more PDF files.|Reorder files and optionally enter page ranges for each.|Click Merge PDFs, then download the combined file.',
     guide: [
       { h: 'How merging works here — lossless page copying',
-        p: 'This tool opens each PDF with pdf-lib (loaded locally in your browser — files never upload) and copies its pages, in the order of your list, into one new document. Pages are copied rather than reprinted, so existing text and image content generally remain without deliberate recompression. Document-level features may be lost; inspect the result. Output size can vary and merging is not a compression tool.' },
+        p: 'This tool opens each PDF with pdf-lib (loaded locally in your browser — files never upload) and copies selected pages in ascending order within each file, following your file list, into one new document. Pages are copied rather than reprinted, so existing text and image content generally remain without deliberate recompression. Document-level features may be lost; inspect the result. Output size can vary and merging is not a compression tool.' },
+      { h: 'Page selection and limits', p: 'Leave a file’s page field blank for all pages, or enter pages and ranges such as 1-3, 5. Repeated pages are included once per file and sorted ascending. Add the same file twice if you need a repeated page or another order. The queue supports up to 20 files and 200 MiB combined, 500 selected pages, and 200 MiB output. Output is checked after generation and device memory may impose lower practical limits.' },
       { h: 'What does not survive a merge', list: [
         'Password-protected PDFs: encrypted files are rejected with a clear message — remove the password in the app that created the file, then merge.',
         'Interactive bits can be lost in the copy: form-field interactivity, document outlines/bookmarks and embedded file attachments may not carry over even though every page looks identical. Check the result if you rely on them.',
@@ -1292,7 +1293,7 @@ export const tools = [
     ],
     faqs: [
       { q: 'Are my PDFs uploaded anywhere?', a: 'No. Merging runs entirely in your browser using the pdf-lib library, which is loaded once from this site. Your files stay on your device.' },
-      { q: 'Is there a file size or page limit?', a: 'Each selected file must be at most 200 MiB. The practical limit may be lower because documents and copied pages are held in device memory.' },
+      { q: 'Is there a file size or page limit?', a: 'Up to 20 PDFs and 200 MiB combined, 500 selected pages and 200 MiB output. The output limit is checked after generation; the practical limit may be lower because documents and copied pages are held in device memory.' },
     ] }),
   T({ id: 'pdf-rotate', name: 'PDF Rotate', icon: 'refresh', engine: 'pdf', categories: ['pdf'],
     related: ["pdf-organizer","image-to-pdf","pdf-merge","pdf-split"],

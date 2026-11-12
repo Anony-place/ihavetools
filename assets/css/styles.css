@@ -535,6 +535,10 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 .file-row .fr-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-row .fr-size { color: var(--text-3); font-size: 0.8rem; white-space: nowrap; }
 .file-row .fr-actions { margin-left: auto; display: flex; gap: 4px; flex: none; }
+.pdf-merge-row { flex-wrap: wrap; }
+.merge-page-range { display: flex; flex: 1 1 100%; align-items: center; gap: 8px; }
+.merge-page-range span { flex: none; }
+.merge-page-range .input { min-width: 0; flex: 1; }
 
 /* Toasts */
 .toast-container { position: fixed; bottom: 18px; left: 50%; translate: -50% 0; z-index: 200; display: grid; gap: 8px; justify-items: center; }
