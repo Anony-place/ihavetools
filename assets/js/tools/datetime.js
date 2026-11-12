@@ -9,24 +9,27 @@ export { parseCalendarDate, localDateISO, isoWeek } from '../calendar.js';
 // Business days use calendar dates in UTC, avoiding local DST shifts.
 const WEEKENDS = { sat_sun: [0, 6], fri_sat: [5, 6], sun: [0], none: [] };
 function businessRules(weekend, holidays) {
-  if (!Object.hasOwn(WEEKENDS, weekend)) throw new Error('Choose a valid weekend.');
+  const excluded = Array.isArray(weekend) ? weekend : WEEKENDS[weekend];
+  if (!excluded || excluded.some(n => !Number.isInteger(n) || n < 0 || n > 6) || new Set(excluded).size !== excluded.length) throw new Error('Choose valid non-working weekdays.');
   const parts = String(holidays || '').split(/[\s,;]+/).filter(Boolean);
   if (parts.length > 500) throw new Error('Enter no more than 500 holiday dates.');
   const holidayDays = new Set(parts.map(parseCalendarDate));
-  return (day) => !WEEKENDS[weekend].includes(new Date(day).getUTCDay()) && !holidayDays.has(day);
+  return (day) => !excluded.includes(new Date(day).getUTCDay()) && !holidayDays.has(day);
 }
-export function countBusinessDays(start, end, weekend = 'sat_sun', holidays = '') {
+export function countBusinessDays(start, end, weekend = 'sat_sun', holidays = '', includeEnd = true) {
   const first = parseCalendarDate(start), last = parseCalendarDate(end), isWorking = businessRules(weekend, holidays);
   if (last < first) throw new Error('End date must be on or after the start date.');
-  const days = (last - first) / DAY_MS + 1;
+  if (typeof includeEnd !== 'boolean') throw new Error('Choose whether to include the end date.');
+  const days = (last - first) / DAY_MS + (includeEnd ? 1 : 0);
   if (days > 36600) throw new Error('Date range must be at most 36,600 days.');
   let working = 0;
-  for (let day = first; day <= last; day += DAY_MS) if (isWorking(day)) working++;
+  for (let i = 0; i < days; i++) if (isWorking(first + i * DAY_MS)) working++;
   return { working, nonWorking: days - working, calendarDays: days };
 }
 export function addBusinessDays(start, amount, weekend = 'sat_sun', holidays = '') {
   let day = parseCalendarDate(start); const isWorking = businessRules(weekend, holidays);
   if (!Number.isInteger(amount) || Math.abs(amount) > 10000) throw new Error('Working days must be a whole number between -10000 and 10000.');
+  if (amount !== 0 && Array.isArray(weekend) && weekend.length === 7) throw new Error('At least one weekday must be a working day for a nonzero offset.');
   let remaining = Math.abs(amount), steps = 0, direction = Math.sign(amount);
   while (remaining) {
     day += direction * DAY_MS;
@@ -150,14 +153,20 @@ const defs = {
     const today = new Date(), nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7);
     const start = input({ type: 'date', value: localDateISO(today) }), end = input({ type: 'date', value: localDateISO(nextWeek) });
     const amount = input({ type: 'number', step: '1', value: '5' });
-    const weekend = select({ options: [{ v: 'sat_sun', t: 'Saturday and Sunday' }, { v: 'fri_sat', t: 'Friday and Saturday' }, { v: 'sun', t: 'Sunday only' }, { v: 'none', t: 'No weekend' }], value: 'sat_sun' });
+    const weekend = select({ options: [{ v: 'sat_sun', t: 'Saturday and Sunday' }, { v: 'fri_sat', t: 'Friday and Saturday' }, { v: 'sun', t: 'Sunday only' }, { v: 'none', t: 'No weekend' }, {v:'custom',t:'Custom non-working weekdays'}], value: 'sat_sun' });
     const holidays = textarea({ rows: 3, placeholder: 'YYYY-MM-DD, one date per line (optional)' });
+    const includeEnd = switchChip({label:'Include end date in range count',checked:true});
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((day,i)=>switchChip({label:day,checked:i===0||i===6}));
+    const customWrap = h('fieldset',{style:'margin:0 0 12px;padding:12px;border:1px solid var(--border);border-radius:8px'},h('legend',{text:'Custom non-working weekdays'}),h('div',{class:'switch-row'},days));
+    customWrap.hidden=true;
+    const getWeekend=()=>weekend.value==='custom'?days.flatMap((el,i)=>el.querySelector('input').checked?[i]:[]):weekend.value;
+    weekend.addEventListener('change',()=>{customWrap.hidden=weekend.value!=='custom';});
     const grid = statsGrid(), status = statusLine('Enter holidays manually; no holidays are automatically applied.');
-    const runCount = () => { try { const r = countBusinessDays(start.value, end.value, weekend.value, holidays.value); grid.set([{ label: 'Working days (inclusive)', value: String(r.working), kind: 'good' }, { label: 'Non-working days', value: String(r.nonWorking) }, { label: 'Calendar days (inclusive)', value: String(r.calendarDays) }]); status.set('Both start and end are included. Weekend holidays are not subtracted twice. No holiday calendar is loaded automatically.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
-    const runAdd = () => { try { if (!amount.value.trim()) throw new Error('Enter a whole number of working days.'); const result = addBusinessDays(start.value, Number(amount.value), weekend.value, holidays.value); grid.set([{ label: 'Resulting date', value: result, kind: 'good' }, { label: 'Offset (working days)', value: amount.value }]); status.set('The start date is excluded for nonzero offsets; negative values subtract. Zero returns the start date. Verify the holiday list for your region.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    const runCount = () => { try { const r = countBusinessDays(start.value, end.value, getWeekend(), holidays.value, includeEnd.querySelector('input').checked); grid.set([{ label: 'Working days', value: String(r.working), kind: 'good' }, { label: 'Non-working days', value: String(r.nonWorking) }, { label: 'Calendar days', value: String(r.calendarDays) }]); status.set(`Start date is included; end date is ${includeEnd.querySelector('input').checked?'included':'excluded'}. Non-working-day holidays are not subtracted twice. No holiday calendar is loaded automatically.`, 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    const runAdd = () => { try { if (!amount.value.trim()) throw new Error('Enter a whole number of working days.'); const result = addBusinessDays(start.value, Number(amount.value), getWeekend(), holidays.value); grid.set([{ label: 'Resulting date', value: result, kind: 'good' }, { label: 'Offset (working days)', value: amount.value }]); status.set('The start date is excluded for nonzero offsets; negative values subtract. Zero returns the start date. Verify the holiday list for your region.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
     const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
     root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
-    root.append(h('div', { class: 'field-row' }, field({ label: 'Start date', control: start }), field({ label: 'End date (for counting)', control: end }), field({ label: 'Weekend', control: weekend }), field({ label: 'Working days to add (negative to subtract)', control: amount })), field({ label: 'Holidays (YYYY-MM-DD)', control: holidays, hint: 'Optional: separate dates with commas or new lines. No automatic holidays.' }), actionsRow(btn({ label: 'Count working days', icon: 'calendar', onClick: runCount }), btn({ label: 'Add / subtract working days', icon: 'calendar-plus', onClick: runAdd })), grid, status);
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Start date', control: start }), field({ label: 'End date (for counting)', control: end }), field({ label: 'Weekend', control: weekend }), field({ label: 'Working days to add (negative to subtract)', control: amount })), customWrap, h('div',{class:'switch-row'},includeEnd), field({ label: 'Holidays (YYYY-MM-DD)', control: holidays, hint: 'Optional: separate dates with commas or new lines. No automatic holidays.' }), actionsRow(btn({ label: 'Count working days', icon: 'calendar', onClick: runCount }), btn({ label: 'Add / subtract working days', icon: 'calendar-plus', onClick: runAdd })), grid, status);
   },
 
   'date-difference'(root) {
