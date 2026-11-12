@@ -1727,6 +1727,16 @@ await domTest('text tools clear stale results and diff detects final newline', a
   app=await loadToolPage('text-sorter','text'); const input=app.querySelector('textarea'); input.value='a\nb'; click(btnByLabel(app,'Sort')); assert.match(resultText(document),/a/); input.value='z'; fire(input,'input'); assert.doesNotMatch(resultText(document),/^a\nb$/);
   app=await loadToolPage('slug-generator','text'); click(btnByLabel(app,'Generate slugs')); const title=app.querySelector('textarea'); title.value='हिन्दी भाषा'; fire(title,'input'); assert.doesNotMatch(resultText(document),/coffee/); click(btnByLabel(app,'Generate slugs')); assert.equal(resultText(document),'हिन्दी-भाषा');
 });
+await domTest('text sorter handles simple separators and invalidates settings', async () => {
+ const app=await loadToolPage('text-sorter','text'), box=app.querySelector('textarea');
+ const selects=app.querySelectorAll('select');
+ box.value=' B, a,B,,'; fire(box,'input'); selects[0].value='comma'; fire(selects[0],'change'); selects[1].value='semicolon'; fire(selects[1],'change');
+ for (const label of ['Trim each item','Remove duplicates']) { const control=[...app.querySelectorAll('label')].find(x=>x.textContent.includes(label)).querySelector('input'); control.checked=true; fire(control,'change'); }
+ click(btnByLabel(app,'Sort')); assert.equal(resultText(document),';;a;B'); assert.match(statusText(document),/4 items/);
+ selects[1].value='line'; fire(selects[1],'change'); assert.doesNotMatch(resultText(document),/;;a;B/);
+ box.value='a,'.repeat(50000); fire(box,'input'); click(btnByLabel(app,'Sort')); assert.match(statusText(document),/50,000 items/);
+});
+
 await domTest('line counter reports zero blank lines on empty input', async () => {
  const app=await loadToolPage('line-counter','text'); assert.match(app.textContent,/0Empty/); assert.match(app.textContent,/0Total lines/);
 });

@@ -373,6 +373,11 @@ await test('text statistics and Unicode slugs retain meaningful marks', () => {
 });
 await test('line sort and diff preserve blanks and enforce bounds', () => {
   assert.deepEqual(text.dedupeLines('a\n\n\na',{keepEmpty:true}),['a','','']);
+  assert.deepEqual(text.sortDelimited(' B, a,B,,', {inputSeparator:'comma',outputSeparator:'semicolon',trimItems:true,unique:true}), {text:';;a;B',count:4});
+  assert.deepEqual(text.sortDelimited('file10;file2;file1', {inputSeparator:'semicolon',mode:'natural'}), {text:'file1\nfile2\nfile10',count:3});
+  assert.deepEqual(text.sortDelimited('"a,b",c',{inputSeparator:'comma'}), {text:'"a\nb"\nc',count:3});
+  assert.throws(()=>text.sortDelimited('a,'.repeat(50000),{inputSeparator:'comma'}),/50,000 items/);
+  assert.throws(()=>text.sortDelimited('x',{inputSeparator:'__proto__'}),/separator/);
   assert.equal(text.sortLines('B\na\nA', {unique:true,caseInsensitive:true}),'a\nB');
   assert.equal(text.sortLines('x\n2\n-3\ny',{mode:'numeric'}),'-3\n2\nx\ny');
   assert.equal(text.sortLines('b\na\n',{mode:'alpha'}),'\na\nb');

@@ -100,9 +100,17 @@ export function dedupeLines(text, { caseInsensitive = false, trim = false, keepE
   return keep === 'last' ? out.reverse() : out;
 }
 
-export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensitive = true, unique = false, random = Math.random } = {}) {
-  let lines = text.split(/\r\n|\r|\n/);
-  if (unique) lines = dedupeLines(lines.join('\n'), { caseInsensitive, trim: false, keepEmpty: true });
+export function sortItems(items, { mode = 'alpha', direction = 'asc', caseInsensitive = true, unique = false, random = Math.random } = {}) {
+  let lines = [...items];
+  if (unique) {
+    const seen = new Set();
+    lines = lines.filter(line => {
+      if (!line.trim()) return true;
+      const key = caseInsensitive ? line.toLowerCase() : line;
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+  }
   if (mode === 'shuffle') {
     for (let i = lines.length - 1; i > 0; i--) {
       const draw = random();
@@ -110,7 +118,7 @@ export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensi
       const j = Math.floor(draw * (i + 1));
       [lines[i], lines[j]] = [lines[j], lines[i]];
     }
-    return lines.join('\n');
+    return lines;
   }
   const coll = new Intl.Collator(undefined, { sensitivity: caseInsensitive ? 'accent' : 'variant', numeric: mode === 'natural' });
   const cmp = (a, b) => {
@@ -125,7 +133,20 @@ export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensi
     return direction === 'desc' && mode !== 'shuffle' ? -r : r;
   };
   lines.sort(cmp);
-  return lines.join('\n');
+  return lines;
+}
+export function sortLines(text, options = {}) {
+  return sortItems(text.split(/\r\n|\r|\n/), options).join('\n');
+}
+export function sortDelimited(text, { inputSeparator = 'line', outputSeparator = 'line', trimItems = false, ...options } = {}) {
+  const separators = { line: '\n', comma: ',', semicolon: ';' };
+  if (!Object.hasOwn(separators, inputSeparator) || !Object.hasOwn(separators, outputSeparator)) throw new Error('Choose a supported separator.');
+  validateListText(text);
+  let items = inputSeparator === 'line' ? text.split(/\r\n|\r|\n/) : text.split(separators[inputSeparator]);
+  if (items.length > 50000) throw new Error('Text exceeds 50,000 items.');
+  if (trimItems) items = items.map(item => item.trim());
+  const sorted = sortItems(items, options);
+  return { text: sorted.join(separators[outputSeparator]), count: sorted.length };
 }
 
 // Keep synchronous list processing bounded on lower-powered devices.
@@ -488,6 +509,10 @@ const defs = {
     const dir = segControl({ options: [{ v: 'asc', t: 'Ascending' }, { v: 'desc', t: 'Descending' }], value: 'asc', ariaLabel: 'Direction' });
     const ci = switchChip({ label: 'Case-insensitive', checked: true });
     const uniq = switchChip({ label: 'Remove duplicates' });
+    const trimItems = switchChip({ label: 'Trim each item' });
+    const separator = () => h('select', {class:'input'},
+      h('option',{value:'line',text:'Line break'}), h('option',{value:'comma',text:'Comma'}), h('option',{value:'semicolon',text:'Semicolon'}));
+    const inputSep = separator(), outputSep = separator();
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Sorted lines', download:true, downloadName:'sorted-lines.txt' });
     [mode, dir].forEach(control => control.addEventListener('click', () => { out.placeholder(); status.set('Settings changed. Run again.', 'info'); }));
@@ -499,20 +524,23 @@ const defs = {
       imported.cancel();
       if (!inp.value.trim()) { status.set('Paste some lines first.', 'warning'); return; }
       try { validateListText(inp.value); } catch(e) { out.placeholder(); status.set(e.message, 'error'); return; }
-      const result = sortLines(inp.value, {
-        mode: mode.getValue(), direction: dir.getValue(),
-        caseInsensitive: ci.querySelector('input').checked,
-        unique: uniq.querySelector('input').checked,
-      });
-      out.set(result);
-      status.set(`Sorted ${result.split('\n').length.toLocaleString()} lines (${mode.getValue()}, ${dir.getValue()}).`, 'success');
+      try {
+        const result = sortDelimited(inp.value, {
+          mode: mode.getValue(), direction: dir.getValue(), inputSeparator: inputSep.value, outputSeparator: outputSep.value,
+          trimItems: trimItems.querySelector('input').checked, caseInsensitive: ci.querySelector('input').checked,
+          unique: uniq.querySelector('input').checked,
+        });
+        out.set(result.text);
+        status.set(`Sorted ${result.count.toLocaleString()} items (${mode.getValue()}, ${dir.getValue()}).`, 'success');
+      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
     };
     root.append(field({ label: 'Lines to sort', control: inp }), field({label:'Load text file (optional)',control:imported.file,hint:'Local UTF-8 .txt or .md; up to 4,000,000 bytes, 1,000,000 UTF-16 code units and 50,000 lines.'}),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Mode', control: mode }),
         field({ label: 'Direction', control: dir })),
-      h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, uniq),
-      h('p', { class: 'hint', text: 'Alphabetical order depends on your browser locale. Numeric mode parses the first number after a non-numeric prefix; non-numeric lines sort after numbers in ascending order. Blank lines are retained; line endings in output are normalized to LF.' }),
+      h('div', {class:'field-row'}, field({label:'Input separator',control:inputSep}), field({label:'Output separator',control:outputSep})),
+      h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, uniq, trimItems),
+      h('p', { class: 'hint', text: 'Alphabetical order depends on your browser locale. Numeric mode parses the first number after a non-numeric prefix; non-numeric lines sort after numbers in ascending order. Blank items are retained; optional trimming removes surrounding whitespace. Separators are literal, not CSV: quotes are not parsed and output can be ambiguous if items contain the chosen separator. Line-break output uses LF; maximum 50,000 items.' }),
       actionsRow(btn({ label: 'Sort', icon: 'sort', onClick: run }),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel, privacyNote('Text and files are processed locally in your browser.'));
@@ -711,4 +739,4 @@ export function mount(id) {
   import('../ui.js').then(({ mountTool }) => mountTool(id, defs));
 }
 
-export const __test = { textStats, convertCase, dedupeLines, sortLines, diffLines, diffSummary, slugify, lorem, textToMorse, morseToText };
+export const __test = { textStats, convertCase, dedupeLines, sortLines, sortItems, sortDelimited, diffLines, diffSummary, slugify, lorem, textToMorse, morseToText };
