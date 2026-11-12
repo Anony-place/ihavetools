@@ -518,7 +518,27 @@ try {
   await page.getByRole('button',{name:'1:1',exact:true}).click(); assert.equal(await page.getByLabel('Crop width (px)').inputValue(),'40');
   await page.getByRole('button',{name:'Crop',exact:true}).click(); cropDownload=page.waitForEvent('download'); await page.getByRole('button',{name:/Download 40 × 40 PNG/}).click();
   cropData=await sharp(await readFile(await (await cropDownload).path())).metadata(); assert.deepEqual([cropData.width,cropData.height],[40,40]);
-  console.log('✓ numeric image crop output pixels, presets, validation, same-file reload and mobile accessibility');
+  // Verify actual format, alpha and JPEG white background, not only UI text.
+  const alphaSource = await sharp({create:{width:16,height:16,channels:4,background:{r:255,g:0,b:0,alpha:0}}}).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'transparent.png',mimeType:'image/png',buffer:alphaSource});
+  await page.locator('#tool-app .status-line').getByText(/Loaded/).waitFor();
+  await page.getByLabel('Output format').selectOption('webp');
+  await page.getByLabel('Quality (5–100)').fill('95');
+  await page.getByRole('button',{name:'Crop',exact:true}).click();
+  cropDownload=page.waitForEvent('download'); await page.getByRole('button',{name:/Download 16 × 16 WEBP/}).click();
+  let file=await cropDownload; assert.equal(file.suggestedFilename(),'cropped-transparent.webp');
+  let encoded=await readFile(await file.path()); assert.equal((await sharp(encoded).metadata()).format,'webp');
+  cropData=await sharp(encoded).ensureAlpha().raw().toBuffer(); assert.equal(cropData[3],0);
+  await page.getByLabel('Output format').selectOption('jpeg'); assert.equal(await page.locator('#tool-app .img-preview').count(),0);
+  await page.getByRole('button',{name:'Crop',exact:true}).click();
+  cropDownload=page.waitForEvent('download'); await page.getByRole('button',{name:/Download 16 × 16 JPEG/}).click();
+  file=await cropDownload; assert.equal(file.suggestedFilename(),'cropped-transparent.jpg'); encoded=await readFile(await file.path());
+  assert.equal((await sharp(encoded).metadata()).format,'jpeg'); cropData=await sharp(encoded).removeAlpha().raw().toBuffer(); assert.ok([...cropData.subarray(0,3)].every(c=>c>=250),'transparent pixels flattened to white');
+  await page.getByLabel('Quality (5–100)').fill('101'); assert.equal(await page.locator('#tool-app .img-preview').count(),0); await page.getByRole('button',{name:'Crop',exact:true}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/Quality must/);
+  await page.getByRole('button',{name:'Select full image'}).click(); await page.getByRole('button',{name:'9:16',exact:true}).click();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'crop output controls accessibility');
+  console.log('✓ image crop output formats, alpha, quality, pixels, presets and mobile accessibility');
 
   // A decoded JPEG without EXIF must not be described as metadata-free.
   await page.setViewportSize({ width: 320, height: 844 });

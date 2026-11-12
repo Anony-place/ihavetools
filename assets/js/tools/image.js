@@ -725,13 +725,15 @@ const defs = {
 
   'image-cropper'(root) {
     const zone = imageZone({ accept: 'image/*', title: 'Choose an image or drop it here', sub: 'Cropped locally — never uploaded' });
-    const aspect = segControl({ options: [{ v: 'free', t: 'Free' }, { v: '1', t: '1:1' }, { v: '4/3', t: '4:3' }, { v: '16/9', t: '16:9' }], value: 'free', ariaLabel: 'Aspect ratio' });
+    const aspect = segControl({ options: [{ v: 'free', t: 'Free' }, { v: '1', t: '1:1' }, { v: '4/3', t: '4:3' }, { v: '3/2', t: '3:2' }, { v: '16/9', t: '16:9' }, { v: '9/16', t: '9:16' }], value: 'free', ariaLabel: 'Aspect ratio' });
     const status = statusLine('Choose an image, then drag a selection or enter crop coordinates.');
     const xIn = input({ type: 'number', min: 0, step: 1 });
     const yIn = input({ type: 'number', min: 0, step: 1 });
     const widthIn = input({ type: 'number', min: 1, step: 1 });
     const heightIn = input({ type: 'number', min: 1, step: 1 });
     const coords = [xIn, yIn, widthIn, heightIn];
+    const format = select({options:[{v:'png',t:'PNG (transparent)'}, {v:'jpeg',t:'JPEG (white background)'}, {v:'webp',t:'WebP (transparent)'}], value:'png'});
+    const quality = input({type:'number', min:5, max:100, step:1, value:'90'});
     const stage = h('div', { class: 'cropper-stage' });
     const canvas = document.createElement('canvas');
     stage.append(canvas);
@@ -838,11 +840,21 @@ const defs = {
       if (sel && img) { sel = applyAspect(sel); sel.x = Math.min(sel.x, canvas.width - sel.w); sel.y = Math.min(sel.y, canvas.height - sel.h); showFields(); draw(); }
       status.set('Aspect applied to the current selection. Crop to create a new output.', 'info');
     });
+    const settingsChanged = () => { revision++; previews.clear(); quality.disabled = format.value === 'png'; status.set('Output settings changed. Crop again.', 'info'); };
+    format.addEventListener('change', settingsChanged); quality.addEventListener('input', settingsChanged); quality.disabled = true;
+    const resetSelection = () => {
+      if (!img) { status.set('Choose an image first.', 'warning'); return; }
+      revision++; previews.clear(); sel = {x:0, y:0, w:canvas.width, h:canvas.height}; showFields(); draw();
+      status.set('Full image selected. Aspect presets can adjust it.', 'info');
+    };
     const run = async () => {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
       previews.clear();
       const crop = fromFields();
       if (!crop) { status.set('Enter whole-number coordinates within the image, with positive width and height.', 'warning'); return; }
+      const fmt = format.value, q = Number(quality.value);
+      if (!Object.hasOwn(MIME_BY_FMT, fmt)) { status.set('Choose a supported output format.', 'error'); return; }
+      if (fmt !== 'png' && (!quality.value || !Number.isInteger(q) || q < 5 || q > 100)) { status.set('Quality must be a whole number from 5 to 100.', 'warning'); return; }
       status.set('Cropping…', 'info');
       const selected = file, token = ++revision;
       try {
@@ -851,21 +863,24 @@ const defs = {
         const width = Math.max(1, Math.round(sw)), height = Math.max(1, Math.round(sh));
         validateCanvasSize(width, height);
         out.width = width; out.height = height;
-        out.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, out.width, out.height);
-        const blob = await canvasToBlob(out, 'image/png');
+        const ctx = out.getContext('2d');
+        if (fmt === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, out.width, out.height);
+        const blob = await canvasToBlob(out, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100);
         if (file !== selected || revision !== token) return;
         previews.show(blob, (url) => h('div', {},
           h('img', { class: 'img-preview', src: url, alt: 'Cropped preview', style: 'margin-top:12px' }),
-          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadImage(blob, `cropped-${baseName(selected.name)}.png`); } }, `Download ${out.width} × ${out.height} PNG`))));
+          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadImage(blob, `cropped-${baseName(selected.name)}.${EXT_BY_FMT[fmt]}`); } }, `Download ${out.width} × ${out.height} ${fmt === 'jpeg' ? 'JPEG' : fmt.toUpperCase()}`))));
         status.set(`Cropped to ${out.width} × ${out.height} px ✓`, 'success');
       } catch (e) { if (file === selected && revision === token) status.set(e.message, 'error'); }
     };
     root.append(zone, h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' }, field({ label: 'Aspect ratio', control: aspect })),
       h('p', { class: 'hint', text: 'Drag the preview or enter pixel coordinates from the top-left corner. Aspect buttons adjust the current selection; manual coordinates can use any ratio.' }),
       h('div', { class: 'field-row' }, field({ label: 'Left (px)', control: xIn }), field({ label: 'Top (px)', control: yIn }), field({ label: 'Crop width (px)', control: widthIn }), field({ label: 'Crop height (px)', control: heightIn })),
-      actionsRow(btn({ label: 'Crop', icon: 'crop', onClick: run })),
+      h('div', {class:'field-row'}, field({label:'Output format', control:format}), field({label:'Quality (5–100)', control:quality, hint:'For JPEG and WebP; PNG ignores quality.'})),
+      actionsRow(btn({ label: 'Crop', icon: 'crop', onClick: run }), btn({label:'Select full image', variant:'secondary', onClick:resetSelection})),
       status, h('br'), stage, preview,
-      privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
+      privacyNote('Processed locally, never uploaded. PNG and WebP can preserve transparency; JPEG uses a white background. JPEG and WebP use lossy quality settings. Canvas output may discard metadata and animation. Unsupported encoders are rejected; output size may be larger than the original. Browser decoding can consume substantial memory. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
   },
 
   'image-metadata-viewer'(root) {
