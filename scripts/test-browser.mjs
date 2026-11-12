@@ -166,6 +166,23 @@ try {
   assert.deepEqual((await new AxeBuilder({ page }).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v => v.id), [], 'combined date mobile accessibility');
   await go('gst-calculator');
   assert.equal(await page.locator('#tool-app select option[value="40"]').count(), 1);
+  for (const id of ['slug-generator','case-converter']) {
+    await go(id);
+    const editor=page.locator('#tool-app textarea'), picker=page.getByLabel('Load text file (optional)');
+    await picker.setInputFiles({name:'titles.txt',mimeType:'text/plain',buffer:Buffer.from(id==='slug-generator'?'A\nA\nA-2':'hello world')});
+    await page.locator('#tool-app .status-line').getByText(/File loaded locally/).waitFor();
+    if(id==='slug-generator') { await page.getByText('Make slugs unique within this batch',{exact:true}).click(); await page.getByRole('button',{name:'Generate slugs'}).click(); }
+    else await page.getByRole('button',{name:'UPPER CASE',exact:true}).click();
+    const expected=id==='slug-generator'?'a\na-3\na-2':'HELLO WORLD';
+    assert.equal(await page.locator('#tool-app .result-body pre').textContent(),expected);
+    const event=page.waitForEvent('download');await page.locator('#tool-app .result-panel').getByRole('button',{name:'Download'}).click();const download=await event;
+    assert.equal(download.suggestedFilename(),id==='slug-generator'?'slugs.txt':'converted-text.txt');assert.equal(await readFile(await download.path(),'utf8'),expected);
+    await picker.setInputFiles({name:'bad.txt',mimeType:'text/plain',buffer:Buffer.from([255])});await page.locator('#tool-app .status-line').getByText(/not valid UTF-8/).waitFor();
+    assert.equal(await editor.inputValue(),id==='slug-generator'?'A\nA\nA-2':'hello world');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} mobile accessibility`);
+  }
+  console.log('✓ slug and case tools local files, downloads and mobile accessibility');
   for (const id of ['remove-duplicate-lines','text-sorter']) {
     await go(id);
     const listInput=page.locator('#tool-app textarea'), listFile=page.getByLabel('Load text file (optional)');
