@@ -1625,6 +1625,16 @@ await test('bulk fit, output filenames, search and discovery', () => {
   assert.ok(registry.searchTools('bulk image compressor', 20).some(t => t.id === 'bulk-image-resizer'));
   assert.ok(registry.tools.filter(t => registry.relatedTools(t,6).some(r => r.id === 'bulk-image-resizer')).length >= 3);
 });
+await test('word time and optional goals validate boundaries', () => {
+  assert.equal(text.wordTime(0,200),'0 sec'); assert.equal(text.wordTime(1,130),'5 sec');
+  assert.equal(text.wordTime(200,200),'1 min'); assert.equal(text.wordTime(130,130),'1 min');
+  assert.throws(()=>text.wordTime(10,39),/40/); assert.throws(()=>text.wordTime(10,200.5),/whole/);
+  assert.equal(text.wordGoal(50,100,200),'50 more words to minimum.');
+  assert.equal(text.wordGoal(100,100,200),'Within goal. 100 words until maximum.');
+  assert.equal(text.wordGoal(201,null,200),'1 word over maximum.');
+  assert.equal(text.wordGoal(0,null,0),'Within goal. 0 words until maximum.');
+  assert.throws(()=>text.wordGoal(5,10,4),/cannot exceed/); assert.throws(()=>text.wordGoal(5,-1,null),/whole/);
+});
 await test('fixed-canvas fit centers images without cropping or unwanted enlargement', () => {
   assert.deepEqual(img.paddedLayout(80,40,40,40), {width:40,height:40,imageWidth:40,imageHeight:20,x:0,y:10});
   assert.deepEqual(img.paddedLayout(3,2,10,10), {width:10,height:10,imageWidth:3,imageHeight:2,x:3,y:4});

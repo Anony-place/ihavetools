@@ -25,6 +25,21 @@ export function textStats(text) {
   return { words, chars, charsNoSpaces, sentences, paragraphs, lines, nonEmptyLines, blankLines: lines - nonEmptyLines, longestLine, letters, digits, readingTime };
 }
 
+/** Time estimate rounded up to five seconds, based on an assumed pace. */
+export function wordTime(words, wpm) {
+  if (!Number.isSafeInteger(words) || words < 0 || !Number.isInteger(wpm) || wpm < 40 || wpm > 1000) throw new Error('Pace must be a whole number from 40 to 1,000 words per minute.');
+  const seconds = Math.ceil(words * 60 / wpm / 5) * 5;
+  return seconds < 60 ? `${seconds} sec` : `${Math.floor(seconds / 60)} min${seconds % 60 ? ` ${seconds % 60} sec` : ''}`;
+}
+export function wordGoal(words, min, max) {
+  if (!Number.isSafeInteger(words) || words < 0 || ![min,max].every(n => n === null || (Number.isSafeInteger(n) && n >= 0 && n <= 1000000))) throw new Error('Goals must be whole numbers from 0 to 1,000,000.');
+  if (min !== null && max !== null && min > max) throw new Error('Minimum goal cannot exceed maximum goal.');
+  if (min !== null && words < min) return `${min - words} more ${min - words === 1 ? 'word' : 'words'} to minimum.`;
+  if (max !== null && words > max) return `${words - max} ${words - max === 1 ? 'word' : 'words'} over maximum.`;
+  if (min !== null || max !== null) return max !== null ? `Within goal. ${max - words} ${max - words === 1 ? 'word' : 'words'} until maximum.` : 'Minimum goal reached.';
+  return '';
+}
+
 /* ═══════════════════════════ Case conversion ═══════════════════════════ */
 function wordsOf(text) {
   return text
@@ -221,41 +236,67 @@ export function morseToText(code) {
 const defs = {
   'word-counter'(root) {
     const inp = textarea({ rows: 12, mono: false, placeholder: 'Type or paste your text here — statistics update live…' });
-    const grid = statsGrid();
-    const extra = h('div', {});
+    const file = input({type:'file', accept:'.txt,.md,text/plain,text/markdown'});
+    const reading = input({type:'number',min:40,max:1000,step:1,value:'200'});
+    const speaking = input({type:'number',min:40,max:1000,step:1,value:'130'});
+    const minGoal = input({type:'number',min:0,max:1000000,step:1,placeholder:'Optional'});
+    const maxGoal = input({type:'number',min:0,max:1000000,step:1,placeholder:'Optional'});
+    const grid = statsGrid(), extra = h('div', {}), status = statusLine('');
+    let revision = 0, summary = '';
+    const parseOptional = el => el.value === '' ? null : Number(el.value);
     const render = () => {
-      const s = textStats(inp.value);
+      summary = ''; grid.replaceChildren(); extra.replaceChildren();
+      if (inp.value.length > 1000000) { status.set('Text exceeds 1,000,000 characters. Shorten it to calculate.', 'error'); return; }
+      let readTime, speakTime, goal;
+      const stats = textStats(inp.value);
+      try {
+        readTime = wordTime(stats.words, reading.value === '' ? NaN : Number(reading.value));
+        speakTime = wordTime(stats.words, speaking.value === '' ? NaN : Number(speaking.value));
+        goal = wordGoal(stats.words, parseOptional(minGoal), parseOptional(maxGoal));
+      } catch (e) { status.set(e.message, 'error'); return; }
       grid.set([
-        { label: 'Words', value: s.words.toLocaleString() },
-        { label: 'Characters', value: s.chars.toLocaleString() },
-        { label: 'Chars (no spaces)', value: s.charsNoSpaces.toLocaleString() },
-        { label: 'Sentences', value: s.sentences.toLocaleString() },
-        { label: 'Paragraphs', value: s.paragraphs.toLocaleString() },
-        { label: 'Lines', value: s.lines.toLocaleString() },
-        { label: 'Reading time', value: s.readingTime },
-        { label: 'Speaking time', value: s.words === 0 ? '0 sec' : `${Math.max(1, Math.ceil(s.words / 130 / 0.5) * 0.5)} min` },
+        {label:'Words',value:stats.words.toLocaleString()}, {label:'Characters',value:stats.chars.toLocaleString()},
+        {label:'Chars (no spaces)',value:stats.charsNoSpaces.toLocaleString()}, {label:'Sentences',value:stats.sentences.toLocaleString()},
+        {label:'Paragraphs',value:stats.paragraphs.toLocaleString()}, {label:'Lines',value:stats.lines.toLocaleString()},
+        {label:'Reading time',value:readTime}, {label:'Speaking time',value:speakTime},
       ]);
-      extra.replaceChildren();
-      const longest = s.longestLine;
-      if (inp.value) extra.append(h('p', { class: 'hint', text: `Longest line: ${longest.toLocaleString()} characters · Letters: ${s.letters.toLocaleString()} · Numbers: ${s.digits.toLocaleString()} · Avg word length: ${(s.words ? s.charsNoSpaces / s.words : 0).toFixed(1)}` }));
+      if (inp.value) extra.append(h('p',{class:'hint',text:`Longest line: ${stats.longestLine.toLocaleString()} characters · Letters: ${stats.letters.toLocaleString()} · Numbers: ${stats.digits.toLocaleString()} · Non-space characters per word: ${(stats.words ? stats.charsNoSpaces / stats.words : 0).toFixed(1)}`}));
+      if (goal) extra.append(h('p',{class:'hint',text:`Word goal: ${goal}`}));
+      summary = `Words: ${stats.words}\nCharacters: ${stats.chars}\nCharacters (no spaces): ${stats.charsNoSpaces}\nSentences: ${stats.sentences}\nParagraphs: ${stats.paragraphs}\nLines: ${stats.lines}\nReading time (${reading.value} wpm): ${readTime}\nSpeaking time (${speaking.value} wpm): ${speakTime}${goal ? `\nWord goal: ${goal}` : ''}`;
+      status.set('', 'info');
     };
-    inp.addEventListener('input', render);
+    inp.addEventListener('input', () => {revision++; render();});
+    [reading,speaking,minGoal,maxGoal].forEach(el=>el.addEventListener('input',render));
+    file.addEventListener('change', async () => {
+      const selected = file.files?.[0]; file.value=''; if (!selected) return;
+      const token=++revision;
+      try {
+        if (!/\.(txt|md)$/i.test(selected.name) || selected.size > 4000000) throw new Error('Choose a UTF-8 .txt or .md file up to 4,000,000 bytes.');
+        status.set('Reading file locally…','info');
+        const bytes=await readFile(selected,'buffer'); if (token!==revision) return;
+        let text; try {text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);} catch {throw new Error('File is not valid UTF-8.');}
+        if (text.length > 1000000) throw new Error('File exceeds 1,000,000 characters.');
+        inp.value=text; render(); if (summary) status.set('File loaded locally.','success');
+      } catch (e) {if(token===revision) status.set(`${e.message || 'Could not read file.'} Existing text was kept.`, 'error');}
+    });
+    window.addEventListener('pagehide',()=>{revision++;},{once:true});
     render();
     root.append(
-      h('div', { class: 'field' }, h('div', { class: 'field-row', style: 'display:block' }, grid), h('div', {}, extra)),
-      field({ label: 'Your text', control: inp }),
-      actionsRow(btn({ label: 'Copy statistics', variant: 'secondary', icon: 'copy', onClick: async () => {
-        const s = textStats(inp.value);
-        const ok = await copyText(`Words: ${s.words}\nCharacters: ${s.chars}\nCharacters (no spaces): ${s.charsNoSpaces}\nSentences: ${s.sentences}\nParagraphs: ${s.paragraphs}\nLines: ${s.lines}\nReading time: ${s.readingTime}`);
-        toast(ok ? 'Statistics copied' : 'Copy failed', ok ? 'success' : 'error');
-      } }),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; render(); inp.focus(); } })),
-      privacyNote('Your text is counted locally in your browser and never uploaded.'));
+      h('div',{class:'field'},h('div',{class:'field-row',style:'display:block'},grid),extra),
+      field({label:'Your text',control:inp,hint:'Up to 1,000,000 UTF-16 characters. Words are whitespace-separated; results can differ from other editors.'}),
+      field({label:'Load text file (optional)',control:file,hint:'UTF-8 .txt or .md, up to 4,000,000 bytes and 1,000,000 characters. Replaces the text; Markdown is not rendered.'}),
+      h('div',{class:'field-row'},field({label:'Reading pace (words/min)',control:reading}),field({label:'Speaking pace (words/min)',control:speaking}),field({label:'Minimum word goal (optional)',control:minGoal}),field({label:'Maximum word goal (optional)',control:maxGoal})),
+      h('p',{class:'hint',text:'Time estimates use the chosen pace and round up to 5 seconds. Actual times vary; characters count Unicode code points, not grapheme clusters.'}),
+      actionsRow(btn({label:'Copy statistics',variant:'secondary',icon:'copy',onClick:async()=>{if(!summary){status.set('Fix the input or settings before copying.','warning');return;} const ok=await copyText(summary);toast(ok?'Statistics copied':'Copy failed',ok?'success':'error');}}),
+        btn({label:'Clear',variant:'ghost',icon:'x',onClick:()=>{revision++; inp.value='';file.value='';render();status.set('Text cleared.','info');inp.focus();}})),
+      status, privacyNote('Your text is counted locally in your browser and never uploaded.'));
   },
 
   'character-counter'(root) {
     const inp = textarea({ rows: 9, mono: false, placeholder: 'Type or paste text…' });
     const grid = statsGrid();
+    const custom = input({type:'number',min:1,max:1000000,step:1,placeholder:'Optional'});
+    const customStatus = statusLine('');
     const meters = h('div', { style: 'margin-top:14px' });
     const LIMITS = [
       { name: 'X (Twitter) post', limit: 280 },
@@ -273,7 +314,11 @@ const defs = {
         { label: 'Digits', value: s.digits.toLocaleString() },
         { label: 'Words', value: s.words.toLocaleString() },
       ]);
-      meters.replaceChildren(...LIMITS.map((l) => {
+      const customLimit = custom.value === '' ? null : Number(custom.value);
+      const valid = customLimit === null || (Number.isSafeInteger(customLimit) && customLimit >= 1 && customLimit <= 1000000);
+      customStatus.set(valid ? '' : 'Custom limit must be a whole number from 1 to 1,000,000.', valid ? 'info' : 'error');
+      const limits = valid && customLimit !== null ? [{name:'Custom code-point limit',limit:customLimit}, ...LIMITS] : LIMITS;
+      meters.replaceChildren(...limits.map((l) => {
         const pct = Math.min(100, (s.chars / l.limit) * 100);
         const over = s.chars > l.limit;
         return h('div', { class: 'field', style: 'margin-bottom:10px' },
@@ -282,9 +327,10 @@ const defs = {
       }));
     };
     inp.addEventListener('input', render);
+    custom.addEventListener('input',render);
     render();
     root.append(h('div', { class: 'field-row', style: 'display:block' }, grid),
-      field({ label: 'Your text', control: inp }), h('p', { class: 'hint', text: 'Counts Unicode code points, not grapheme clusters. Platform meters are rough references only: SMS encoding, X weighted characters and search-result pixel widths differ.' }), meters,
+      field({ label: 'Your text', control: inp }), field({label:'Custom character limit (optional)',control:custom,hint:'Counts code points, including whitespace; verify the target service’s counting rules.'}), customStatus, h('p', { class: 'hint', text: 'Counts Unicode code points, not grapheme clusters. Platform meters are rough references only: SMS encoding, X weighted characters and search-result pixel widths differ.' }), meters,
       actionsRow(btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; render(); } })));
   },
 
