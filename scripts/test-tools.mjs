@@ -1621,6 +1621,17 @@ await test('fixed-canvas fit centers images without cropping or unwanted enlarge
   assert.deepEqual(img.paddedLayout(100,400,200,200), {width:200,height:200,imageWidth:50,imageHeight:200,x:75,y:0});
   assert.throws(() => img.paddedLayout(1,1,null,5), /both canvas dimensions/i);
 });
+await test('cover crop geometry, anchors, fractional scales and enlargement', () => {
+  assert.deepEqual(img.coverLayout(80,40,40,40), {width:40,height:40,imageWidth:80,imageHeight:40,x:-20,y:0});
+  assert.equal(img.coverLayout(80,40,40,40,false,'left').x,0);
+  assert.equal(img.coverLayout(80,40,40,40,false,'right').x,-40);
+  assert.equal(img.coverLayout(40,80,40,40,false,'bottom').y,-40);
+  const c=img.coverLayout(9,7,4,4); assert.equal(c.width,4); assert.ok(c.imageWidth>=4 && c.imageHeight>=4); assert.ok(c.x<0);
+  assert.throws(()=>img.coverLayout(20,20,40,40),/enlargement/);
+  assert.equal(img.coverLayout(20,20,40,40,true).imageWidth,40);
+  assert.throws(()=>img.coverLayout(20,20,40,40,true,'invalid'),/position/);
+  assert.throws(()=>img.coverLayout(20,20,null,40),/dimensions/);
+});
 await test('target-size search checks bytes, bounds work, cancellation and non-monotonic encoders', async () => {
   let calls = [];
   const encode = async q => { const n = Math.round(q * 100); calls.push(n); return { size: n * 10 }; };

@@ -50,6 +50,17 @@ export function paddedLayout(w, h, canvasWidth, canvasHeight, upscale = false) {
   return { width: canvasWidth, height: canvasHeight, imageWidth: image.width, imageHeight: image.height,
     x: Math.floor((canvasWidth - image.width) / 2), y: Math.floor((canvasHeight - image.height) / 2) };
 }
+// Cover the exact output canvas; crop excess in output axes after transforms.
+export function coverLayout(w, h, width, height, upscale = false, anchor = 'center') {
+  if (![w,h,width,height].every(n => Number.isSafeInteger(n) && n > 0)) throw new Error('Cover crop requires positive whole-number dimensions.');
+  const anchors = {center:[.5,.5], left:[0,.5], right:[1,.5], top:[.5,0], bottom:[.5,1]};
+  if (!Object.hasOwn(anchors, anchor)) throw new Error('Choose a valid crop position.');
+  const scale = Math.max(width / w, height / h);
+  if (!upscale && scale > 1) throw new Error('Cover crop needs enlargement for this image. Allow enlargement or choose smaller dimensions.');
+  const imageWidth = w * scale, imageHeight = h * scale;
+  const [ax,ay] = anchors[anchor];
+  return {width,height,imageWidth,imageHeight,x:(width-imageWidth)*ax || 0,y:(height-imageHeight)*ay || 0};
+}
 export function sizeChange(original, output) {
   if (!Number.isSafeInteger(original) || original <= 0 || !Number.isSafeInteger(output) || output < 0) throw new Error('Invalid file size.');
   if (original === output) return 'Unchanged';
@@ -366,7 +377,11 @@ const defs = {
     const width = input({ type: 'number', min: 1, max: 4096, value: '1200' });
     const height = input({ type: 'number', min: 1, max: 4096, value: '1200' });
     const format = select({ options: [{ v: 'jpeg', t: 'JPEG' }, { v: 'png', t: 'PNG' }, { v: 'webp', t: 'WebP' }], value: 'jpeg' });
-    const layout = select({ options: [{ v: 'fit', t: 'Fit within bounds (no padding)' }, { v: 'white', t: 'Exact canvas with white padding' }, { v: 'transparent', t: 'Exact canvas with transparent padding' }], value: 'fit' });
+    const layout = select({ options: [{ v: 'fit', t: 'Fit within bounds (no padding)' }, { v: 'white', t: 'Exact canvas with white padding' }, { v: 'transparent', t: 'Exact canvas with transparent padding' }, {v:'cover', t:'Exact canvas with cover crop'}], value: 'fit' });
+    const cropAnchor = select({options:[{v:'center',t:'Center'},{v:'left',t:'Left'},{v:'right',t:'Right'},{v:'top',t:'Top'},{v:'bottom',t:'Bottom'}], value:'center'});
+    const anchorField = field({label:'Crop position',control:cropAnchor,hint:'Position after rotation and mirroring; excess edges are removed.'});
+    anchorField.hidden = true;
+    layout.addEventListener('change', () => { anchorField.hidden = layout.value !== 'cover'; });
     const quality = input({ type: 'number', min: 5, max: 100, value: '85' });
     const target = input({ type: 'number', min: 1, max: 51200, step: 1, placeholder: 'optional' });
     const prefix = input({ type: 'text', maxlength: 40, placeholder: 'optional, e.g. product' });
@@ -421,7 +436,7 @@ const defs = {
       renderQueue();
       status.set(`${files.length} images selected. Set size and quality, then process.`, 'info');
     });
-    for (const el of [width, height, format, layout, quality, target, prefix, upscale, rotation, flipX, flipY, watermark, watermarkPosition, watermarkSize, watermarkOpacity, watermarkColor]) for (const ev of (el === prefix ? ['input'] : ['input', 'change'])) el.addEventListener(ev, () => { invalidate(); if (el === format || el === prefix) renderQueue(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
+    for (const el of [width, height, format, layout, cropAnchor, quality, target, prefix, upscale, rotation, flipX, flipY, watermark, watermarkPosition, watermarkSize, watermarkOpacity, watermarkColor]) for (const ev of (el === prefix ? ['input'] : ['input', 'change'])) el.addEventListener(ev, () => { invalidate(); if (el === format || el === prefix) renderQueue(); status.set('Settings changed. Process again to create a new ZIP.', 'info'); });
     window.addEventListener('pagehide', invalidate);
     async function run() {
       invalidate();
@@ -431,8 +446,9 @@ const defs = {
       if (!/^[A-Za-z0-9_-]{0,40}$/.test(prefix.value)) { status.set('Prefix must use at most 40 letters, numbers, hyphens or underscores.', 'error'); return; }
       const namingPrefix = prefix.value;
       const mode = layout.value;
-      if (!['fit', 'white', 'transparent'].includes(mode)) { status.set('Choose a supported layout.', 'error'); return; }
+      if (!['fit', 'white', 'transparent', 'cover'].includes(mode)) { status.set('Choose a supported layout.', 'error'); return; }
       if (mode !== 'fit' && (w == null || h0 == null)) { status.set('Exact canvas requires both width and height.', 'error'); return; }
+      if (mode === 'cover' && !['center','left','right','top','bottom'].includes(cropAnchor.value)) { status.set('Choose a valid crop position.', 'error'); return; }
       if (mode === 'transparent' && fmt === 'jpeg') { status.set('Transparent padding requires PNG or WebP output; JPEG cannot preserve transparency.', 'error'); return; }
       const targetKiB = target.value === '' ? null : Number(target.value);
       if (targetKiB != null && (!Number.isSafeInteger(targetKiB) || targetKiB < 1 || targetKiB > 51200)) { status.set('Target must be a whole number from 1 to 51200 KiB.', 'error'); return; }
@@ -442,7 +458,7 @@ const defs = {
       if (![0,90,180,270].includes(deg)) { status.set('Choose a valid rotation.', 'error'); return; }
       const text = watermark.value.trim(), position = watermarkPosition.value, fontPct = Number(watermarkSize.value), opacity = Number(watermarkOpacity.value), color = watermarkColor.value;
       if (text && (text.length > 80 || /[\x00-\x1f\x7f]/.test(text) || !['bottom-right','bottom-left','top-right','top-left','center'].includes(position) || !['white','black'].includes(color) || !Number.isFinite(fontPct) || fontPct < 2 || fontPct > 20 || !Number.isFinite(opacity) || opacity < 1 || opacity > 100)) { status.set('Watermark needs one line of up to 80 characters, size 2–20% and opacity 1–100%.', 'error'); return; }
-      const token = revision, selected = files.slice(), enlarge = upscale.querySelector('input').checked;
+      const token = revision, selected = files.slice(), enlarge = upscale.querySelector('input').checked, anchor = cropAnchor.value;
       const entries = {}, rows = []; let total = 0, totalOriginal = 0, larger = 0, successes = 0, firstPreview = null;
       status.set('Preparing image tools…', 'info');
       try {
@@ -459,7 +475,7 @@ const defs = {
             if (revision !== token) return;
             const rotatedW = deg % 180 ? img.naturalHeight : img.naturalWidth, rotatedH = deg % 180 ? img.naturalWidth : img.naturalHeight;
             const fit = mode === 'fit' ? fitInside(rotatedW, rotatedH, w, h0, enlarge) : null;
-            const dims = fit ? { ...fit, imageWidth: fit.width, imageHeight: fit.height, x: 0, y: 0 } : paddedLayout(rotatedW, rotatedH, w, h0, enlarge);
+            const dims = fit ? { ...fit, imageWidth: fit.width, imageHeight: fit.height, x: 0, y: 0 } : mode === 'cover' ? coverLayout(rotatedW, rotatedH, w, h0, enlarge, anchor) : paddedLayout(rotatedW, rotatedH, w, h0, enlarge);
             validateCanvasSize(dims.width, dims.height);
             canvas = document.createElement('canvas'); canvas.width = dims.width; canvas.height = dims.height;
             const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable.');
@@ -510,13 +526,13 @@ const defs = {
     }
     root.append(zone, list, h('div', { class: 'field-row', style: 'margin-top:14px' },
       field({ label: 'Maximum width (px)', control: width, hint: 'Blank means no width limit.' }), field({ label: 'Maximum height (px)', control: height, hint: 'Blank means no height limit; clear both to keep original dimensions.' }),
-      field({ label: 'Layout', control: layout, hint: 'Exact canvas needs both dimensions; image is centered without cropping.' }), field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'PNG ignores quality; target mode chooses quality automatically.' }),
+      field({ label: 'Layout', control: layout, hint: 'Exact canvas needs both dimensions; cover crop removes edges.' }), anchorField, field({ label: 'Output format', control: format }), field({ label: 'Quality (5–100)', control: quality, hint: 'PNG ignores quality; target mode chooses quality automatically.' }),
       field({ label: 'Target per image (KiB)', control: target, hint: 'Optional, whole KiB (1 KiB = 1024 bytes). JPEG/WebP only; searches quality 5–100 at selected dimensions.' }),
       field({ label: 'Filename prefix', control: prefix, hint: 'Optional: up to 40 ASCII letters, numbers, hyphens or underscores.' })),
       h('div', { class: 'field-row' }, field({label:'Rotate all images', control:rotation, hint:'Applied before resizing and padding.'}), field({label:'Mirror after rotation',control:flipX}), field({label:'',control:flipY})),
       h('div', { class: 'field-row' }, field({label:'Watermark text', control:watermark, hint:'Optional; single line up to 80 characters.'}), field({label:'Watermark position', control:watermarkPosition}), field({label:'Watermark size (% of shorter side)', control:watermarkSize}), field({label:'Watermark opacity (%)', control:watermarkOpacity}), field({label:'Watermark color', control:watermarkColor})),
       upscale, actionsRow(runButton, cancel, download), status, preview, results,
-      privacyNote('Images are processed locally, not uploaded. Optional text is drawn on the final output after rotation and padding; fonts vary by browser, and watermarks do not prevent copying. Check the first output preview and inspect the rest. The chosen rotation and output-axis mirrors apply to every image before resizing and padding; preview individual photos to choose appropriate settings. Fit mode uses optional bounds; clear both to retain original dimensions. Exact canvas centers the full image with white or transparent padding, without cropping. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
+      privacyNote('Images are processed locally, not uploaded. Optional text is drawn on the final output after rotation and padding; fonts vary by browser, and watermarks do not prevent copying. Check the first output preview and inspect the rest. The chosen rotation and output-axis mirrors apply to every image before resizing and padding; preview individual photos to choose appropriate settings. Fit mode uses optional bounds; clear both to retain original dimensions. Padded canvas centers the full image. Cover crop removes edges after rotation and mirroring; position is in output axes, not automatic subject detection. Cover crop fails for any image needing enlargement unless enlargement is enabled. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
   },
 
   'image-resizer'(root) {
