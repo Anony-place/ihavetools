@@ -1024,13 +1024,13 @@ const defs = {
       h('div', { class: 'field-row', style: 'align-items:end; margin-top:6px' },
         field({ label: '…or pick a date', control: dateIn, hint:'Seconds and milliseconds are optional.' }),
         field({ label: 'Date input timezone', control: wallZone }),
-        field({ label: ' ', control: btn({ label: 'Convert to timestamp', variant: 'secondary', icon: 'calendar', onClick: () => {
+        h('div', {class:'field'}, btn({ label: 'Convert to timestamp', variant: 'secondary', icon: 'calendar', onClick: () => {
           try {
             if (!dateIn.value) throw new Error('Pick a date first.');
             const date = parseWallDateTime(dateIn.value, wallZone.value);
             showDate(date); status.set(wallZone.value === 'utc' ? 'Interpreted as UTC.' : 'Interpreted in your browser local timezone; repeated daylight-saving times are ambiguous.', 'info');
           } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
-        } }) })),
+        } }))),
       h('p',{class:'hint',text:'Unix seconds are rounded down to a whole second, including negative timestamps. Milliseconds retain the exact instant. Local repeated daylight-saving times are ambiguous; choose UTC for an unambiguous instant.'}),
       status, h('br'), out.panel);
   },
