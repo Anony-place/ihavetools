@@ -580,6 +580,16 @@ try {
   await page.getByRole('button', { name: 'Process images' }).click();
   await page.locator('#tool-app .status-line').getByText(/2 of 3 images ready/).waitFor();
   assert.match(await page.locator('#tool-app').innerText(), /bad.png.*Failed/s);
+  const previewPicker=page.getByLabel('Preview successful output');
+  assert.equal(await previewPicker.locator('option').count(),2);
+  const previewImage=page.locator('#tool-app .img-preview'); await previewImage.waitFor({state:'visible'});
+  const firstUrl=await previewImage.getAttribute('src'); assert.match(await previewImage.getAttribute('alt'),/001-same.png/);
+  await previewPicker.selectOption('1'); assert.match(await previewImage.getAttribute('alt'),/002-same.png/);
+  const nextUrl=await previewImage.getAttribute('src'); assert.notEqual(firstUrl,nextUrl);
+  assert.equal(await page.evaluate(async url=>{try {await fetch(url);return true;} catch {return false;}},firstUrl),false,'revoke replaced preview URL');
+  await previewImage.evaluate(img=>img.decode());
+  assert.deepEqual(await previewImage.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[10,30]);
+
   const zipDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download ZIP' }).click();
   const zipPath = await (await zipDownload).path();
@@ -594,6 +604,8 @@ try {
   assert.deepEqual(batchAxe.violations.map(v => v.id), [], 'batch result accessibility');
   await page.getByLabel('Maximum width (px)').fill('39');
   assert.equal(await page.getByRole('button', { name: 'Download ZIP' }).isDisabled(), true, 'edits invalidate archive');
+  assert.equal(await page.locator('#tool-app .img-preview').count(),0);
+  assert.equal(await page.evaluate(async url=>{try {await fetch(url);return true;} catch {return false;}},nextUrl),false,'revoke invalidated preview URL');
   await page.getByLabel('Maximum width (px)').fill('');
   await page.getByLabel('Maximum height (px)').fill('');
   await page.getByRole('button', { name: 'Process images' }).click();
@@ -613,6 +625,32 @@ try {
   await page.getByLabel('Maximum height (px)').fill('25');
   assert.equal(await page.getByRole('button', { name: 'Download ZIP' }).isDisabled(), true);
   console.log('✓ batch compression with original dimensions and truthful size comparison');
+  // Cover mode: inspect actual ZIP coverPixels, per-file failures and output-axis alignment.
+  const coverRaw=Buffer.alloc(80*40*4);
+  for(let y=0;y<40;y++) for(let x=0;x<80;x++) {const i=(y*80+x)*4;coverRaw[i]=x<40?255:0;coverRaw[i+2]=x<40?0:255;coverRaw[i+3]=255;}
+  const stripes=await sharp(coverRaw,{raw:{width:80,height:40,channels:4}}).png().toBuffer();
+  const small=await sharp({create:{width:10,height:10,channels:4,background:'#00ff00'}}).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles([{name:'stripes.png',mimeType:'image/png',buffer:stripes},{name:'small.png',mimeType:'image/png',buffer:small}]);
+  await page.getByLabel('Maximum width (px)').fill('40'); await page.getByLabel('Maximum height (px)').fill('40');
+  await page.getByLabel('Layout').selectOption('cover'); await page.getByLabel('Crop position').selectOption('left');
+  await page.getByRole('button',{name:'Process images'}).click(); await page.locator('#tool-app .status-line').getByText(/1 of 2 images ready/).waitFor();
+  assert.match(await page.locator('#tool-app').innerText(),/needs enlargement/);
+  const readCover = async () => {
+    const evt=page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
+    const z=unzipSync(new Uint8Array(await readFile(await (await evt).path())));return sharp(Buffer.from(z['001-stripes.png'])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  };
+  let coverPixels=await readCover(); assert.deepEqual([coverPixels.info.width,coverPixels.info.height],[40,40]); assert.deepEqual([...coverPixels.data.subarray(0,4)],[255,0,0,255]);
+  await page.getByLabel('Crop position').selectOption('right'); assert.equal(await page.getByRole('button',{name:'Download ZIP'}).isDisabled(),true);
+  await page.getByRole('button',{name:'Process images'}).click(); await page.locator('#tool-app .status-line').getByText(/1 of 2 images ready/).waitFor();
+  coverPixels=await readCover(); assert.deepEqual([...coverPixels.data.subarray(0,4)],[0,0,255,255]);
+  await page.getByLabel('Rotate all images').selectOption('90'); await page.getByLabel('Crop position').selectOption('top');
+  await page.getByRole('button',{name:'Process images'}).click(); await page.locator('#tool-app .status-line').getByText(/1 of 2 images ready/).waitFor();
+  coverPixels=await readCover(); assert.deepEqual([...coverPixels.data.subarray(0,4)],[255,0,0,255]);
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'cover crop mobile accessibility');
+  await page.locator('#tool-app label.switch').filter({hasText:'Allow enlargement'}).click(); await page.getByRole('button',{name:'Process images'}).click(); await page.locator('#tool-app .status-line').getByText(/2 of 2 images ready/).waitFor();
+  await page.getByLabel('Maximum width (px)').fill(''); await page.getByRole('button',{name:'Process images'}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/requires both/);
+  await page.getByLabel('Layout').selectOption('fit'); await page.locator('#tool-app label.switch').filter({hasText:'Allow enlargement'}).click(); await page.getByLabel('Rotate all images').selectOption('0'); await page.getByLabel('Maximum width (px)').fill('');
+  console.log('✓ cover crop ZIP coverPixels, rotation, anchors, enlargement and mobile accessibility');
   const transparent = await sharp({ create: { width: 4, height: 3, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).png().toBuffer();
   await page.locator('#tool-app input[type=file]').setInputFiles({ name: 'alpha.png', mimeType: 'image/png', buffer: transparent });
   await page.getByLabel('Maximum height (px)').fill('');
@@ -839,7 +877,7 @@ try {
     await page.getByLabel('Watermark position').selectOption(position);
     await page.getByRole('button',{name:'Process images'}).click();
     await page.locator('#tool-app .status-line').getByText(/1 of 1 images ready/).waitFor();
-    assert.equal(await page.getByAltText('First processed image preview').count(), 1);
+    assert.equal(await page.getByAltText('Processed preview: 001-transparent.png').count(), 1);
     const event = page.waitForEvent('download'); await page.getByRole('button',{name:'Download ZIP'}).click();
     const files = unzipSync(new Uint8Array(await readFile(await (await event).path())));
     const out = await sharp(Buffer.from(files['001-transparent.png'])).ensureAlpha().raw().toBuffer({resolveWithObject:true});
@@ -870,7 +908,7 @@ try {
   await page.locator('#tool-app input[type=file]').setInputFiles([{name:'transparent.png',mimeType:'image/png',buffer:blankPng}]);
   await page.getByLabel('Watermark opacity (%)').fill('100');
   assert.equal(await page.getByRole('button',{name:'Download ZIP'}).isDisabled(), true);
-  assert.equal(await page.getByAltText('First processed image preview').count(), 0);
+  assert.equal(await page.getByAltText('Processed preview: 001-transparent.png').count(), 0);
   await page.getByLabel('Output format').selectOption('jpeg');
   await page.getByLabel('Watermark color').selectOption('black');
   await page.getByRole('button',{name:'Process images'}).click();
@@ -880,7 +918,7 @@ try {
   const jpegMark=await sharp(Buffer.from(jpgZip['001-transparent.jpg'])).removeAlpha().raw().toBuffer();
   assert.ok(jpegMark.some(v=>v<100), 'JPEG watermark is visible on white background');
   await page.getByRole('button',{name:'Cancel',exact:true}).click();
-  assert.equal(await page.getByAltText('First processed image preview').count(), 0);
+  assert.equal(await page.getByAltText('Processed preview: 001-transparent.png').count(), 0);
   await page.setViewportSize({width:320,height:844});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'watermark mobile accessibility');

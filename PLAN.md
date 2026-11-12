@@ -11,6 +11,26 @@
 
 ---
 
+## Bulk image cover-crop batch — 2026-10-31
+
+Plan: extend the established bulk image workflow, not create a duplicate page.
+[iLoveIMG](https://www.iloveimg.com/crop-image) demonstrates pixel cropping,
+while its [bulk image suite](https://www.iloveimg.com/) demonstrates batch
+workflows. These are competitor feature signals, not measured demand. Add exact
+canvas cover cropping with explicit center/edge positioning after rotation and
+mirroring. Require both dimensions, never silently enlarge when disabled, and
+report a per-file failure rather than distort or pad when enlargement is needed.
+Preserve fit/padding, alpha and white JPEG background, watermark order, existing
+ZIP and memory limits, and invalidate stale outputs. Explain that crop removes
+edges and is not automatic subject detection; preview and inspect every image.
+Add an on-demand selector to preview every successful output, not only the
+first, while maintaining one preview URL at a time. Test preview switching and
+invalidation, geometry, pixel colors, rotation, ZIP, failures and mobile UX.
+One consolidated PR and full CI/preview before production. No paid dependencies,
+volume estimates or ranking claims. GSC chronology and tax audit remain open.
+
+---
+
 ## Image crop workflow batch — 2026-10-31
 
 Plan: improve the existing local image cropper instead of adding duplicate pages.

@@ -1463,8 +1463,8 @@ await domTest('bulk image resizer rejects invalid batches and cancels stale imag
     nums[0].value='1200'; selects[0].value='transparent'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/requires PNG or WebP/); selects[0].value='fit';
     const huge = { name: 'huge.jpg', size: 201 * 1024 * 1024 }; send([huge]); assert.match(app.textContent,/Selection rejected/); click(btnByLabel(app,'Process images')); assert.match(app.textContent,/Choose images first/); send([file]);
     nums[3].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/Target must be a whole number/);
-    nums[3].value='10'; app.querySelectorAll('select')[1].value='png'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/JPEG and WebP only/);
-    nums[3].value=''; app.querySelectorAll('select')[1].value='jpeg'; nums[0].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/whole numbers from 1 to 4096/);
+    nums[3].value='10'; [...app.querySelectorAll('select')].find(s=>[...s.options].some(o=>o.value==='jpeg')).value='png'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/JPEG and WebP only/);
+    nums[3].value=''; [...app.querySelectorAll('select')].find(s=>[...s.options].some(o=>o.value==='jpeg')).value='jpeg'; nums[0].value='0'; click(btnByLabel(app,'Process images')); assert.match(app.textContent,/whole numbers from 1 to 4096/);
     nums[0].value='100'; click(btnByLabel(app,'Process images'));
     for (let i=0;i<30 && !pending.length;i++) await new Promise(r=>setTimeout(r,10));
     assert.equal(pending.length,1,'image load should be in progress');
