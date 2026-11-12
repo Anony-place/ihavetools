@@ -395,9 +395,9 @@ const defs = {
     const flipX = switchChip({ label:'Flip horizontally', checked:false });
     const flipY = switchChip({ label:'Flip vertically', checked:false });
     const status = statusLine('Choose images to begin.');
-    const list = h('div', {}), results = h('div', {}), preview = h('div', {}), previews = previewManager(preview);
-    let files = [], revision = 0, archive = null;
-    const invalidate = () => { revision++; archive = null; results.replaceChildren(); previews.clear(); download.disabled = true; };
+    const list = h('div', {}), results = h('div', {}), preview = h('div', {});
+    let files = [], revision = 0, archive = null, activeBatchPreviews = null;
+    const invalidate = () => { revision++; archive = null; results.replaceChildren(); activeBatchPreviews?.clear(); activeBatchPreviews = null; preview.replaceChildren(); download.disabled = true; };
     const runButton = btn({ label: 'Process images', icon: 'crop', onClick: () => run() });
     const cancel = btn({ label: 'Cancel', variant: 'secondary', onClick: () => { invalidate(); status.set('Cancelled. No partial ZIP is available.', 'info'); } });
     const download = btn({ label: 'Download ZIP', variant: 'secondary', disabled: true, onClick: () => {
@@ -459,7 +459,7 @@ const defs = {
       const text = watermark.value.trim(), position = watermarkPosition.value, fontPct = Number(watermarkSize.value), opacity = Number(watermarkOpacity.value), color = watermarkColor.value;
       if (text && (text.length > 80 || /[\x00-\x1f\x7f]/.test(text) || !['bottom-right','bottom-left','top-right','top-left','center'].includes(position) || !['white','black'].includes(color) || !Number.isFinite(fontPct) || fontPct < 2 || fontPct > 20 || !Number.isFinite(opacity) || opacity < 1 || opacity > 100)) { status.set('Watermark needs one line of up to 80 characters, size 2–20% and opacity 1–100%.', 'error'); return; }
       const token = revision, selected = files.slice(), enlarge = upscale.querySelector('input').checked, anchor = cropAnchor.value;
-      const entries = {}, rows = []; let total = 0, totalOriginal = 0, larger = 0, successes = 0, firstPreview = null;
+      const entries = {}, rows = []; let total = 0, totalOriginal = 0, larger = 0, successes = 0; const outputPreviews = [];
       status.set('Preparing image tools…', 'info');
       try {
         const { zipSync } = await import('../../vendor/fflate.js');
@@ -509,7 +509,7 @@ const defs = {
             if (revision !== token) return;
             total += bytes.length; totalOriginal += f.size; if (blob.size > f.size) larger++;
             const name = batchFilename(f.name, i + 1, fmt, namingPrefix); entries[name] = bytes; successes++;
-            if (!firstPreview) firstPreview = { blob, name: f.name };
+            outputPreviews.push({bytes, name});
             rows.push([f.name, `${dims.width} × ${dims.height}`, fmtBytes(f.size), fmtBytes(blob.size), sizeChange(f.size, blob.size), targetKiB == null ? name : `${name} — target met at quality ${choice.quality}%`]);
           } catch (err) { if (revision !== token) return; rows.push([f.name, 'Failed', fmtBytes(f.size), '—', '—', err.message]); }
           finally { if (canvas) { canvas.width = 0; canvas.height = 0; } }
@@ -519,7 +519,17 @@ const defs = {
         if (revision !== token) return;
         archive = new Blob([zip], { type: 'application/zip' });
         results.replaceChildren(h('p', { class: 'hint', text: `Successful image files: ${fmtBytes(totalOriginal)} → ${fmtBytes(total)} (${sizeChange(totalOriginal, total)}). ${larger} output${larger === 1 ? '' : 's'} larger than the original. ZIP overhead is not included.` }), table({ headers: ['File', 'Dimensions', 'Original', 'Output', 'Change', 'Result'], rows }));
-        previews.show(firstPreview.blob, url => h('div', {}, h('p', {class:'hint', text:`Preview of first successful output: ${firstPreview.name}`}), h('img', {class:'img-preview', src:url, alt:'First processed image preview'})));
+        const picker = select({options:outputPreviews.map((item,i)=>({v:String(i),t:item.name})),value:'0'});
+        const holder = h('div', {}), shown = previewManager(holder);
+        const showPreview = () => {
+          const item = outputPreviews[Number(picker.value)];
+          if (!item) return;
+          shown.show(new Blob([item.bytes], {type:MIME_BY_FMT[fmt]}), url => h('img', {class:'img-preview', src:url, alt:`Processed preview: ${item.name}`}));
+        };
+        picker.addEventListener('change', showPreview);
+        activeBatchPreviews = shown;
+        preview.replaceChildren(field({label:'Preview successful output',control:picker}), h('p',{class:'hint',text:'Preview one output at a time; review each before using it.'}), holder);
+        showPreview();
         download.disabled = false;
         status.set(`${successes} of ${selected.length} images ready in ZIP. ${selected.length - successes} failed.`, successes === selected.length ? 'success' : 'warning');
       } catch (err) { if (revision === token) status.set(`Could not create ZIP: ${err.message}`, 'error'); }
@@ -532,7 +542,7 @@ const defs = {
       h('div', { class: 'field-row' }, field({label:'Rotate all images', control:rotation, hint:'Applied before resizing and padding.'}), field({label:'Mirror after rotation',control:flipX}), field({label:'',control:flipY})),
       h('div', { class: 'field-row' }, field({label:'Watermark text', control:watermark, hint:'Optional; single line up to 80 characters.'}), field({label:'Watermark position', control:watermarkPosition}), field({label:'Watermark size (% of shorter side)', control:watermarkSize}), field({label:'Watermark opacity (%)', control:watermarkOpacity}), field({label:'Watermark color', control:watermarkColor})),
       upscale, actionsRow(runButton, cancel, download), status, preview, results,
-      privacyNote('Images are processed locally, not uploaded. Optional text is drawn on the final output after rotation and padding; fonts vary by browser, and watermarks do not prevent copying. Check the first output preview and inspect the rest. The chosen rotation and output-axis mirrors apply to every image before resizing and padding; preview individual photos to choose appropriate settings. Fit mode uses optional bounds; clear both to retain original dimensions. Padded canvas centers the full image. Cover crop removes edges after rotation and mirroring; position is in output axes, not automatic subject detection. Cover crop fails for any image needing enlargement unless enlargement is enabled. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
+      privacyNote('Images are processed locally, not uploaded. Optional text is drawn on the final output after rotation and padding; fonts vary by browser, and watermarks do not prevent copying. Use the output selector to preview each successful image. The chosen rotation and output-axis mirrors apply to every image before resizing and padding; preview individual photos to choose appropriate settings. Fit mode uses optional bounds; clear both to retain original dimensions. Padded canvas centers the full image. Cover crop removes edges after rotation and mirroring; position is in output axes, not automatic subject detection. Cover crop fails for any image needing enlargement unless enlargement is enabled. JPEG cannot preserve transparency. Outputs are not guaranteed to be smaller; rounding affects aspect ratio. A target may fail at the selected dimensions; try a larger target or smaller dimensions. Target mode uses lossy quality and tests a limited set of values. JPEG uses a white background; canvas output may remove metadata or animation. Browser decoding can use substantial memory before dimensions are known. Output must be at most 16,384 px per side and 40 million pixels; ZIP image payload is capped at 50 MiB. Device limits may be lower.'));
   },
 
   'image-resizer'(root) {

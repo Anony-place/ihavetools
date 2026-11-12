@@ -23,7 +23,9 @@ report a per-file failure rather than distort or pad when enlargement is needed.
 Preserve fit/padding, alpha and white JPEG background, watermark order, existing
 ZIP and memory limits, and invalidate stale outputs. Explain that crop removes
 edges and is not automatic subject detection; preview and inspect every image.
-Test pure geometry, color/alpha pixels, rotation, ZIP, failure and mobile UX.
+Add an on-demand selector to preview every successful output, not only the
+first, while maintaining one preview URL at a time. Test preview switching and
+invalidation, geometry, pixel colors, rotation, ZIP, failures and mobile UX.
 One consolidated PR and full CI/preview before production. No paid dependencies,
 volume estimates or ranking claims. GSC chronology and tax audit remain open.
 

@@ -580,6 +580,16 @@ try {
   await page.getByRole('button', { name: 'Process images' }).click();
   await page.locator('#tool-app .status-line').getByText(/2 of 3 images ready/).waitFor();
   assert.match(await page.locator('#tool-app').innerText(), /bad.png.*Failed/s);
+  const previewPicker=page.getByLabel('Preview successful output');
+  assert.equal(await previewPicker.locator('option').count(),2);
+  const previewImage=page.locator('#tool-app .img-preview'); await previewImage.waitFor({state:'visible'});
+  const firstUrl=await previewImage.getAttribute('src'); assert.match(await previewImage.getAttribute('alt'),/001-same.png/);
+  await previewPicker.selectOption('1'); assert.match(await previewImage.getAttribute('alt'),/002-same.png/);
+  const nextUrl=await previewImage.getAttribute('src'); assert.notEqual(firstUrl,nextUrl);
+  assert.equal(await page.evaluate(async url=>{try {await fetch(url);return true;} catch {return false;}},firstUrl),false,'revoke replaced preview URL');
+  await previewImage.evaluate(img=>img.decode());
+  assert.deepEqual(await previewImage.evaluate(img=>[img.naturalWidth,img.naturalHeight]),[10,30]);
+
   const zipDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download ZIP' }).click();
   const zipPath = await (await zipDownload).path();
@@ -594,6 +604,8 @@ try {
   assert.deepEqual(batchAxe.violations.map(v => v.id), [], 'batch result accessibility');
   await page.getByLabel('Maximum width (px)').fill('39');
   assert.equal(await page.getByRole('button', { name: 'Download ZIP' }).isDisabled(), true, 'edits invalidate archive');
+  assert.equal(await page.locator('#tool-app .img-preview').count(),0);
+  assert.equal(await page.evaluate(async url=>{try {await fetch(url);return true;} catch {return false;}},nextUrl),false,'revoke invalidated preview URL');
   await page.getByLabel('Maximum width (px)').fill('');
   await page.getByLabel('Maximum height (px)').fill('');
   await page.getByRole('button', { name: 'Process images' }).click();
