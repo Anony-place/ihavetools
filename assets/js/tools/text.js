@@ -83,10 +83,12 @@ export const CASE_MODES = [
 ];
 
 /* ═══════════════════════════ Line operations ═══════════════════════════ */
-export function dedupeLines(text, { caseInsensitive = false, trim = false, keepEmpty = true } = {}) {
+export function dedupeLines(text, { caseInsensitive = false, trim = false, keepEmpty = true, keep = 'first' } = {}) {
+  if (!['first', 'last'].includes(keep)) throw new Error('Choose first or last occurrence.');
   const lines = text.split(/\r\n|\r|\n/);
   const seen = new Set();
   const out = [];
+  if (keep === 'last') lines.reverse();
   for (const line of lines) {
     const key = trim ? line.trim() : line;
     const cmp = caseInsensitive ? key.toLowerCase() : key;
@@ -95,7 +97,7 @@ export function dedupeLines(text, { caseInsensitive = false, trim = false, keepE
     seen.add(cmp);
     out.push(line);
   }
-  return out;
+  return keep === 'last' ? out.reverse() : out;
 }
 
 export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensitive = true, unique = false, random = Math.random } = {}) {
@@ -124,6 +126,32 @@ export function sortLines(text, { mode = 'alpha', direction = 'asc', caseInsensi
   };
   lines.sort(cmp);
   return lines.join('\n');
+}
+
+// Keep synchronous list processing bounded on lower-powered devices.
+function validateListText(text) {
+  if (text.length > 1000000) throw new Error('Text exceeds 1,000,000 UTF-16 code units.');
+  if (text.split(/\r\n|\r|\n/).length > 50000) throw new Error('Text exceeds 50,000 lines.');
+}
+function listFileImport(inp, status, invalidate) {
+  const file = input({type:'file', accept:'.txt,.md,text/plain,text/markdown'});
+  let revision = 0;
+  inp.addEventListener('input', () => { revision++; });
+  window.addEventListener('pagehide', () => { revision++; }, {once:true});
+  file.addEventListener('input', e => e.stopPropagation());
+  file.addEventListener('change', async e => {
+    e.stopPropagation();
+    const chosen = file.files?.[0]; file.value = ''; if (!chosen) return;
+    const token = ++revision; invalidate();
+    try {
+      if (!/\.(txt|md)$/i.test(chosen.name) || chosen.size > 4000000) throw new Error('Choose a UTF-8 .txt or .md file up to 4,000,000 bytes.');
+      status.set('Reading file locally…', 'info');
+      const bytes = await readFile(chosen, 'buffer'); if (token !== revision) return;
+      let text; try { text = new TextDecoder('utf-8', {fatal:true}).decode(bytes); } catch { throw new Error('File is not valid UTF-8.'); }
+      validateListText(text); inp.value = text; invalidate(); status.set('File loaded locally. Run the tool to update results.', 'success');
+    } catch (err) { if (token === revision) status.set(`${err.message || 'Could not read file.'} Existing text was kept.`, 'error'); }
+  });
+  return {file, cancel: () => { revision++; file.value = ''; }};
 }
 
 /* ═══════════════════════════ Diff (LCS) ═══════════════════════════ */
@@ -379,28 +407,36 @@ const defs = {
     const ci = switchChip({ label: 'Case-insensitive' });
     const trim = switchChip({ label: 'Trim whitespace before comparing', checked: true });
     const keepEmpty = switchChip({ label: 'Keep empty lines', checked: true });
+    const keep = segControl({ options: [{v:'first',t:'Keep first'}, {v:'last',t:'Keep last'}], value:'first', ariaLabel:'Occurrence to keep' });
+    const sort = switchChip({label:'Sort retained lines alphabetically'});
     const status = statusLine('Ready.');
-    const out = resultPanel({ label: 'Unique lines' });
+    const out = resultPanel({ label: 'Unique lines', download:true, downloadName:'unique-lines.txt' });
     const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
+    const imported = listFileImport(inp, status, invalidate);
+    keep.addEventListener('click', invalidate);
     root.addEventListener('input', invalidate);
     root.addEventListener('change', invalidate);
     const run = () => {
+      imported.cancel();
       if (!inp.value.trim()) { status.set('Paste some lines first.', 'warning'); return; }
+      try { validateListText(inp.value); } catch(e) { out.placeholder(); status.set(e.message, 'error'); return; }
       const before = inp.value.split(/\r\n|\r|\n/).filter((l) => l.trim()).length;
       const result = dedupeLines(inp.value, {
         caseInsensitive: ci.querySelector('input').checked,
         trim: trim.querySelector('input').checked,
-        keepEmpty: keepEmpty.querySelector('input').checked,
+        keepEmpty: keepEmpty.querySelector('input').checked, keep: keep.getValue(),
       });
       const after = result.filter((l) => l.trim()).length;
-      out.set(result.join('\n'));
+      out.set(sort.querySelector('input').checked ? sortLines(result.join('\n'), {caseInsensitive:ci.querySelector('input').checked}) : result.join('\n'));
       status.set(`Removed ${Math.max(0, before - after)} duplicate line${before - after === 1 ? '' : 's'}.`, 'success');
     };
-    root.append(field({ label: 'Input lines', control: inp }),
-      h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, trim, keepEmpty),
+    root.append(field({ label: 'Input lines', control: inp }), field({label:'Load text file (optional)',control:imported.file,hint:'Local UTF-8 .txt or .md; up to 4,000,000 bytes.'}),
+      field({label:'Occurrence to keep',control:keep}),
+      h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, trim, keepEmpty, sort),
+      h('p',{class:'hint',text:'Maximum 1,000,000 UTF-16 code units and 50,000 lines. Comparison uses optional trim and Unicode lowercasing; retained lines keep their original content. Blank lines are preserved individually or all removed; output uses LF. Sorting uses your browser locale.'}),
       actionsRow(btn({ label: 'Remove duplicates', icon: 'copy-x', onClick: run }),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
-      status, h('br'), out.panel);
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+      status, h('br'), out.panel, privacyNote('Text and files are processed locally in your browser.'));
   },
 
   'text-sorter'(root) {
@@ -410,13 +446,16 @@ const defs = {
     const ci = switchChip({ label: 'Case-insensitive', checked: true });
     const uniq = switchChip({ label: 'Remove duplicates' });
     const status = statusLine('Ready.');
-    const out = resultPanel({ label: 'Sorted lines' });
+    const out = resultPanel({ label: 'Sorted lines', download:true, downloadName:'sorted-lines.txt' });
     [mode, dir].forEach(control => control.addEventListener('click', () => { out.placeholder(); status.set('Settings changed. Run again.', 'info'); }));
     const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
+    const imported = listFileImport(inp, status, invalidate);
     root.addEventListener('input', invalidate);
     root.addEventListener('change', invalidate);
     const run = () => {
+      imported.cancel();
       if (!inp.value.trim()) { status.set('Paste some lines first.', 'warning'); return; }
+      try { validateListText(inp.value); } catch(e) { out.placeholder(); status.set(e.message, 'error'); return; }
       const result = sortLines(inp.value, {
         mode: mode.getValue(), direction: dir.getValue(),
         caseInsensitive: ci.querySelector('input').checked,
@@ -425,15 +464,15 @@ const defs = {
       out.set(result);
       status.set(`Sorted ${result.split('\n').length.toLocaleString()} lines (${mode.getValue()}, ${dir.getValue()}).`, 'success');
     };
-    root.append(field({ label: 'Lines to sort', control: inp }),
+    root.append(field({ label: 'Lines to sort', control: inp }), field({label:'Load text file (optional)',control:imported.file,hint:'Local UTF-8 .txt or .md; up to 4,000,000 bytes, 1,000,000 UTF-16 code units and 50,000 lines.'}),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Mode', control: mode }),
         field({ label: 'Direction', control: dir })),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, uniq),
       h('p', { class: 'hint', text: 'Alphabetical order depends on your browser locale. Numeric mode parses the first number after a non-numeric prefix; non-numeric lines sort after numbers in ascending order. Blank lines are retained; line endings in output are normalized to LF.' }),
       actionsRow(btn({ label: 'Sort', icon: 'sort', onClick: run }),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
-      status, h('br'), out.panel);
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+      status, h('br'), out.panel, privacyNote('Text and files are processed locally in your browser.'));
   },
 
   'text-diff'(root) {

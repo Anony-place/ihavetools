@@ -2,12 +2,27 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (84 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (86 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Text-list cleanup workflow batch
+
+Plan: [TextFixer](https://www.textfixer.com/tools/remove-duplicate-lines.php)
+illustrates duplicate removal and optional sorting; this is competitor feature
+information, not measured demand. Improve the existing Remove Duplicate Lines
+and Text Sorter together: strict local UTF-8 .txt/.md import, bounded processing,
+stale-read cancellation, downloadable results, and first/last duplicate selection
+with optional sorting. Keep original retained line content and explain whitespace,
+blank-line, case and LF normalization semantics. Invalidate stale results after
+edits and failed imports; verify boundaries, races, empty lines, Unicode, download,
+mobile accessibility and full CI before one PR/production deployment. No paid
+service. GSC comparison and historical tax audit remain unverified.
 
 ---
 

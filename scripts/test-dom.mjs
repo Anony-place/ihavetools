@@ -254,6 +254,27 @@ await domTest('remove-duplicate-lines: reports removed count', async () => {
   assert.match(statusText(document), /Removed 1 duplicate line/);
   assert.match(resultText(document), /^a\nb\nc$/);
 });
+await domTest('list tools import safely and invalidate results', async () => {
+ for (const id of ['remove-duplicate-lines','text-sorter']) {
+  const app=await loadToolPage(id,'text'), text=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');
+  text.value='a\nb\na';fire(text,'input');
+  if(id==='remove-duplicate-lines') click(btnByLabel(app,'Keep last'));
+  click(btnByLabel(app,id==='text-sorter'?'Sort':'Remove duplicates'));
+  assert.equal(resultText(document),id==='text-sorter'?'a\na\nb':'b\na');
+  const saved=global.FileReader,pending=[]; global.FileReader=class {readAsArrayBuffer(){pending.push(this);}};
+  const choose=(name,size=1)=>{Object.defineProperty(picker,'files',{configurable:true,value:[{name,size}]});fire(picker,'change');};
+  const finish=async(i,bytes)=>{pending[i].result=bytes;pending[i].onload();await new Promise(r=>setTimeout(r,0));};
+  try {
+   choose('bad.pdf');assert.match(statusText(document),/Existing text was kept/);assert.equal(text.value,'a\nb\na');assert.doesNotMatch(resultText(document),/^b\na$/);
+   choose('bad.txt');await finish(0,new Uint8Array([255]).buffer);assert.match(statusText(document),/valid UTF-8/);
+   choose('late.txt');text.value='edited';fire(text,'input');await finish(1,new TextEncoder().encode('old').buffer);assert.equal(text.value,'edited');
+   choose('late.txt');click(btnByLabel(app,'Clear'));await finish(2,new TextEncoder().encode('old').buffer);assert.equal(text.value,'');
+   choose('ok.md');await finish(3,new TextEncoder().encode('b\na').buffer);assert.equal(text.value,'b\na');
+   text.value='x'.repeat(1000001);fire(text,'input');click(btnByLabel(app,id==='text-sorter'?'Sort':'Remove duplicates'));assert.match(statusText(document),/exceeds 1,000,000/);
+   text.value='a\n'.repeat(50000);fire(text,'input');click(btnByLabel(app,id==='text-sorter'?'Sort':'Remove duplicates'));assert.match(statusText(document),/50,000 lines/);
+  } finally {global.FileReader=saved;}
+ }
+});
 await domTest('text-diff: shows adds and removes', async () => {
   const app = await loadToolPage('text-diff', 'text');
   const [a, b] = app.querySelectorAll('textarea');
