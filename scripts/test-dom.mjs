@@ -1670,6 +1670,24 @@ await domTest('finance UI avoids misleading GST labels, stale outputs and rounde
   app=await loadToolPage('simple-interest-calculator','calculators'); fields=app.querySelectorAll('input[type=number]'); fields[1].value=''; click(btnByLabel(app,'Calculate interest')); assert.match(statusText(document),/rate/); assert.doesNotMatch(app.textContent,/NaN/);
 });
 
+await domTest('URL line conversion handles errors and stale output', async () => {
+ const app=await loadToolPage('url-encoder','developer'), box=app.querySelector('textarea');
+ const toggle=[...app.querySelectorAll('label.switch')].find(x=>x.textContent.includes('Convert each line')).querySelector('input'); toggle.checked=true; fire(toggle,'change');
+ box.value='a b\n\nx+y'; fire(box,'input'); click(btnByLabel(app,'Encode')); assert.equal(resultText(document),'a%20b\n\nx%2By');
+ box.value='ok\n%ZZ'; fire(box,'input'); click(btnByLabel(app,'Decode')); assert.match(statusText(document),/Line 2/); assert.doesNotMatch(resultText(document),/a%20b/);
+});
+await domTest('hash comparison reacts to edits and pending digests', async () => {
+ const previous=Object.getOwnPropertyDescriptor(global,'crypto'); let done;
+ Object.defineProperty(global,'crypto',{configurable:true,value:{subtle:{digest:()=>new Promise(resolve=>{done=resolve;})}}});
+ try {const app=await loadToolPage('hash-generator','developer'), box=app.querySelector('textarea'), expected=app.querySelector('input[type=text]');
+   box.value='abc'; expected.value='AA'.repeat(32); fire(expected,'input'); click(btnByLabel(app,'Hash text'));
+   done(new Uint8Array(32).fill(170).buffer); await new Promise(r=>setTimeout(r,10)); assert.match(app.textContent,/Digest matches/);
+   expected.value='ab'.repeat(32);fire(expected,'input');assert.match(app.textContent,/does not match/);
+   expected.value='short';fire(expected,'input');assert.match(app.textContent,/64 hexadecimal/);
+   box.value='other';fire(box,'input');assert.doesNotMatch(app.textContent,/Digest matches/);assert.match(app.textContent,/before comparing/);
+ } finally {if(previous) Object.defineProperty(global,'crypto',previous); else delete global.crypto;}
+});
+
 await domTest('hash results ignore stale asynchronous digests', async () => {
   const previous=Object.getOwnPropertyDescriptor(global,'crypto'); const pending=[];
   Object.defineProperty(global,'crypto',{configurable:true,value:{subtle:{digest:(algo,buffer)=>new Promise(resolve=>pending.push({algo,buffer,resolve}))}}});

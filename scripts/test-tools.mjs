@@ -237,6 +237,13 @@ await test('combined calendar durations use ordered clamped arithmetic', () => {
 
 console.log('\n── URL codec ──');
 await test('component encode/decode', () => {
+  assert.equal(dev.urlConvertLines('a b\n\nx+y\n','encode','component'), 'a%20b\n\nx%2By\n');
+  assert.equal(dev.urlConvertLines('a+b\n%2B','decode','component',true), 'a b\n+');
+  assert.throws(()=>dev.urlConvertLines('ok\n%ZZ','decode','component'),/Line 2/);
+  assert.throws(()=>dev.urlConvertLines('x\n'.repeat(50000),'encode','component'),/50,000 lines/);
+  assert.equal(dev.compareHexDigest('A'.repeat(64), 'a'.repeat(64), 'SHA-256'),true);
+  assert.equal(dev.compareHexDigest('b'.repeat(64), 'a'.repeat(64), 'SHA-256'),false);
+  assert.throws(()=>dev.compareHexDigest('a'.repeat(40),'a'.repeat(40),'SHA-256'),/64 hexadecimal/);
   assert.equal(dev.urlEncode('a b&c=d', 'component'), 'a%20b%26c%3Dd');
   assert.equal(dev.urlDecode('a%20b%26c%3Dd', 'component'), 'a b&c=d');
 });
@@ -1863,7 +1870,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 89);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 91);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

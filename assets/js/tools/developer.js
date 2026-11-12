@@ -306,6 +306,25 @@ export function urlDecode(text, mode = 'component', plusAsSpace = false) {
   }
 }
 
+// Each line is an independent input; empty lines and final newline are retained.
+export function urlConvertLines(text, direction, mode, plusAsSpace = false) {
+  if (text.length > 1000000) throw new Error('Input exceeds 1,000,000 UTF-16 code units.');
+  if (!['encode','decode'].includes(direction) || !['component','full'].includes(mode)) throw new Error('Choose a valid URL operation.');
+  const lines = text.split(/\r\n|\r|\n/);
+  if (lines.length > 50000) throw new Error('Input exceeds 50,000 lines.');
+  return lines.map((line, i) => {
+    if (!line) return '';
+    try { return direction === 'encode' ? urlEncode(line, mode) : urlDecode(line, mode, plusAsSpace); }
+    catch (e) { throw new Error(`Line ${i + 1}: ${e.message || 'Could not convert.'}`); }
+  }).join('\n');
+}
+export function compareHexDigest(expected, actualHex, algorithm) {
+  const lengths = {'SHA-1':40, 'SHA-256':64, 'SHA-384':96, 'SHA-512':128};
+  const n = lengths[algorithm];
+  if (!n || !/^[0-9a-f]+$/i.test(expected) || expected.length !== n) throw new Error(`Expected digest must be ${n || 'the correct number of'} hexadecimal characters for ${algorithm}.`);
+  return expected.toLowerCase() === actualHex.toLowerCase();
+}
+
 /* ═══════════════════════════ UUID ═══════════════════════════ */
 export function uuidv4(rng) {
   const c = rng || (globalThis.crypto);
@@ -897,13 +916,16 @@ const defs = {
     const inp = textarea({ rows: 8, placeholder: 'Paste text or a URL…' });
     const mode = segControl({ options: [{ v: 'component', t: 'Component' }, { v: 'full', t: 'Full URL' }], value: 'component', ariaLabel: 'Encoding scope' });
     const plus = switchChip({ label: 'Treat + as space when decoding' });
-    const status = statusLine('Component mode escapes every reserved character (for query values). Full-URL mode keeps /, ?, & intact.');
-    const out = resultPanel({ label: 'Output' });
+    const perLine = switchChip({label:'Convert each line separately'});
+    const status = statusLine('Component mode uses encodeURIComponent; full-URL mode uses encodeURI.');
+    const out = resultPanel({ label: 'Output', download:true, downloadName:'url-conversion.txt' });
     const run = (dir) => {
       try {
-        const result = dir === 'encode'
-          ? urlEncode(inp.value, mode.getValue())
-          : urlDecode(inp.value, mode.getValue(), plus.querySelector('input').checked);
+        if (inp.value.length > 1000000) throw new Error('Input exceeds 1,000,000 UTF-16 code units.');
+        if (!inp.value) throw new Error('Enter input first.');
+        const result = perLine.querySelector('input').checked
+          ? urlConvertLines(inp.value,dir,mode.getValue(),plus.querySelector('input').checked)
+          : dir === 'encode' ? urlEncode(inp.value, mode.getValue()) : urlDecode(inp.value, mode.getValue(), plus.querySelector('input').checked);
         out.set(result);
         status.set(`${dir === 'encode' ? 'Encoded' : 'Decoded'} ✓`, 'success');
       } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
@@ -914,7 +936,8 @@ const defs = {
     root.append(field({ label: 'Input', control: inp }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Scope', control: mode }),
-        field({ label: ' ', control: plus })),
+        field({ label: 'Options', control: h('div',{class:'switch-row'},plus,perLine) })),
+      h('p',{class:'hint',text:"Limit: 1,000,000 UTF-16 code units; per-line mode allows up to 50,000 lines, preserves blank lines and emits LF. Component mode leaves ! ' ( ) * unescaped; full-URL mode preserves reserved separators. Neither mode validates a URL or generates form-encoded output."}),
       actionsRow(
         btn({ label: 'Encode', icon: 'arrow-right', onClick: () => run('encode') }),
         btn({ label: 'Decode', variant: 'secondary', icon: 'arrow-left', onClick: () => run('decode') }),
@@ -1003,20 +1026,31 @@ const defs = {
     const algo = select({ id: 'algo', options: HASH_ALGOS.map((a) => ({ v: a, t: a.replace('SHA-', 'SHA-') })), value: 'SHA-256' });
     const enc = select({ id: 'enc', options: [{ v: 'hex', t: 'Hexadecimal' }, { v: 'base64', t: 'Base64' }], value: 'hex' });
     const inp = textarea({ rows: 7, placeholder: 'Type or paste text to hash…' });
+    const expected = input({type:'text',class:'input mono',placeholder:'Optional hexadecimal digest'});
+    const compareStatus = statusLine('');
+    let currentDigest = null;
+    const compare = () => {
+      if (!expected.value.trim()) {compareStatus.set('', 'info'); return;}
+      if (!currentDigest) {compareStatus.set('Hash text or a file before comparing.', 'info'); return;}
+      try {const match=compareHexDigest(expected.value.trim(),currentDigest.hex,currentDigest.algorithm); compareStatus.set(match?'Digest matches the expected value.':'Digest does not match the expected value.',match?'success':'warning');}
+      catch(e) {compareStatus.set(e.message,'error');}
+    };
+    expected.addEventListener('input',compare);
     const zone = h('div');
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Digest', copy: true });
     let revision = 0;
-    const invalidate = () => { revision++; out.placeholder(); status.set('Input or settings changed. Hash again.', 'info'); };
+    const invalidate = () => { revision++; currentDigest=null; out.placeholder(); compare(); status.set('Input or settings changed. Hash again.', 'info'); };
     [inp, algo, enc].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     const compute = async (buffer, sourceDesc, token = ++revision) => {
       const a = algo.value, encoding = enc.value;
-      out.placeholder(); status.set(`Computing ${a}…`, 'info');
+      currentDigest=null; compare(); out.placeholder(); status.set(`Computing ${a}…`, 'info');
       try {
         const bytes = await digest(a, buffer);
         if (token !== revision) return;
-        out.set(encoding === 'hex' ? toHex(bytes) : toB64(bytes));
-        status.set(`${a} of ${sourceDesc} ✓`, 'success');
+        currentDigest={hex:toHex(bytes),algorithm:a};
+        out.set(encoding === 'hex' ? currentDigest.hex : toB64(bytes));
+        compare(); status.set(`${a} of ${sourceDesc} ✓`, 'success');
       } catch (e) { if (token === revision) { out.placeholder(); status.set(e.message, 'error'); } }
     };
     root.append(
@@ -1025,19 +1059,22 @@ const defs = {
         field({ label: 'Output', control: enc })),
       field({ label: 'Text input', control: inp }),
       actionsRow(
-        btn({ label: 'Hash text', icon: 'hash', onClick: () => compute(new TextEncoder().encode(inp.value), 'text') }),
+        btn({ label: 'Hash text', icon: 'hash', onClick: () => { if(inp.value.length > 1000000) {invalidate(); status.set('Text exceeds 1,000,000 UTF-16 code units.','error'); return;} compute(new TextEncoder().encode(inp.value), 'text'); } }),
       ),
       status, h('br'), out.panel,
+      field({label:'Expected hexadecimal digest (optional)',control:expected,hint:'Compare the complete hex digest for the selected algorithm; case is ignored.'}), compareStatus,
+      h('p',{class:'hint',text:'A match only shows the bytes have the same digest; it does not prove the source is authentic. Obtain the expected checksum from a trusted, authenticated source. SHA-1 is legacy and unsuitable for security-sensitive integrity checks.'}),
       h('div', { style: 'margin-top:18px' },
         h('h3', { text: '…or hash a file' }),
         h('div', { class: 'field' }, h('span', { class: 'hint', text: 'Useful for verifying downloads. Files up to 100 MiB are read locally into memory.' })),
         zone));
+    window.addEventListener('pagehide',()=>{revision++;currentDigest=null;},{once:true});
     zone.append(h('div', { style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' },
       h('label', { class: 'btn btn-secondary', style: 'cursor:pointer' }, 'Choose file',
         h('input', { type: 'file', style: 'display:none', onchange: (e) => {
           const f = e.target.files[0];
           if (!f) return;
-          const token = ++revision; out.placeholder();
+          const token = ++revision; currentDigest=null; compare(); out.placeholder();
           if (f.size > 100 * 1024 * 1024) { status.set('Choose a file no larger than 100 MiB.', 'error'); return; }
           status.set(`Reading ${f.name} (${fmtBytes(f.size)})…`, 'info');
           readFile(f, 'buffer').then((buf) => { if (token === revision) compute(buf, f.name, token); }).catch((err) => { if (token === revision) { out.placeholder(); status.set(err.message, 'error'); } });
