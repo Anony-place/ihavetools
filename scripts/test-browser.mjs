@@ -170,7 +170,7 @@ try {
   const wcInput=page.getByLabel('Your text',{exact:true}), wcFile=page.getByLabel('Load text file (optional)');
   await wcFile.setInputFiles({name:'draft.md',mimeType:'text/markdown',buffer:Buffer.from('one two three')});
   await page.locator('#tool-app .status-line').getByText(/File loaded locally/).waitFor();
-  assert.match(await page.locator('#tool-app').innerText(),/3\s*Words/);
+  assert.match(await page.locator('#tool-app').innerText(),/3\s*Words/i);
   await page.getByLabel('Minimum word goal (optional)').fill('5'); assert.match(await page.locator('#tool-app').innerText(),/2 more words to minimum/);
   await page.getByLabel('Minimum word goal (optional)').fill('4'); await page.getByLabel('Maximum word goal (optional)').fill('4'); await wcInput.fill('one two three four five'); assert.match(await page.locator('#tool-app').innerText(),/1 word over maximum/);
   await page.getByLabel('Reading pace (words/min)').fill('0'); assert.match(await page.locator('#tool-app .status-line').innerText(),/Pace/);
