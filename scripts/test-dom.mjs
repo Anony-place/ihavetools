@@ -246,6 +246,28 @@ await domTest('case-converter: all mode buttons work', async () => {
   click([...app.querySelectorAll('button')].find((b) => b.textContent.trim() === 'UPPER CASE'));
   assert.equal(resultText(document).trim(), 'HELLO WORLD');
 });
+await domTest('slug batch collisions, invalid titles and import races', async () => {
+ const app=await loadToolPage('slug-generator','text'), text=app.querySelector('textarea'), file=app.querySelector('input[type=file]');
+ text.value='A\nA\nA-2';fire(text,'input');click(btnByLabel(app,'Generate slugs'));assert.equal(resultText(document),'a\na\na-2');assert.match(statusText(document),/1 duplicate base slug/);
+ const checkbox=[...app.querySelectorAll('label')].find(l=>l.textContent.includes('Make slugs unique')).querySelector('input');checkbox.checked=true;fire(checkbox,'change');assert.doesNotMatch(resultText(document),/^a\na/);
+ click(btnByLabel(app,'Generate slugs'));assert.equal(resultText(document),'a\na-3\na-2');
+ text.value='good\n!!!';fire(text,'input');click(btnByLabel(app,'Generate slugs'));assert.match(statusText(document),/line 2/);assert.doesNotMatch(resultText(document),/^good/);
+ const saved=global.FileReader,pending=[];global.FileReader=class {readAsArrayBuffer(){pending.push(this);}};
+ const choose=(name)=>{Object.defineProperty(file,'files',{configurable:true,value:[{name,size:2}]});fire(file,'change');};
+ const finish=async(i,bytes)=>{pending[i].result=bytes;pending[i].onload();await new Promise(r=>setTimeout(r,0));};
+ try {
+  choose('bad.txt');await finish(0,new Uint8Array([255]).buffer);assert.match(statusText(document),/valid UTF-8/);assert.equal(text.value,'good\n!!!');
+  choose('late.txt');text.value='new';fire(text,'input');await finish(1,new TextEncoder().encode('old').buffer);assert.equal(text.value,'new');
+  choose('late.txt');click(btnByLabel(app,'Generate slugs'));await finish(2,new TextEncoder().encode('old').buffer);assert.equal(text.value,'new');assert.equal(resultText(document),'new');
+  choose('ok.md');await finish(3,new TextEncoder().encode('Café').buffer);assert.equal(text.value,'Café');assert.doesNotMatch(resultText(document),/^new$/);
+ } finally {global.FileReader=saved;}
+});
+await domTest('case converter rejects oversize input and preserves text on invalid file', async () => {
+ const app=await loadToolPage('case-converter','text'), text=app.querySelector('textarea'), file=app.querySelector('input[type=file]');
+ text.value='a'.repeat(1000001);fire(text,'input');click(btnByLabel(app,'UPPER CASE'));assert.match(statusText(document),/1,000,000/);
+ text.value='hello';fire(text,'input');Object.defineProperty(file,'files',{configurable:true,value:[{name:'bad.pdf',size:10}]});fire(file,'change');assert.match(statusText(document),/Existing text was kept/);assert.equal(text.value,'hello');
+ click(btnByLabel(app,'UPPER CASE'));assert.equal(resultText(document),'HELLO');
+});
 await domTest('remove-duplicate-lines: reports removed count', async () => {
   const app = await loadToolPage('remove-duplicate-lines', 'text');
   const ta = app.querySelector('textarea');

@@ -200,6 +200,27 @@ export function slugify(text, { separator = '-', lowercase = true, stripStopWord
   return lowercase ? s.toLowerCase() : s;
 }
 
+/** Exact-string uniqueness within this batch only; reserve natural slugs before suffixing. */
+export function batchSlugs(text, { separator = '-', lowercase = true, stripStopWords = false, unique = false } = {}) {
+  if (!['-', '_'].includes(separator)) throw new Error('Invalid separator.');
+  validateListText(text);
+  const titles = text.split(/\r\n|\r|\n/).map((line, i) => ({line, number:i + 1})).filter(item => item.line.trim());
+  if (!titles.length) throw new Error('Type a title first.');
+  const base = titles.map(({line}) => slugify(line, {separator, lowercase, stripStopWords}));
+  const invalid = base.findIndex(slug => !/[\p{L}\p{N}]/u.test(slug));
+  if (invalid !== -1) throw new Error(`Title on line ${titles[invalid].number} has no letters or numbers. Edit it before generating.`);
+  const reserved = new Set(base), used = new Set(), next = new Map(); let duplicates = 0;
+  const slugs = base.map(slug => {
+    if (!used.has(slug)) { used.add(slug); return slug; }
+    duplicates++;
+    if (!unique) return slug;
+    let n = next.get(slug) || 2, candidate;
+    do { candidate = `${slug}${separator}${n++}`; } while (reserved.has(candidate) || used.has(candidate));
+    next.set(slug,n); used.add(candidate); return candidate;
+  });
+  return {slugs, duplicates};
+}
+
 /* ═══════════════════════════ Lorem ipsum ═══════════════════════════ */
 const LOREM = ['lorem','ipsum','dolor','sit','amet','consectetur','adipiscing','elit','sed','do','eiusmod','tempor','incididunt','ut','labore','et','dolore','magna','aliqua','enim','ad','minim','veniam','quis','nostrud','exercitation','ullamco','laboris','nisi','aliquip','ex','ea','commodo','consequat','duis','aute','irure','in','reprehenderit','voluptate','velit','esse','cillum','eu','fugiat','nulla','pariatur','excepteur','sint','occaecat','cupidatat','non','proident','sunt','culpa','qui','officia','deserunt','mollit','anim','id','est','laborum'];
 export function lorem({ unit = 'paragraphs', count = 3, classic = true } = {}) {
@@ -386,20 +407,23 @@ const defs = {
   'case-converter'(root) {
     const inp = textarea({ rows: 8, mono: false, value: 'The quick brown fox jumps over the lazy dog', placeholder: 'Paste your text…' });
     const status = statusLine('');
-    const out = resultPanel({ label: 'Converted text' });
+    const out = resultPanel({ label: 'Converted text', download:true, downloadName:'converted-text.txt' });
     const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
+    const imported = listFileImport(inp, status, invalidate);
     root.addEventListener('input', invalidate);
     root.addEventListener('change', invalidate);
     const apply = (mode) => {
+      imported.cancel();
+      try { validateListText(inp.value); } catch(e) { out.placeholder(); status.set(e.message, 'error'); return; }
       if (!inp.value.trim()) { status.set('Paste some text first.', 'warning'); out.placeholder(); return; }
       out.set(convertCase(inp.value, mode));
       status.set(`Converted to ${CASE_MODES.find((m) => m.v === mode)?.t}.`, 'success');
     };
     const pad = h('div', { class: 'switch-row', style: 'margin-bottom:14px' },
       CASE_MODES.map((m) => h('button', { type: 'button', class: 'switch', text: m.t, onclick: () => apply(m.v) })));
-    root.append(field({ label: 'Input text', control: inp }), pad,
-      actionsRow(btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
-      status, h('br'), out.panel);
+    root.append(field({ label: 'Input text', control: inp }), field({label:'Load text file (optional)',control:imported.file,hint:'Local UTF-8 .txt or .md; maximum 4,000,000 bytes, 1,000,000 UTF-16 code units and 50,000 lines.'}), pad,
+      actionsRow(btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+      status, h('br'), out.panel, privacyNote('Text and files are processed locally in your browser.'));
   },
 
   'remove-duplicate-lines'(root) {
@@ -543,26 +567,31 @@ const defs = {
     const sep = segControl({ options: [{ v: '-', t: 'Hyphen (-)' }, { v: '_', t: 'Underscore (_)' }], value: '-', ariaLabel: 'Separator' });
     const stop = switchChip({ label: 'Remove stop words (a, the, of…)' });
     const keepCase = switchChip({ label: 'Keep original letter case' });
+    const unique = switchChip({label:'Make slugs unique within this batch'});
     const status = statusLine('Ready.');
-    const out = resultPanel({ label: 'Slugs' });
+    const out = resultPanel({ label: 'Slugs', download:true, downloadName:'slugs.txt' });
     [sep].forEach(control => control.addEventListener('click', () => { out.placeholder(); status.set('Settings changed. Run again.', 'info'); }));
     const invalidate = () => { out.placeholder(); status.set('Input or settings changed. Run again.', 'info'); };
+    const imported = listFileImport(inp, status, invalidate);
     root.addEventListener('input', invalidate);
     root.addEventListener('change', invalidate);
     const run = () => {
-      const lines = inp.value.split(/\r?\n/).filter((l) => l.trim());
-      if (!lines.length) { status.set('Type a title first.', 'warning'); return; }
-      const slugs = lines.map((l) => slugify(l, { separator: sep.getValue(), lowercase: !keepCase.querySelector('input').checked, stripStopWords: stop.querySelector('input').checked }));
-      out.set(slugs.join('\n'));
-      status.set(`${slugs.length} slug${slugs.length === 1 ? '' : 's'} generated.`, 'success');
+      imported.cancel();
+      try {
+        const result = batchSlugs(inp.value, {separator:sep.getValue(), lowercase:!keepCase.querySelector('input').checked, stripStopWords:stop.querySelector('input').checked, unique:unique.querySelector('input').checked});
+        out.set(result.slugs.join('\n'));
+        const note = result.duplicates ? ` ${result.duplicates} duplicate base slug${result.duplicates === 1 ? '' : 's'} ${unique.querySelector('input').checked ? 'suffixed within this batch' : 'remain; enable batch uniqueness if needed'}.` : '';
+        status.set(`${result.slugs.length} slug${result.slugs.length === 1 ? '' : 's'} generated.${note}`, result.duplicates && !unique.querySelector('input').checked ? 'warning' : 'success');
+      } catch(e) { out.placeholder(); status.set(e.message, 'error'); }
     };
-    root.append(field({ label: 'Titles (one per line for batch mode)', control: inp }),
+    root.append(field({ label: 'Titles (one per line for batch mode)', control: inp }), field({label:'Load text file (optional)',control:imported.file,hint:'Local UTF-8 .txt or .md; up to 4,000,000 bytes, 1,000,000 UTF-16 code units and 50,000 lines.'}),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Separator', control: sep }),
-        field({ label: 'Options', control: h('div', { class: 'switch-row' }, stop, keepCase) })),
+        field({ label: 'Options', control: h('div', { class: 'switch-row' }, stop, keepCase, unique) })),
+      h('p',{class:'hint',text:'Blank title lines are skipped; titles without letters or numbers are rejected. Batch uniqueness compares exact slugs only, not existing URLs on your site. Non-ASCII slugs may require percent encoding. Check your CMS routing and redirects before changing live URLs.'}),
       actionsRow(btn({ label: 'Generate slugs', icon: 'anchor', onClick: run }),
-        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
-      status, h('br'), out.panel);
+        btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
+      status, h('br'), out.panel, privacyNote('Text and files are processed locally in your browser.'));
   },
 
   'lorem-ipsum-generator'(root) {

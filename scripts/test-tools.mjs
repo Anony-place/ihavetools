@@ -1625,6 +1625,13 @@ await test('bulk fit, output filenames, search and discovery', () => {
   assert.ok(registry.searchTools('bulk image compressor', 20).some(t => t.id === 'bulk-image-resizer'));
   assert.ok(registry.tools.filter(t => registry.relatedTools(t,6).some(r => r.id === 'bulk-image-resizer')).length >= 3);
 });
+await test('batch slugs report collisions and reserve natural suffixes', () => {
+ assert.deepEqual(text.batchSlugs('A\nA\nA-2\nA',{unique:true}), {slugs:['a','a-3','a-2','a-4'],duplicates:2});
+ assert.deepEqual(text.batchSlugs('Café\nCafe\nहिन्दी',{}),{slugs:['cafe','cafe','हिन्दी'],duplicates:1});
+ assert.deepEqual(text.batchSlugs('A\nA\nA_2',{separator:'_',unique:true}).slugs,['a','a_3','a_2']);
+ assert.throws(()=>text.batchSlugs('ok\n!!!'),/line 2/); assert.throws(()=>text.batchSlugs('\u0301'),/line 1/);
+ assert.throws(()=>text.batchSlugs('x'.repeat(1000001)),/1,000,000/);assert.throws(()=>text.batchSlugs('a\n'.repeat(50000)),/50,000/);
+});
 await test('dedupe keeps last original occurrence and preserves blank lines', () => {
  assert.deepEqual(text.dedupeLines(' A \nB\na\n\nB\n', {keep:'last',trim:true,caseInsensitive:true}), ['a','','B','']);
  assert.deepEqual(text.dedupeLines('a\rA\r \ra', {keep:'last',caseInsensitive:true,keepEmpty:false}), ['a']);
@@ -1829,7 +1836,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 86);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 88);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

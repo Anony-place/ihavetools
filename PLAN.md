@@ -2,12 +2,28 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (86 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (88 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Slug and case editing workflow batch
+
+Plan first: enhance existing Slug Generator and Case Converter together. Google’s
+[URL structure guidance](https://developers.google.com/search/docs/crawling-indexing/url-structure)
+recommends descriptive URLs, hyphens and percent encoding as necessary; it does
+not guarantee ranking or global slug uniqueness. Add explicit invalid-title and
+duplicate-slug diagnostics, optional batch-only collision-safe suffixes, local
+bounded UTF-8 import and TXT downloads. Preserve multilingual content and existing
+case options, clarify blank-line, Unicode, encoding and CMS uniqueness limitations.
+Make import races, stale outputs and resource limits safe; test collisions, reserved
+suffixes, Unicode, malformed files, downloads and mobile accessibility. Full checks,
+preview and CI before merging one PR; no paid services. Historical GSC comparison
+and tax audit remain unverified.
 
 ---
 
