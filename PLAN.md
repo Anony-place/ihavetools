@@ -11,6 +11,20 @@
 
 ---
 
+## Text sorter delimiter workflow — plan
+
+[TextFixer](https://www.textfixer.com/tools/alphabetical-order.php) illustrates
+independent input and output separators, a competitor feature signal rather than
+measured demand. Extend the local sorter to handle simple line, comma and
+semicolon lists with optional trimming, keeping existing defaults and sorting
+semantics. Explicitly reject any implication of CSV parsing: separators inside
+quoted text are not special and output may be ambiguous. Bound item counts,
+invalidate stale outputs and imports, add engine, DOM and real-browser/mobile
+coverage, then ship one PR only after CI and preview pass. No paid service.
+Historical GSC comparison and tax audit remain unverified.
+
+---
+
 ## Text counter consistency batch — plan
 
 Improve Character Counter and Line Counter together: bounded live processing,

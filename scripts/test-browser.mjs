@@ -201,6 +201,20 @@ try {
     assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} mobile accessibility`);
   }
   console.log('✓ list tools local files, downloads, invalidation and mobile accessibility');
+  await go('text-sorter');
+  await page.getByLabel('Lines to sort').fill(' B, a,B,,');
+  await page.getByLabel('Input separator').selectOption('comma');
+  await page.getByLabel('Output separator').selectOption('semicolon');
+  await page.locator('#tool-app label.switch').filter({hasText:'Trim each item'}).click();
+  await page.locator('#tool-app label.switch').filter({hasText:'Remove duplicates'}).click();
+  await page.getByRole('button',{name:'Sort',exact:true}).click();
+  assert.equal(await page.locator('#tool-app .result-body pre').textContent(),';;a;B');
+  const sorterDownload=page.waitForEvent('download'); await page.locator('#tool-app .result-panel').getByRole('button',{name:'Download'}).click();
+  assert.equal(await readFile(await (await sorterDownload).path(),'utf8'),';;a;B');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'sorter delimiter mobile accessibility');
+  await page.getByLabel('Output separator').selectOption('line'); assert.doesNotMatch(await page.locator('#tool-app .result-body').innerText(),/;;a;B/);
+  console.log('✓ simple list separators, download and mobile accessibility');
   await go('word-counter');
   const wcInput=page.getByLabel('Your text',{exact:true}), wcFile=page.getByLabel('Load text file (optional)');
   await wcFile.setInputFiles({name:'draft.md',mimeType:'text/markdown',buffer:Buffer.from('one two three')});
