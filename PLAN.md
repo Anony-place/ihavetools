@@ -2,12 +2,27 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (89 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (91 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Developer encoding and checksum verification batch — plan
+
+[URL Encoder](https://www.urlencoder.org/) illustrates per-line processing;
+[online-tools SHA-256](https://emn178.github.io/online-tools/sha256_checksum.html)
+explains checksum comparison and its authenticity limits. These are feature
+signals, not measured search demand. Add bounded per-line URL encoding/decoding
+with a downloadable result, explicit JavaScript URI semantics and line-specific
+errors. Add optional expected hex digest comparison to text/file hashing, validate
+length for the chosen algorithm, guard async races and explain trust limits.
+Preserve default behaviour, test encoded output, malformed lines, hashes, stale
+results, real-browser downloads and mobile accessibility; ship one PR only after
+full CI and preview. No paid service; GSC comparison and tax audit remain open.
 
 ---
 
