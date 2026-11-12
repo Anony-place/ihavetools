@@ -1055,6 +1055,18 @@ try {
   const pdfPixel = await sharp(pngBytes).removeAlpha().extract({left: 10, top: 10, width: 1, height: 1}).raw().toBuffer();
   assert.ok(pdfPixel[0] > 240 && pdfPixel[1] < 20 && pdfPixel[2] < 20, 'rendered PDF content appears in downloaded PNG');
   assert.equal(imageMeta.format, 'png'); assert.equal(imageMeta.width, 200); assert.equal(imageMeta.height, 100);
+  await page.getByLabel('Color mode').selectOption('gray'); await page.getByLabel('Extra clockwise rotation').selectOption('90');
+  assert.equal(await page.getByRole('button',{name:'Download image'}).isDisabled(),true);
+  await page.getByRole('button',{name:'Render page'}).click(); await page.locator('#tool-app .status-line').getByText(/Rendered page 2/).waitFor();
+  imgEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Download image'}).click();const grayBytes=await readFile(await (await imgEvent).path());
+  imageMeta=await sharp(grayBytes).metadata();assert.equal(imageMeta.width,100);assert.equal(imageMeta.height,200);
+  const grayPixel=await sharp(grayBytes).removeAlpha().extract({left:10,top:10,width:1,height:1}).raw().toBuffer();assert.ok(grayPixel[0]>=52&&grayPixel[0]<=56&&grayPixel[0]===grayPixel[1]&&grayPixel[1]===grayPixel[2]);
+  await page.getByLabel('Pages for ZIP').fill('2');await page.getByRole('button',{name:'Prepare ZIP'}).click();await page.locator('#tool-app .status-line').getByText(/Prepared 1 page/).waitFor();
+  let grayZipEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Download ZIP'}).click();const grayZip=unzipSync(new Uint8Array(await readFile(await (await grayZipEvent).path())));
+  const grayZipBytes=Buffer.from(grayZip['pages-page-0002.png']), grayZipMeta=await sharp(grayZipBytes).metadata();assert.equal(grayZipMeta.width,100);assert.equal(grayZipMeta.height,200);
+  const grayZipPixel=await sharp(grayZipBytes).removeAlpha().extract({left:10,top:10,width:1,height:1}).raw().toBuffer();assert.deepEqual(grayZipPixel,grayPixel);
+  await page.getByLabel('Image format').selectOption('jpeg'); await page.getByLabel('JPEG quality (1–100)').fill('0');await page.getByRole('button',{name:'Render page'}).click();assert.match(await page.locator('#tool-app .status-line').innerText(),/JPEG quality/);
+  await page.getByLabel('JPEG quality (1–100)').fill('70');await page.getByLabel('Color mode').selectOption('color');await page.getByLabel('Extra clockwise rotation').selectOption('0');
   await page.getByLabel('Image format').selectOption('jpeg');
   assert.equal(await page.getByRole('button', { name: 'Download image' }).isDisabled(), true);
   await page.getByRole('button', { name: 'Render page' }).click();
