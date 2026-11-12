@@ -11,6 +11,22 @@
 
 ---
 
+## Base64 binary workflow and safety batch — plan
+
+[Base64Decode](https://www.base64decode.org/) describes binary file decoding;
+this is competitor feature evidence, not measured demand. Add a separate local
+binary file encode/decode workflow with bounded size, explicit .txt/.bin downloads,
+strict Base64 validation and UTF-8 validation for encoded text files. Keep text
+conversion and URL-safe behaviour, protect against stale asynchronous reads and
+invalidate prepared output when input or settings change. Explain that Base64
+is not encryption, decoded files can be dangerous, and this is not a data URL or
+per-line parser. Test byte-for-byte round trips, invalid input, races, limits and
+mobile accessibility; run full CI and preview before one PR and production
+verification. No paid services. Historical GSC comparison and tax audit remain
+unverified.
+
+---
+
 ## Text sorter delimiter workflow — plan
 
 [TextFixer](https://www.textfixer.com/tools/alphabetical-order.php) illustrates
