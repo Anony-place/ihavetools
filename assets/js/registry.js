@@ -990,7 +990,7 @@ export const tools = [
     keywords: ['robots.txt generator', 'create robots txt online', 'robots.txt', 'robots file generator', 'robots.txt tester', 'crawl', 'disallow', 'seo'],
     aliases: ['robots txt maker', 'robots.txt tester', 'robots file generator', 'disallow generator'],
     popularity: 66, added: '2026-06-11',
-    steps: 'Start from a preset or add your own user-agent, Allow and Disallow rules.|Optionally add your sitemap URL and crawl-delay, then generate the file.|Test important URLs against the rules and download robots.txt to your site root.',
+    steps: 'Start from a preset or add your own user-agent, Allow and Disallow rules; edit them as needed.|Optionally add your sitemap URL and crawl-delay, then generate the file.|Test important URLs against the rules and download robots.txt to your site root.',
     related: ['sitemap-generator', 'meta-tag-generator', 'keyword-density-checker', 'url-parser', 'open-graph-preview', 'slug-generator'],
     faqs: [
       { q: 'Does Disallow remove a page from Google?', a: 'Not reliably. Robots.txt controls crawling, not indexing: a blocked URL discovered from links can still appear in results without its content being crawled. To keep a public page out of search, allow crawling and use a noindex tag/header so the crawler can see it. For genuinely private material, use authentication — robots.txt is public and is not a security control.' },
@@ -1699,7 +1699,7 @@ export const tools = [
     keywords: ['roman numerals', 'roman numeral converter', 'roman numbers', 'number to roman', 'roman to number'],
     aliases: ['roman numbers converter', 'roman numeral translator', 'numbers in roman'],
     popularity: 74, added: '2026-11-01',
-    steps: 'Choose the direction: Number → Roman or Roman → Number.|Type the value (Roman input is case-insensitive).|Read the conversion — invalid forms like IIII or IC are rejected with the reason.',
+    steps: 'Choose the direction: Number → Roman or Roman → Number.|Type the value (Roman input is case-insensitive).|Read and copy the conversion and its value breakdown — invalid forms like IIII or IC are rejected.',
     faqs: [
       { q: 'Why is 49 written XLIX and not IL?', a: 'A smaller symbol may only be subtracted from the next one or two larger symbols: I subtracts only from V and X, X only from L and C, C only from D and M. So 49 = 40 + 9 = XL + IX = XLIX. IL breaks the rule (I cannot subtract from L).' },
       { q: 'How do you write the current year in Roman numerals?', a: '2026 = MMXXVI (2000 = MM, 20 = XX, 6 = VI). Type any year above to check — film credits and building cornerstones still use this every year.' },
@@ -1717,7 +1717,7 @@ export const tools = [
         'Worked example: 1994 = 1000 + 900 + 90 + 4 = M + CM + XC + IV = MCMXCIV.',
       ] },
       { h: 'Limits of the system',
-        p: 'Roman numerals have no zero and no fractions, and the standard form tops out at 3999 (MMMCMXCIX). Medieval writers drew a line (vinculum) over a numeral to multiply it by 1000 for larger values — you will see it in old manuscripts, but modern usage (chapters, monarchs like Charles III, Super Bowl numbering, copyright years) never needs it. That 1–3999 range is what this converter enforces.' },
+        p: 'Roman numerals have no zero and no fractions, and the standard form tops out at 3999 (MMMCMXCIX). Medieval writers drew a line (vinculum) over a numeral to multiply it by 1000 for larger values — you will see it in old manuscripts, it can be used for values beyond this converter’s range. That 1–3999 range is what this converter enforces.' },
     ] }),
   T({ id: 'morse-code-translator', name: 'Morse Code Translator', icon: 'morse', engine: 'text', categories: ['text'],
     blurb: 'Translate text to Morse code and back — with sound playback.',
@@ -1891,7 +1891,7 @@ export const tools = [
     keywords: ['attendance calculator', 'attendance percentage', 'how many classes can i miss', '75 attendance calculator', 'class attendance'],
     aliases: ['attendance percentage calculator', 'bunk calculator', 'classes needed for 75 percent attendance'],
     popularity: 90, added: '2026-11-03',
-    steps: 'Enter classes held so far and classes you attended.|Set your institution’s target — commonly 75%, but use your actual rule.|Read your current percentage and either the recovery streak needed or your safe miss buffer.',
+    steps: 'Enter classes held so far and classes you attended.|Set your institution’s target — commonly 75%, but use your actual rule.|Optionally enter remaining classes to plan the end of the term.|Read your current percentage, recovery streak or immediate miss buffer, and any term-end plan.',
     faqs: [
       { q: 'I have 28 of 40 classes. How do I reach 75%?', a: 'You are at 70%. Attend the next 8 classes in a row: 36 attended out of 48 held is exactly 75%. Missing one during the recovery makes the required streak longer because the denominator grows too.' },
       { q: 'Why can I miss only 2 classes at 32 out of 40?', a: 'At 32/40 you are at 80%. Missing 2 makes it 32/42 = 76.19%, still over 75%; missing a third makes it 32/43 = 74.42%, below target. The calculator counts whole future classes, not a rounded percentage.' },
@@ -1900,6 +1900,7 @@ export const tools = [
     guide: [
       { h: 'Every future class changes both sides of the fraction',
         p: 'Attendance is attended ÷ held × 100. A class you attend adds 1 to both numbers; a class you miss adds 1 only to “held”. To recover to a target T, the calculator solves (attended + x) ÷ (held + x) ≥ T for whole classes. That is why at 28/40, just “earning back the missing 5%” takes 8 straight classes, ending at 36/48 = 75%.' },
+      { h: 'Plan for a fixed number of remaining classes', p: 'Enter the remaining classes to see the minimum you must attend by term end and the maximum you could miss, assuming every class has equal weight and the schedule remains unchanged. For 28 of 40 attended with 20 remaining at a 75% target, you need 17 of those 20; the final result is 45/60 = 75%. This end-of-term allowance is not the same as missing classes immediately while staying above target.' },
       { h: 'Attendance situations at a 75% target',
         table: { head: ['Attended / held', 'Now', 'What the maths says'], rows: [
           ['28 / 40', '70%', 'Attend 8 in a row → 36/48 = 75%'],

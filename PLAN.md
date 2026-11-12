@@ -11,6 +11,24 @@
 
 ---
 
+## Search-signal usability and market research batch — 2026-10-31
+
+Plan first: audit the three GSC-observed pages, then research competitor features
+and demand signals; the supplied report is labelled Nov 2026, later than the
+session date, so its dates require reconciliation and cannot be treated as
+verified current data. Site impressions are not total market demand. Improve
+actual user workflows rather than creating keyword-only pages: Roman conversion
+gets a copyable result and numeric/symbol breakdown; attendance gets an optional
+finite remaining-class plan with exact target arithmetic and clear assumptions;
+robots rules get editing without deleting and re-entering, with preview/test
+invalidation. Preserve existing APIs and privacy, and test arithmetic boundaries,
+UI, accessibility, edits and generated content. Research competing PDF/image,
+student and developer tools and document evidence separately from measured
+market demand; no fabricated volume, paid service or ranking guarantee. One
+consolidated PR: tests, security audit, CI/preview, merge and production verify.
+
+---
+
 ## Selective PDF ZIP and custom ranges batch — 2026-10-31
 
 Plan first: extend the existing local PDF Split workflow for selected pages and
