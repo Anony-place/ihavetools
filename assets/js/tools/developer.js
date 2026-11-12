@@ -383,6 +383,19 @@ export function parseTimestamp(raw, unit = 'auto') {
   if (Number.isNaN(d.getTime()) || Math.abs(num) > 8.64e15) throw new Error('That number is outside the range JavaScript dates support (year ~275760).');
   return d;
 }
+export function parseWallDateTime(value, zone = 'local') {
+  if (!['local','utc'].includes(zone)) throw new Error('Choose UTC or local time.');
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/.exec(value);
+  if (!m || Number(m[1]) < 1 || Number(m[4]) > 23 || Number(m[5]) > 59 || Number(m[6] || 0) > 59) throw new Error('Enter a valid date and time (up to milliseconds).');
+  const normalized = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6] || '00'}.${(m[7] || '').padEnd(3,'0')}`;
+  const d = new Date(normalized + (zone === 'utc' ? 'Z' : ''));
+  if (!Number.isFinite(d.getTime())) throw new Error('Enter a valid date and time.');
+  const p = zone === 'utc' ? [d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate(),d.getUTCHours(),d.getUTCMinutes(),d.getUTCSeconds(),d.getUTCMilliseconds()] : [d.getFullYear(),d.getMonth()+1,d.getDate(),d.getHours(),d.getMinutes(),d.getSeconds(),d.getMilliseconds()];
+  const want = [Number(m[1]),Number(m[2]),Number(m[3]),Number(m[4]),Number(m[5]),Number(m[6]||0),Number((m[7]||'').padEnd(3,'0'))];
+  if (p.some((v,i)=>v!==want[i])) throw new Error('This calendar date or local time does not exist.');
+  return d;
+}
+
 export function dateToParts(d) {
   const iso = d.toISOString();
   return {
@@ -988,7 +1001,8 @@ const defs = {
 
   'timestamp-converter'(root) {
     const ts = input({ type: 'text', inputmode: 'numeric', placeholder: 'e.g. 1735689600' });
-    const dateIn = input({ type: 'datetime-local' });
+    const dateIn = input({ type: 'datetime-local', step:'0.001' });
+    const wallZone = select({options:[{v:'local',t:'Browser local time'},{v:'utc',t:'UTC'}],value:'local'});
     const unit = select({ options: [{v:'auto',t:'Auto-detect'}, {v:'seconds',t:'Seconds'}, {v:'milliseconds',t:'Milliseconds'}], value:'auto' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Conversion', copy: true });
@@ -1008,17 +1022,16 @@ const defs = {
       } }),
         btn({ label: 'Now', variant: 'secondary', onClick: () => { const now = new Date(); unit.value = 'milliseconds'; ts.value = String(now.getTime()); showDate(now); } })),
       h('div', { class: 'field-row', style: 'align-items:end; margin-top:6px' },
-        field({ label: '…or pick a date', control: dateIn }),
+        field({ label: '…or pick a date', control: dateIn, hint:'Seconds and milliseconds are optional.' }),
+        field({ label: 'Date input timezone', control: wallZone }),
         field({ label: ' ', control: btn({ label: 'Convert to timestamp', variant: 'secondary', icon: 'calendar', onClick: () => {
           try {
             if (!dateIn.value) throw new Error('Pick a date first.');
-            const date = new Date(dateIn.value);
-            if (!Number.isFinite(date.getTime())) throw new Error('This date cannot be interpreted by your browser.');
-            const local = `${String(date.getFullYear()).padStart(4, '0')}-${String(date.getMonth()+1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}T${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-            if (!dateIn.value.startsWith(local)) throw new Error('This local time does not exist in your timezone. Choose another time.');
-            showDate(date); status.set('Interpreted in your browser local timezone; repeated daylight-saving times are ambiguous.', 'info');
+            const date = parseWallDateTime(dateIn.value, wallZone.value);
+            showDate(date); status.set(wallZone.value === 'utc' ? 'Interpreted as UTC.' : 'Interpreted in your browser local timezone; repeated daylight-saving times are ambiguous.', 'info');
           } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
         } }) })),
+      h('p',{class:'hint',text:'Unix seconds are rounded down to a whole second, including negative timestamps. Milliseconds retain the exact instant. Local repeated daylight-saving times are ambiguous; choose UTC for an unambiguous instant.'}),
       status, h('br'), out.panel);
   },
 

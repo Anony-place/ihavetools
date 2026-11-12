@@ -270,6 +270,12 @@ await test('bulk uniqueness (1000)', () => {
 
 console.log('\n── Timestamps ──');
 await test('seconds and ms auto-detected', () => {
+  assert.equal(dev.parseWallDateTime('1970-01-01T00:00:00.001','utc').getTime(),1);
+  assert.equal(dev.parseWallDateTime('1969-12-31T23:59:59.999','utc').getTime(),-1);
+  assert.equal(dev.dateToParts(new Date(-1)).seconds,'-1');
+  assert.equal(dev.parseWallDateTime('2000-02-29T12:34:56.1','utc').toISOString(),'2000-02-29T12:34:56.100Z');
+  assert.throws(()=>dev.parseWallDateTime('2025-02-29T00:00','utc'),/does not exist/);
+  assert.throws(()=>dev.parseWallDateTime('2025-01-01T24:00','utc'),/valid/);
   const d1 = dev.parseTimestamp('1735689600');
   assert.equal(d1.toISOString(), '2025-01-01T00:00:00.000Z');
   const d2 = dev.parseTimestamp('1735689600000');
@@ -2128,6 +2134,11 @@ await test('batch-10 tools have guides, search and inbound related links',()=>{
 
 console.log('\n── Batch-9 calendar and image reliability ──');
 await test('business days honor inclusive range, weekends and manually supplied holidays', () => {
+  assert.deepEqual(dt.countBusinessDays('2024-02-28','2024-03-01',[3],'2024-02-29',false), {working:0,nonWorking:2,calendarDays:2});
+  assert.equal(dt.countBusinessDays('2024-02-28','2024-02-28',[], '',false).calendarDays,0);
+  assert.equal(dt.addBusinessDays('2024-02-28',1,[4,5,6,0],''),'2024-03-04');
+  assert.throws(()=>dt.addBusinessDays('2024-02-28',1,[0,1,2,3,4,5,6]),/At least one/);
+  assert.throws(()=>dt.countBusinessDays('2024-02-28','2024-03-01',[2,2]),/valid non-working/);
   assert.deepEqual(dt.countBusinessDays('2026-11-06','2026-11-13','sat_sun','2026-11-11'), { working: 5, nonWorking: 3, calendarDays: 8 });
   assert.equal(dt.countBusinessDays('2026-11-06','2026-11-06','sat_sun','').working,1);
   assert.equal(dt.countBusinessDays('2026-11-07','2026-11-08','sat_sun','2026-11-07,2026-11-07').working,0);

@@ -1430,7 +1430,7 @@ await domTest('business day UI counts holiday and computes next working day', as
   const app = await loadToolPage('business-day-calculator', 'datetime');
   const dates = app.querySelectorAll('input[type=date]'); dates[0].value='2026-11-06'; dates[1].value='2026-11-13';
   app.querySelector('textarea').value='2026-11-11';
-  click(btnByLabel(app, 'Count working days')); assert.match(app.textContent,/5Working days \(inclusive\)/);
+  click(btnByLabel(app, 'Count working days')); assert.match(app.textContent,/5Working days/);
   click(btnByLabel(app, 'Add / subtract working days')); assert.match(app.textContent,/2026-11-16Resulting date/);
   app.querySelector('textarea').value='2026-02-30'; click(btnByLabel(app, 'Count working days')); assert.match(app.textContent,/Invalid date/);
 });
@@ -1698,6 +1698,17 @@ await domTest('hash results ignore stale asynchronous digests', async () => {
     text.value='third'; fire(text,'input'); assert.ok(!app.querySelector('.result-panel').dataset.has);
   } finally { if(previous) Object.defineProperty(global,'crypto',previous); else delete global.crypto; }
 });
+await domTest('custom workweek and UTC wall clock conversion invalidate results', async () => {
+ let app=await loadToolPage('business-day-calculator','datetime'); const dates=app.querySelectorAll('input[type=date]'); dates[0].value='2024-02-28'; dates[1].value='2024-03-01';
+ const sel=app.querySelector('select'); sel.value='custom';fire(sel,'change');const fieldset=app.querySelector('fieldset');assert.equal(fieldset.hidden,false);
+ const wed=[...fieldset.querySelectorAll('label')].find(x=>x.textContent.includes('Wednesday')).querySelector('input');wed.checked=true;fire(wed,'change');
+ const end=[...app.querySelectorAll('label.switch')].find(x=>x.textContent.includes('Include end date')).querySelector('input');end.checked=false;fire(end,'change');
+ click(btnByLabel(app,'Count working days'));assert.match(app.textContent,/1Working days/);assert.match(statusText(document),/end date is excluded/);
+ wed.checked=false;fire(wed,'change');assert.equal(app.querySelectorAll('.stat-card').length,0);
+ app=await loadToolPage('timestamp-converter','developer'); const date=app.querySelector('input[type=datetime-local]'), zone=app.querySelectorAll('select')[1]; date.value='1969-12-31T23:59:59.999'; zone.value='utc'; click(btnByLabel(app,'Convert to timestamp'));assert.match(resultText(document),/1969-12-31T23:59:59.999Z/); assert.match(resultText(document),/Unix seconds:\s+-1/);
+ zone.value='local';fire(zone,'change');assert.ok(!app.querySelector('.result-panel').dataset.has);
+});
+
 await domTest('timestamp explicit milliseconds and JWT payload copy are correct', async () => {
   let app=await loadToolPage('timestamp-converter','developer'); app.querySelector('input[type=text]').value='1000'; app.querySelector('select').value='milliseconds'; click(btnByLabel(app,'Convert to date')); assert.match(resultText(document),/1970-01-01T00:00:01.000Z/);
   app=await loadToolPage('jwt-decoder','developer'); const header=Buffer.from('{"alg":"none"}').toString('base64url'), payload=Buffer.from('{"sub":"abc"}').toString('base64url'); app.querySelector('textarea').value=`${header}.${payload}.`; click(btnByLabel(app,'Decode'));

@@ -11,6 +11,21 @@
 
 ---
 
+## Date planning and epoch conversion batch — plan
+
+[Epoch Converter](https://www.epochconverter.com/) offers UTC/local date input;
+[timeanddate](https://www.timeanddate.com/date/workdays.html) allows custom
+weekday exclusions and end-date options. These are competitor feature signals,
+not measured demand. Add explicit UTC/local date-time input with seconds and
+milliseconds to the timestamp converter, reject normalized invalid dates and
+explain DST ambiguity and rounding. Extend business-day planning with custom
+non-working weekdays and optional end-date inclusion while preserving defaults,
+manual-holiday and offset conventions. Add independent vectors, boundary,
+race/invalidation and real-browser mobile tests; one CI-verified PR and production
+verification. No paid service. GSC comparison and tax audit remain open.
+
+---
+
 ## Developer encoding and checksum verification batch — plan
 
 [URL Encoder](https://www.urlencoder.org/) illustrates per-line processing;
