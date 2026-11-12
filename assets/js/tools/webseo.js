@@ -442,7 +442,8 @@ const defs = {
         h('code', { class: 'mono', text: `UA: ${r.agent}` }),
         h('span', { class: 'hint', text: `Disallow: ${r.disallow.length || 'none'} · Allow: ${r.allow.length || 'none'}` }),
         h('span', { class: 'fr-actions' },
-          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => { rules.splice(i, 1); if (!rules.length) rules = [{ agent: '*', disallow: [], allow: [] }]; render(); build(); } }, 'Remove')))));
+          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Edit ${r.agent} rule ${i + 1}`, onclick: () => addRule(i) }, 'Edit'),
+          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Remove ${r.agent} rule ${i + 1}`, onclick: () => { rules.splice(i, 1); if (!rules.length) rules = [{ agent: '*', disallow: [], allow: [] }]; formWrap.replaceChildren(); render(); build(); } }, 'Remove')))));
     };
     const build = () => {
       try {
@@ -454,17 +455,20 @@ const defs = {
     };
     [sitemap, delay].forEach(el => el.addEventListener('input', build));
     [testAgent, testUrl].forEach(el => el.addEventListener('input', () => testOut.placeholder('Inputs changed. Run the test again.')));
-    const addRule = () => {
+    const addRule = (index = null) => {
       const agent = input({ type: 'text', placeholder: 'User-agent, e.g. * or Googlebot' });
       const dis = input({ type: 'text', placeholder: '/private/  (comma-separate multiple)' });
       const allow = input({ type: 'text', placeholder: '/public/  (optional)' });
+      if (index !== null) { agent.value = rules[index].agent; dis.value = rules[index].disallow.join(', '); allow.value = rules[index].allow.join(', '); }
       const form = h('div', {},
         h('div', { class: 'field-row' }, field({ label: 'User-agent', control: agent }), field({ label: 'Disallow paths', control: dis }), field({ label: 'Allow paths', control: allow })),
         actionsRow(
-          btn({ label: 'Add rule', icon: 'check', onClick: () => {
+          btn({ label: index === null ? 'Add rule' : 'Save rule', icon: 'check', onClick: () => {
             const d = dis.value.split(',').map((s) => s.trim()).filter(Boolean);
             const a = allow.value.split(',').map((s) => s.trim()).filter(Boolean);
-            const candidate = [...rules, { agent: agent.value.trim() || '*', disallow: d, allow: a }];
+            const candidate = [...rules];
+            const updated = { agent: agent.value.trim() || '*', disallow: d, allow: a };
+            if (index === null) candidate.push(updated); else candidate[index] = updated;
             try { buildRobots(candidate, { sitemap: sitemap.value.trim(), crawlDelay: delay.value }); }
             catch (e) { status.set(e.message, 'error'); return; }
             rules = candidate; render(); build(); formWrap.replaceChildren();
@@ -473,13 +477,13 @@ const defs = {
       formWrap.replaceChildren(form);
     };
     const formWrap = h('div', {});
-    const setRules = (next) => { rules = next; render(); build(); };
+    const setRules = (next) => { rules = next; formWrap.replaceChildren(); render(); build(); };
     const aiTrainingAgents = ['GPTBot', 'ClaudeBot', 'CCBot', 'Google-Extended', 'Applebot-Extended', 'Meta-ExternalAgent'];
     root.append(
       actionsRow(
-        btn({ label: 'Add rule', icon: 'robot', onClick: addRule }),
-        btn({ label: 'Allow everything', variant: 'secondary', onClick: () => { rules = [{ agent: '*', disallow: [], allow: [] }]; render(); build(); } }),
-        btn({ label: 'Block everything', variant: 'secondary', onClick: () => { rules = [{ agent: '*', disallow: ['/'], allow: [] }]; render(); build(); } })),
+        btn({ label: 'Add rule', icon: 'robot', onClick: () => addRule() }),
+        btn({ label: 'Allow everything', variant: 'secondary', onClick: () => setRules([{ agent: '*', disallow: [], allow: [] }]) }),
+        btn({ label: 'Block everything', variant: 'secondary', onClick: () => setRules([{ agent: '*', disallow: ['/'], allow: [] }]) })),
       h('h3', { text: 'Starting presets', style: 'margin:18px 0 10px' }),
       actionsRow(
         btn({ label: 'WordPress defaults', variant: 'secondary', icon: 'settings', onClick: () => setRules([{ agent: '*', disallow: ['/wp-admin/'], allow: ['/wp-admin/admin-ajax.php'] }]) }),

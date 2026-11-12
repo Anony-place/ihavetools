@@ -922,6 +922,9 @@ await test('number bases, roman numerals and morse code', () => {
   assert.equal(dev.groupDigits('11111111', 4), '1111 1111');
   assert.throws(() => dev.convertBase('102', 2, 10), /not a valid base-2 digit/);
   assert.throws(() => dev.convertBase('10', 1, 10), /between 2 and 36/);
+  assert.deepEqual(conv.romanBreakdown(1994), [{symbol:'M',value:1000},{symbol:'CM',value:900},{symbol:'XC',value:90},{symbol:'IV',value:4}]);
+  assert.deepEqual(conv.romanBreakdown(3), [{symbol:'III',value:3}]);
+  assert.throws(() => conv.romanBreakdown(0));
   assert.equal(conv.toRoman(2026), 'MMXXVI');
   assert.equal(conv.toRoman(1994), 'MCMXCIV');
   assert.equal(conv.toRoman(49), 'XLIX');
@@ -1836,6 +1839,12 @@ await test('CGPA conversion, weighted SGPA and attendance maths', () => {
   const sgpa = stu.weightedGpa([{ gradePoint: 9, credits: 4 }, { gradePoint: 8, credits: 3 }, { gradePoint: 10, credits: 2 }]);
   assert.ok(Math.abs(sgpa.gpa - 8.88888888888889) < 1e-12);
   assert.equal(sgpa.totalCredits, 9);
+  assert.deepEqual(stu.attendanceTermPlan({held:40,attended:28,targetPct:75,remaining:20}), {reachable:true,minimumAttend:17,canMiss:3,maxFinalPct:80});
+  assert.equal(stu.attendanceTermPlan({held:40,attended:28,targetPct:75,remaining:7}).reachable,false);
+  assert.equal(stu.attendanceTermPlan({held:40,attended:40,targetPct:100,remaining:2}).minimumAttend,2);
+  assert.equal(stu.attendanceTermPlan({held:40,attended:39,targetPct:100,remaining:200}).reachable,false);
+  assert.equal(stu.attendanceTermPlan({held:4,attended:3,targetPct:75,remaining:0}).canMiss,0);
+  assert.throws(() => stu.attendanceTermPlan({held:40,attended:28,targetPct:75,remaining:1.5}),/whole number/);
   const short = stu.attendanceCalc({ held: 40, attended: 28, targetPct: 75 });
   assert.equal(short.currentPct, 70);
   assert.equal(short.classesNeeded, 8, '36/48 is the first whole-class point at 75%');

@@ -11,6 +11,36 @@
 
 ---
 
+## Search-signal usability and market research batch — 2026-10-31
+
+Plan first: audit the three GSC-observed pages, then research competitor features
+and demand signals; the supplied report is labelled Nov 2026, later than the
+session date, so its dates require reconciliation and cannot be treated as
+verified current data. Site impressions are not total market demand. Improve
+actual user workflows rather than creating keyword-only pages: Roman conversion
+gets a copyable result and numeric/symbol breakdown; attendance gets an optional
+finite remaining-class plan with exact target arithmetic and clear assumptions;
+robots rules get editing without deleting and re-entering, with preview/test
+invalidation. Preserve existing APIs and privacy, and test arithmetic boundaries,
+UI, accessibility, edits and generated content. Research competing PDF/image,
+student and developer tools and document evidence separately from measured
+market demand; no fabricated volume, paid service or ranking guarantee. One
+consolidated PR: tests, security audit, CI/preview, merge and production verify.
+
+### Continued growth batch — JSON validation workflow
+
+Competitor evidence in MARKET-RESEARCH.md identifies local file loading and
+validation as established workflows, not a measured demand estimate. Improve
+the existing JSON Validator instead of publishing duplicate pages: add bounded
+UTF-8 local JSON import, preserve existing text on failure, guard stale async
+reads, and a keyboard-accessible jump to the first error. Invalidate stale
+results immediately on edit; explain limits and duplicate-key warning. Test
+errors, async races, mobile and accessibility alongside the three earlier tools.
+Keep everything local and free. One existing PR; CI and preview before merge,
+production checks afterward. No claim that these changes guarantee traffic.
+
+---
+
 ## Selective PDF ZIP and custom ranges batch — 2026-10-31
 
 Plan first: extend the existing local PDF Split workflow for selected pages and
@@ -34,8 +64,8 @@ selection from documents larger than 100 pages, explicit overlap accounting and
 stable part names. Engine, DOM cancellation, generated-site and audit checks pass.
 Local Chromium 143 verified actual ZIP/PDF contents, custom overlap and mobile
 axe; the full local run later timed out in the unrelated PDF-to-image render
-test. Full CI browser suite and production verification remain required. Other
-browsers, physical devices and complex PDFs are unverified.
+test. PR #68 passed full CI, merged, and the updated page was verified on
+production. Other browsers, physical devices and complex PDFs are unverified.
 
 ---
 

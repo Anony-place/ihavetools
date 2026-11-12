@@ -120,6 +120,20 @@ await domTest('json-validator: live flagging', async () => {
   await new Promise((r) => setTimeout(r, 500));
   assert.match(statusText(document), /Invalid JSON/);
 });
+await domTest('JSON validator import, jump, invalidation and stale reads', async () => {
+ const app=await loadToolPage('json-validator','developer'), text=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');
+ const saved=global.FileReader, pending=[]; global.FileReader=class {readAsArrayBuffer(){pending.push(this);}};
+ const choose=(name,size=1)=>{Object.defineProperty(picker,'files',{configurable:true,value:[{name,size}]});fire(picker,'change');};
+ const finish=async (idx, bytes)=>{pending[idx].result=bytes;pending[idx].onload();await new Promise(r=>setTimeout(r,0));};
+ try {
+  text.value='{"keep":1}';choose('bad.txt');assert.match(statusText(document),/Existing input was kept/);assert.equal(text.value,'{"keep":1}');
+  choose('invalid.json');await finish(0,new Uint8Array([0xff]).buffer);assert.match(statusText(document),/valid UTF-8/);assert.equal(text.value,'{"keep":1}');
+  choose('broken.json');await finish(1,new TextEncoder().encode('{\n "a": }').buffer);assert.match(statusText(document),/Invalid JSON.*line 2/); click(btnByLabel(app,'Go to error')); assert.equal(document.activeElement,text);assert.equal(text.selectionStart,8);
+  text.value='{"a":1,"a":2}';fire(text,'input');assert.equal(btnByLabel(app,'Go to error'),undefined);click(btnByLabel(app,'Validate'));assert.match(statusText(document),/duplicate.*overwrite/i);
+  choose('late.json');text.value='{"new":true}';fire(text,'input');await finish(2,new TextEncoder().encode('{"old":true}').buffer);assert.equal(text.value,'{"new":true}');
+  choose('late.json');click(btnByLabel(app,'Clear'));await finish(3,new TextEncoder().encode('{"old":true}').buffer);assert.equal(text.value,'');assert.match(statusText(document),/Cleared/);
+ } finally {global.FileReader=saved;}
+});
 await domTest('base64-encoder: unicode round trip via UI', async () => {
   const app = await loadToolPage('base64-encoder', 'developer');
   const ta = app.querySelector('textarea');
@@ -440,7 +454,7 @@ await domTest('keyword CSV reports blocked downloads', async () => {
 });
 await domTest('income tax labels historical year and equal regimes correctly', async () => {
  const app=await loadToolPage('income-tax-calculator','calculators'); assert.match(app.textContent,/does not model Tax Year 2026/);
- const nums=app.querySelectorAll('input[type=number]'); nums[0].value='400000';nums[1].value='0';nums[2].value='0';click(btnByLabel(app,'Calculate tax'));assert.match(app.textContent,/Neither \(tie\)/);
+ const nums=app.querySelectorAll('input[type=number]'); nums[0].value='400000';nums[1].value='1';nums[2].value='0';click(btnByLabel(app,'Calculate tax'));assert.match(app.textContent,/Neither \(tie\)/);
 });
 
 await domTest('income tax: edits clear stale estimates and show limitations', async () => {
@@ -1759,6 +1773,16 @@ await domTest('math results are invalidated after changing input', async () => {
  for (const [id,initial,label] of [['average-calculator','1,2,3','Calculate'],['gcd-lcm-calculator','12,18','Calculate GCD'],['weighted-average-calculator','80,3\n90,2','Calculate weighted']]) {const app=await loadToolPage(id,'math'), inp=app.querySelector('textarea,input[type=text]'); inp.value=initial; click(btnByLabel(app,label)); assert.ok(app.querySelector('.stat-card')); inp.value='4'; fire(inp,'input'); assert.equal(app.querySelector('.stat-card'),null);}
 });
 
+await domTest('GSC pages: finite term, roman breakdown, editable robots rules', async () => {
+ let app=await loadToolPage('attendance-calculator','student'); const nums=app.querySelectorAll('input[type=number]');
+ nums[3].value='20'; click(btnByLabel(app,'Calculate attendance')); assert.match(app.textContent,/17 of 20/); assert.match(app.textContent,/3Can miss by term end/);
+ nums[3].value='7'; fire(nums[3],'input'); assert.doesNotMatch(app.textContent,/17 of 20/); click(btnByLabel(app,'Calculate attendance')); assert.match(app.textContent,/Not reachable/);
+ app=await loadToolPage('roman-numeral-converter','converters'); let val=app.querySelector('input[type=text]'); val.value='1994'; fire(val,'input'); assert.match(app.textContent,/M = 1000.*CM = 900.*XC = 90.*IV = 4/); assert.ok(app.querySelector('.result-panel button')); val.value='0'; fire(val,'input'); assert.doesNotMatch(app.textContent,/CM = 900/);
+ app=await loadToolPage('robots-txt-generator','webseo'); click(app.querySelector('[aria-label="Edit * rule 1"]'));
+ let dis=app.querySelector('input[placeholder="/private/  (comma-separate multiple)"]'); dis.value='/private/'; click(btnByLabel(app,'Save rule')); assert.match(resultText(document),/Disallow: \/private\//); assert.equal(app.querySelectorAll('.file-list .file-row').length,1);
+ click(app.querySelector('[aria-label="Edit * rule 1"]')); dis=app.querySelector('input[placeholder="/private/  (comma-separate multiple)"]'); dis.value='bad'; click(btnByLabel(app,'Save rule')); assert.match(statusText(document),/start with/); assert.ok(app.contains(dis)); assert.match(resultText(document),/Disallow: \/private\//);
+ click(btnByLabel(app,'Allow everything')); assert.equal(app.querySelector('input[placeholder="/private/  (comma-separate multiple)"]'), null); assert.doesNotMatch(resultText(document),/Disallow: \/private\//);
+});
 await domTest('HTML preview runs, pauses, clears oversized code and handles unsupported sync', async () => {
  const app=await loadToolPage('html-live-preview','developer'), code=app.querySelector('textarea'), frame=app.querySelector('iframe'), live=app.querySelector('input[type=checkbox]');
  assert.equal(frame.getAttribute('sandbox'),'allow-scripts'); assert.equal(frame.getAttribute('referrerpolicy'),'no-referrer');
@@ -1784,7 +1808,7 @@ await domTest('percentage results clear on edit and GST presets are explicitly u
 await domTest('combined date workflow and invalid robots rules remain editable', async () => {
  let app=await loadToolPage('date-add-calculator','datetime'); app.querySelector('input[type=date]').value='2024-01-31';
  const duration=app.querySelector('.date-combined'), values=duration.querySelectorAll('input'); values[1].value='1'; values[3].value='1'; click(btnByLabel(app,'Calculate combined duration')); assert.match(app.textContent,/2024-03-01ISO/);
- app=await loadToolPage('robots-txt-generator','webseo'); click(btnByLabel(app,'Add rule')); let agent=app.querySelector('input[placeholder^="User-agent"]'), path=app.querySelector('input[placeholder^="/private/"]'); agent.value='Bad agent'; path.value='/foo'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(statusText(document),/User-agent must/); assert.ok(app.contains(agent)); assert.equal(agent.value,'Bad agent'); agent.value='TestBot'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(app.textContent,/UA: TestBot/);
+ app=await loadToolPage('robots-txt-generator','webseo'); click(btnByLabel(app,'Add rule')); let agent=app.querySelector('input[placeholder^="User-agent"]'), path=app.querySelector('input[placeholder="/private/  (comma-separate multiple)"]'); agent.value='Bad agent'; path.value='/foo'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(statusText(document),/User-agent must/); assert.ok(app.contains(agent)); assert.equal(agent.value,'Bad agent'); agent.value='TestBot'; click([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Add rule')).at(-1)); assert.match(app.textContent,/UA: TestBot/);
 });
 
 await domTest('keyword text import preserves content on rejection and ignores stale reads', async () => {

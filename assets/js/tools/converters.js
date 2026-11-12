@@ -116,6 +116,14 @@ export function toRoman(n) {
   for (const [v, sym] of ROMAN_TABLE) { while (rest >= v) { out += sym; rest -= v; } }
   return out;
 }
+export function romanBreakdown(n) {
+  toRoman(n); let rest = n; const parts = [];
+  for (const [value, symbol] of ROMAN_TABLE) {
+    const count = Math.floor(rest / value);
+    if (count) { parts.push({symbol: symbol.repeat(count), value: value * count}); rest %= value; }
+  }
+  return parts;
+}
 const ROMAN_RE = /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
 export function fromRoman(str) {
   const s = String(str).trim().toUpperCase();
@@ -198,7 +206,8 @@ const defs = {
     const mode = segControl({ options: [{ v: 'to-roman', t: 'Number → Roman' }, { v: 'to-number', t: 'Roman → Number' }], value: 'to-roman', ariaLabel: 'Direction' });
     const val = input({ type: 'text', placeholder: 'e.g. 2026', value: '2026' });
     const status = statusLine('');
-    const out = resultPanel({ label: 'Result', copy: false, placeholder: 'Enter a value to convert.' });
+    const out = resultPanel({ label: 'Result', copy: true, placeholder: 'Enter a value to convert.' });
+    const details = h('p', {class:'hint'});
     const run = () => {
       try {
         if (mode.getValue() === 'to-roman') {
@@ -206,14 +215,16 @@ const defs = {
           if (!/^[0-9]+$/.test(raw)) throw new Error('Enter a whole decimal number between 1 and 3999.');
           const n = Number(raw);
           const r = toRoman(n);
-          out.set(h('p', { style: 'font-size:1.6rem;font-weight:750;letter-spacing:0.04em;margin:0', text: r }));
+          out.set(r);
+          details.textContent = romanBreakdown(n).map(p => `${p.symbol} = ${p.value}`).join(' + ');
           status.set(`${n} in Roman numerals ✓`, 'success');
         } else {
           const n = fromRoman(val.value);
-          out.set(h('p', { style: 'font-size:1.6rem;font-weight:750;letter-spacing:-0.02em;margin:0;font-variant-numeric:tabular-nums', text: String(n) }));
+          out.set(String(n));
+          details.textContent = romanBreakdown(n).map(p => `${p.symbol} = ${p.value}`).join(' + ');
           status.set(`${val.value.trim().toUpperCase()} = ${n} ✓`, 'success');
         }
-      } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+      } catch (e) { out.placeholder(); details.textContent = ''; status.set(e.message, 'error'); }
     };
     val.addEventListener('input', run);
     mode.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setTimeout(() => {
@@ -223,7 +234,7 @@ const defs = {
     root.append(field({ label: 'Direction', control: mode }),
       field({ label: 'Value', control: val, hint: 'Numbers 1–3999; Roman input is case-insensitive' }),
       actionsRow(btn({ label: 'Convert', icon: 'type', onClick: run })),
-      status, h('br'), out.panel);
+      status, h('br'), out.panel, h('h3', {text:'Value breakdown'}), details);
     run();
   },
 };
