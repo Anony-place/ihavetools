@@ -1251,6 +1251,19 @@ try {
   await page.getByRole('button',{name:'Image size'}).click();
   pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Convert to PDF'}).click();
   result=await PDFDocument.load(await readFile(await (await pdfEvent).path())); assert.equal(result.getPageCount(),1); assert.equal(result.getPage(0).getWidth(),80);
+  await page.getByRole('button',{name:'A4 (fit)'}).click();await page.getByLabel('Page orientation').selectOption('portrait');await page.getByLabel('Margin (points)').fill('0');
+  pdfEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Convert to PDF'}).click();result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));
+  assert.ok(Math.abs(result.getPage(0).getWidth()-595.28)<0.01);assert.ok(Math.abs(result.getPage(0).getHeight()-841.89)<0.01);
+  await page.getByLabel('Page orientation').selectOption('landscape');pdfEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Convert to PDF'}).click();result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));assert.ok(Math.abs(result.getPage(0).getWidth()-841.89)<0.01);
+  await page.getByLabel('Margin (points)').fill('145');await page.getByRole('button',{name:'Convert to PDF'}).click();assert.match(await page.locator('#tool-app .status-line').innerText(),/margin/);
+  await page.getByLabel('Margin (points)').fill('36');
+  const transparentWebp=await sharp({create:{width:32,height:24,channels:4,background:{r:255,g:0,b:0,alpha:0.4}}}).webp({lossless:true}).toBuffer();
+  await page.getByRole('button',{name:'Clear list'}).click();await page.locator('#tool-app input[type=file]').setInputFiles([{name:'alpha.webp',mimeType:'image/webp',buffer:transparentWebp}]);
+  pdfEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Convert to PDF'}).click();result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));
+  assert.ok(result.context.enumerateIndirectObjects().some(([,obj])=>String(obj).includes('/SMask')),'fallback must retain an alpha mask');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'image to PDF mobile accessibility');
+  console.log('✓ image to PDF layout, alpha fallback and mobile accessibility');
   console.log('✓ real PDF organizer, split, rotate, image conversion and same-file selection');
   await page.setViewportSize({width:1280,height:800});
 

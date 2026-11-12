@@ -107,6 +107,19 @@ export function fitRect(imgW, imgH, pageW, pageH, margin = 0) {
   return { x: (pageW - w) / 2, y: (pageH - h) / 2, width: w, height: h };
 }
 
+/** Page geometry in points. Image-size mode uses one point per pixel. */
+export function imagePdfLayout(width, height, size, orientation, margin) {
+  if (![width,height].every(n => Number.isSafeInteger(n) && n > 0) || width * height > 40000000) throw new Error('Image exceeds 40 million pixels or has invalid dimensions.');
+  if (!['a4','letter','original'].includes(size) || !['auto','portrait','landscape'].includes(orientation) || !Number.isInteger(margin) || margin < 0 || margin > 144) throw new Error('Choose a valid orientation and a whole margin from 0 to 144 points.');
+  if (size === 'original') {
+    if (width > 14400 || height > 14400) throw new Error('Image-size pages are limited to 14,400 points per side.');
+    return {width, height, rect:{x:0,y:0,width,height}};
+  }
+  let [w,h] = size === 'a4' ? [595.28,841.89] : [612,792];
+  if (orientation === 'landscape' || (orientation === 'auto' && width > height)) [w,h]=[h,w];
+  return {width:w,height:h,rect:fitRect(width,height,w,h,margin)};
+}
+
 /** Copy selected pages in order and add clockwise rotations; does not alter input. */
 export async function organizePdf(PDFLib, source, pages, numbering = null) {
   if (!pages.length) throw new Error('Keep at least one page.');
@@ -652,16 +665,24 @@ const defs = {
     const status = statusLine('Add one or more images — each becomes a page. Use ↑/↓ to reorder.');
     const grid = statsGrid();
     const pageSize = segControl({ options: [{ v: 'a4', t: 'A4 (fit)' }, { v: 'letter', t: 'Letter (fit)' }, { v: 'original', t: 'Image size' }], value: 'a4', ariaLabel: 'Page size', onChange: () => { operation++; grid.replaceChildren(); status.set('Page size changed. Start conversion again.', 'info'); } });
+    const orientation = select({options:[{v:'auto',t:'Auto (match image)'},{v:'portrait',t:'Portrait'},{v:'landscape',t:'Landscape'}],value:'auto'});
+    const margin = input({type:'number',min:0,max:144,step:1,value:'36'});
+    const settingsChanged = () => { operation++; grid.replaceChildren(); status.set('Layout changed. Start conversion again.', 'info'); };
+    orientation.addEventListener('change', settingsChanged); margin.addEventListener('input', settingsChanged);
     const zone = dropzone({
       accept: 'image/*', multiple: true, title: 'Choose images or drop them here',
       sub: 'JPG, PNG, WebP, GIF… — converted locally, never uploaded',
       onReject: () => { revision++; grid.replaceChildren(); zone.clear(); status.set('Selection rejected: each file must be within 200 MB. Existing list was kept; start again.', 'error'); },
       onFiles: (incoming) => {
         zone.querySelector('input[type=file]').value = '';
-        for (const f of incoming) {
-          if (!f.type.startsWith('image/')) { status.set(`“${f.name}” is not an image file.`, 'error'); continue; }
-            listWrap.append(pdfFilesRow(f, updateGrid));
+        const existing = [...listWrap.children].map(row => row.file);
+        const invalid = incoming.find(f => !f.type.startsWith('image/'));
+        const total = [...existing,...incoming].reduce((sum,f)=>sum+f.size,0);
+        if (invalid || incoming.some(f=>f.size > 20*1024*1024) || existing.length + incoming.length > 20 || total > 100*1024*1024) {
+          revision++; grid.replaceChildren();
+          status.set(invalid ? `“${invalid.name}” is not an image. No files were added.` : 'Limit: 20 images, 20 MiB each and 100 MiB combined. No files were added.', 'error'); return;
         }
+        for (const f of incoming) listWrap.append(pdfFilesRow(f, updateGrid));
         updateGrid();
         const count = listWrap.children.length;
         if (count) status.set(`${count} image${count === 1 ? '' : 's'} ready. Reorder if needed, then Convert.`, 'info');
@@ -677,46 +698,44 @@ const defs = {
       const isPng = /png/i.test(file.type) || /\.png$/i.test(file.name);
       if (isJpg) { try { return await pdf.embedJpg(buf); } catch { /* fall through to canvas */ } }
       if (isPng) { try { return await pdf.embedPng(buf); } catch { /* fall through to canvas */ } }
-      const bmp = await createImageBitmap(file);
-      const canvas = document.createElement('canvas');
-      canvas.width = bmp.width; canvas.height = bmp.height;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(bmp, 0, 0);
-      bmp.close?.();
-      const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
-      if (!blob) throw new Error(`“${file.name}” could not be decoded by this browser.`);
-      return pdf.embedJpg(await blob.arrayBuffer());
+      let bmp;
+      try {
+        bmp = await createImageBitmap(file);
+        if (!(bmp.width > 0 && bmp.height > 0) || bmp.width * bmp.height > 40000000) throw new Error(`“${file.name}” exceeds 40 million pixels or has invalid dimensions.`);
+        const canvas = document.createElement('canvas'); canvas.width = bmp.width; canvas.height = bmp.height;
+        const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Could not create an image canvas.');
+        ctx.drawImage(bmp, 0, 0);
+        const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+        if (!blob || blob.type !== 'image/png') throw new Error(`“${file.name}” could not be converted to PNG by this browser.`);
+        return await pdf.embedPng(await blob.arrayBuffer());
+      } finally { bmp?.close?.(); }
     }
-    const PAGE = { a4: [595.28, 841.89], letter: [612, 792] };
     const run = async () => {
       grid.replaceChildren();
       const ordered = [...listWrap.querySelectorAll('.file-row')].map((r) => r.file);
       const version = revision, token = ++operation;
       const current = () => version === revision && token === operation;
       if (!ordered.length) { status.set('Add at least one image first.', 'warning'); return; }
-      const chosenSize = pageSize.getValue();
+      const chosenSize = pageSize.getValue(), chosenOrientation = orientation.value, chosenMargin = margin.value === '' ? NaN : Number(margin.value);
+      try { imagePdfLayout(1,1,chosenSize,chosenOrientation,chosenMargin); } catch(e) { status.set(e.message,'error'); return; }
       status.set(`Loading the PDF engine, then converting ${ordered.length} image${ordered.length === 1 ? '' : 's'}…`, 'info');
       try {
         const PDFLib = await loadPdfLib();
         const pdf = await PDFLib.PDFDocument.create();
         for (const f of ordered) {
           if (!current()) return;
-          const img = await embedImage(pdf, f);
-          let page, rect;
-          if (chosenSize === 'original') {
-            page = pdf.addPage([img.width, img.height]);
-            rect = { x: 0, y: 0, width: img.width, height: img.height };
-          } else {
-            let [pw, ph] = PAGE[chosenSize];
-            if (img.width > img.height && pw < ph) [pw, ph] = [ph, pw]; // landscape image → landscape page
-            page = pdf.addPage([pw, ph]);
-            rect = fitRect(img.width, img.height, pw, ph, 36);
-          }
-          page.drawImage(img, rect);
+          let img;
+          try { img = await embedImage(pdf, f); } catch(e) { throw new Error(`“${f.name}”: ${e.message || 'Image could not be decoded.'}`); }
+          if (!current()) return;
+          let layout; try { layout = imagePdfLayout(img.width,img.height,chosenSize,chosenOrientation,chosenMargin); }
+          catch(e) { throw new Error(`“${f.name}”: ${e.message}`); }
+          const page = pdf.addPage([layout.width,layout.height]);
+          page.drawImage(img, layout.rect);
         }
+        if (!current()) return;
         const outBytes = await pdf.save();
         if (!current()) return;
+        if (outBytes.byteLength > 100*1024*1024) throw new Error('PDF output exceeds 100 MiB. Use fewer or smaller images.');
         const blob = new Blob([outBytes], { type: 'application/pdf' });
         if (!downloadBlob(blob, ordered.length === 1 ? `${ordered[0].name.replace(/\.[^.]+$/, '')}.pdf` : 'images.pdf')) throw new Error('Could not start the download in this browser.');
         grid.set([{ label: 'Pages created', value: String(ordered.length), kind: 'good' }, { label: 'PDF size', value: fmtBytes(blob.size) }]);
@@ -725,7 +744,9 @@ const defs = {
     };
     root.append(zone, listWrap,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
-        field({ label: 'Page size', control: pageSize })),
+        field({ label: 'Page size', control: pageSize }),
+        field({label:'Page orientation',control:orientation}), field({label:'Margin (points)',control:margin,hint:'0–144 points; A4/Letter only.'})),
+      h('p',{class:'hint',text:'Limit: 20 images, 20 MiB each, 100 MiB combined, 40 million pixels per image and 100 MiB output. Image-size mode uses 1 pixel = 1 PDF point (max 14,400 points per side), ignoring orientation and margin. Animated images use one frame. EXIF orientation may not be applied to embedded JPEG; rotate images before conversion. Device memory can impose lower limits.'}),
       actionsRow(
         btn({ label: 'Convert to PDF', icon: 'file-text', onClick: run }),
         btn({ label: 'Clear list', variant: 'ghost', icon: 'x', onClick: () => { listWrap.replaceChildren(); updateGrid(); status.set('Cleared.'); } })),

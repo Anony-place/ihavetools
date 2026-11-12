@@ -1405,11 +1405,11 @@ export const tools = [
     ] }),
   T({ id: 'image-to-pdf', name: 'Image to PDF', icon: 'image', engine: 'pdf', categories: ['pdf', 'image'],
     blurb: 'Turn JPG, PNG or WebP images into one PDF — in your browser.',
-    description: 'Convert one or more images (JPG, PNG, WebP, GIF and more) into a single PDF document, one image per page, in your chosen order. Choose A4, Letter or original image size for the pages. Conversion happens locally — images are never uploaded.',
+    description: 'Convert one or more images (JPG, PNG, WebP, GIF and more) into a single PDF document, one image per page, in your chosen order. Choose A4, Letter or image-size pages, with orientation and margin controls for fixed sizes. Conversion happens locally — images are never uploaded.',
     keywords: ['image to pdf', 'jpg to pdf', 'png to pdf', 'photo to pdf', 'convert image to pdf', 'images to pdf', 'jpeg to pdf'],
     aliases: ['jpg to pdf', 'png to pdf', 'photo to pdf', 'jpeg to pdf', 'picture to pdf'],
     popularity: 93, featured: true, added: '2026-10-31',
-    steps: 'Drop in one or more images (JPG, PNG, WebP…).|Reorder them with the ↑/↓ buttons — each image becomes one page.|Choose A4, Letter or image-size pages, click Convert to PDF and download.',
+    steps: 'Drop in one or more images (JPG, PNG, WebP…).|Reorder them with the ↑/↓ buttons — each image becomes one page.|Choose page size, orientation and margin, then convert and download.',
     guide: [
       { h: 'When turning images into one PDF is the right move', list: [
         'Exams, admissions and job portals that say “upload a single PDF” for marksheets, ID proofs or certificates.',
@@ -1421,15 +1421,16 @@ export const tools = [
         'Photograph documents in even light, filling the frame, with no shadow of your phone or hand across the page.',
         'Order pages with the ↑/↓ buttons before converting — page order mistakes are the most common complaint from whoever receives the file.',
         'Choose A4 pages for anything that will be printed or uploaded to a form; choose image-size pages only when the exact photo proportions matter.',
-        'Too big to upload? Most portals cap file sizes — run large photos through the Image Compressor first (JPEG, quality ~80, max width ~1600 px) and the PDF usually shrinks 5–10×.',
+        'For a smaller upload, try compressing photos first. Size savings vary by image and format; always inspect legibility and the final file size.',
       ] },
+      { h: 'Layout, limits and image handling', p: 'A4 and Letter offer auto, portrait or landscape orientation and a 0–144 point margin. Image-size pages use one point per pixel, up to 14,400 points per side, ignoring margin and orientation. The queue supports 20 images, 20 MiB each and 100 MiB combined; images are limited to 40 million pixels each and output to 100 MiB. Pixel and output limits are checked during processing, so device memory can impose lower practical limits. Animated images use a single frame. Embedded JPEGs may not apply EXIF orientation; rotate them first if necessary. Other browser-supported formats are decoded into PNG, retaining transparency where supported.' },
       { h: 'Will the text in my PDF be searchable?',
         p: 'No. Each page of the PDF is your image placed on a page — there is no OCR (text recognition) step, so words in the picture can’t be searched, selected or copied. That’s perfect for forms, certificates and photos. If you need copyable text, the document has to be created (or OCR-processed) as real text instead.' },
     ],
     faqs: [
-      { q: 'Are my images uploaded to a server?', a: 'No. The PDF is built entirely in your browser with the pdf-lib library. Your images never leave your device, which also means there is no size queue or waiting.' },
-      { q: 'Which image formats are supported?', a: 'JPG and PNG are embedded at full original quality. Other formats your browser can display (WebP, GIF, BMP, AVIF in supporting browsers) are converted through the canvas at high quality.' },
-      { q: 'Can I put several images into one PDF?', a: 'Yes — add as many images as you like and order them with the arrow buttons. Each image becomes one page, automatically using a landscape page when the image is wider than it is tall (in A4/Letter modes).' },
+      { q: 'Are my images uploaded to a server?', a: 'No. The PDF is built entirely in your browser with the pdf-lib library. Your images never leave your device; queue and device memory limits still apply.' },
+      { q: 'Which image formats are supported?', a: 'JPG and PNG are embedded directly when supported; other browser-decodable formats are converted through canvas to PNG. Only one animation frame is used. JPEG EXIF orientation may not be applied, so inspect the output.' },
+      { q: 'Can I put several images into one PDF?', a: 'Yes — up to 20 images, subject to the size and pixel limits. Reorder them with the arrow buttons. Each becomes a page; A4 and Letter can use automatic, portrait or landscape orientation.' },
     ] }),
 
   // ── Phase 3: income tax, format landing pages, YouTube thumbnails ────────

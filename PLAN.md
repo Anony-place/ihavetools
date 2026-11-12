@@ -11,6 +11,22 @@
 
 ---
 
+## Image-to-PDF layout and safety batch
+
+Plan first: [iLovePDF](https://www.ilovepdf.com/jpg_to_pdf) describes page
+orientation and margin options; this is a competitor feature signal, not measured
+demand. Extend the existing local Image to PDF workflow with A4/Letter orientation
+and adjustable margins, transparent PNG fallback for browser-decoded formats,
+and explicit queue, pixel and output limits. Keep default behaviour and image-size
+mode clear; explain animation, EXIF, OCR, memory and input format limitations.
+Invalidate pending conversions on all settings and queue changes, reject invalid
+batches without partial additions, and test actual page geometry, output, alpha,
+invalid input, limits, stale actions, mobile accessibility, CI and production.
+One consolidated PR, no paid services. Historical GSC comparison and tax audit
+remain unverified.
+
+---
+
 ## PDF merge selection and safety batch
 
 Plan first: [iLovePDF](https://www.ilovepdf.com/merge_pdf) shows ordered PDF
