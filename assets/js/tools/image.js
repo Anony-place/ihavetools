@@ -552,17 +552,21 @@ const defs = {
     const pctIn = input({ type: 'number', min: 1, max: 1000, placeholder: 'e.g. 50 (= half size)' });
     const lock = switchChip({ label: 'Lock aspect ratio', checked: true });
     const fmtSel = select({ options: [{ v: 'png', t: 'PNG' }, { v: 'jpeg', t: 'JPEG' }, { v: 'webp', t: 'WebP' }], value: 'png' });
+    const quality = input({type:'number', min:5, max:100, step:1, value:'92'});
+    const target = input({type:'number', min:1, max:51200, step:1, placeholder:'Optional'});
     const status = statusLine('Choose an image to begin.');
     const info = h('p', { class: 'hint' });
     const preview = h('div', {}), previews = previewManager(preview);
     let revision = 0, selectionRevision = 0;
-    let file = null, img = null, lastBlob = null;
+    let file = null, img = null, lastBlob = null, lastDimension = 'width';
+    const refreshOptions = () => { quality.disabled = fmtSel.value === 'png' || target.value !== ''; target.disabled = fmtSel.value === 'png'; };
+    refreshOptions();
     zone.addEventListener('iht-rejected', () => { revision++; selectionRevision++; file = null; img = null; lastBlob = null; info.textContent = ''; wIn.placeholder = 'width'; hIn.placeholder = 'height'; previews.clear(); zone.resetSelectionUI(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
     window.addEventListener('pagehide', () => { revision++; selectionRevision++; previews.clear(); }, { once: true });
     zone.addEventListener('iht-files', async (e) => {
       const f = e.detail[0];
       if (!f) return;
-      const loadToken = ++selectionRevision; revision++; file = f; img = null; lastBlob = null; previews.clear(); info.textContent = ''; wIn.placeholder = 'width'; hIn.placeholder = 'height';
+      const loadToken = ++selectionRevision; revision++; wIn.value = ''; hIn.value = ''; pctIn.value = ''; lastDimension = 'width'; file = f; img = null; lastBlob = null; previews.clear(); info.textContent = ''; wIn.placeholder = 'width'; hIn.placeholder = 'height';
       zone.classList.add('has-file');
       zone.replaceChildren(filePill(f), h('span', { class: 'hint', text: 'Click to choose a different file' }), zone.querySelector('input[type=file]'));
       try {
@@ -570,44 +574,58 @@ const defs = {
         const loaded = await loadImage(f);
         if (file !== f || selectionRevision !== loadToken) return;
         img = loaded;
+        syncRatio();
         wIn.placeholder = String(img.naturalWidth);
         hIn.placeholder = String(img.naturalHeight);
         info.textContent = `Original: ${img.naturalWidth} × ${img.naturalHeight} px.`;
         status.set(`Loaded ${f.name}. Enter target dimensions.`, 'info');
       } catch (err) { if (file === f && selectionRevision === loadToken) { file = null; img = null; status.set(err.message, 'error'); } }
     });
-    [wIn, hIn].forEach((el) => el.addEventListener('input', () => {
+    const syncRatio = () => {
       if (!img || !lock.querySelector('input').checked) return;
-      if (el === wIn && Number(wIn.value) > 0) hIn.value = String(Math.round(img.naturalHeight * (Number(wIn.value) / img.naturalWidth)));
-      if (el === hIn && Number(hIn.value) > 0) wIn.value = String(Math.round(img.naturalWidth * (Number(hIn.value) / img.naturalHeight)));
-    }));
-    [wIn, hIn, pctIn, fmtSel, lock].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
+      const from = lastDimension === 'width' ? wIn : hIn, to = from === wIn ? hIn : wIn;
+      const n = Number(from.value);
+      if (from.value === '') { to.value = ''; return; }
+      if (!Number.isSafeInteger(n) || n < 1) return;
+      to.value = String(Math.max(1, Math.round(n * (from === wIn ? img.naturalHeight / img.naturalWidth : img.naturalWidth / img.naturalHeight))));
+    };
+    [wIn, hIn].forEach(el => el.addEventListener('input', () => { lastDimension = el === wIn ? 'width' : 'height'; syncRatio(); }));
+    lock.addEventListener('change', syncRatio);
+    fmtSel.addEventListener('change', refreshOptions); target.addEventListener('input', refreshOptions);
+    [wIn, hIn, pctIn, fmtSel, lock, quality, target].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
       previews.clear();
       status.set('Resizing…', 'info');
       const selected = file, format = fmtSel.value, token = ++revision;
+      const targetKiB = target.value === '' ? null : Number(target.value), q = Number(quality.value);
       try {
+        if (!MIME_BY_FMT[format]) throw new Error('Choose a valid output format.');
+        if (format !== 'png' && targetKiB !== null && (!Number.isSafeInteger(targetKiB) || targetKiB < 1 || targetKiB > 51200)) throw new Error('Target must be a whole number from 1 to 51200 KiB.');
+        if (format !== 'png' && targetKiB === null && (!quality.value || !Number.isInteger(q) || q < 5 || q > 100)) throw new Error('Quality must be a whole number from 5 to 100.');
         if (!pctIn.value) for (const field of [wIn, hIn]) if (field.value !== '' && (!Number.isSafeInteger(Number(field.value)) || Number(field.value) < 1)) throw new Error('Width and height must be positive whole numbers.');
-        const target = pctIn.value
+        const dims = pctIn.value
           ? computeTargetDims(img.naturalWidth, img.naturalHeight, { percent: Number(pctIn.value) })
           : computeTargetDims(img.naturalWidth, img.naturalHeight, { width: Number(wIn.value) || null, height: Number(hIn.value) || null, lock: lock.querySelector('input').checked });
-        if (!target.width || !target.height) { status.set('Enter a width, a height, or a scale percentage.', 'warning'); return; }
-        validateCanvasSize(target.width, target.height);
+        if (!dims.width || !dims.height) { status.set('Enter a width, a height, or a scale percentage.', 'warning'); return; }
+        validateCanvasSize(dims.width, dims.height);
         const canvas = document.createElement('canvas');
-        canvas.width = target.width; canvas.height = target.height;
+        canvas.width = dims.width; canvas.height = dims.height;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        if (format === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, target.width, target.height); }
-        ctx.drawImage(img, 0, 0, target.width, target.height);
-        const blob = await canvasToBlob(canvas, MIME_BY_FMT[format], 0.92);
+        if (format === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, dims.width, dims.height); }
+        ctx.drawImage(img, 0, 0, dims.width, dims.height);
+        const choice = format !== 'png' && targetKiB !== null
+          ? await encodeToTarget(q => canvasToBlob(canvas, MIME_BY_FMT[format], q), targetKiB * 1024, () => file === selected && revision === token)
+          : {blob:await canvasToBlob(canvas, MIME_BY_FMT[format], format === 'png' ? undefined : q / 100)};
+        const blob = choice.blob;
         if (file !== selected || revision !== token) return;
         lastBlob = blob;
         previews.show(blob, (url) => h('div', {},
           h('img', { class: 'img-preview', src: url, alt: 'Resized preview', style: 'margin-top:12px' }),
-          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadImage(blob, `resized-${baseName(selected.name)}.${EXT_BY_FMT[format]}`); } }, `Download ${target.width} × ${target.height}`))));
-        status.set(`Resized to ${target.width} × ${target.height} px (${fmtBytes(blob.size)}) ✓`, 'success');
+          h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadImage(blob, `resized-${baseName(selected.name)}.${EXT_BY_FMT[format]}`); } }, `Download ${dims.width} × ${dims.height}`))));
+        status.set(`Resized to ${dims.width} × ${dims.height} px (${fmtBytes(blob.size)}; size change: ${sizeChange(selected.size, blob.size)})${choice.quality ? ` — target met at quality ${choice.quality}%` : ''} ✓`, 'success');
       } catch (e) { if (file === selected && revision === token) { previews.clear(); status.set(e.message, 'error'); } }
     };
     root.append(zone, info,
@@ -617,6 +635,7 @@ const defs = {
         field({ label: 'Or scale %', control: pctIn, hint: 'Overrides W/H' }),
         field({ label: 'Format', control: fmtSel })),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, lock),
+      h('div',{class:'field-row'}, field({label:'Quality (5–100)',control:quality,hint:'JPEG/WebP only; ignored for PNG or target mode.'}),field({label:'Target size (KiB)',control:target,hint:'Optional JPEG/WebP quality search; 1 KiB = 1,024 bytes. May fail at these dimensions.'})),
       actionsRow(btn({ label: 'Resize', icon: 'crop', onClick: run })),
       status, preview,
       privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. JPEG flattens transparency onto white. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));

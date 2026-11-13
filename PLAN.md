@@ -2,12 +2,31 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (92 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (93 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Image resizer workflow batch — plan
+
+[ResizePixel](https://www.resizepixel.com/resize-image/) offers aspect-ratio
+resizing and target file sizes; [iLoveIMG](https://www.iloveimg.com/resize-image)
+offers pixel dimensions and bulk resizing. These are competitor features, not
+measured search demand. Bulk resizing already exists here; improve the single
+image workflow instead. A comparable verified GSC export is still outstanding,
+so no keyword-volume or ranking claims are made.
+
+1. Add JPEG/WebP quality and optional best-effort target KiB with verified output
+   sizes, using the existing bounded encoder; clearly explain PNG limitations.
+2. Repair ratio lock when toggling or replacing a file, prevent zero-pixel
+   calculated dimensions, clear previous output on edits and handle async races.
+3. Test real downloaded image dimensions, size and format, failure paths, ratio
+   controls and mobile accessibility; run full checks, audit, one PR, CI and
+   production verification. All processing remains in-browser and free.
 
 ---
 

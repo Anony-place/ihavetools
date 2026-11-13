@@ -708,6 +708,27 @@ try {
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'crop output controls accessibility');
   console.log('✓ image crop output formats, alpha, quality, pixels, presets and mobile accessibility');
 
+  await page.setViewportSize({width:320,height:844});
+  await go('image-resizer');
+  const resizeSrc=await sharp({create:{width:80,height:40,channels:4,background:'#ff0000'}}).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'source.png',mimeType:'image/png',buffer:resizeSrc});
+  await page.locator('#tool-app .status-line').getByText(/Loaded/).waitFor();
+  await page.getByLabel('Width (px)').fill('40'); assert.equal(await page.getByLabel('Height (px)').inputValue(),'20');
+  await page.getByLabel('Format',{exact:true}).selectOption('jpeg');
+  await page.getByLabel('Target size (KiB)').fill('10');
+  await page.getByRole('button',{name:'Resize',exact:true}).click();
+  await page.locator('#tool-app .status-line').getByText(/target met/).waitFor();
+  const resizedEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Download 40 × 20'}).click();
+  const resized=await readFile(await (await resizedEvent).path());const resizedInfo=await sharp(resized).metadata();
+  assert.equal(resizedInfo.format,'jpeg');assert.equal(resizedInfo.width,40);assert.equal(resizedInfo.height,20);assert.ok(resized.length<=10240);
+  await page.getByLabel('Target size (KiB)').fill('0');await page.getByRole('button',{name:'Resize',exact:true}).click();assert.match(await page.locator('#tool-app .status-line').innerText(),/Target must/);
+  await page.getByLabel('Target size (KiB)').fill('');await page.getByLabel('Quality (5–100)').fill('101');await page.getByRole('button',{name:'Resize',exact:true}).click();assert.match(await page.locator('#tool-app .status-line').innerText(),/Quality must/);
+  await page.getByLabel('Format',{exact:true}).selectOption('png');assert.equal(await page.getByLabel('Target size (KiB)').isDisabled(),true);
+  await page.getByLabel('Lock aspect ratio').uncheck();await page.getByLabel('Height (px)').fill('12');await page.getByLabel('Lock aspect ratio').check();assert.equal(await page.getByLabel('Width (px)').inputValue(),'24');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'image resizer mobile accessibility');
+  console.log('✓ single image resize target size, ratio, errors and mobile accessibility');
+
   // A decoded JPEG without EXIF must not be described as metadata-free.
   await page.setViewportSize({ width: 320, height: 844 });
   await go('image-metadata-viewer');
