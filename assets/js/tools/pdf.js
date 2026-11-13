@@ -47,6 +47,16 @@ export function parseRanges(text, pageCount, maxPages = Infinity) {
   if (!list.length) throw new Error('No pages selected.');
   return list;
 }
+/** Page numbers for rotation scopes refer to the original PDF. */
+export function pdfRotationTargets(scope, pageCount, ranges = '') {
+  if (!Number.isSafeInteger(pageCount) || pageCount < 1) throw new Error('The PDF has no pages.');
+  if (scope === 'range') return parseRanges(ranges, pageCount);
+  if (!['all','odd','even'].includes(scope)) throw new Error('Choose a valid rotation scope.');
+  const pages = Array.from({length:pageCount}, (_,i)=>i+1).filter(n=>scope === 'all' || n % 2 === (scope === 'odd' ? 1 : 0));
+  if (!pages.length) throw new Error('No pages match the selected scope.');
+  return pages;
+}
+
 /** Optional merge ranges are deduplicated and sorted, with a strict output cap. */
 export function mergePageSelection(selection, pageCount, remaining = 500) {
   if (!Number.isSafeInteger(pageCount) || pageCount < 1) throw new Error('The PDF has no pages.');
@@ -330,7 +340,8 @@ const defs = {
   },
 
   'pdf-organizer'(root) {
-    let source = null, file = null, pages = [], revision = 0, operation = 0;
+    let source = null, file = null, pages = [], previous = null, revision = 0, operation = 0;
+    const remember = () => {previous = pages.map(p=>({...p})); revision++;};
     window.addEventListener('pagehide', () => { revision++; }, { once: true });
     const status = statusLine('Choose a PDF to begin.'), list = h('div', { class: 'file-list', role: 'region', 'aria-label': 'PDF pages' });
     const info = h('p', { class: 'hint' });
@@ -348,45 +359,49 @@ const defs = {
         const row = h('div', { class: 'file-row' },
           h('span', { class: 'fr-name', text: `Original page ${p.index + 1} · output position ${i + 1} · extra rotation ${p.rotation}°` }),
           h('span', { class: 'fr-actions' },
-            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Move page ${p.index + 1} up`, disabled: i === 0, onclick: () => { revision++; [pages[i - 1], pages[i]] = [pages[i], pages[i - 1]]; render(); status.set(`Page ${p.index + 1} moved to position ${i}.`, 'info'); list.querySelector(`[aria-label="${i === 1 ? 'Move page ' + (p.index + 1) + ' down' : 'Move page ' + (p.index + 1) + ' up'}"]`)?.focus(); } }, '↑'),
-            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Move page ${p.index + 1} down`, disabled: i === pages.length - 1, onclick: () => { revision++; [pages[i + 1], pages[i]] = [pages[i], pages[i + 1]]; render(); status.set(`Page ${p.index + 1} moved to position ${i + 2}.`, 'info'); list.querySelector(`[aria-label="${i === pages.length - 2 ? 'Move page ' + (p.index + 1) + ' up' : 'Move page ' + (p.index + 1) + ' down'}"]`)?.focus(); } }, '↓'),
-            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Rotate page ${p.index + 1} clockwise`, onclick: () => { revision++; p.rotation = (p.rotation + 90) % 360; render(); status.set(`Page ${p.index + 1}: extra rotation ${p.rotation} degrees.`, 'info'); list.querySelector(`[aria-label="Rotate page ${p.index + 1} clockwise"]`)?.focus(); } }, '↻'),
-            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Remove page ${p.index + 1}`, onclick: () => { revision++; pages.splice(i, 1); render(); status.set(`Removed page ${p.index + 1}.`, 'info'); const next = pages[Math.min(i, pages.length - 1)]; if (next) list.querySelector(`[aria-label="Remove page ${next.index + 1}"]`)?.focus(); } }, '✕')));
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Move page ${p.index + 1} up`, disabled: i === 0, onclick: () => { remember(); [pages[i - 1], pages[i]] = [pages[i], pages[i - 1]]; render(); status.set(`Page ${p.index + 1} moved to position ${i}.`, 'info'); list.querySelector(`[aria-label="${i === 1 ? 'Move page ' + (p.index + 1) + ' down' : 'Move page ' + (p.index + 1) + ' up'}"]`)?.focus(); } }, '↑'),
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Move page ${p.index + 1} down`, disabled: i === pages.length - 1, onclick: () => { remember(); [pages[i + 1], pages[i]] = [pages[i], pages[i + 1]]; render(); status.set(`Page ${p.index + 1} moved to position ${i + 2}.`, 'info'); list.querySelector(`[aria-label="${i === pages.length - 2 ? 'Move page ' + (p.index + 1) + ' up' : 'Move page ' + (p.index + 1) + ' down'}"]`)?.focus(); } }, '↓'),
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Rotate page ${p.index + 1} clockwise`, onclick: () => { remember(); p.rotation = (p.rotation + 90) % 360; render(); status.set(`Page ${p.index + 1}: extra rotation ${p.rotation} degrees.`, 'info'); list.querySelector(`[aria-label="Rotate page ${p.index + 1} clockwise"]`)?.focus(); } }, '↻'),
+            h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Remove page ${p.index + 1}`, onclick: () => { remember(); pages.splice(i, 1); render(); status.set(`Removed page ${p.index + 1}.`, 'info'); const next = pages[Math.min(i, pages.length - 1)]; if (next) list.querySelector(`[aria-label="Remove page ${next.index + 1}"]`)?.focus(); } }, '✕')));
         return row;
       }));
       info.textContent = `${pages.length} page${pages.length === 1 ? '' : 's'} selected. Page numbers refer to the original PDF; no visual thumbnails are shown.`;
     };
-    const reset = () => { if (!source) return; revision++; pages = Array.from({ length: source.getPageCount() }, (_, index) => ({ index, rotation: 0 })); render(); status.set('Original page order restored.', 'info'); };
+    const reset = (record = true) => { if (!source) return; if(record) remember(); else {revision++; previous=null;} pages = Array.from({ length: source.getPageCount() }, (_, index) => ({ index, rotation: 0 })); render(); status.set('Original page order and extra rotations restored.', 'info'); };
+    const undo = () => { if (!source || !previous) {status.set('No page edit to undo.', 'warning'); return;} revision++; pages=previous; previous=null; render(); status.set('Last page edit undone.', 'info'); };
+    const rotateAll = (delta) => { if (!source || !pages.length) {status.set('Choose a PDF and keep at least one page first.', 'warning');return;} remember(); pages.forEach(p=>{p.rotation=(p.rotation+delta)%360;}); render(); status.set(`Rotated all ${pages.length} current pages ${delta===90?'clockwise':'counterclockwise'} by 90 degrees.`, 'info'); };
     const zone = makeZone(false, async ([chosen]) => {
-      const token = ++revision; source = null; file = null; pages = []; list.replaceChildren(); info.textContent = '';
+      const token = ++revision; source = null; file = null; pages = []; previous = null; list.replaceChildren(); info.textContent = '';
       status.set(`Reading ${chosen.name} locally…`, 'info');
       try {
         const lib = await loadPdfLib(); const bytes = await readFile(chosen, 'buffer'); const doc = await lib.PDFDocument.load(bytes);
         if (token !== revision) return;
         if (doc.getPageCount() > 500) throw new Error('This organizer supports up to 500 pages to keep the page list responsive.');
-        source = doc; file = chosen; reset(); status.set(`Loaded ${chosen.name}. Reorder, rotate or remove pages, then export.`, 'success');
+        source = doc; file = chosen; reset(false); status.set(`Loaded ${chosen.name}. Reorder, rotate or remove pages, then export.`, 'success');
       } catch (e) { if (token === revision) status.set(/encrypt/i.test(String(e)) ? 'Password-protected PDFs cannot be processed. Remove protection first.' : `Could not open PDF: ${e.message}`, 'error'); }
-    }, undefined, () => { revision++; source = null; file = null; pages = []; list.replaceChildren(); info.textContent = ''; zone.clear(); status.set('Selection rejected. Choose a PDF within the 200 MB limit.', 'error'); });
-    const keepRanges = () => {
+    }, undefined, () => { revision++; source = null; file = null; pages = []; previous = null; list.replaceChildren(); info.textContent = ''; zone.clear(); status.set('Selection rejected. Choose a PDF within the 200 MB limit.', 'error'); });
+    const keepRanges = (remove = false) => {
       if (!source) { status.set('Choose a PDF first.', 'warning'); return; }
       try {
         const wanted = new Set(parseRanges(ranges.value, source.getPageCount()));
-        const kept = pages.filter(p => wanted.has(p.index + 1));
-        if (!kept.length) throw new Error('None of those original pages remain in the current list. Restore original pages first.');
-        revision++; pages = kept; render();
-        status.set(`Kept ${pages.length} selected page${pages.length === 1 ? '' : 's'} in their current order.`, 'success');
+        const matched = pages.filter(p=>wanted.has(p.index+1)).length;
+        if (!matched) throw new Error('None of those original pages remain in the current list. Restore original pages first.');
+        const kept = pages.filter(p => remove ? !wanted.has(p.index + 1) : wanted.has(p.index + 1));
+        if (!kept.length) throw new Error('Keep at least one page; this selection would remove them all.');
+        remember(); pages = kept; render();
+        status.set(`${remove ? `Removed ${matched} selected` : `Kept ${pages.length} selected`} page${(remove?matched:pages.length) === 1 ? '' : 's'} in current order.`, 'success');
       } catch (e) { status.set(e.message, 'error'); }
     };
     const keepParity = (parity) => {
       if (!source) { status.set('Choose a PDF first.', 'warning'); return; }
       const kept = pages.filter(p => (p.index + 1) % 2 === parity);
       if (!kept.length) { status.set('No matching original pages remain. Restore original pages first.', 'warning'); return; }
-      revision++; pages = kept; render();
+      remember(); pages = kept; render();
       status.set(`Kept ${pages.length} ${parity ? 'odd' : 'even'} original page${pages.length === 1 ? '' : 's'} in current order.`, 'success');
     };
     const reverse = () => {
       if (!source || !pages.length) { status.set('Choose a PDF and keep at least one page first.', 'warning'); return; }
-      revision++; pages.reverse(); render(); status.set('Current page order reversed.', 'info');
+      remember(); pages.reverse(); render(); status.set('Current page order reversed.', 'info');
     };
     const run = async () => {
       if (!source || !file) { status.set('Choose a PDF first.', 'warning'); return; }
@@ -401,7 +416,9 @@ const defs = {
         status.set(saved ? `Exported ${selected.length} pages — download started.` : 'Could not start the download in this browser.', saved ? 'success' : 'error');
       } catch (e) { if (token === revision && action === operation) status.set(e.message, 'error'); }
     };
-    root.append(zone, info, field({ label: 'Keep original pages', control: ranges, hint: 'Example: 1-3, 7. Filters use original page numbers and keep the current order and rotations; restore first to recover removed pages.' }), actionsRow(btn({ label: 'Apply page filter', variant: 'secondary', onClick: keepRanges }), btn({ label: 'Keep odd pages', variant: 'secondary', onClick: () => keepParity(1) }), btn({ label: 'Keep even pages', variant: 'secondary', onClick: () => keepParity(0) }), btn({ label: 'Reverse page order', variant: 'secondary', onClick: reverse })), list, numbered, field({ label: 'Starting page number', control: startNumber, hint: 'Numbers follow output order. Existing page content can be covered; review every exported page.' }), h('div', { class: 'field-row' }, field({ label:'Number position', control:numberPosition }), field({ label:'Number size (points)', control:numberSize }), field({ label:'Number color', control:numberColor })), skipFirst, h('p', { class:'hint', text:'Skipping leaves the first output page unnumbered; the starting number appears on the second output page. Choose a contrasting color.' }), actionsRow(btn({ label: 'Export organized PDF', icon: 'download', onClick: run }), btn({ label: 'Restore original pages', variant: 'secondary', icon: 'refresh', onClick: reset })), status,
+    root.append(zone, info, field({ label: 'Original page selection', control: ranges, hint: 'Example: 1-3, 7. Keep or remove these original page numbers; remaining pages retain their order and extra rotations.' }), actionsRow(btn({ label: 'Apply page filter', variant: 'secondary', onClick: () => keepRanges(false) }), btn({label:'Remove selected pages',variant:'secondary',onClick:()=>keepRanges(true)}), btn({ label: 'Keep odd pages', variant: 'secondary', onClick: () => keepParity(1) }), btn({ label: 'Keep even pages', variant: 'secondary', onClick: () => keepParity(0) }), btn({ label: 'Reverse page order', variant: 'secondary', onClick: reverse })),
+      actionsRow(btn({label:'Rotate all clockwise',variant:'secondary',onClick:()=>rotateAll(90)}),btn({label:'Rotate all counterclockwise',variant:'secondary',onClick:()=>rotateAll(270)}),btn({label:'Undo last page edit',variant:'secondary',onClick:undo})),
+      h('p',{class:'hint',text:'Bulk rotation applies to the current list and adds to existing PDF page rotation. Undo restores only the last page edit, not numbering settings or previous exports.'}), list, numbered, field({ label: 'Starting page number', control: startNumber, hint: 'Numbers follow output order. Existing page content can be covered; review every exported page.' }), h('div', { class: 'field-row' }, field({ label:'Number position', control:numberPosition }), field({ label:'Number size (points)', control:numberSize }), field({ label:'Number color', control:numberColor })), skipFirst, h('p', { class:'hint', text:'Skipping leaves the first output page unnumbered; the starting number appears on the second output page. Choose a contrasting color.' }), actionsRow(btn({ label: 'Export organized PDF', icon: 'download', onClick: run }), btn({ label: 'Restore original pages', variant: 'secondary', icon: 'refresh', onClick: reset })), status,
       privacyNote('Your PDF is processed locally. Page copying may not preserve bookmarks, forms, attachments or digital signatures; inspect the output.'));
   },
 
@@ -419,7 +436,7 @@ const defs = {
       zone.clear(); status.set('Selection rejected. Choose a PDF within the 200 MB limit.', 'error');
     });
     const angle = segControl({ options: [{ v: '90', t: '90° ↻' }, { v: '180', t: '180° ↕' }, { v: '270', t: '90° ↺' }], value: '90', ariaLabel: 'Rotation angle', onChange: () => settingsChanged() });
-    const scope = segControl({ options: [{ v: 'all', t: 'All pages' }, { v: 'range', t: 'Page range' }], value: 'all', ariaLabel: 'Scope', onChange: () => settingsChanged() });
+    const scope = segControl({ options: [{ v: 'all', t: 'All pages' }, { v: 'range', t: 'Page range' }, {v:'odd',t:'Odd pages'}, {v:'even',t:'Even pages'}], value: 'all', ariaLabel: 'Scope', onChange: () => settingsChanged() });
     const ranges = input({ type: 'text', class: 'input mono', placeholder: 'e.g. 1-3, 7' });
     const status = statusLine('Choose a PDF to begin.');
     const info = h('p', { class: 'hint' });
@@ -458,9 +475,7 @@ const defs = {
       if (count == null || !current()) return;
       try {
         const PDFLib = await loadPdfLib();
-        let targets;
-        if (selectedScope === 'all') targets = Array.from({ length: count }, (_, k) => k + 1);
-        else targets = parseRanges(selection, count);
+        const targets = pdfRotationTargets(selectedScope, count, selection);
         const bytes = await readFile(chosen, 'buffer');
         const doc = await PDFLib.PDFDocument.load(bytes);
         for (const pageNumber of targets) {
@@ -484,7 +499,7 @@ const defs = {
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
         field({ label: 'Rotation', control: angle }),
         field({ label: 'Apply to', control: scope }),
-        field({ label: 'Pages (if range)', control: ranges, hint: 'Only used in range mode' })),
+        field({ label: 'Pages (if range)', control: ranges, hint: 'Only used in range mode. Odd/even scopes refer to original page numbers.' })),
       actionsRow(
         btn({ label: 'Inspect PDF', variant: 'secondary', icon: 'info', onClick: () => inspect() }),
         btn({ label: 'Rotate PDF', icon: 'refresh', onClick: run })),

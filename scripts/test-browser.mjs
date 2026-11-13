@@ -1260,7 +1260,7 @@ try {
   await page.getByRole('button',{name:'Move page 2 up'}).waitFor();
   await page.getByRole('button',{name:'Move page 2 up'}).click();
   await page.getByRole('button',{name:'Rotate page 2 clockwise'}).click();
-  await page.getByLabel('Keep original pages').fill('2, 5');
+  await page.getByLabel('Original page selection').fill('2, 5');
   await page.getByRole('button',{name:'Apply page filter'}).click();
   assert.equal(await page.locator('#tool-app .file-row').count(),2);
   await page.getByRole('button',{name:'Keep even pages'}).click();
@@ -1276,7 +1276,7 @@ try {
   await page.getByRole('button',{name:'Restore original pages'}).click();
   await page.getByRole('button',{name:'Rotate page 2 clockwise'}).click();
   await page.getByRole('button',{name:'Reverse page order'}).click();
-  await page.getByLabel('Keep original pages').fill('1-2');
+  await page.getByLabel('Original page selection').fill('1-2');
   await page.getByRole('button',{name:'Apply page filter'}).click();
   const organizerAxe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
   assert.deepEqual(organizerAxe.violations.map(v=>v.id),[],'organizer accessibility');
@@ -1284,6 +1284,26 @@ try {
   let pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Export organized PDF'}).click();
   let result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));
   assert.equal(result.getPage(0).getWidth(),200); assert.equal(result.getPage(0).getRotation().angle,90);
+  await page.getByRole('button',{name:'Rotate all clockwise'}).click();
+  await page.getByRole('button',{name:'Undo last page edit'}).click();
+  await page.getByLabel('Original page selection').fill('1');
+  await page.getByRole('button',{name:'Remove selected pages'}).click();
+  pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Export organized PDF'}).click();
+  result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));
+  assert.equal(result.getPageCount(),1); assert.equal(result.getPage(0).getWidth(),200); assert.equal(result.getPage(0).getRotation().angle,90);
+  await page.getByRole('button',{name:'Undo last page edit'}).click(); assert.equal(await page.locator('#tool-app .file-row').count(),2);
+  await page.getByRole('button',{name:'Rotate all counterclockwise'}).click();
+  pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Export organized PDF'}).click();
+  result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));
+  assert.deepEqual(result.getPages().map(p=>p.getRotation().angle),[0,270]);
+  await go('pdf-rotate'); await page.locator('#tool-app input[type=file]').setInputFiles(pdfInput);
+  await page.getByRole('button',{name:'Even pages'}).click();
+  pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Rotate PDF',exact:true}).click();
+  result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));
+  assert.deepEqual(result.getPages().map(p=>p.getRotation().angle),[0,90]);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'pdf rotate mobile accessibility');
+  console.log('✓ PDF bulk rotation, undo, remove range and parity export');
   // Render numbered mixed-size and cropped pages at each quarter-turn, not just metadata.
   const numberedSource = await PDFDocument.create();
   for (const [i,angle] of [0,90,180,270].entries()) {

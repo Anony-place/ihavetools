@@ -1876,7 +1876,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 91);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 92);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
@@ -2033,6 +2033,12 @@ await test('JSON comparison ignores object ordering but respects arrays, types a
 await test('PDF organizer exports reordered, removed and rotated real PDF pages', async () => {
   const lib = await import('pdf-lib'); const source = await lib.PDFDocument.create();
   source.addPage([100, 200]); const p2 = source.addPage([200, 300]); p2.setRotation(lib.degrees(90)); source.addPage([300, 400]);
+  assert.deepEqual(pdf.pdfRotationTargets('odd',5),[1,3,5]);
+  assert.deepEqual(pdf.pdfRotationTargets('even',4),[2,4]);
+  assert.deepEqual(pdf.pdfRotationTargets('range',5,'4,2-3'),[2,3,4]);
+  assert.throws(()=>pdf.pdfRotationTargets('even',1),/No pages match/);
+  assert.throws(()=>pdf.pdfRotationTargets('all',0),/no pages/);
+  assert.throws(()=>pdf.pdfRotationTargets('bad',2),/valid rotation scope/);
   const bytes = await pdf.organizePdf(lib, source, [{ index: 2, rotation: 90 }, { index: 1, rotation: 90 }]);
   const out = await lib.PDFDocument.load(bytes); assert.equal(out.getPageCount(), 2);
   assert.equal(out.getPage(0).getWidth(), 300); assert.equal(out.getPage(0).getRotation().angle, 90);
