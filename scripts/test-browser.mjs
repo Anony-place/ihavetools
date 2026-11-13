@@ -724,7 +724,7 @@ try {
   await page.getByLabel('Target size (KiB)').fill('0');await page.getByRole('button',{name:'Resize',exact:true}).click();assert.match(await page.locator('#tool-app .status-line').innerText(),/Target must/);
   await page.getByLabel('Target size (KiB)').fill('');await page.getByLabel('Quality (5–100)').fill('101');await page.getByRole('button',{name:'Resize',exact:true}).click();assert.match(await page.locator('#tool-app .status-line').innerText(),/Quality must/);
   await page.getByLabel('Format',{exact:true}).selectOption('png');assert.equal(await page.getByLabel('Target size (KiB)').isDisabled(),true);
-  await page.getByLabel('Lock aspect ratio').uncheck();await page.getByLabel('Height (px)').fill('12');await page.getByLabel('Lock aspect ratio').check();assert.equal(await page.getByLabel('Width (px)').inputValue(),'24');
+  await page.locator('#tool-app').getByText('Lock aspect ratio',{exact:true}).click();await page.getByLabel('Height (px)').fill('12');await page.locator('#tool-app').getByText('Lock aspect ratio',{exact:true}).click();assert.equal(await page.getByLabel('Width (px)').inputValue(),'24');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'image resizer mobile accessibility');
   console.log('✓ single image resize target size, ratio, errors and mobile accessibility');
