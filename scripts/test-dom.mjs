@@ -1065,6 +1065,20 @@ await domTest('PDF organizer accepts a drop, reorders, rotates, removes and expo
     click(btnByLabel(app, 'Restore original')); assert.equal(app.querySelectorAll('.file-row').length, 3);
   } finally { URL.createObjectURL = original; }
 });
+await domTest('PDF organizer bulk edits undo and reject removing all pages', async () => {
+ const lib=await import('pdf-lib'); window.PDFLib={...lib,PDFDocument:{create:(...a)=>lib.PDFDocument.create(...a),load:(b,...a)=>lib.PDFDocument.load(new Uint8Array(b),...a)}};
+ const src=await lib.PDFDocument.create();src.addPage([100,200]);src.addPage([200,300]);src.addPage([300,400]);
+ const app=await loadToolPage('pdf-organizer','pdf'); const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[new File([await src.save()],'three.pdf',{type:'application/pdf'})]}});app.querySelector('.dropzone').dispatchEvent(e);await new Promise(r=>setTimeout(r,100));
+ const rows=()=>[...app.querySelectorAll('.file-row')].map(n=>n.textContent);
+ click(btnByLabel(app,'Reverse page order')); click(btnByLabel(app,'Rotate all clockwise')); assert.ok(rows().every(x=>x.includes('rotation 90°')));
+ click(btnByLabel(app,'Undo last page edit'));assert.ok(rows().every(x=>x.includes('rotation 0°')));assert.match(rows()[0],/Original page 3/);
+ click(btnByLabel(app,'Undo last page edit'));assert.match(statusText(document),/No page edit/);
+ const range=app.querySelector('input[type=text]');range.value='1-3';click(btnByLabel(app,'Remove selected pages'));assert.match(statusText(document),/Keep at least one/);assert.equal(rows().length,3);
+ range.value='1,3';click(btnByLabel(app,'Remove selected pages'));assert.equal(rows().length,1);assert.match(rows()[0],/Original page 2/);
+ click(btnByLabel(app,'Undo last page edit'));assert.equal(rows().length,3);assert.match(rows()[0],/Original page 3/);
+ click(btnByLabel(app,'Restore original pages'));click(btnByLabel(app,'Undo last page edit'));assert.match(rows()[0],/Original page 3/);
+});
+
 await domTest('PDF organizer ignores an export superseded by page filtering', async () => {
   const lib = await import('pdf-lib'); let release;
   const wait = new Promise(resolve => { release = resolve; });

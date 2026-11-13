@@ -2,12 +2,35 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (91 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (92 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Today's consolidated PDF page workflow — plan
+
+Market evidence: [iLovePDF Rotate](https://www.ilovepdf.com/rotate_pdf) offers
+rotation, and [PDF24 Remove Pages](https://tools.pdf24.org/en/remove-pdf-pages)
+offers odd/even selection. These are competitor capabilities, not independent
+search-volume estimates. The latest matching Drive performance export available
+is labelled 2026-11-12; a comparable verified 14-day export is not available in
+this pass, so do not infer market size or rankings. Google Trends is sampled and
+normalized rather than absolute search volume. Continue the zero-cost,
+browser-local approach without waiting for GSC.
+
+1. Improve PDF Organizer with range removal, bulk current-page rotation, and
+   one-step undo for page edits; preserve current order, per-page rotations and
+   original-page numbering semantics, and prevent empty exports.
+2. Add odd/even original-page rotation scopes to PDF Rotate without changing its
+   all/range defaults. Preserve existing rotations and invalidate pending work.
+3. Test original-page parity, range errors, undo, stale export, byte-level PDF
+   output, rotation, mobile accessibility and limits. Full checks, security
+   audit, one PR, CI/preview, merge only when green, verify production. No paid
+   services or uploads; signatures and document metadata may not survive edits.
 
 ---
 
