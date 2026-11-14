@@ -1789,6 +1789,17 @@ await test('bulk fit, output filenames, search and discovery', () => {
   assert.deepEqual(img.fitInside(2400,1200,null,null,true), {width:2400,height:1200});
   assert.deepEqual(img.fitInside(2400,1200,1200,null), {width:1200,height:600});
   assert.deepEqual(img.fitInside(300,200,null,800,true), {width:1200,height:800});
+  assert.deepEqual(img.centeredCrop(80,40,'1'), {x:20,y:0,w:40,h:40});
+  assert.deepEqual(img.centeredCrop(40,80,'1'), {x:0,y:20,w:40,h:40});
+  assert.deepEqual(img.centeredCrop(81,40,'1'), {x:20,y:0,w:40,h:40});
+  assert.deepEqual(img.centeredCrop(1,1,'16/9'), {x:0,y:0,w:1,h:1});
+  assert.deepEqual(img.centeredCrop(8,4,'free'), {x:0,y:0,w:8,h:4});
+  assert.throws(()=>img.centeredCrop(0,4,'1'), /dimensions/);
+  assert.throws(()=>img.centeredCrop(4,4,'other'), /aspect ratio/);
+  for (const w of [1,2,17,80,101]) for (const h of [1,3,19,40,99]) for (const ratio of ['free','1','4/3','3/2','16/9','9/16']) {
+    const c=img.centeredCrop(w,h,ratio); assert.ok(c.x >= 0 && c.y >= 0 && c.w >= 1 && c.h >= 1 && c.x+c.w <= w && c.y+c.h <= h);
+    assert.ok(Math.abs((w-c.w)-2*c.x)<=1 && Math.abs((h-c.h)-2*c.y)<=1);
+  }
   assert.equal(img.sizeChange(1000,500), '50.0% smaller');
   assert.equal(img.sizeChange(1000,1100), '10.0% larger');
   assert.equal(img.sizeChange(1000,1000), 'Unchanged');
@@ -2039,7 +2050,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 107);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 108);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

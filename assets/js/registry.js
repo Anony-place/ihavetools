@@ -961,7 +961,12 @@ export const tools = [
     keywords: ['crop image', 'cut image', 'trim photo', 'square crop', '16:9'],
     aliases: ['photo cropper', 'cut image', 'image cutter'],
     popularity: 72, added: '2026-09-16',
-    steps: 'Choose an image; the full image is selected initially.|Drag a selection or enter left, top, width and height in pixels. Aspect presets adjust the current selection.|Choose PNG, JPEG or WebP and quality if applicable, then crop and download.' }),
+    steps: 'Choose an image; the full image is selected initially.|Drag a selection or enter left, top, width and height in pixels. Choose an aspect preset and use Center selection if needed.|Choose PNG, JPEG or WebP and quality if applicable, then crop and download.',
+    guide: [
+      {h:'Choose a crop', p:'Coordinates start at the top-left of the decoded image. Enter whole-number left, top, width and height within its boundaries, or drag on the preview. The selected rectangle is cut out without resizing; Select full image resets the rectangle.'},
+      {h:'Aspect ratios and centering', p:'A ratio preset adjusts the current selection from its top-left and constrains new drags. Center selection instead fits the active ratio inside the whole image and centers it. Free mode selects the whole image. Pixel rounding can make the ratio approximate, especially for very small images; manually edited coordinates can use any ratio.'},
+      {h:'Formats and privacy', p:'Processing is local. PNG and WebP can retain transparency; JPEG uses white behind transparent pixels. JPEG and quality-based WebP are lossy. Canvas re-encoding may discard metadata, color profiles and animation; browser decoding may apply orientation. Keep the original and check the result. Input is limited to 100 MiB and output to 16,384 pixels per side and 40 million pixels; browser memory limits vary.'}
+    ] }),
   T({ id: 'image-metadata-viewer', name: 'Image Metadata Viewer', icon: 'info', engine: 'image', categories: ['image'],
     blurb: 'Inspect EXIF data and PNG chunks — fully offline.',
     description: 'Inspect selected JPEG EXIF tags and PNG chunk structure locally. This partial viewer cannot establish that a file is metadata-free and does not remove metadata.',

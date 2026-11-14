@@ -11,6 +11,27 @@
 
 ---
 
+## Image crop usability and guidance — plan
+
+[iLoveIMG](https://www.iloveimg.com/crop-image) offers pixel-rectangle cropping,
+a competitor feature signal, not a traffic or search-volume measurement. The
+current cropper supports aspect presets, but applies them at the selection's
+top-left; getting a centered crop requires manual arithmetic. Canvas
+[drawImage](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage)
+uses the source's intrinsic dimensions. Keep all coordinates in decoded image
+pixels and describe rounding, orientation and metadata limits honestly.
+
+1. Add a keyboard-accessible centered selection for the active ratio, leaving
+   free mode as the full image; use bounded integer dimensions and invalidate
+   stale exports. Preserve existing manual and drag workflows.
+2. Add useful static crop guidance on coordinates, ratio rounding, output and
+   local processing, without claiming lossless exports or guaranteed ranking.
+3. Test landscape, portrait, odd and tiny sizes, invalid inputs, output pixels,
+   settings changes, download, mobile and accessibility. Full local checks,
+   audit and one PR; merge only on green CI and verify production.
+
+---
+
 ## Single-image target-size and truthful guidance — plan
 
 [ResizePixel](https://www.resizepixel.com/compress-image) offers target-size
