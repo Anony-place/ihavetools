@@ -9,7 +9,7 @@ export const site = {
   name: 'iHaveTools',
   tagline: 'Free, fast, useful online tools.',
   description:
-    'Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser.',
+    'Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser.',
   // Primary canonical host. NOTE: ihavetools.web.app was never actually
   // deployed on Firebase ("Site Not Found") — the live, auto-deployed home
   // is Vercel. Point this at a custom domain here when one is bought.
@@ -20,7 +20,7 @@ export const site = {
 
 export const categories = [
   { id: 'pdf',        name: 'PDF & Documents', icon: 'file-text',    description: 'Merge, split and work with PDF files directly in your browser. Files never leave your device.' },
-  { id: 'image',      name: 'Image',           icon: 'image',        description: 'Compress, resize, convert and crop images locally. No uploads, no quality surprises, no waiting.' },
+  { id: 'image',      name: 'Image',           icon: 'image',        description: 'Compress, resize, convert and crop images locally in your browser. Output quality and processing time depend on your settings and device.' },
   { id: 'video',      name: 'Video',           icon: 'film',         description: 'Inspect video files and pull out their audio track — processed locally in your browser.' },
   { id: 'audio',      name: 'Audio',           icon: 'volume',       description: 'Generate, trim and re-speed audio without uploading a thing. Decoded and rendered in your browser.' },
   { id: 'text',       name: 'Text',            icon: 'type',         description: 'Counters, case converters, sorters and diff tools for working with text quickly.' },

@@ -81,10 +81,10 @@ function guideHtml(tool) {
   return `<section><h2>${esc(tool.name)} guide</h2>${blocks}</section>`;
 }
 
-/** Trim a meta description to the ~155 chars search engines display. */
+/** Normalize authored metadata without cutting off important context. */
 function metaDesc(text) {
   const s = String(text).replace(/\s+/g, ' ').trim();
-  return s.length <= 158 ? s : s.slice(0, 157).replace(/\s+\S*$/, '') + '…';
+  return s;
 }
 
 /* ---------- shared layout ---------- */
@@ -159,7 +159,7 @@ ${content}
     <div class="footer-grid">
       <div class="footer-brand">
         <a class="brand" href="${ROOT_PREFIX}">${brandMark('brand-mark')}iHaveTools</a>
-        <p>${esc(site.tagline)} ${tools.length} tools. No sign-up. Your data stays in your browser.</p>
+        <p>${esc(site.tagline)} ${tools.length} tools. No sign-up. Most processing happens in your browser; see our Privacy Policy for exceptions.</p>
       </div>
       <div><h3>Popular tools</h3><ul>${tools.slice().sort((a, b) => b.popularity - a.popularity).slice(0, 6).map((t) => `<li><a href="${ROOT_PREFIX}tools/${t.id}/">${esc(t.name)}</a></li>`).join('')}</ul></div>
       <div><h3>Top categories</h3><ul>${categories.slice(0, 6).map((c) => `<li><a href="${ROOT_PREFIX}categories/${c.id}/">${esc(c.name)}</a></li>`).join('')}</ul></div>
@@ -305,7 +305,7 @@ function buildHome() {
   <div class="container">
     <div class="privacy-strip">
       <div class="strip-item">${icon('shield-check')}<div><h3>Private by design</h3><p>Most tools process inputs on your device. Share links can expose values; YouTube thumbnails and code run in the HTML preview can contact external services. See our Privacy Policy.</p></div></div>
-      <div class="strip-item">${icon('zap')}<div><h3>Fast and dependency-free</h3><p>No frameworks, no trackers on tool pages, no waiting. Pages are static and open instantly, even on slow connections.</p></div></div>
+      <div class="strip-item">${icon('zap')}<div><h3>Fast and dependency-free</h3><p>Static pages are designed to load efficiently. Tool processing time depends on your device, file size and connection.</p></div></div>
       <div class="strip-item">${icon('check-circle')}<div><h3>Honest tools only</h3><p>Every tool listed here genuinely works — no half-finished stubs, no fake buttons, no empty categories.</p></div></div>
     </div>
   </div>
@@ -401,6 +401,7 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
 </div>
 <div class="container tool-wrap">
   <div class="tool-panel">
+    <noscript><p>JavaScript is required to use this tool. Instructions and any available guide remain accessible below.</p></noscript>
     <div id="tool-app" data-tool-id="${t.id}"></div>
   </div>
 </div>
@@ -412,7 +413,7 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
       <ul>
         <li><strong>Private by design</strong> — ${esc(privacy)}</li>
         <li><strong>Free to use</strong> — no sign-up or automatic branding. Individual tools have file and device limits.</li>
-        <li><strong>Works everywhere</strong> — any modern browser on a phone, tablet or computer, ready the moment the page opens.</li>
+        <li><strong>Browser-based</strong> — use a modern browser on a phone, tablet or computer. Some features depend on browser support and device limits.</li>
       </ul>
       <p>Explore more <a href="/categories/${cat.id}/">${esc(cat.name)} tools</a>.</p>
     </section>
@@ -477,7 +478,7 @@ ${body}
       lede: `${tools.length} free tools. No sign-up; most processing happens in your browser, with clear tool and device limits.`,
       body: `
     <section><h2>What is iHaveTools?</h2>
-    <p>iHaveTools is a collection of ${tools.length} free online tools for everyday work: calculators, converters, text and image utilities, PDF tools and developer helpers. Every tool works instantly in your web browser — there is no account to create, nothing to install and nothing to pay.</p></section>
+    <p>iHaveTools is a collection of ${tools.length} free online tools for everyday work: calculators, converters, text and image utilities, PDF tools and developer helpers. Tools run in your browser without an account or installation; processing time and available features depend on your device and browser.</p></section>
     <section><h2>How it works — and why your data stays private</h2>
     <p>Unlike most tool sites, iHaveTools has no server that processes your work. When you compress an image, merge a PDF or format JSON here, the computation happens on your own device using built-in browser technology (Canvas, Web Audio, Web Crypto and pdf-lib). Selected files and text are processed locally by these tools. Some optional links contain entered calculator values, the YouTube thumbnail tool contacts YouTube’s CDN, and code in the HTML preview can contact external services. Previously visited tools can work offline when their required files have been cached; some features require browser or device support.</p></section>
     <section><h2>Our principles</h2>

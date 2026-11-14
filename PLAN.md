@@ -11,6 +11,23 @@
 
 ---
 
+## Site-wide discovery and truthful metadata — plan
+
+Google recommends [crawlable HTML links with descriptive text](https://developers.google.com/search/docs/crawling-indexing/links-crawlable)
+and explains that [snippets have no fixed description length](https://developers.google.com/search/docs/appearance/snippet).
+These are quality improvements, not a ranking guarantee; a comparable verified
+Search Console export is still needed to assess impact.
+
+1. Preserve complete authored descriptions rather than cutting off important
+   caveats at an arbitrary character count; keep canonical URLs and sitemap stable.
+2. Replace overbroad privacy, instant-load and compatibility promises in shared
+   site copy. Explain the JavaScript requirement when scripts are disabled.
+3. Test no-JS discovery from home and category pages, metadata/OG consistency,
+   structured data and privacy caveats across all tool pages. Run full tests,
+   audit, browser CI, merge one PR if green and verify production.
+
+---
+
 ## Sitemap quality and discovery batch — plan
 
 Google’s [sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)
