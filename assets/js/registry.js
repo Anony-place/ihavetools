@@ -1284,7 +1284,7 @@ export const tools = [
     guide: [
       {h:'Quoted data and delimiters',p:'Select comma, semicolon, tab or pipe to match your file. Quoted fields can contain delimiters and line breaks, and a doubled quote inside a quoted field represents one quote. For example, a row with "Ada, A." in quotes keeps the comma inside one value.'},
       {h:'Headers and values',p:'With the header option, each record becomes an object. Header whitespace is preserved, blank names are generated and duplicate names are rejected. Without a header, all rows become objects with generated keys such as column_1 and column_2. Values stay strings by default, preserving IDs like 001; optional type inference can change text or round decimals, so check the result.'},
-      {h:'Limits and review',p:'CSV text is limited to 1,000,000 characters, 10,000 rows, 256 columns and 250,000 cells; uploaded files are limited to 10 MiB. Conversion runs locally. Keep the original and review your output, especially when switching delimiters or enabling type inference.'}
+      {h:'Limits and review',p:'CSV text is limited to 1,000,000 characters, 10,000 rows, 256 columns and 250,000 cells; uploaded files must be UTF-8 and are limited to 10 MiB. Invalid UTF-8 and files exceeding the character limit are rejected without replacing your existing input. Conversion runs locally. Keep the original and review your output, especially when switching delimiters or enabling type inference.'}
     ] }),
   T({ id: 'json-to-csv', name: 'JSON to CSV', icon: 'table', engine: 'data', categories: ['data', 'developer'],
     blurb: 'JSON arrays to properly escaped CSV, with column selection.',

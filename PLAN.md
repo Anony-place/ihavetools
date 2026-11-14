@@ -11,6 +11,20 @@
 
 ---
 
+## CSV import integrity — plan
+
+CSV file import used a replacement-decoding text reader and replaced existing
+input before checking its character limit. This can silently alter invalid UTF-8
+or discard prior input. This is a reliability improvement, not measured demand.
+
+1. Strictly decode local CSV as UTF-8, enforce the existing character limit before
+   replacing input, and retain the existing 10 MiB file and conversion limits.
+2. Explain encoding and failure behavior; test valid files, invalid encoding,
+   oversized text, repeat imports, asynchronous races and stale output.
+3. Run checks and audit, ship one PR, and verify production after green CI.
+
+---
+
 ## JSON to CSV exact-column workflow — plan
 
 [ConvertCSV](https://www.convertcsv.com/json-to-csv.htm) supports options such as

@@ -543,6 +543,15 @@ try {
   await page.locator('#tool-app input[type=file]').setInputFiles(csvFile);
   await page.locator('#tool-app .status-line').getByText(/1 record converted/).waitFor();
   assert.match(await page.locator('#tool-app .result-body pre').innerText(),/"id": "001"/);
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'bad.csv',mimeType:'text/csv',buffer:Buffer.from([0xff])});
+  await page.locator('#tool-app .status-line').getByText(/not valid UTF-8/).waitFor();
+  assert.equal(await page.locator('#tool-app textarea').inputValue(),'id,name\n001,Ada');
+  assert.equal(await page.locator('#tool-app .result-panel').getAttribute('data-has'),null);
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'large.csv',mimeType:'text/csv',buffer:Buffer.from('x'.repeat(1_000_001))});
+  await page.locator('#tool-app .status-line').getByText(/1,000,000 characters/).waitFor();
+  assert.equal(await page.locator('#tool-app textarea').inputValue(),'id,name\n001,Ada');
+  await page.locator('#tool-app input[type=file]').setInputFiles(csvFile);
+  await page.locator('#tool-app .status-line').getByText(/1 record converted/).waitFor();
   console.log('✓ QR PNG/SVG roundtrip, safe scanner actions, same-file rescans and CSV reimport');
   await go('json-to-csv');
   const jsonFile={name:'items.json',mimeType:'application/json',buffer:Buffer.from('[{"id":"001","name":"A|B"},{"id":"=2+2","name":"Grace"}]')};

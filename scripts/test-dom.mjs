@@ -1686,17 +1686,33 @@ await domTest('CSV file reads cannot overwrite newer input and stale conversions
   const input=app.querySelector('textarea'); click(btnByLabel(app,'Convert to JSON')); assert.match(resultText(document),/Ada/);
   input.value='id\nnew'; fire(input,'input'); assert.doesNotMatch(resultText(document),/Ada/);
   const saved=global.FileReader, pending=[];
-  global.FileReader=class {readAsText(f){pending.push({reader:this,file:f});}};
+  global.FileReader=class {readAsArrayBuffer(f){pending.push({reader:this,file:f});}};
   try {
     const drop=name=>{const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[new File(['x'],name,{type:'text/csv'})]}}); app.querySelector('.dropzone').dispatchEvent(e);};
     drop('old.csv'); drop('new.csv'); assert.equal(pending.length,2);
-    pending[1].reader.result='id\nsecond'; pending[1].reader.onload(); await new Promise(r=>setTimeout(r,10));
-    pending[0].reader.result='id\nfirst'; pending[0].reader.onload(); await new Promise(r=>setTimeout(r,10));
+    pending[1].reader.result=new TextEncoder().encode('id\nsecond').buffer; pending[1].reader.onload(); await new Promise(r=>setTimeout(r,10));
+    pending[0].reader.result=new TextEncoder().encode('id\nfirst').buffer; pending[0].reader.onload(); await new Promise(r=>setTimeout(r,10));
     assert.equal(input.value,'id\nsecond'); assert.match(resultText(document),/second/); assert.doesNotMatch(resultText(document),/first/);
-    drop('third.csv'); input.value='id\ntyped'; fire(input,'input'); pending[2].reader.result='id\nstale'; pending[2].reader.onload(); await new Promise(r=>setTimeout(r,10));
+    drop('third.csv'); input.value='id\ntyped'; fire(input,'input'); pending[2].reader.result=new TextEncoder().encode('id\nstale').buffer; pending[2].reader.onload(); await new Promise(r=>setTimeout(r,10));
     assert.equal(input.value,'id\ntyped'); assert.doesNotMatch(resultText(document),/second|stale/);
   } finally { global.FileReader=saved; }
 });
+await domTest('CSV imports reject invalid UTF-8 and oversized text without replacing input', async () => {
+  const app = await loadToolPage('csv-to-json','data'); await new Promise(r=>setTimeout(r,30));
+  const input=app.querySelector('textarea'), saved=global.FileReader; let reader;
+  global.FileReader=class { readAsArrayBuffer(){reader=this;} };
+  const drop=()=>{ const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[new File(['x'],'input.csv',{type:'text/csv'})]}}); app.querySelector('.dropzone').dispatchEvent(e); };
+  try {
+    input.value='id\nkeep'; click(btnByLabel(app,'Convert to JSON')); assert.match(resultText(document),/keep/);
+    drop(); reader.result=new Uint8Array([0xff]).buffer; reader.onload(); await new Promise(r=>setTimeout(r,10));
+    assert.equal(input.value,'id\nkeep'); assert.match(statusText(document),/not valid UTF-8/); assert.doesNotMatch(resultText(document),/keep/);
+    drop(); reader.result=new TextEncoder().encode('x'.repeat(1_000_001)).buffer; reader.onload(); await new Promise(r=>setTimeout(r,10));
+    assert.equal(input.value,'id\nkeep'); assert.match(statusText(document),/1,000,000 characters/);
+    drop(); reader.result=new TextEncoder().encode('\uFEFFname\nनमस्ते').buffer; reader.onload(); await new Promise(r=>setTimeout(r,10));
+    assert.match(resultText(document),/नमस्ते/); assert.match(statusText(document),/1 record converted/);
+  } finally { global.FileReader=saved; }
+});
+
 await domTest('JSON converters clear stale output after editing and reject duplicate keys', async () => {
   for (const id of ['json-to-csv','json-lines-converter']) {
     const app=await loadToolPage(id,'data'); const input=app.querySelector('textarea'); const button=btnByLabel(app,id==='json-to-csv'?'Convert to CSV':'JSONL → Array');
@@ -1949,9 +1965,9 @@ await domTest('QR scanner rejects huge file and stops pending camera or scan', a
 });
 await domTest('CSV rejected selection cancels pending read and keeps input explicitly', async () => {
  const app=await loadToolPage('csv-to-json','data'); await new Promise(r=>setTimeout(r,30)); const text=app.querySelector('textarea'); const before=text.value; const saved=global.FileReader; let reader;
- global.FileReader=class {readAsText(){reader=this;}};
+ global.FileReader=class {readAsArrayBuffer(){reader=this;}};
  const drop=file=>{const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[file]}});app.querySelector('.dropzone').dispatchEvent(e);};
- try {drop(new File(['x'],'pending.csv'));assert.ok(reader);drop({name:'huge.csv',size:201*1024*1024});reader.result='name\nwrong';reader.onload();await new Promise(r=>setTimeout(r,10));assert.equal(text.value,before);assert.match(statusText(document),/Existing CSV input was kept/);}
+ try {drop(new File(['x'],'pending.csv'));assert.ok(reader);drop({name:'huge.csv',size:201*1024*1024});reader.result=new TextEncoder().encode('name\nwrong').buffer;reader.onload();await new Promise(r=>setTimeout(r,10));assert.equal(text.value,before);assert.match(statusText(document),/Existing CSV input was kept/);}
  finally {global.FileReader=saved;}
 });
 
