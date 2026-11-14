@@ -2,12 +2,31 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (105 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (106 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Text comparison controls and guide — plan
+
+[Diffchecker](https://www.diffchecker.com/text-compare/) describes workflows to
+hide whitespace differences and unchanged lines. This is a competitor feature
+signal, not measured demand. Our existing local line diff compares exactly but
+lacks controls for common noisy whitespace/case differences and a static guide.
+
+1. Add optional trim-surrounding-whitespace and case-insensitive line matching;
+   default remains exact. Preserve both original line values when a match is not
+   exact and explicitly report ignored differences and selected settings.
+2. Keep limits, private local file processing, line numbers and stale result
+   invalidation. Explain comparison rules, final newline, filter and non-patch
+   report, including warnings for code/security-sensitive comparisons.
+3. Cover matching, duplicates, empty lines, Unicode, reports, option changes,
+   both import sides, downloads and mobile/accessibility. Run full checks and
+   audit; one CI-verified PR followed by production verification.
 
 ---
 

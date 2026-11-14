@@ -324,6 +324,18 @@ await domTest('text-diff: shows adds and removes', async () => {
   assert.ok(document.querySelector('.d-add'));
   assert.ok(document.querySelector('.d-del'));
 });
+await domTest('text diff ignored matches show both lines and invalidate on option changes', async () => {
+ const app=await loadToolPage('text-diff','text'), [a,b]=app.querySelectorAll('textarea');
+ a.value='  Hello  '; b.value='hello'; click(btnByLabel(app,'Compare')); assert.match(statusText(document),/1 line added/);
+ const option=label=>[...app.querySelectorAll('label.switch')].find(el=>el.textContent.includes(label)).querySelector('input');
+ click(option('Ignore surrounding whitespace')); click(option('Ignore letter case'));
+ assert.equal(btnByLabel(app,'Download report').disabled,true); click(btnByLabel(app,'Compare'));
+ assert.match(statusText(document),/1 matched line pair differ/); assert.match(app.textContent,/Matched B \(ignored difference\): hello/);
+ assert.equal(btnByLabel(app,'Download report').disabled,false);
+ click(option('Show changed lines only')); assert.equal(btnByLabel(app,'Download report').disabled,true); click(btnByLabel(app,'Compare'));
+ assert.match(app.textContent,/No changed lines in this view/); assert.match(statusText(document),/ignored details/);
+});
+
 await domTest('lorem-ipsum-generator: generates on load', async () => {
   const app = await loadToolPage('lorem-ipsum-generator', 'text');
   assert.match(resultText(document), /Lorem ipsum/i);
