@@ -11,6 +11,25 @@
 
 ---
 
+## Sitemap dates and crawler-testing clarity — plan
+
+Google's [sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)
+says lastmod should reflect verifiable significant changes, not a fabricated
+site-wide date. Existing UI only supports one date for every URL. Google's
+[robots specification](https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec)
+notes rule interpretation and host scope; this simulator does not fetch the live
+file or guarantee actual crawler behavior.
+
+1. Support optional per-URL YYYY-MM-DD dates, tab-separated from each URL,
+   with a clearly documented optional shared fallback. Keep strict URL/origin,
+   duplicate, count and size limits; reject malformed rows without partial XML.
+2. Clarify saved versus unsaved crawler rules and prevent a successful test
+   result while generation settings are invalid. Keep simulation caveats.
+3. Add unit, DOM, download, mobile and accessibility tests and update guides;
+   run checks and audit, one PR, merge only with green CI and verify deploy.
+
+---
+
 ## Social metadata workflow — plan
 
 The [Open Graph protocol](https://ogp.me/) identifies title, type, URL and image

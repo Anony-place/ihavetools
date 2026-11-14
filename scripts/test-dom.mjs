@@ -744,6 +744,17 @@ await domTest('social metadata validates URLs, escapes values and describes imag
  text[0].value='Page'; urls[1].value='https://example.com/image.jpg'; const metaAlt=app.querySelector('input[placeholder="Describe the social image"]'); metaAlt.value='A "cat"'; fire(metaAlt,'input'); assert.match(resultText(document),/og:image:alt" content="A &quot;cat&quot;"/);
  urls[1].value=''; fire(urls[1],'input'); assert.doesNotMatch(resultText(document),/og:image:alt/); assert.match(resultText(document),/twitter:card" content="summary"/);
 });
+await domTest('sitemap per-URL dates, fallback, invalidation and errors', async () => {
+ const app=await loadToolPage('sitemap-generator','webseo'), input=app.querySelector('textarea'), date=app.querySelector('input[type=date]');
+ input.value='https://a.test/one\t2024-02-29\nhttps://a.test/two'; date.value='2023-01-01'; fire(input,'input'); fire(date,'input'); click(btnByLabel(app,'Generate sitemap'));
+ assert.match(resultText(document),/<lastmod>2024-02-29<\/lastmod>/); assert.match(resultText(document),/<lastmod>2023-01-01<\/lastmod>/);
+ input.value='https://a.test/one\t2023-02-29'; fire(input,'input'); assert.doesNotMatch(resultText(document),/<urlset/); click(btnByLabel(app,'Generate sitemap')); assert.match(statusText(document),/valid date/); assert.doesNotMatch(resultText(document),/<urlset/);
+});
+await domTest('robots tester refuses invalid output settings and identifies saved rules', async () => {
+ const app=await loadToolPage('robots-txt-generator','webseo'); assert.match(app.textContent,/Tests saved rules only/);
+ const sitemap=app.querySelector('input[type=url]'); sitemap.value='javascript:alert(1)'; fire(sitemap,'input'); click(btnByLabel(app,'Test crawler access'));
+ assert.match(statusText(document),/HTTP/); assert.doesNotMatch(app.querySelector('[aria-label="Crawl test result output"]').textContent,/Allowed|Blocked/);
+});
 await domTest('url-parser: components + decoded params', async () => {
   const app = await loadToolPage('url-parser', 'webseo');
   await new Promise((r) => setTimeout(r, 30));
@@ -765,7 +776,7 @@ await domTest('sitemap-generator: validates URLs', async () => {
   click(btnByLabel(app, 'Generate sitemap'));
   assert.match(statusText(document), /Duplicate URL/);
   assert.doesNotMatch(resultText(document), /<urlset/);
-  assert.match(app.textContent, /lastmod.*all URLs/i);
+  assert.match(app.textContent, /lastmod.*shared fallback/i);
 });
 
 /* ═════════════════ Student / Math ═════════════════ */

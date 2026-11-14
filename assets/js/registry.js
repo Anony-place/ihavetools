@@ -1062,7 +1062,7 @@ export const tools = [
     ],
     guide: [
       { h: 'How a compliant crawler chooses a rule',
-        p: 'Rules are grouped under User-agent lines. A crawler prefers a group naming its own product token over the `*` wildcard group; rules from less-specific groups are not merged just because they look relevant. It then compares the URL path (including query string) with that group’s Allow and Disallow patterns. The tester on this page follows the widely used longest-match behaviour and supports `*` as a wildcard plus a trailing `$` to anchor the end of a path.' },
+        p: 'Rules are grouped under User-agent lines. A crawler prefers a group naming its own product token over the `*` wildcard group; rules from less-specific groups are not merged just because they look relevant. It then compares the URL path (including query string) with that group’s Allow and Disallow patterns. The local tester uses saved rules, not unsaved form edits or the live file. It approximates longest-match behaviour and supports `*` as a wildcard plus a trailing `$` to anchor the end of a path; encoding and crawler handling can differ.' },
       { h: 'Useful starting patterns',
         table: { head: ['Goal', 'Example rule', 'What happens'], rows: [
           ['Allow everything', 'User-agent: *\nDisallow:', 'No path is blocked by robots.txt.'],
@@ -1085,22 +1085,22 @@ export const tools = [
     keywords: ['sitemap', 'sitemap.xml', 'xml sitemap', 'seo', 'urls'],
     aliases: ['xml sitemap generator', 'sitemap xml', 'create sitemap'],
     popularity: 64, added: '2026-06-11',
-    steps: 'Paste your URLs, one per line.|Set optional lastmod, changefreq and priority defaults.|Download the generated sitemap.xml for your site root.',
+    steps: 'Paste your URLs, one per line.|Optionally paste a tab and YYYY-MM-DD after each URL, or set a shared lastmod fallback, changefreq and priority.|Download the generated sitemap.xml for your site root.',
     related: ['robots-txt-generator', 'meta-tag-generator', 'keyword-density-checker', 'url-parser', 'open-graph-preview', 'slug-generator'],
     faqs: [
       { q: 'Will a sitemap guarantee indexing?', a: 'No. A sitemap is a discovery hint, not a guarantee of crawling, indexing or ranking. Check the published URLs, internal links, robots rules and Search Console reports as well.' },
-      { q: 'Should every URL have the same lastmod?', a: 'Only if that date accurately represents a significant change for every listed page. This generator applies one optional date to all URLs; leave it blank if their dates differ, or use a system that tracks individual dates.' },
+      { q: 'Should every URL have the same lastmod?', a: 'Only if the date accurately represents a significant change for every page that uses it. This generator uses the shared date only when a row has no per-URL date; leave it blank if you do not know a date.' },
       { q: 'Why was a duplicate URL rejected?', a: 'The generator compares serialized URLs after browser URL normalization, so equivalent inputs such as https://example.com and https://example.com/ are duplicates. Remove the repeated entry. It cannot identify every possible duplicate or select a canonical page for you.' },
     ],
     guide: [
       { h: 'Choose URLs worth discovering', p: 'List the full canonical HTTP or HTTPS URLs you want indexed, one per line, on the same scheme, host and port. Prefer accessible final pages over redirects, error pages or duplicates. This tool checks URL syntax and exact normalized duplicates, but does not crawl pages, check status codes or determine canonicals.' },
-      { h: 'Use dates carefully', p: 'The optional lastmod date is applied to every URL in this file. Use it only when it accurately reflects a significant update for each listed page; otherwise leave it blank or use a generator with per-page dates. Google ignores changefreq and priority, so these optional fields do not improve Google rankings.' },
+      { h: 'Use dates carefully', p: 'For an individual lastmod date, paste a tab between the URL and its YYYY-MM-DD date, as in a two-column spreadsheet. A row date overrides the optional shared fallback; rows without either date omit lastmod. Use dates only for a significant update you can verify. Google ignores changefreq and priority, so these optional fields do not improve Google rankings.' },
       { h: 'Publish and check', list: [
         'Download sitemap.xml and publish it at your site root, such as https://example.com/sitemap.xml. Open the public URL to check it serves XML.',
         'Add the absolute sitemap URL to robots.txt or submit it in Google Search Console. Submission is a hint, not a guarantee of indexing.',
         'Review Search Console reports and keep the file updated as pages change. A sitemap does not replace crawlable internal links or resolve noindex and access restrictions.',
       ] },
-      { h: 'Generator limits', p: 'This generator accepts at most 10,000 URLs and 2 million input characters, all from one origin. It does not generate sitemap indexes, per-URL dates, image or video extensions, or hreflang. Larger or frequently changing sites should use a suitable automated generator.' },
+      { h: 'Generator limits', p: 'This generator accepts at most 10,000 URLs and 2 million input characters, all from one origin. It does not generate sitemap indexes, image or video extensions, or hreflang. Larger or frequently changing sites should use a suitable automated generator.' },
     ] }),
   T({ id: 'open-graph-preview', name: 'Open Graph Preview', icon: 'share', engine: 'webseo', categories: ['web-seo'],
     blurb: 'Preview how a link looks when shared on social platforms.',
