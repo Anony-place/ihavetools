@@ -2,12 +2,32 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (106 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (107 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Social metadata workflow — plan
+
+The [Open Graph protocol](https://ogp.me/) identifies title, type, URL and image
+as basic properties and recommends image alt text. The current preview emits a
+large-image card without an image, accepts invalid URLs, and has no way to add
+an image. It is an illustration, not a platform rendering test. Google’s
+[sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)
+recommends absolute canonical URLs and accurate dates; sitemap submission does
+not guarantee indexing. Neither feature is evidence of search demand.
+
+1. Add optional image URL and alt text to preview and meta generator, without
+   fetching external images; validate URLs and warn when basic OG data is absent.
+2. Avoid invalid large-image card output when there is no image; escape values,
+   clear copyable output on invalid input and describe preview limitations.
+3. Accept common CR/LF line endings for sitemap input; add tests for metadata,
+   escaping, invalidation, accessibility, mobile and no external image fetch.
+   Run checks, audit, CI and ship one consolidated PR if verified.
 
 ---
 

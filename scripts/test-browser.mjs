@@ -344,6 +344,17 @@ try {
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'timestamp input mobile accessibility');
   console.log('✓ custom business week and explicit UTC timestamps');
+  await go('open-graph-preview');
+  await page.getByLabel('Social image URL (optional)').fill('https://example.com/image.jpg?a=1&b=2');
+  await page.getByLabel('Social image alt text (optional)').fill('A "cat"');
+  const ogOutput=page.getByRole('region',{name:'Open Graph tags output'});
+  assert.match(await ogOutput.innerText(),/og:image:alt" content="A &quot;cat&quot;"/);
+  assert.equal(await page.locator('#tool-app .preview-frame img').count(),0);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[], 'social preview accessibility');
+  await page.getByLabel('URL',{exact:true}).fill('javascript:alert(1)');
+  assert.match(await page.locator('#tool-app .status-line').innerText(),/HTTP/);
+  assert.doesNotMatch(await ogOutput.innerText(),/og:image/);
   await go('keyword-density-checker');
   const fileInput = page.getByLabel('Load text file (optional)');
   await fileInput.setInputFiles({ name: 'draft.txt', mimeType: 'text/plain', buffer: Buffer.from('alpha alpha beta') });

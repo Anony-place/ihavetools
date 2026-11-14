@@ -398,6 +398,7 @@ const defs = {
     const desc = textarea({ rows: 3, mono: false, placeholder: 'Summarize this page for searchers…' });
     const url = input({ type: 'url', placeholder: 'https://example.com/page' });
     const image = input({ type: 'url', placeholder: 'https://example.com/og-image.png (1200×630 recommended)' });
+    const imageAlt = input({ type: 'text', placeholder: 'Describe the social image' });
     const siteName = input({ type: 'text', placeholder: 'Site name, e.g. Example Inc.' });
     const twitter = select({ options: [{ v: 'summary_large_image', t: 'Summary with large image' }, { v: 'summary', t: 'Summary (small image)' }] });
     const robots = select({ options: [{ v: 'index, follow', t: 'index, follow (default)' }, { v: 'noindex, follow', t: 'noindex, follow' }, { v: 'index, nofollow', t: 'index, nofollow' }, { v: 'noindex, nofollow', t: 'noindex, nofollow' }] });
@@ -420,23 +421,24 @@ const defs = {
       L.push(`<meta property="og:description" content="${esc(d)}">`);
       if (u) L.push(`<meta property="og:url" content="${esc(u)}">`);
       if (sn) L.push(`<meta property="og:site_name" content="${esc(sn)}">`);
-      if (img) L.push(`<meta property="og:image" content="${esc(img)}">`);
+      if (img) { L.push(`<meta property="og:image" content="${esc(img)}">`); if (imageAlt.value.trim()) L.push(`<meta property="og:image:alt" content="${esc(imageAlt.value.trim())}">`); }
       L.push('');
       L.push(`<!-- Twitter / X -->`);
-      L.push(`<meta name="twitter:card" content="${twitter.value}">`);
+      L.push(`<meta name="twitter:card" content="${img ? twitter.value : 'summary'}">`);
       L.push(`<meta name="twitter:title" content="${esc(t)}">`);
       L.push(`<meta name="twitter:description" content="${esc(d)}">`);
       if (img) L.push(`<meta name="twitter:image" content="${esc(img)}">`);
       out.set(L.join('\n'));
       status.set('Generated. Search engines may choose different titles or snippets; display width varies.', 'success');
     };
-    [title, desc, url, image, siteName, twitter, robots].forEach((el) => { el.addEventListener('input', build); el.addEventListener('change', build); });
+    [title, desc, url, image, imageAlt, siteName, twitter, robots].forEach((el) => { el.addEventListener('input', build); el.addEventListener('change', build); });
     root.append(
       field({ label: 'Page title', control: title }),
       field({ label: 'Meta description', control: desc }),
       h('div', { class: 'field-row' }, field({ label: 'Canonical URL', control: url }), field({ label: 'Site name', control: siteName })),
       field({ label: 'Social image URL', control: image }),
-      h('div', { class: 'field-row' }, field({ label: 'Twitter card', control: twitter }), field({ label: 'Robots', control: robots })),
+      field({ label: 'Social image alt text (optional)', control: imageAlt, hint: 'Describe the image; only included when an image URL is provided.' }),
+      h('div', { class: 'field-row' }, field({ label: 'Twitter card', control: twitter, hint: 'Without an image URL, summary is generated instead.' }), field({ label: 'Robots', control: robots })),
       actionsRow(btn({ label: 'Generate tags', icon: 'code', onClick: build })),
       status, h('br'), out.panel);
     build();
@@ -540,7 +542,7 @@ const defs = {
     const status = statusLine('');
     const out = resultPanel({ label: 'sitemap.xml', download: true, downloadName: 'sitemap.xml', downloadMime: 'application/xml;charset=utf-8' });
     const run = () => {
-      const urls = inp.value.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+      const urls = inp.value.split(/\r\n|\r|\n/).map((s) => s.trim()).filter(Boolean);
       try {
         const xml = buildSitemapXml(urls, { changefreq: freq.value, priority: prio.value, lastmod: lastmod.value });
         out.set(xml);
@@ -564,28 +566,43 @@ const defs = {
     const desc = input({ type: 'text', value: 'Cutting checkout time from 40 seconds to 12 — here is everything we learned.', placeholder: 'Description' });
     const site = input({ type: 'text', value: 'example.com', placeholder: 'example.com' });
     const url = input({ type: 'url', value: 'https://example.com/blog/faster-checkout', placeholder: 'https://…' });
-    const status = statusLine('The preview shows the layout platforms use. Actual rendering varies slightly by platform.');
+    const image = input({ type: 'url', placeholder: 'https://example.com/social-image.jpg' });
+    const alt = input({ type: 'text', placeholder: 'Describe the social image' });
+    const status = statusLine('');
     const card = h('div', { class: 'preview-frame', style: 'margin-bottom:8px' });
     const out = resultPanel({ label: 'Open Graph tags' });
     const render = () => {
-      const t = title.value || 'Your page title';
-      const d = desc.value || 'Your page description will appear here.';
-      const s = site.value || 'example.com';
-      card.replaceChildren(
-        h('div', { style: 'padding:14px' },
-          h('div', { style: 'height:150px;border-radius:8px;background:linear-gradient(135deg,var(--primary-soft),var(--surface-2));display:grid;place-items:center;color:var(--text-3);font-size:.85rem;margin-bottom:10px', text: 'og:image (1200×630) renders here' }),
-          h('div', { style: 'font-size:.78rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em', text: s }),
-          h('div', { style: 'font-weight:700;font-size:1.02rem;margin:2px 0', text: t }),
-          h('div', { style: 'font-size:.85rem;color:var(--text-2)', text: d })));
-      out.set(`<meta property="og:type" content="article">\n<meta property="og:title" content="${esc(title.value)}">\n<meta property="og:description" content="${esc(desc.value)}">\n<meta property="og:site_name" content="${esc(site.value)}">\n<meta property="og:url" content="${esc(url.value)}">\n<meta name="twitter:card" content="summary_large_image">\n<meta name="twitter:title" content="${esc(title.value)}">\n<meta name="twitter:description" content="${esc(desc.value)}">`);
+      const t = title.value.trim(), d = desc.value.trim(), s = site.value.trim(), u = url.value.trim(), img = image.value.trim(), a = alt.value.trim();
+      card.replaceChildren();
+      try { if (u) validateWebUrl(u, 'Page URL'); if (img) validateWebUrl(img, 'Image URL'); }
+      catch (e) { out.placeholder(); status.set(e.message, 'error'); return; }
+      card.replaceChildren(h('div', { style: 'padding:14px' },
+        h('div', { style: 'height:150px;border-radius:8px;background:linear-gradient(135deg,var(--primary-soft),var(--surface-2));display:grid;place-items:center;color:var(--text-3);font-size:.85rem;margin-bottom:10px', text: img ? 'Image URL supplied — image not fetched' : 'Illustrative image placeholder — no image URL supplied' }),
+        h('div', { style: 'font-size:.78rem;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em', text: s || 'Site name' }),
+        h('div', { style: 'font-weight:700;font-size:1.02rem;margin:2px 0', text: t || 'Page title' }),
+        h('div', { style: 'font-size:.85rem;color:var(--text-2)', text: d || 'Page description' })));
+      const lines = ['<meta property="og:type" content="article">'];
+      if (t) lines.push(`<meta property="og:title" content="${esc(t)}">`);
+      if (d) lines.push(`<meta property="og:description" content="${esc(d)}">`);
+      if (s) lines.push(`<meta property="og:site_name" content="${esc(s)}">`);
+      if (u) lines.push(`<meta property="og:url" content="${esc(u)}">`);
+      if (img) { lines.push(`<meta property="og:image" content="${esc(img)}">`); if (a) lines.push(`<meta property="og:image:alt" content="${esc(a)}">`); }
+      lines.push(`<meta name="twitter:card" content="${img ? 'summary_large_image' : 'summary'}">`);
+      if (t) lines.push(`<meta name="twitter:title" content="${esc(t)}">`);
+      if (d) lines.push(`<meta name="twitter:description" content="${esc(d)}">`);
+      if (img) lines.push(`<meta name="twitter:image" content="${esc(img)}">`);
+      out.set(lines.join('\n'));
+      const missing = [!t && 'title', !u && 'page URL', !img && 'image URL'].filter(Boolean);
+      status.set(missing.length ? `Basic Open Graph data missing: ${missing.join(', ')}. Preview is illustrative; no image is fetched.` : 'Preview is illustrative; no image is fetched. Platforms may display or cache cards differently.', missing.length ? 'warning' : 'info');
     };
-    [title, desc, site, url].forEach((el) => el.addEventListener('input', render));
+    [title, desc, site, url, image, alt].forEach((el) => el.addEventListener('input', render));
     root.append(
       field({ label: 'Title', control: title }),
       field({ label: 'Description', control: desc }),
       h('div', { class: 'field-row' }, field({ label: 'Site name', control: site }), field({ label: 'URL', control: url })),
-      actionsRow(btn({ label: 'Copy tags', variant: 'secondary', icon: 'copy', onClick: async () => { (await copyText(out.text)) ? toast('OG tags copied', 'success') : toast('Copy failed', 'error'); } })),
-      h('h3', { text: 'Share card preview', style: 'margin:8px 0 10px' }), card, status, h('br'), out.panel);
+      field({ label: 'Social image URL (optional)', control: image, hint: 'Public absolute HTTP(S) URL. This tool does not fetch or check the image.' }),
+      field({ label: 'Social image alt text (optional)', control: alt, hint: 'Describe the image; only included when an image URL is provided.' }),
+      h('h3', { text: 'Illustrative share card', style: 'margin:8px 0 10px' }), card, status, h('br'), out.panel);
     render();
   },
 

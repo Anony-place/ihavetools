@@ -731,6 +731,19 @@ await domTest('meta-tag-generator: emits full tag set', async () => {
   assert.match(statusText(document), /display width varies/);
   assert.doesNotMatch(statusText(document), /lengths look good|aim for 70/);
 });
+await domTest('social metadata validates URLs, escapes values and describes images without fetching', async () => {
+ let app=await loadToolPage('open-graph-preview','webseo');
+ let inputs=app.querySelectorAll('input'); const [title,desc,site,url,image,alt]=inputs;
+ assert.match(statusText(document),/image URL/); assert.match(resultText(document),/content="summary"/); assert.doesNotMatch(resultText(document),/og:image"/);
+ title.value='Hello "world" & friends'; image.value='https://example.com/img.jpg?a=1&b=2'; alt.value='A "cat" & dog'; fire(image,'input');
+ assert.match(resultText(document),/Hello &quot;world&quot; &amp; friends/); assert.match(resultText(document),/og:image:alt" content="A &quot;cat&quot; &amp; dog"/); assert.match(resultText(document),/img.jpg\?a=1&amp;b=2/); assert.match(resultText(document),/summary_large_image/); assert.equal(app.querySelectorAll('img').length,0);
+ url.value='javascript:alert(1)'; fire(url,'input'); assert.match(statusText(document),/HTTP/); assert.doesNotMatch(resultText(document),/og:title/);
+ url.value='https://example.com/'; image.value='https://example.com/x#fragment'; fire(image,'input'); assert.match(statusText(document),/fragment/); assert.doesNotMatch(resultText(document),/og:title/);
+ image.value=''; fire(image,'input'); assert.doesNotMatch(resultText(document),/og:image:alt/);
+ app=await loadToolPage('meta-tag-generator','webseo'); const text=app.querySelectorAll('input[type=text]'), urls=app.querySelectorAll('input[type=url]');
+ text[0].value='Page'; urls[1].value='https://example.com/image.jpg'; const metaAlt=app.querySelector('input[placeholder="Describe the social image"]'); metaAlt.value='A "cat"'; fire(metaAlt,'input'); assert.match(resultText(document),/og:image:alt" content="A &quot;cat&quot;"/);
+ urls[1].value=''; fire(urls[1],'input'); assert.doesNotMatch(resultText(document),/og:image:alt/); assert.match(resultText(document),/twitter:card" content="summary"/);
+});
 await domTest('url-parser: components + decoded params', async () => {
   const app = await loadToolPage('url-parser', 'webseo');
   await new Promise((r) => setTimeout(r, 30));
@@ -743,7 +756,7 @@ await domTest('sitemap-generator: validates URLs', async () => {
   ta.value = 'https://a.b/\nnot a url';
   click(btnByLabel(app, 'Generate sitemap'));
   assert.match(statusText(document), /valid absolute URL/);
-  ta.value = 'https://a.b/\nhttps://a.b/d';
+  ta.value = 'https://a.b/\rhttps://a.b/d';
   click(btnByLabel(app, 'Generate sitemap'));
   assert.match(resultText(document), /<urlset/);
   assert.match(statusText(document), /2 URLs in the sitemap/);
