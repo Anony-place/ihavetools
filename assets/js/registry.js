@@ -2027,7 +2027,7 @@ export const tools = [
   T({ id: 'final-grade-calculator', name: 'Final Grade Calculator', icon: 'graduation', engine: 'calculators', categories: ['student', 'calculators'],
     related: ["weighted-average-calculator","cgpa-calculator","attendance-calculator","average-calculator","percentage-calculator"],
     blurb: 'Find the exam score needed to reach your target course grade.',
-    description: 'Calculate the final exam score needed for a target grade, check whether it is achievable, and explore a what-if final score.',
+    description: 'Calculate the final exam score needed for a target grade, or derive your current grade from weighted completed coursework before planning remaining work.',
     keywords: ['final grade calculator', 'final exam grade needed', 'exam score calculator', 'target grade'], aliases: ['what grade do i need on my final', 'final exam calculator'], popularity: 79, added: '2026-11-05',
     steps: 'Enter your current grade excluding the final and your desired overall grade.|Enter the final exam weight and a what-if exam score.|Read the required exam score, possible range and projected overall grade.',
     faqs: [
@@ -2037,6 +2037,7 @@ export const tools = [
     ],
     guide: [
       { h: 'The weighted final formula', p: 'Overall = current grade × (1 − final weight) + exam score × final weight, using weight as a decimal. Rearranging gives required exam score = (target − current × (1 − weight)) ÷ weight. The current grade must exclude the final.' },
+      { h: 'Calculate your current average', p: 'Enter completed component scores and their weights as percentages of the whole course, one score and weight per line. For example, 80, 30 and 90, 45 produce an 86% weighted average on 75% completed weight, leaving 25%. Apply fills the calculator above; the what-if score then represents the combined remaining work. Components must not overlap. Nested categories, letter grades, extra credit and institution-specific rounding are not modeled. The optional share link contains only the main calculator inputs, not coursework rows.' },
       { h: 'Worked example', p: 'With 86% current, an 88% goal and a 25% final, completed work contributes 86 × 0.75 = 64.5 points. The exam must contribute 23.5 points: 23.5 ÷ 0.25 = 94%. A score of 80% instead produces an overall 84.5%.' },
       { h: 'Read the result carefully', list: ['A required score below zero means even zero on the exam reaches the target.', 'Above 100% means the target is out of reach under the stated assumptions.', 'If the final sits inside a test category or replaces a dropped score, this simple separate-weight model does not apply.', 'Letter grades, rounding and extra credit depend on your institution; use its actual threshold.'] },
     ] }),
