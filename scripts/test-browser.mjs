@@ -145,9 +145,9 @@ try {
   await page.getByRole('button', { name: 'Format', exact: true }).click();
   assert.match(await page.locator('.result-body').innerText(), /9007199254740993/);
   assert.equal(await page.locator('.result-head button[aria-label="Copy"] svg').count(), 1);
-  const jsonDownload = page.waitForEvent('download');
+  const csvJsonDownload = page.waitForEvent('download');
   await page.locator('.result-head button[aria-label="Download"]').click();
-  assert.match((await readFile(await (await jsonDownload).path())).toString(), /9007199254740993/);
+  assert.match((await readFile(await (await csvJsonDownload).path())).toString(), /9007199254740993/);
   console.log('✓ JSON format and actual download preserve numeric token');
 
   await page.setViewportSize({ width: 320, height: 844 });
@@ -556,9 +556,9 @@ try {
   await page.getByLabel('Column positions (optional)').fill('2,1');
   await page.getByRole('button',{name:'Convert to JSON'}).click();
   assert.match(await page.locator('#tool-app .result-body pre').innerText(), /"identifier": "Ada"/);
-  const jsonDownload = page.waitForEvent('download');
+  const csvColumnSelectionDownload = page.waitForEvent('download');
   await page.locator('#tool-app .result-panel').getByRole('button',{name:'Download'}).click();
-  assert.deepEqual(JSON.parse((await readFile(await (await jsonDownload).path())).toString()), [{identifier:'Ada',person:'001'}]);
+  assert.deepEqual(JSON.parse((await readFile(await (await csvColumnSelectionDownload).path())).toString()), [{identifier:'Ada',person:'001'}]);
   await page.getByLabel('Column positions (optional)').fill('3');
   assert.equal(await page.locator('#tool-app .result-panel').getAttribute('data-has'),null);
   await page.getByRole('button',{name:'Convert to JSON'}).click();
