@@ -1296,6 +1296,22 @@ await test('include end day + reversed order', () => {
   assert.equal(dt.dateDiff('2024-01-10', '2024-01-01').totalDays, 9);
   assert.equal(dt.dateDiff('2024-01-10', '2024-01-01').reversed, true);
 });
+await test('date difference weekend and holiday counting', () => {
+  let r=dt.dateDiff('2024-01-01','2024-01-08',false,'sat_sun','2024-01-01,2024-01-01,2024-01-06,2024-01-08');
+  assert.deepEqual([r.totalDays,r.businessDays,r.weekendDays,r.holidayCount],[7,4,2,1]);
+  r=dt.dateDiff('2024-01-08','2024-01-01',true,'fri_sat','2024-01-01;2024-01-08;2024-01-05');
+  assert.deepEqual([r.totalDays,r.businessDays,r.weekendDays,r.holidayCount,r.reversed],[8,4,2,2,true]);
+  r=dt.dateDiff('2024-01-01','2024-01-01',false,'none','2024-01-01'); assert.deepEqual([r.businessDays,r.holidayCount],[0,0]);
+  r=dt.dateDiff('2024-01-01','2024-01-01',true,'none','2024-01-01'); assert.deepEqual([r.businessDays,r.holidayCount],[0,1]);
+  assert.throws(()=>dt.dateDiff('2024-01-01','2024-01-02',false,'sat_sun','2024-02-30'),/Invalid date/);
+  assert.throws(()=>dt.dateDiff('2024-01-01','2024-01-02',false,'invalid'),/weekend/);
+  assert.throws(()=>dt.dateDiff('2024-01-01','2024-01-02',false,'none',Array(501).fill('x').join(',')),/500/);
+  for(const weekend of ['sat_sun','fri_sat','sun','none']) for(const inclusive of [false,true]) {
+    const fast=dt.dateDiff('2000-01-01','2099-12-31',inclusive,weekend,'2000-01-03,2050-01-01,2099-12-31');
+    const slow=dt.countBusinessDays('2000-01-01','2099-12-31',weekend,'2000-01-03,2050-01-01,2099-12-31',inclusive);
+    assert.equal(fast.businessDays,slow.working); assert.equal(fast.totalDays,slow.calendarDays);
+  }
+});
 await test('date add month-end clamping', () => {
   assert.equal(dt.dateAdd('2024-01-31', 1, 'months', 'add').toISOString().slice(0, 10), '2024-02-29'); // leap
   assert.equal(dt.dateAdd('2023-01-31', 1, 'months', 'add').toISOString().slice(0, 10), '2023-02-28');

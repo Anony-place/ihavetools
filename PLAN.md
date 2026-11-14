@@ -11,6 +11,27 @@
 
 ---
 
+## Date difference working-day options — plan
+
+[Timeanddate](https://www.timeanddate.com/date/duration.html) distinguishes
+calendar duration from workday calculations; this is a competitor feature, not
+measured demand. Our date-difference tool counts Monday–Friday only and requires
+a separate tool for holidays. Its date range spans 1900–2100, so keep the
+calculation bounded without iterating over every day.
+
+1. Add explicit weekend presets and optional manually entered holidays; count
+   whole weeks and at most six remaining days, then subtract unique holidays in
+   range only if they are working weekdays. Preserve existing default results,
+   inclusive-end semantics and reversed-date handling.
+2. Show non-working weekdays and holiday exclusions separately; clarify no
+   automatic regional calendar, date-only hours, and calendar month convention.
+3. Test holidays on endpoints/weekends, duplicates, invalid and large inputs,
+   reversed dates, long-range results, UI invalidation and mobile accessibility.
+   Run checks and audit, one PR, green CI before merge and verify production.
+   No unsupported traffic or ranking claims.
+
+---
+
 ## PDF page image navigation and ZIP selection — plan
 
 [iLovePDF](https://www.ilovepdf.com/pdf_to_jpg) distinguishes rasterizing pages

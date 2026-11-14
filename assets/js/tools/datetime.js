@@ -39,13 +39,21 @@ export function addBusinessDays(start, amount, weekend = 'sat_sun', holidays = '
   return new Date(day).toISOString().slice(0, 10);
 }
 
-export function dateDiff(startStr, endStr, includeEnd = false) {
+export function dateDiff(startStr, endStr, includeEnd = false, weekend = 'sat_sun', holidays = '') {
   const a=parseCalendarDate(startStr), b=parseCalendarDate(endStr), first=Math.min(a,b), last=Math.max(a,b);
+  if (typeof includeEnd !== 'boolean') throw new Error('Choose whether to include the end day.');
+  if (!Object.hasOwn(WEEKENDS, weekend)) throw new Error('Choose a valid weekend.');
+  if (typeof holidays !== 'string' || holidays.length > 5500) throw new Error('Holiday list is too long.');
+  const parts=holidays.split(/[\s,;]+/).filter(Boolean);
+  if (parts.length > 500) throw new Error('Enter no more than 500 holiday dates.');
+  const holidayDays=new Set(parts.map(parseCalendarDate)), excluded=WEEKENDS[weekend];
   const span=calendarSpan(first,last), totalDays=(last-first)/DAY_MS+(includeEnd ? 1 : 0);
-  // Use whole weeks + a bounded remainder, not a loop over centuries.
-  const fullWeeks=Math.floor(totalDays/7); let businessDays=fullWeeks*5;
-  for(let i=0;i<totalDays%7;i++) {const wd=new Date(first+i*DAY_MS).getUTCDay(); if(wd!==0&&wd!==6) businessDays++;}
-  return {...span,totalDays,businessDays,weekendDays:totalDays-businessDays,weeks:fullWeeks,remainderDays:totalDays%7,hours:totalDays*24,minutes:totalDays*1440,reversed:a>b};
+  const fullWeeks=Math.floor(totalDays/7); let nonWorkingWeekdays=fullWeeks*excluded.length;
+  for(let i=0;i<totalDays%7;i++) if(excluded.includes(new Date(first+i*DAY_MS).getUTCDay())) nonWorkingWeekdays++;
+  const endExclusive=first+totalDays*DAY_MS; let holidayCount=0;
+  for(const day of holidayDays) if(day>=first && day<endExclusive && !excluded.includes(new Date(day).getUTCDay())) holidayCount++;
+  const businessDays=totalDays-nonWorkingWeekdays-holidayCount;
+  return {...span,totalDays,businessDays,weekendDays:nonWorkingWeekdays,holidayCount,weeks:fullWeeks,remainderDays:totalDays%7,hours:totalDays*24,minutes:totalDays*1440,reversed:a>b};
 }
 export function dateAdd(startStr, amount, unit, direction) {
   const start=parseCalendarDate(startStr);
@@ -174,20 +182,23 @@ const defs = {
     const start = input({ type: 'date', value: localDateISO(today) });
     const end = input({ type: 'date', value: localDateISO(tomorrow) });
     const includeEnd = switchChip({ label: 'Include the end day in the count' });
+    const weekend = select({options:[{v:'sat_sun',t:'Saturday and Sunday'}, {v:'fri_sat',t:'Friday and Saturday'}, {v:'sun',t:'Sunday only'}, {v:'none',t:'No weekend'}],value:'sat_sun'});
+    const holidays = textarea({rows:3, maxlength:5500, placeholder:'YYYY-MM-DD, one date per line (optional)'});
     const grid = statsGrid();
     const status = statusLine('');
     const run = () => {
       try {
-        const r = dateDiff(start.value, end.value, includeEnd.querySelector('input').checked);
+        const r = dateDiff(start.value, end.value, includeEnd.querySelector('input').checked, weekend.value, holidays.value);
         grid.set([
           { label: r.reversed ? 'Days (end before start)' : 'Total days', value: r.totalDays.toLocaleString(), kind: 'good' },
           { label: 'Calendar', value: `${r.years}y ${r.months}m ${r.days}d` },
           { label: 'Weeks', value: `${r.weeks.toLocaleString()}w ${r.remainderDays}d` },
           { label: 'Business days', value: r.businessDays.toLocaleString() },
-          { label: 'Weekend days', value: r.weekendDays.toLocaleString() },
+          { label: 'Non-working weekdays', value: r.weekendDays.toLocaleString() },
+          { label: 'Holidays excluded', value: r.holidayCount.toLocaleString() },
           { label: 'Hours', value: r.hours.toLocaleString() },
         ]);
-        status.set(`${r.reversed ? 'Dates were reversed; the earlier date is counted first. ' : ''}The calendar breakdown excludes the end date; the include-end switch affects day, week, weekday and hour totals only. Hours use 24 per calendar day, not DST-adjusted elapsed time.`, 'info');
+        status.set(`${r.reversed ? 'Dates were reversed; the earlier date is counted first. ' : ''}The calendar breakdown excludes the end date; the include-end switch affects day, week, weekday and hour totals only. Hours use 24 per calendar day, not DST-adjusted elapsed time. Holidays on non-working weekdays are not counted twice; no holidays are loaded automatically.`, 'info');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
@@ -196,8 +207,10 @@ const defs = {
         field({ label: 'Start date', control: start }),
         field({ label: 'End date', control: end })),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, includeEnd),
+      h('div', {class:'field-row'}, field({label:'Non-working weekdays',control:weekend})),
+      field({label:'Holidays (YYYY-MM-DD)',control:holidays,hint:'Optional; up to 500 dates separated by commas or new lines. No holidays are loaded automatically.'}),
       actionsRow(btn({ label: 'Calculate difference', icon: 'calendar', onClick: run })), grid, status,
-      h('p', { class: 'hint', text: 'Business days exclude Saturdays and Sundays. Public holidays are not considered.' }));
+      h('p', { class: 'hint', text: 'Business days exclude the selected non-working weekdays and manually entered holidays. Check holidays for your region.' }));
   },
 
   'date-add-calculator'(root) {

@@ -1503,6 +1503,13 @@ await domTest('date difference month end and include end show consistent counts'
  const app=await loadToolPage('date-difference','datetime'); const dates=app.querySelectorAll('input[type=date]'); dates[0].value='2024-01-31'; dates[1].value='2024-03-01'; click(btnByLabel(app,'Calculate difference')); assert.match(app.textContent,/30Total days.*0y 1m 1dCalendar/s);
  app.querySelector('.switch input').checked=true;click(btnByLabel(app,'Calculate difference'));assert.match(app.textContent,/31Total days.*0y 1m 1dCalendar/s);assert.match(app.textContent,/calendar breakdown excludes the end date/);
 });
+await domTest('date difference counts holidays, invalidates and rejects invalid holiday dates',async()=>{
+ const app=await loadToolPage('date-difference','datetime'), dates=app.querySelectorAll('input[type=date]');
+ dates[0].value='2024-01-01'; dates[1].value='2024-01-08'; const holidays=app.querySelector('textarea'); holidays.value='2024-01-01, 2024-01-06, 2024-01-01';
+ click(btnByLabel(app,'Calculate difference')); assert.match(app.textContent,/4Business days/); assert.match(app.textContent,/1Holidays excluded/);
+ const weekend=app.querySelector('select');weekend.value='none';fire(weekend,'change');assert.equal(app.querySelector('.result-body'),null);click(btnByLabel(app,'Calculate difference'));assert.match(app.textContent,/5Business days/);
+ holidays.value='2024-02-30';fire(holidays,'input');click(btnByLabel(app,'Calculate difference'));assert.match(statusText(document),/Invalid date/);assert.equal(app.querySelector('.result-body'),null);
+});
 await domTest('date add rejects fractional amount and clears output',async()=>{
  const app=await loadToolPage('date-add-calculator','datetime');app.querySelector('input[type=date]').value='2024-01-31'; app.querySelector('input[type=number]').value='1'; app.querySelector('select').value='months';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/2024-02-29ISO/);
  app.querySelector('input[type=number]').value='1.5';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/whole number/);assert.doesNotMatch(app.textContent,/2024-02-29ISO/);

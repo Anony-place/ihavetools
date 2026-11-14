@@ -327,6 +327,15 @@ try {
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'hash comparison mobile accessibility');
   console.log('✓ URL line conversion and trusted checksum comparison');
+  await go('date-difference');
+  await page.getByLabel('Start date',{exact:true}).fill('2024-01-01'); await page.getByLabel('End date',{exact:true}).fill('2024-01-08');
+  await page.getByLabel('Holidays (YYYY-MM-DD)').fill('2024-01-01, 2024-01-06, 2024-01-01');
+  await page.getByRole('button',{name:'Calculate difference'}).click();
+  assert.match(await page.locator('#tool-app').innerText(),/4\s*Business days/i); assert.match(await page.locator('#tool-app').innerText(),/1\s*Holidays excluded/i);
+  await page.getByLabel('Non-working weekdays').selectOption('fri_sat'); assert.equal(await page.locator('#tool-app .stat-card').count(),0);
+  await page.getByRole('button',{name:'Calculate difference'}).click(); assert.match(await page.locator('#tool-app').innerText(),/4\s*Business days/i);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'date difference mobile accessibility');
   await go('business-day-calculator');
   await page.getByLabel('Start date',{exact:true}).fill('2024-02-28');
   await page.getByLabel('End date (for counting)').fill('2024-03-01');
