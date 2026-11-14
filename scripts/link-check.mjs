@@ -145,6 +145,25 @@ test('tool pages have steps, FAQ and privacy note', () => {
     assert.match(html, /Related tools/, `${t.id} missing related tools`);
   }
 });
+test('tool FAQs reflect visible answers and omit generated alias padding', () => {
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  for (const t of tools) {
+    const html=readFileSync(join(ROOT,'tools',t.id,'index.html'),'utf8');
+    assert.doesNotMatch(html,/People also search for this tool as|Do I need to install anything to use|is another name people use for this tool/);
+    const faqs=[...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map(m=>JSON.parse(m[1])).find(x=>x['@type']==='FAQPage');
+    assert.ok(faqs?.mainEntity.length,`${t.id} FAQ schema`);
+    for(const item of faqs.mainEntity) {
+      assert.ok(html.includes(`<summary>${esc(item.name)}</summary><p class="faq-a">${esc(item.acceptedAnswer.text)}</p>`),`${t.id} FAQ schema differs from visible copy`);
+    }
+    assert.match(html,new RegExp(`href="/categories/${t.categories[0]}/"`),`${t.id} category link`);
+  }
+});
+test('prioritized guides contain practical examples and caveats in static HTML',()=>{
+  for(const [id, phrases] of Object.entries({'json-validator':['trailing commas','Duplicate object keys','JSON Schema'], 'regex-tester':['UTF-16','worker','2,000'], 'csv-to-json':['column_1','strings','10 MiB']})) {
+    const html=readFileSync(join(ROOT,'tools',id,'index.html'),'utf8');
+    for(const phrase of phrases) assert.ok(html.includes(phrase),`${id}: missing ${phrase}`);
+  }
+});
 test('privacy disclosures cover sharing, hosting, local storage and remote thumbnail requests', () => {
   const policy = readFileSync(join(ROOT, 'privacy-policy/index.html'), 'utf8');
   for (const term of ['Vercel', 'query string', 'fragment', 'i.ytimg.com', 'Favourites and recently used', 'browser history']) assert.ok(policy.includes(term), term);

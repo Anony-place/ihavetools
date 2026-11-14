@@ -2,12 +2,36 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (93 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (96 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Search quality and technical SEO batch — plan
+
+Google's [people-first content guidance](https://developers.google.com/search/docs/fundamentals/creating-helpful-content)
+prioritizes useful, reliable content; its [title guidance](https://developers.google.com/search/docs/appearance/title-link)
+recommends descriptive, concise titles and avoiding repetitive boilerplate.
+No valid comparable GSC export has been verified, so impact on traffic, demand
+or rankings cannot be measured here. Existing competitor examples are feature
+signals, not market-volume estimates.
+
+1. Remove auto-generated alias-list paragraphs and generic alias/install FAQs
+   across tool pages; retain functional category links, real FAQs and local
+   search aliases. Use the actual tool description for meta snippets rather than
+   repeating the name and generic promises; Google may choose its own snippets.
+2. Add specific, implementation-checked examples, limitations and troubleshooting
+   for JSON Validator, Regex Tester and CSV to JSON. Preserve canonical routes,
+   related links, metadata consistency and sitemap; do not invent modification
+   dates or promise rich results.
+3. Add regression checks for generated copy, unique metadata, FAQ/schema parity,
+   crawlable routes and no-JS content; run full checks, audit, browser CI, one PR,
+   merge when green and verify live HTML. Follow up with correctly dated GSC
+   exports, page-filtered queries and equal windows before claiming traffic gains.
 
 ---
 

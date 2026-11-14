@@ -105,6 +105,11 @@ export const tools = [
     aliases: ['json lint', 'json syntax checker'],
     popularity: 86, added: '2026-06-02',
     steps: 'Paste JSON or load a local UTF-8 .json file.|Click Validate or wait for the live check.|Use Go to error to focus the first syntax error, fix it and validate again.',
+    guide: [
+      {h:'Fix a JSON syntax error',p:'JSON requires double-quoted property names and strings, with no comments or trailing commas. For example, {"a": 1,} is invalid; remove the comma to get {"a": 1}. The validator reports the first error and Go to error places the cursor there. Fix it and validate again; later errors may then become visible.'},
+      {h:'Duplicate keys and schema',p:'Duplicate object keys are reported as a warning even when the text is syntactically valid. Other parsers can keep only one value; resolve duplicates before relying on the data. Syntax validation does not check a JSON Schema, required fields or application-specific constraints.'},
+      {h:'File and input limits',p:'Paste JSON or choose a UTF-8 .json file up to 4,000,000 bytes and 1,000,000 characters. Files are read locally. On a file read error the previous text remains; the parser also has complexity limits, so a limit error is not proof that the JSON is invalid.'}
+    ],
     faqs: [{ q: 'Does this validate against a JSON Schema?', a: 'No. This checks JSON syntax and warns about duplicate object keys; it does not validate a schema or check application-specific rules.' }, { q: 'Are my files uploaded?', a: 'No. The validator reads and checks files locally in your browser. Files are limited to 4,000,000 bytes and 1,000,000 characters.' }] }),
   T({ id: 'json-minifier', name: 'JSON Minifier', icon: 'minimize', engine: 'developer', categories: ['developer', 'data'],
     blurb: 'Strip whitespace from JSON and see how many bytes you saved.',
@@ -216,7 +221,12 @@ export const tools = [
     keywords: ['regex', 'regular expression', 'test', 'match', 'capture group', 'pattern'],
     aliases: ['regexp', 'regular expression tester'],
     popularity: 80, featured: true, added: '2026-06-03',
-    steps: 'Type a regular expression and enable the flags you need (g, i, m, s, u).|Paste or type a test string.|Check highlighted matches, the match list and capture groups below.' }),
+    steps: 'Type a regular expression and enable the flags you need (g, i, m, s, u).|Paste or type a test string.|Check highlighted matches, the match list and capture groups below.',
+    guide: [
+      {h:'Test a pattern and flags',p:'This tester uses JavaScript regular expressions. For example, [0-9]+ matches one or more ASCII digits; enable g to find multiple matches. The i flag ignores case, m changes line anchors, s lets dot match line breaks, and u enables Unicode mode. Behavior can differ from other regex engines.'},
+      {h:'Read matches and groups',p:'Highlights show matched portions and the table lists positions in UTF-16 code units, not byte offsets or necessarily user-perceived characters. Numbered and named captures are displayed; long captures may be shortened. Zero-width matches do not consume characters.'},
+      {h:'Limits and timeouts',p:'Patterns are limited to 2,000 characters and input to 100,000 UTF-16 code units. A local worker is stopped after one second to protect the page. Simplify a timed-out pattern or reduce the input; output is capped and shows at most 100 rows and 200 highlights. Worker support is required.'}
+    ] }),
   T({ id: 'jwt-decoder', name: 'JWT Decoder', icon: 'key', engine: 'developer', categories: ['developer', 'security'],
     blurb: 'Decode JWT headers and payloads and inspect expiry times.',
     description: 'Paste a JSON Web Token to decode its header and payload, inspect issued/expiry timestamps in human terms, and see signature details. Nothing is verified online.',
@@ -1226,7 +1236,12 @@ export const tools = [
     keywords: ['csv', 'json', 'convert', 'csv to json', 'parse csv', 'delimited'],
     aliases: ['csv2json', 'convert csv', 'csv parser'],
     popularity: 78, featured: true, added: '2026-06-16',
-    steps: 'Paste CSV text (or drop a .csv file).|Set the delimiter, header and optional type inference.|Convert, then copy or download the JSON.' }),
+    steps: 'Paste CSV text (or drop a .csv file).|Set the delimiter, header and optional type inference.|Convert, then copy or download the JSON.',
+    guide: [
+      {h:'Quoted data and delimiters',p:'Select comma, semicolon, tab or pipe to match your file. Quoted fields can contain delimiters and line breaks, and a doubled quote inside a quoted field represents one quote. For example, a row with "Ada, A." in quotes keeps the comma inside one value.'},
+      {h:'Headers and values',p:'With the header option, each record becomes an object. Header whitespace is preserved, blank names are generated and duplicate names are rejected. Without a header, all rows become objects with generated keys such as column_1 and column_2. Values stay strings by default, preserving IDs like 001; optional type inference can change text or round decimals, so check the result.'},
+      {h:'Limits and review',p:'CSV text is limited to 1,000,000 characters, 10,000 rows, 256 columns and 250,000 cells; uploaded files are limited to 10 MiB. Conversion runs locally. Keep the original and review your output, especially when switching delimiters or enabling type inference.'}
+    ] }),
   T({ id: 'json-to-csv', name: 'JSON to CSV', icon: 'table', engine: 'data', categories: ['data', 'developer'],
     blurb: 'JSON arrays to properly escaped CSV, with column selection.',
     description: 'Convert a JSON array of objects into CSV with selectable columns. Null, missing and empty strings become empty cells; decimals may round. Quoting does not prevent spreadsheet formula execution.',

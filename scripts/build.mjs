@@ -52,14 +52,9 @@ function faqsFor(tool) {
     { q: `Is ${tool.name} free to use?`, a: 'Yes — it is free to use without signing up. Individual tools have processing and device limits.' },
     { q: 'How is my data handled?', a: privacyFor(tool) },
   ];
-  // Every tool also gets FAQs built from its own description/aliases, so
-  // long-tail questions ("what is X used for?", "is <alias> the same as X?")
-  // have unique, honest answers instead of boilerplate alone.
-  const push = (q, a) => { if (!faqs.some((f) => f.q === q)) faqs.push({ q, a }); };
-  push(`What is ${tool.name} used for?`, tool.description);
-  const alias = (tool.aliases || []).find((a) => a.toLowerCase() !== tool.name.toLowerCase());
-  if (alias) push(`Is “${alias}” the same as ${tool.name}?`, `Yes — “${alias}” is another name people use for this tool. This page is the free online ${tool.name}: open it and use it right away, with nothing to download or sign up for.`);
-  push(`Do I need to install anything to use ${tool.name}?`, `No. ${tool.name} runs in any modern web browser — on a phone, tablet or computer — as soon as the page opens.`);
+  // Preserve authored answers and a concise description when not already present.
+  const question = `What is ${tool.name} used for?`;
+  if (!faqs.some(f => f.q === question)) faqs.push({q:question,a:tool.description});
   return faqs.slice(0, 6);
 }
 
@@ -387,7 +382,6 @@ ${breadcrumb([[c.name]])}
 function buildTool(t) {
   const cat = categoryById.get(t.categories[0]);
   const related = relatedTools(t, 6);
-  const aliasList = (t.aliases || []).filter((a) => a.toLowerCase() !== t.name.toLowerCase()).slice(0, 3);
   const faqs = faqsFor(t);
   const privacy = privacyFor(t);
   const groupName = { developer: 'developer', text: 'text', calculators: 'calculators', converters: 'converters', security: 'security', image: 'image', color: 'color', webseo: 'webseo', student: 'student', math: 'math', datetime: 'datetime', data: 'data', misc: 'misc', pdf: 'pdf', audio: 'audio' }[t.engine] || t.categories[0];
@@ -420,7 +414,7 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
         <li><strong>Free to use</strong> — no sign-up or automatic branding. Individual tools have file and device limits.</li>
         <li><strong>Works everywhere</strong> — any modern browser on a phone, tablet or computer, ready the moment the page opens.</li>
       </ul>
-      ${aliasList.length ? `<p>People also search for this tool as ${aliasList.map((a) => `“${esc(a)}”`).join(', ')} — it is the same free online tool. ${esc(t.name)} is part of our <a href="/categories/${cat.id}/">${esc(cat.name)} tools</a> collection.</p>` : `<p>${esc(t.name)} is part of our <a href="/categories/${cat.id}/">${esc(cat.name)} tools</a> collection — ${tools.length} free browser-based tools in total.</p>`}
+      <p>Explore more <a href="/categories/${cat.id}/">${esc(cat.name)} tools</a>.</p>
     </section>
     <section><h2>Frequently asked questions</h2><div class="faq-list">${faqs.map((f) => `<details><summary>${esc(f.q)}</summary><p class="faq-a">${esc(f.a)}</p></details>`).join('')}</div></section>
     ${related.length ? `<section><h2>Related tools</h2><div class="card-grid cols-3">${related.map(toolCard).join('')}</div><p style="margin-top:16px"><a class="section-link" href="/categories/${cat.id}/">Browse all ${toolsByCategory(cat.id).length} ${esc(cat.name)} tools →</a></p></section>` : ''}
@@ -429,7 +423,7 @@ ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
   write(`tools/${t.id}/index.html`, layout({
     bodyClass: 'page-tool',
     title: `${t.name} — Free & Online | ${site.name}`,
-    description: metaDesc(`${t.name} online — ${t.description} Free, no sign-up; runs in your browser.`),
+    description: metaDesc(t.description),
     canonical: pageUrl(`/tools/${t.id}/`),
     // Top tools carry their own OG image (scripts/og.mjs); the rest share their category's.
     ogImage: existsSync(join(ROOT, 'assets/og', `tool-${t.id}.png`)) ? `/assets/og/tool-${t.id}.png` : `/assets/og/category-${cat.id}.png`,
