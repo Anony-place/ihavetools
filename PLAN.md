@@ -11,6 +11,28 @@
 
 ---
 
+## JSON duplicate-key diagnostics — plan
+
+[RFC 8259](https://www.rfc-editor.org/rfc/rfc8259) says object member names
+should be unique; duplicate handling varies between parsers. Competitor
+[JSON Editor Online](https://jsoneditoronline.org/features/) lists clickable
+validation issues and schema validation, which shows a workflow expectation,
+not measured demand. Our validator warns about duplicates but does not help
+locate them; dotted paths are ambiguous and unbounded duplication can amplify
+memory. Schema validation remains out of scope rather than shipping a partial,
+unsafe implementation or claiming parity.
+
+1. Report duplicate occurrences with bounded location details and escaped JSON
+   Pointer-style paths, with precise count and safe truncation for long paths.
+2. Add accessible buttons to jump to duplicate keys, keep input local, avoid
+   confusing syntax warnings with JSON Schema validation, and fix CR-only line
+   counting while retaining UTF-16 selection offsets.
+3. Test escaped and nested keys, repeated occurrences, large duplicate sets,
+   input edits, CR/LF/CRLF, keyboard/mobile accessibility and full suite. Ship
+   one PR after checks; merge only green CI and verify production.
+
+---
+
 ## Site search discovery and reliability — plan
 
 An internal search audit found everyday queries such as “merge pdf files” and

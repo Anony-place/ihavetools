@@ -736,6 +736,17 @@ try {
   await page.locator('#tool-app .status-line').getByText(/Invalid JSON/).waitFor();
   await page.getByRole('button',{name:'Go to error'}).click();
   assert.equal(await page.getByLabel('JSON to validate').evaluate(el=>el.selectionStart),8);
+  await page.getByLabel('JSON to validate').fill('{"nested":{"a/b":1,"a/b":2}}');
+  await page.getByRole('button',{name:'Validate',exact:true}).click();
+  assert.match(await page.locator('#tool-app').innerText(),/\/nested\/a~1b/);
+  await page.getByRole('button',{name:'Go to duplicate 1'}).click();
+  assert.equal(await page.getByLabel('JSON to validate').evaluate(el=>el.selectionStart),19);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  const longDuplicateKey='x'.repeat(300);
+  await page.getByLabel('JSON to validate').fill(`{"${longDuplicateKey}":1,"${longDuplicateKey}":2}`);
+  await page.getByRole('button',{name:'Validate',exact:true}).click();
+  assert.match(await page.locator('#tool-app').innerText(),/long paths are truncated/);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1), 'duplicate key diagnostics fit mobile');
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[], 'JSON validator mobile accessibility');
   console.log('✓ attendance, Roman, robots and JSON validator interactions and mobile axe');
   await go('text-diff');
