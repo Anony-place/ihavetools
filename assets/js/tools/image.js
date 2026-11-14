@@ -696,7 +696,7 @@ const defs = {
         previews.show(blob, (url) => h('div', {},
           h('img', { class: 'img-preview', src: url, alt: 'Converted preview', style: 'margin-top:12px' }),
           h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadImage(blob, `${baseName(selected.name)}.${EXT_BY_FMT[format]}`); } }, `Download ${format.toUpperCase()}`))));
-        status.set(`Converted ${selected.name} → ${format.toUpperCase()} (${fmtBytes(blob.size)}) ✓`, 'success');
+        status.set(`Converted ${selected.name} → ${format.toUpperCase()}. ${canvas.width} × ${canvas.height} px. Original: ${selected.size.toLocaleString()} bytes; output: ${blob.size.toLocaleString()} bytes.`, 'success');
       } catch (e) { if (file === selected && revision === token) { previews.clear(); status.set(e.message, 'error'); } }
     };
     root.append(zone, info,

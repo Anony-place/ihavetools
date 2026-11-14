@@ -115,9 +115,9 @@
 - [Image to PDF](https://i-have-tools.vercel.app/tools/image-to-pdf/): Turn JPG, PNG or WebP images into one PDF — in your browser.
 - [Income Tax Calculator](https://i-have-tools.vercel.app/tools/income-tax-calculator/): India income tax for FY 2025-26 — old vs new regime compared instantly.
 - [JPG to PNG Converter](https://i-have-tools.vercel.app/tools/jpg-to-png/): Convert JPG/JPEG images to PNG losslessly, right in your browser.
-- [PNG to JPG Converter](https://i-have-tools.vercel.app/tools/png-to-jpg/): Convert PNG images to smaller JPGs, with a background colour for transparency.
+- [PNG to JPG Converter](https://i-have-tools.vercel.app/tools/png-to-jpg/): Convert PNG images to JPG, with a background colour for transparency.
 - [WebP to PNG Converter](https://i-have-tools.vercel.app/tools/webp-to-png/): Convert WebP images to widely-compatible PNGs, locally and free.
-- [JPG to WebP Converter](https://i-have-tools.vercel.app/tools/jpg-to-webp/): Convert JPG photos to modern, smaller WebP files for the web.
+- [JPG to WebP Converter](https://i-have-tools.vercel.app/tools/jpg-to-webp/): Convert JPG photos to WebP locally with adjustable quality.
 - [YouTube Thumbnail Downloader](https://i-have-tools.vercel.app/tools/youtube-thumbnail-downloader/): Download any YouTube video thumbnail in HD, SD and more sizes.
 - [QR Code Generator](https://i-have-tools.vercel.app/tools/qr-code-generator/): Create QR codes for links, text and Wi-Fi — download as PNG or SVG.
 - [RD Calculator](https://i-have-tools.vercel.app/tools/rd-calculator/): Recurring deposit maturity with quarterly compounding and a yearly table.

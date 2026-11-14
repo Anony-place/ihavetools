@@ -665,6 +665,9 @@ try {
   const image = await readFile(await (await imageDownload).path());
   const metadata = await sharp(image).metadata();
   assert.equal(metadata.width, 8); assert.equal(metadata.height, 7); assert.equal(metadata.format, 'png');
+  const conversionStatus = await page.locator('#tool-app .status-line').innerText();
+  assert.match(conversionStatus, /8 × 7 px/);
+  assert.ok(conversionStatus.includes(`Original: ${png.length.toLocaleString()} bytes; output: ${image.length.toLocaleString()} bytes`));
   assert.equal(await page.getByLabel('Quality (5–100)').isDisabled(),true);
   await page.getByLabel('Convert to').selectOption('jpeg');
   assert.equal(await page.getByLabel('Quality (5–100)').isDisabled(),false);
@@ -675,9 +678,14 @@ try {
   const jpegDownload=page.waitForEvent('download'); await page.getByRole('button',{name:'Download JPEG'}).click();
   const jpegFile=await jpegDownload; assert.equal(jpegFile.suggestedFilename(),'tiny.jpg'); assert.equal((await sharp(await readFile(await jpegFile.path())).metadata()).format,'jpeg');
   await page.getByLabel('Quality (5–100)').fill('80'); assert.equal(await page.locator('#tool-app .img-preview').count(),0);
-  await go('png-to-jpg'); assert.equal(await page.getByLabel('Quality (5–100)').isDisabled(),false);
-  console.log('✓ canvas conversion, PNG/JPEG downloads, quality and preset controls');
   await page.setViewportSize({width:320,height:844});
+  await go('png-to-jpg'); assert.equal(await page.getByLabel('Quality (5–100)').isDisabled(),false);
+  await page.locator('#tool-app input[type=file]').setInputFiles({ name: 'tiny.png', mimeType: 'image/png', buffer: png });
+  await page.locator('#tool-app .status-line').getByText(/Loaded/).waitFor();
+  await page.getByRole('button',{name:'Convert to JPG'}).click();
+  await page.getByRole('button',{name:'Download JPEG'}).waitFor();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'image converter fits mobile after conversion');
+  console.log('✓ canvas conversion, PNG/JPEG downloads, quality, preset controls and mobile');
   await go('image-cropper');
   const raw=Buffer.alloc(80*40*4);
   for(let y=0;y<40;y++) for(let x=0;x<80;x++){const i=(y*80+x)*4; raw[i]=x<40?255:0; raw[i+2]=x<40?0:255; raw[i+3]=255;}
