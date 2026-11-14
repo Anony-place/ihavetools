@@ -10,6 +10,7 @@
 //   • every registry tool has a page; every page has a registry entry
 // =============================================================================
 import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -162,6 +163,38 @@ test('prioritized guides contain practical examples and caveats in static HTML',
   for(const [id, phrases] of Object.entries({'json-validator':['trailing commas','Duplicate object keys','JSON Schema'], 'regex-tester':['UTF-16','worker','2,000'], 'csv-to-json':['column_1','strings','10 MiB'], 'sitemap-generator':['significant update','10,000 URLs','not a guarantee'], 'meta-tag-generator':['no fixed Google character limit','different title link','not security']})) {
     const html=readFileSync(join(ROOT,'tools',id,'index.html'),'utf8');
     for(const phrase of phrases) assert.ok(html.includes(phrase),`${id}: missing ${phrase}`);
+  }
+});
+test('static home and category pages link to every registered tool with descriptive anchors', () => {
+  const doc = file => new JSDOM(readFileSync(join(ROOT, file), 'utf8')).window.document;
+  const home = doc('index.html');
+  const links = document => [...document.querySelectorAll('main a[href]')];
+  for (const t of tools) {
+    const href = `/tools/${t.id}/`;
+    assert.ok(links(home).some(a => a.getAttribute('href') === href && a.textContent.includes(t.name)), `home missing ${t.id}`);
+  }
+  for (const c of categories) {
+    const category = doc(`categories/${c.id}/index.html`);
+    assert.ok(links(home).some(a => a.getAttribute('href') === `/categories/${c.id}/` && a.textContent.includes(c.name)), `home missing category ${c.id}`);
+    for (const t of tools.filter(t => t.categories.includes(c.id))) {
+      assert.ok(links(category).some(a => a.getAttribute('href') === `/tools/${t.id}/` && a.textContent.includes(t.name)), `${c.id} missing ${t.id}`);
+    }
+  }
+});
+test('tool metadata retains full description, matches social tags and exposes JavaScript requirement', () => {
+  for (const t of tools) {
+    const html = readFileSync(join(ROOT, 'tools', t.id, 'index.html'), 'utf8');
+    const doc = new JSDOM(html).window.document;
+    const desc = t.description.replace(/\s+/g, ' ').trim();
+    assert.equal(doc.querySelector('meta[name="description"]').content, desc, t.id);
+    assert.equal(doc.querySelector('meta[property="og:description"]').content, desc, t.id);
+    assert.equal(doc.querySelector('meta[name="twitter:description"]').content, desc, t.id);
+    assert.match(doc.querySelector('noscript')?.textContent || '', /JavaScript is required/, t.id);
+    const schemas = [...doc.querySelectorAll('script[type="application/ld+json"]')].map(e => JSON.parse(e.textContent));
+    const howto = schemas.find(o => o['@type'] === 'HowTo');
+    assert.deepEqual(howto.step.map(s => s.text), t.steps.split('|'), `${t.id} HowTo schema`);
+    const crumb = schemas.find(o => o['@type'] === 'BreadcrumbList');
+    assert.equal(crumb.itemListElement.at(-1).item, `${site.url}/tools/${t.id}/`, `${t.id} breadcrumb`);
   }
 });
 test('privacy disclosures cover sharing, hosting, local storage and remote thumbnail requests', () => {

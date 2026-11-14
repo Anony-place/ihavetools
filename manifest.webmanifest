@@ -1,7 +1,7 @@
 {
   "name": "iHaveTools",
   "short_name": "iHaveTools",
-  "description": "Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser.",
+  "description": "Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

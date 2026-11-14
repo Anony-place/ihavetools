@@ -1,10 +1,10 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Everything runs in your browser. 133 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 133 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
-- [Image tools](https://i-have-tools.vercel.app/categories/image/): Compress, resize, convert and crop images locally. No uploads, no quality surprises, no waiting.
+- [Image tools](https://i-have-tools.vercel.app/categories/image/): Compress, resize, convert and crop images locally in your browser. Output quality and processing time depend on your settings and device.
 - [Video tools](https://i-have-tools.vercel.app/categories/video/): Inspect video files and pull out their audio track — processed locally in your browser.
 - [Audio tools](https://i-have-tools.vercel.app/categories/audio/): Generate, trim and re-speed audio without uploading a thing. Decoded and rendered in your browser.
 - [Text tools](https://i-have-tools.vercel.app/categories/text/): Counters, case converters, sorters and diff tools for working with text quickly.
