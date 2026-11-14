@@ -104,10 +104,10 @@ export const tools = [
     keywords: ['json', 'validate', 'lint', 'syntax', 'check', 'error'],
     aliases: ['json lint', 'json syntax checker'],
     popularity: 86, added: '2026-06-02',
-    steps: 'Paste JSON or load a local UTF-8 .json file.|Click Validate or wait for the live check.|Use Go to error to focus the first syntax error, fix it and validate again.',
+    steps: 'Paste JSON or load a local UTF-8 .json file.|Click Validate or wait for the live check.|Use Go to error for syntax problems or jump to a reported duplicate key, then fix and validate again.',
     guide: [
       {h:'Fix a JSON syntax error',p:'JSON requires double-quoted property names and strings, with no comments or trailing commas. For example, {"a": 1,} is invalid; remove the comma to get {"a": 1}. The validator reports the first error and Go to error places the cursor there. Fix it and validate again; later errors may then become visible.'},
-      {h:'Duplicate keys and schema',p:'Duplicate object keys are reported as a warning even when the text is syntactically valid. Other parsers can keep only one value; resolve duplicates before relying on the data. Syntax validation does not check a JSON Schema, required fields or application-specific constraints.'},
+      {h:'Duplicate keys and schema',p:'Duplicate object keys are reported as a warning even when the text is syntactically valid. Jump buttons locate up to 20 repeated key occurrences; JSON Pointer-style paths escape ~ as ~0 and / as ~1, and long paths are truncated. Other parsers can keep only one value or reject duplicates. Syntax validation does not check a JSON Schema, required fields or application-specific constraints.'},
       {h:'File and input limits',p:'Paste JSON or choose a UTF-8 .json file up to 4,000,000 bytes and 1,000,000 characters. Files are read locally. On a file read error the previous text remains; the parser also has complexity limits, so a limit error is not proof that the JSON is invalid.'}
     ],
     faqs: [{ q: 'Does this validate against a JSON Schema?', a: 'No. This checks JSON syntax and warns about duplicate object keys; it does not validate a schema or check application-specific rules.' }, { q: 'Are my files uploaded?', a: 'No. The validator reads and checks files locally in your browser. Files are limited to 4,000,000 bytes and 1,000,000 characters.' }] }),

@@ -150,7 +150,24 @@ await test('trailing content rejected', () => {
 await test('duplicate keys detected', () => {
   const r = dev.validateJson('{"a":1,"a":2}');
   assert.equal(r.ok, true);
-  assert.deepEqual(r.duplicateKeys, ['a']);
+  assert.deepEqual(r.duplicateKeys, ['/a']); assert.equal(r.duplicateCount,1); assert.equal(r.duplicateDetails[0].position,7);
+});
+await test('JSON duplicate diagnostics are bounded and retain exact offsets', () => {
+ const src=String.raw`{"a/b":{"~x":1,"\u007ex":2},"":{"":1,"":2}}`;
+ const result=dev.validateJson(src);
+ assert.equal(result.duplicateCount,2); assert.deepEqual(result.duplicateKeys,['/a~1b/~0x','//']);
+ assert.equal(src.slice(result.duplicateDetails[0].position, result.duplicateDetails[0].position+9), String.raw`"\u007ex"`);
+ const many='{'+Array(101).fill('"x":1').join(',')+'}'; const bounded=dev.validateJson(many);
+ assert.equal(bounded.duplicateCount,100); assert.equal(bounded.duplicateDetails.length,20); assert.equal(bounded.duplicateKeys.length,20);
+ const longKey='x'.repeat(10000); const long=dev.validateJson(`{"${longKey}":1,"${longKey}":2}`);
+ assert.equal(long.duplicateDetails[0].truncated,true); assert.ok(long.duplicateKeys[0].length <= 241);
+ assert.throws(()=>dev.compareJson(many,'{}'),/Duplicate/);
+});
+await test('JSON diagnostic positions count CR LF and CRLF consistently', () => {
+ for (const sep of ['\r','\n','\r\n']) {
+  const src=`{${sep}"x": 1,${sep}"y": }`; const r=dev.validateJson(src);
+  assert.equal(r.ok,false); assert.equal(r.line,3); assert.equal(r.column,6); assert.equal(src[r.position],'}');
+ }
 });
 await test('format/minify round-trip preserves values', () => {
   const src = '{"b":1,"a":[1.5,"x\\n",null,true,false,{"k":"中文"}]}';

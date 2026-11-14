@@ -13,12 +13,18 @@ export function validateJson(text) {
   let depth = 0;
   const lineCol = (pos) => {
     let line = 1, col = 1;
-    for (let k = 0; k < pos && k < n; k++) { if (text[k] === '\n') { line++; col = 1; } else col++; }
+    for (let k = 0; k < pos && k < n; k++) {
+      if (text[k] === '\r') { line++; col = 1; }
+      else if (text[k] === '\n') { if (k === 0 || text[k - 1] !== '\r') line++; col = 1; }
+      else col++;
+    }
     return { line, column: col };
   };
   const err = (msg, pos) => ({ ok: false, message: msg, position: pos, ...lineCol(pos) });
   if (n > 1000000) return err('JSON input exceeds the 1,000,000-character limit.', 0);
-  const dupKeys = [];
+  const dupKeys = [], duplicateDetails = [];
+  let duplicateCount = 0;
+  const duplicateLimit = 20;
   const ws = () => { while (i < n && /[\t\n\r ]/.test(text[i])) i++; };
 
   function parseValue(keyPath) {
@@ -86,8 +92,26 @@ export function validateJson(text) {
       let key;
       try { key = JSON.parse(text.slice(s.valueStart - 1, s.valueEnd + 1)); }
       catch { key = text.slice(s.valueStart, s.valueEnd); }
-      const fullKey = [...path, key].join('.');
-      if (seen.has(key)) dupKeys.push(fullKey);
+      if (seen.has(key)) {
+        duplicateCount++;
+        if (duplicateDetails.length < duplicateLimit) {
+          // Bound displayed paths; long keys and deep ancestors otherwise
+          // multiply memory use across many duplicate occurrences.
+          const parts = [...path, key];
+          let pointer = '', truncated = false;
+          for (const part of parts) {
+            const remaining = 240 - pointer.length;
+            if (remaining <= 0) { truncated = true; break; }
+            const escaped = String(part).slice(0, remaining + 1).replace(/~/g, '~0').replace(/\//g, '~1');
+            const piece = '/' + escaped;
+            if (piece.length > remaining || String(part).length > remaining) { pointer += piece.slice(0, remaining); truncated = true; break; }
+            pointer += piece;
+          }
+          if (truncated) pointer += '…';
+          dupKeys.push(pointer);
+          duplicateDetails.push({ pointer, position: s.valueStart - 1, truncated });
+        }
+      }
       seen.add(key);
       ws();
       if (text[i] !== ':') return err(`Expected ":" after the key ${JSON.stringify(key)}.`, i);
@@ -122,7 +146,7 @@ export function validateJson(text) {
   if (!result.ok) return result;
   ws();
   if (i < n) return err(`Unexpected content after the end of the JSON document (starts with "${text[i]}").`, i);
-  return { ok: true, duplicateKeys: dupKeys };
+  return duplicateCount ? { ok: true, duplicateKeys: dupKeys, duplicateCount, duplicateDetails } : { ok: true, duplicateKeys: [] };
 }
 
 export function jsonParse(text) {
@@ -808,7 +832,15 @@ const defs = {
       const v = validateJson(src);
       if (v.ok) {
         if (v.duplicateKeys?.length) {
-          status.set(`Valid JSON ✓ (with duplicate object keys: ${v.duplicateKeys.slice(0, 4).join(', ')}${v.duplicateKeys.length > 4 ? '…' : ''}). Other parsers may overwrite values.`, 'warning');
+          status.set(`Valid JSON syntax, but ${v.duplicateCount} duplicate key occurrence${v.duplicateCount === 1 ? '' : 's'} found. Other parsers may overwrite values.`, 'warning');
+          detail.append(h('p', {class:'hint', text:`Showing ${v.duplicateDetails.length} of ${v.duplicateCount} repeated key occurrences. Paths use JSON Pointer escaping (~0 for ~, ~1 for /); long paths are truncated. Select an entry to jump to the repeated key.`}));
+          const list = h('ul', {});
+          for (const [index, item] of v.duplicateDetails.entries()) {
+            list.append(h('li', {style:'margin:8px 0;overflow-wrap:anywhere'},
+              btn({label:`Go to duplicate ${index + 1}`, variant:'secondary', onClick:() => { inp.focus(); inp.setSelectionRange(item.position, item.position); }}),
+              ' ', h('code', {text:item.pointer})));
+          }
+          detail.append(list);
         } else status.set('Valid JSON ✓ — the document parses cleanly.', 'success');
       } else {
         status.set(`${/limit/.test(v.message) ? 'Unable to validate' : 'Invalid JSON'} — line ${v.line}, column ${v.column}`, 'error');

@@ -134,6 +134,14 @@ await domTest('JSON validator import, jump, invalidation and stale reads', async
   choose('late.json');click(btnByLabel(app,'Clear'));await finish(3,new TextEncoder().encode('{"old":true}').buffer);assert.equal(text.value,'');assert.match(statusText(document),/Cleared/);
  } finally {global.FileReader=saved;}
 });
+await domTest('JSON validator duplicate navigation is safe, capped and clears on edit', async () => {
+ const app=await loadToolPage('json-validator','developer'), input=app.querySelector('textarea');
+ input.value='{"a/b":{"<script>~":1,"<script>~":2},"":1,"":2}'; fire(input,'input'); click(btnByLabel(app,'Validate'));
+ assert.match(statusText(document),/2 duplicate key occurrences/); assert.match(app.textContent,/\/a~1b\/<script>~0/); assert.equal(app.querySelectorAll('script').length,0);
+ const jump=btnByLabel(app,'Go to duplicate 1'); assert.ok(jump); click(jump); assert.equal(input.selectionStart,input.value.lastIndexOf('"<script>~"'));
+ input.value='{'+Array(31).fill('"a":1').join(',')+'}'; fire(input,'input'); assert.equal(btnByLabel(app,'Go to duplicate 1'),undefined); click(btnByLabel(app,'Validate')); assert.match(app.textContent,/Showing 20 of 30/); assert.equal([...app.querySelectorAll('button')].filter(b=>b.textContent.includes('Go to duplicate')).length,20);
+ click(btnByLabel(app,'Clear')); assert.equal(btnByLabel(app,'Go to duplicate 1'),undefined);
+});
 await domTest('base64-encoder: unicode round trip via UI', async () => {
   const app = await loadToolPage('base64-encoder', 'developer');
   const ta = app.querySelector('textarea');
