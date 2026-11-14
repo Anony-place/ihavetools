@@ -11,6 +11,27 @@
 
 ---
 
+## Image rotation controls and conversion trust — plan
+
+[iLoveIMG](https://www.iloveimg.com/rotate-image) offers image rotation; this
+is a competitor feature signal, not measured search demand. Our rotator
+hardcodes quality and white flattening with no size comparison. Browser
+[canvas toBlob](https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toBlob)
+can fall back to PNG and applies quality only to lossy encoders. Existing JPG
+to PNG copy claims fixed size growth and exact fidelity even across color and
+metadata changes, contrary to [people-first guidance](https://developers.google.com/search/docs/fundamentals/creating-helpful-content).
+
+1. Add validated JPEG/WebP quality, JPEG background selection, byte-size change
+   reporting, and invalidate previews and in-flight results when settings change.
+2. Correct JPG-to-PNG and WebP-to-PNG promises and describe browser decoding,
+   output format, metadata and limits. Keep preset-page input behavior honest.
+3. Test validation, PNG ignoring controls, fallback, cancellation, actual JPEG
+   background and output format, mobile and accessibility. Run full checks and
+   audit; one PR, merge only after green CI and verify production. Do not claim
+   ranking or traffic gains without comparable measurements.
+
+---
+
 ## Image crop usability and guidance — plan
 
 [iLoveIMG](https://www.iloveimg.com/crop-image) offers pixel-rectangle cropping,

@@ -1636,7 +1636,12 @@ await domTest('image rotator cancels stale loads and stale encoding', async () =
     click(btnByLabel(app,'Clear image')); pending[0].onload(); await new Promise(r=>setTimeout(r,20));
     assert.match(statusText(document),/Image cleared/); assert.equal(app.querySelector('.img-preview'),null);
     drop(zone,good); await new Promise(r=>setTimeout(r,30)); pending[1].onload(); await new Promise(r=>setTimeout(r,20));
-    click(btnByLabel(app,'Create preview')); assert.ok(encode);
+    const quality=app.querySelector('input[type=number]'), bg=app.querySelector('input[type=color]'), selects=app.querySelectorAll('select');
+    assert.equal(quality.disabled,true); selects[1].value='jpeg'; fire(selects[1],'change'); assert.equal(quality.disabled,false);
+    quality.value='101'; fire(quality,'input'); click(btnByLabel(app,'Create preview')); assert.match(statusText(document),/Quality must/);
+    quality.value='75'; fire(quality,'input'); click(btnByLabel(app,'Create preview')); assert.ok(encode);
+    bg.value='#ff0000';fire(bg,'input');encode(new Blob(['jpg'],{type:'image/jpeg'})); await new Promise(r=>setTimeout(r,20)); assert.equal(app.querySelector('.img-preview'),null);
+    selects[1].value='png'; fire(selects[1],'change'); assert.equal(quality.disabled,true); click(btnByLabel(app,'Create preview')); assert.ok(encode);
     const angle=app.querySelector('select'); angle.value='180'; fire(angle,'change');
     encode(new Blob(['png'],{type:'image/png'})); await new Promise(r=>setTimeout(r,20));
     assert.equal(app.querySelector('.img-preview'),null); assert.match(statusText(document),/Settings changed/);

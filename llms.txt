@@ -114,7 +114,7 @@
 - [FD Calculator](https://i-have-tools.vercel.app/tools/fd-calculator/): Fixed deposit maturity and interest with quarterly compounding.
 - [Image to PDF](https://i-have-tools.vercel.app/tools/image-to-pdf/): Turn JPG, PNG or WebP images into one PDF — in your browser.
 - [Income Tax Calculator](https://i-have-tools.vercel.app/tools/income-tax-calculator/): India income tax for FY 2025-26 — old vs new regime compared instantly.
-- [JPG to PNG Converter](https://i-have-tools.vercel.app/tools/jpg-to-png/): Convert JPG/JPEG images to PNG losslessly, right in your browser.
+- [JPG to PNG Converter](https://i-have-tools.vercel.app/tools/jpg-to-png/): Convert JPG/JPEG images to PNG locally in your browser.
 - [PNG to JPG Converter](https://i-have-tools.vercel.app/tools/png-to-jpg/): Convert PNG images to JPG, with a background colour for transparency.
 - [WebP to PNG Converter](https://i-have-tools.vercel.app/tools/webp-to-png/): Convert WebP images to widely-compatible PNGs, locally and free.
 - [JPG to WebP Converter](https://i-have-tools.vercel.app/tools/jpg-to-webp/): Convert JPG photos to WebP locally with adjustable quality.
