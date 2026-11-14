@@ -589,7 +589,14 @@ try {
   assert.match(await page.locator('#tool-app').innerText(),/M = 1000 \+ CM = 900 \+ XC = 90 \+ IV = 4/);
   await page.getByRole('button',{name:'Roman → Number'}).click();
   await page.getByLabel('Value',{exact:true}).fill('MCMXCIV');
-  assert.match(await page.locator('#tool-app .result-body').innerText(),/1994/);
+  assert.match(await page.locator('#tool-app .result-body').first().innerText(),/1994/);
+  await page.getByLabel('Gregorian date').fill('2024-02-29');await page.getByRole('button',{name:'Convert date'}).click();
+  assert.match(await page.locator('#tool-app .result-body').nth(1).innerText(),/XXIX \/ II \/ MMXXIV/);
+  await page.getByLabel('Roman date order').selectOption('mdy');assert.doesNotMatch(await page.locator('#tool-app .result-body').nth(1).innerText(),/XXIX/);
+  await page.getByLabel('Date conversion direction').selectOption('to-date');await page.getByLabel('Roman date',{exact:true}).fill('II / XXIX / MMXXIV');await page.getByRole('button',{name:'Convert date'}).click();
+  assert.match(await page.locator('#tool-app .result-body').nth(1).innerText(),/2024-02-29/);
+  await page.getByLabel('Roman date',{exact:true}).fill('II / XXIX / MCM');await page.getByRole('button',{name:'Convert date'}).click();assert.match(await page.locator('#tool-app').innerText(),/valid Gregorian date/);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[], 'roman mobile accessibility');
   await go('robots-txt-generator');
   await page.getByRole('button',{name:'Edit * rule 1',exact:true}).click();

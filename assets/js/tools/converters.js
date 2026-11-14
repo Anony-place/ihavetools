@@ -138,6 +138,30 @@ export function fromRoman(str) {
   return total;
 }
 
+/** Proleptic Gregorian date validation, without time zones or Date's year 0–99 quirks. */
+function validRomanDate(year, month, day) {
+  if (!Number.isInteger(year) || year < 1 || year > 3999 || !Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(day)) throw new Error('Enter a valid Gregorian date with year 0001–3999.');
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31,leap ? 29 : 28,31,30,31,30,31,31,30,31,30,31];
+  if (day < 1 || day > days[month - 1]) throw new Error('Enter a valid Gregorian date with year 0001–3999.');
+  return {year,month,day};
+}
+export function romanDate(value, direction, order) {
+  if (!['dmy','mdy'].includes(order)) throw new Error('Choose a valid date order.');
+  if (direction === 'to-roman') {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
+    if (!match) throw new Error('Enter a Gregorian date in YYYY-MM-DD format.');
+    const {year,month,day} = validRomanDate(Number(match[1]),Number(match[2]),Number(match[3]));
+    return (order === 'dmy' ? [day,month,year] : [month,day,year]).map(toRoman).join(' / ');
+  }
+  if (direction !== 'to-date') throw new Error('Choose a valid conversion direction.');
+  const parts = String(value).split('/').map(s => s.trim());
+  if (parts.length !== 3 || parts.some(s=>!s)) throw new Error('Enter three standard Roman numerals separated by slashes.');
+  const [a,b,year] = parts.map(fromRoman);
+  const {month,day} = validRomanDate(year,order === 'dmy' ? b : a,order === 'dmy' ? a : b);
+  return `${String(year).padStart(4,'0')}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
 // Avoid displaying a nonzero conversion as zero in either the result or table.
 export function formatConversion(value, digits = 8) {
   if (value !== 0 && (Math.abs(value) < 1e-6 || Math.abs(value) >= 1e15)) return value.toExponential(digits);
@@ -236,6 +260,21 @@ const defs = {
       actionsRow(btn({ label: 'Convert', icon: 'type', onClick: run })),
       status, h('br'), out.panel, h('h3', {text:'Value breakdown'}), details);
     run();
+    const direction = select({options:[{v:'to-roman',t:'Date → Roman date'},{v:'to-date',t:'Roman date → date'}],value:'to-roman'});
+    const order = select({options:[{v:'dmy',t:'Day / month / year'},{v:'mdy',t:'Month / day / year'}],value:'dmy'});
+    const date = input({type:'date',min:'0001-01-01',max:'3999-12-31'});
+    const roman = input({type:'text',placeholder:'e.g. XXIX / II / MMXXIV'});
+    const dateField = field({label:'Gregorian date',control:date,hint:'Years 0001–3999; interpreted as a calendar date, not a timestamp.'});
+    const romanField = field({label:'Roman date',control:roman,hint:'Three standard numerals separated by slashes, using the selected order.'}); romanField.hidden = true;
+    const dateResult = resultPanel({label:'Date conversion result',copy:true,placeholder:'Convert a date to see the result.'});
+    const dateStatus = statusLine('');
+    const resetDateResult = () => {dateResult.placeholder(); dateStatus.set('Input changed. Convert again.','info');};
+    direction.addEventListener('change',()=>{dateField.hidden=direction.value !== 'to-roman'; romanField.hidden=direction.value !== 'to-date'; resetDateResult();});
+    for (const el of [order,date,roman]) {el.addEventListener('input',resetDateResult);el.addEventListener('change',resetDateResult);}
+    const convertDate = () => {try {const result=romanDate(direction.value === 'to-roman' ? date.value : roman.value,direction.value,order.value);dateResult.set(result);dateStatus.set(direction.value === 'to-roman' ? `Roman date uses ${order.value === 'dmy' ? 'day / month / year' : 'month / day / year'} order.` : 'Gregorian date shown as YYYY-MM-DD.','success');} catch(e) {dateResult.placeholder();dateStatus.set(e.message,'error');}};
+    root.append(h('h2',{text:'Roman date converter'}),h('p',{class:'hint',text:'Each date component is converted separately. Dates use the proleptic Gregorian calendar; historic Roman calendar conventions are not represented.'}),
+      h('div',{class:'field-row'},field({label:'Date conversion direction',control:direction}),field({label:'Roman date order',control:order})),dateField,romanField,
+      actionsRow(btn({label:'Convert date',icon:'calendar',onClick:convertDate})),dateStatus,dateResult.panel);
   },
 };
 

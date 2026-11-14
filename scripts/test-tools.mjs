@@ -947,6 +947,14 @@ await test('number bases, roman numerals and morse code', () => {
   assert.deepEqual(conv.romanBreakdown(1994), [{symbol:'M',value:1000},{symbol:'CM',value:900},{symbol:'XC',value:90},{symbol:'IV',value:4}]);
   assert.deepEqual(conv.romanBreakdown(3), [{symbol:'III',value:3}]);
   assert.throws(() => conv.romanBreakdown(0));
+  assert.equal(conv.romanDate('2024-02-29','to-roman','dmy'),'XXIX / II / MMXXIV');
+  assert.equal(conv.romanDate('2024-02-29','to-roman','mdy'),'II / XXIX / MMXXIV');
+  assert.equal(conv.romanDate('ii / xxix / mmxxiv','to-date','mdy'),'2024-02-29');
+  assert.equal(conv.romanDate('I / I / I','to-date','dmy'),'0001-01-01');
+  assert.equal(conv.romanDate('2000-02-29','to-roman','dmy'),'XXIX / II / MM');
+  for (const date of ['1900-02-29','2023-02-29','0000-01-01','4000-01-01','2024-04-31','2024-2-01']) assert.throws(()=>conv.romanDate(date,'to-roman','dmy'));
+  for (const date of ['XXX / II / MMXXIV','IIII / II / MMXXIV','I / II','I // MMXXIV']) assert.throws(()=>conv.romanDate(date,'to-date','dmy'));
+  for (const date of ['0001-01-01','1999-12-31','2000-02-29','3999-12-31']) for(const order of ['dmy','mdy']) assert.equal(conv.romanDate(conv.romanDate(date,'to-roman',order),'to-date',order),date);
   assert.equal(conv.toRoman(2026), 'MMXXVI');
   assert.equal(conv.toRoman(1994), 'MCMXCIV');
   assert.equal(conv.toRoman(49), 'XLIX');

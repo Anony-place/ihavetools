@@ -621,6 +621,13 @@ await domTest('unit converters reject numeric underflow instead of showing zero'
  v.value='1e-999';fire(v,'input');assert.match(app.textContent,/too small to represent/);assert.doesNotMatch(app.textContent,/Equal to…/);
  v.value='0e-999';fire(v,'input');assert.match(app.textContent,/Equal to…/);
 });
+await domTest('Roman date conversion supports both orders and clears stale results', async () => {
+ const app=await loadToolPage('roman-numeral-converter','converters');
+ const date=app.querySelector('input[type=date]'), sels=app.querySelectorAll('select');date.value='2024-02-29';fire(date,'input');click(btnByLabel(app,'Convert date'));assert.match(app.textContent,/XXIX \/ II \/ MMXXIV/);
+ sels[1].value='mdy';fire(sels[1],'change');assert.doesNotMatch(app.textContent,/XXIX \/ II \/ MMXXIV/);
+ sels[0].value='to-date';fire(sels[0],'change');const roman=app.querySelector('input[placeholder^="e.g. XXIX"]');roman.value='II / XXIX / MMXXIV';fire(roman,'input');click(btnByLabel(app,'Convert date'));assert.match(app.textContent,/2024-02-29/);
+ roman.value='II / XXIX / MCM';fire(roman,'input');click(btnByLabel(app,'Convert date'));assert.match(app.textContent,/valid Gregorian date/);assert.doesNotMatch(app.textContent,/2024-02-29/);
+});
 await domTest('roman converter requires decimal whole number input', async () => {
  const app=await loadToolPage('roman-numeral-converter','converters');const v=app.querySelector('input[type=text]');
  for(const text of ['0x10','1e2','1.0']){v.value=text;fire(v,'input');assert.match(app.textContent,/whole decimal number/);assert.doesNotMatch(resultText(document),/^(XVI|C|I)$/);}
