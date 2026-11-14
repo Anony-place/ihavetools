@@ -4,7 +4,7 @@
 // remove-duplicate-lines, text-sorter, text-diff, slug-generator,
 // lorem-ipsum-generator
 // =============================================================================
-import { h, field, input, textarea, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, privacyNote, mountTool, dropzone, readFile, downloadBlob } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, toast, copyText, privacyNote, mountTool, dropzone, readFile, downloadBlob } from '../ui.js';
 
 /* ═══════════════════════════ Text statistics ═══════════════════════════ */
 export function textStats(text) {
@@ -13,8 +13,13 @@ export function textStats(text) {
   const chars = [...text].length;
   const charsNoSpaces = [...text.replace(/\s/gu, '')].length;
   const sentences = text.split(/[.!?…]+[\s"')\]]*|$|$/u).map((s) => s.trim()).filter(Boolean).length;
-  const paragraphs = text.split(/\n\s*\n+/u).filter((p) => p.trim()).length;
   const lineParts = text ? text.split(/\r\n|\r|\n/) : [];
+  // A paragraph is a run of nonblank lines, independent of line-ending style.
+  let paragraphs = 0, inParagraph = false;
+  for (const line of lineParts) {
+    if (!line.trim()) inParagraph = false;
+    else if (!inParagraph) { paragraphs++; inParagraph = true; }
+  }
   const lines = lineParts.length;
   const nonEmptyLines = lineParts.filter((l) => l.trim()).length;
   const readingSeconds = Math.ceil((words / 200) * 60 / 5) * 5;
@@ -376,7 +381,8 @@ const defs = {
   'character-counter'(root) {
     const inp = textarea({ rows: 9, mono: false, placeholder: 'Type or paste text…' });
     const grid = statsGrid();
-    const custom = input({type:'number',min:1,max:1000000,step:1,placeholder:'Optional'});
+    const custom = input({type:'number',min:1,max:4000000,step:1,placeholder:'Optional'});
+    const customUnit = select({options:[{v:'codepoints',t:'Unicode code points'}, {v:'utf16',t:'UTF-16 code units'}, {v:'utf8',t:'UTF-8 bytes'}],value:'codepoints'});
     const customStatus = statusLine('');
     const status = statusLine('');
     let summary = '';
@@ -385,8 +391,8 @@ const defs = {
     const LIMITS = [
       { name: 'X (Twitter) post', limit: 280 },
       { name: 'SMS message', limit: 160 },
-      { name: 'Meta description', limit: 160 },
-      { name: 'Meta title', limit: 60 },
+      { name: 'Meta description (reference)', limit: 160 },
+      { name: 'Meta title (reference)', limit: 60 },
       { name: 'Instagram caption', limit: 2200 },
     ];
     const render = () => {
@@ -394,32 +400,38 @@ const defs = {
       try { validateListText(inp.value); } catch (e) { status.set(e.message, 'error'); return; }
       status.set('', 'info');
       const s = textStats(inp.value);
+      const units = { codepoints: s.chars, utf16: inp.value.length, utf8: new TextEncoder().encode(inp.value).length };
+      const unitLabels = { codepoints:'code-point', utf16:'UTF-16', utf8:'UTF-8 byte' };
       grid.set([
         { label: 'Characters', value: s.chars.toLocaleString() },
         { label: 'No spaces', value: s.charsNoSpaces.toLocaleString() },
+        { label: 'UTF-16 units', value: units.utf16.toLocaleString() },
+        { label: 'UTF-8 bytes', value: units.utf8.toLocaleString() },
         { label: 'Letters', value: s.letters.toLocaleString() },
         { label: 'Digits', value: s.digits.toLocaleString() },
         { label: 'Words', value: s.words.toLocaleString() },
       ]);
       const customLimit = custom.value === '' ? null : Number(custom.value);
-      const valid = customLimit === null || (Number.isSafeInteger(customLimit) && customLimit >= 1 && customLimit <= 1000000);
-      customStatus.set(valid ? '' : 'Custom limit must be a whole number from 1 to 1,000,000.', valid ? 'info' : 'error');
-      summary = `Characters: ${s.chars}\nCharacters without whitespace: ${s.charsNoSpaces}\nLetters: ${s.letters}\nNumbers: ${s.digits}\nWords: ${s.words}`;
-      const limits = valid && customLimit !== null ? [{name:'Custom code-point limit',limit:customLimit}, ...LIMITS] : LIMITS;
+      const valid = customLimit === null || (Number.isSafeInteger(customLimit) && customLimit >= 1 && customLimit <= 4000000);
+      customStatus.set(valid ? '' : 'Custom limit must be a whole number from 1 to 4,000,000.', valid ? 'info' : 'error');
+      summary = `Characters (code points): ${s.chars}\nCharacters without whitespace: ${s.charsNoSpaces}\nUTF-16 code units: ${units.utf16}\nUTF-8 bytes: ${units.utf8}\nLetters: ${s.letters}\nNumbers: ${s.digits}\nWords: ${s.words}${valid && customLimit !== null ? `\nCustom ${unitLabels[customUnit.value]} limit: ${units[customUnit.value]} / ${customLimit}` : ''}`;
+      const limits = valid && customLimit !== null ? [{name:`Custom ${unitLabels[customUnit.value]} limit`,limit:customLimit,count:units[customUnit.value]}, ...LIMITS] : LIMITS;
       meters.replaceChildren(...limits.map((l) => {
-        const pct = Math.min(100, (s.chars / l.limit) * 100);
-        const over = s.chars > l.limit;
+        const count = l.count ?? s.chars;
+        const pct = Math.min(100, (count / l.limit) * 100);
+        const over = count > l.limit;
         return h('div', { class: 'field', style: 'margin-bottom:10px' },
-          h('label', { text: `${l.name} — ${s.chars.toLocaleString()} / ${l.limit.toLocaleString()}${over ? ' (over limit)' : ''}`, style: `font-weight:600;color:${over ? 'var(--danger)' : 'var(--text-2)'}` }),
+          h('label', { text: `${l.name} — ${count.toLocaleString()} / ${l.limit.toLocaleString()}${over ? ' (over limit)' : ''}`, style: `font-weight:600;color:${over ? 'var(--danger)' : 'var(--text-2)'}` }),
           h('div', { class: 'strength-meter' }, h('div', { style: `width:${pct}%;background:${over ? 'var(--danger)' : pct > 85 ? 'var(--warning)' : 'var(--success)'}` })));
       }));
     };
     inp.addEventListener('input', render);
     custom.addEventListener('input',render);
+    customUnit.addEventListener('change',render);
     render();
     root.append(h('div', { class: 'field-row', style: 'display:block' }, grid),
       field({ label: 'Your text', control: inp, hint: 'Maximum 1,000,000 UTF-16 code units and 50,000 lines.' }),
-      field({ label: 'Load text file (optional)', control: imported.file, hint: 'Local UTF-8 .txt or .md, up to 4,000,000 bytes; replaces the text.' }), field({label:'Custom character limit (optional)',control:custom,hint:'Counts code points, including whitespace; verify the target service’s counting rules.'}), customStatus, h('p', { class: 'hint', text: 'Counts Unicode code points, not grapheme clusters. Platform meters are rough references only: SMS encoding, X weighted characters and search-result pixel widths differ.' }), meters,
+      field({ label: 'Load text file (optional)', control: imported.file, hint: 'Local UTF-8 .txt or .md, up to 4,000,000 bytes; replaces the text.' }), h('div', { class: 'field-row' }, field({label:'Custom limit (optional)',control:custom,hint:'Whole number from 1 to 4,000,000.'}), field({label:'Custom limit unit',control:customUnit})), customStatus, h('p', { class: 'hint', text: 'Counts include whitespace. Code points are not grapheme clusters; UTF-8 encoding replaces unpaired surrogates. Platform meters use code points as rough references only: SMS encoding, X weighted characters and search-result pixel widths differ. Meta meters are not Google limits.' }), meters,
       actionsRow(btn({label:'Copy statistics',variant:'secondary',icon:'copy',onClick:async()=>{if(!summary){status.set('Fix the text before copying.','warning');return;} const ok=await copyText(summary); toast(ok?'Statistics copied':'Copy failed',ok?'success':'error');}}),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; render(); } })), status, privacyNote('Text and files are processed locally in your browser.'));
   },

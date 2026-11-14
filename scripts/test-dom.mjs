@@ -232,6 +232,13 @@ await domTest('character counter custom code-point limit', async () => {
  const app=await loadToolPage('character-counter','text'), text=app.querySelector('textarea'), custom=app.querySelector('input[type=number]');
  text.value='😀a';fire(text,'input');custom.value='1';fire(custom,'input');assert.match(app.textContent,/Custom code-point limit — 2 \/ 1 \(over limit\)/);
  custom.value='2';fire(custom,'input');assert.match(app.textContent,/Custom code-point limit — 2 \/ 2/);
+ const unit=app.querySelector('select'); unit.value='utf16';fire(unit,'change');assert.match(app.textContent,/Custom UTF-16 limit — 3 \/ 2 \(over limit\)/);
+ unit.value='utf8';fire(unit,'change');assert.match(app.textContent,/Custom UTF-8 byte limit — 5 \/ 2 \(over limit\)/);
+ unit.value='codepoints';fire(unit,'change');
+ const old=Object.getOwnPropertyDescriptor(navigator,'clipboard'), secure=Object.getOwnPropertyDescriptor(window,'isSecureContext'); let copied='';
+ Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{copied=value;}}}); Object.defineProperty(window,'isSecureContext',{configurable:true,value:true});
+ try {click(btnByLabel(app,'Copy statistics'));await new Promise(r=>setTimeout(r,0));assert.match(copied,/UTF-16 code units: 3/);assert.match(copied,/UTF-8 bytes: 5/);assert.match(copied,/Custom code-point limit: 2 \/ 2/);}
+ finally {if(old)Object.defineProperty(navigator,'clipboard',old);else delete navigator.clipboard;if(secure)Object.defineProperty(window,'isSecureContext',secure);else delete window.isSecureContext;}
  custom.value='0';fire(custom,'input');assert.match(statusText(document),/Custom limit must/);assert.doesNotMatch(app.textContent,/Custom code-point limit —/);
  custom.value='';fire(custom,'input');assert.doesNotMatch(app.textContent,/Custom code-point limit —/);
 });
