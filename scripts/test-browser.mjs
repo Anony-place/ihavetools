@@ -854,6 +854,12 @@ try {
   await page.getByRole('button',{name:'1:1',exact:true}).click(); assert.equal(await page.getByLabel('Crop width (px)').inputValue(),'40');
   await page.getByRole('button',{name:'Crop',exact:true}).click(); cropDownload=page.waitForEvent('download'); await page.getByRole('button',{name:/Download 40 × 40 PNG/}).click();
   cropData=await sharp(await readFile(await (await cropDownload).path())).metadata(); assert.deepEqual([cropData.width,cropData.height],[40,40]);
+  await page.getByRole('button',{name:'Center selection'}).click();
+  assert.equal(await page.locator('#tool-app .img-preview').count(),0); assert.equal(await page.getByLabel('Left (px)').inputValue(),'20');
+  await page.getByRole('button',{name:'Crop',exact:true}).click(); cropDownload=page.waitForEvent('download'); await page.getByRole('button',{name:/Download 40 × 40 PNG/}).click();
+  cropData=await sharp(await readFile(await (await cropDownload).path())).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+  assert.deepEqual([...cropData.data.subarray(0,4)],[255,0,0,255]); assert.deepEqual([...cropData.data.subarray(39*4,40*4)],[0,0,255,255]);
+
   // Verify actual format, alpha and JPEG white background, not only UI text.
   const alphaSource = await sharp({create:{width:16,height:16,channels:4,background:{r:255,g:0,b:0,alpha:0}}}).png().toBuffer();
   await page.locator('#tool-app input[type=file]').setInputFiles({name:'transparent.png',mimeType:'image/png',buffer:alphaSource});

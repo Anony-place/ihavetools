@@ -21,6 +21,17 @@ export function computeTargetDims(w, h0, { width = null, height = null, percent 
   if (height) return lock ? { width: Math.max(1, Math.round(w * (height / h0))), height } : { width: w, height };
   return { width: w, height: h0 };
 }
+// Largest approximate ratio rectangle centered within decoded image pixels.
+export function centeredCrop(width, height, ratio) {
+  if (![width, height].every(n => Number.isSafeInteger(n) && n > 0)) throw new Error('Invalid image dimensions.');
+  const ratios = { free: null, '1': [1, 1], '4/3': [4, 3], '3/2': [3, 2], '16/9': [16, 9], '9/16': [9, 16] };
+  if (!Object.hasOwn(ratios, ratio)) throw new Error('Choose a valid aspect ratio.');
+  if (ratio === 'free') return { x: 0, y: 0, w: width, h: height };
+  const [rw, rh] = ratios[ratio];
+  let w = width, h = Math.max(1, Math.round(width * rh / rw));
+  if (h > height) { h = height; w = Math.max(1, Math.min(width, Math.round(height * rw / rh))); }
+  return { x: Math.floor((width - w) / 2), y: Math.floor((height - h) / 2), w, h };
+}
 export function clampQuality(q) {
   const n = Number(q);
   if (!Number.isFinite(n)) return 0.8;
@@ -907,6 +918,14 @@ const defs = {
       revision++; previews.clear(); sel = {x:0, y:0, w:canvas.width, h:canvas.height}; showFields(); draw();
       status.set('Full image selected. Aspect presets can adjust it.', 'info');
     };
+    const centerSelection = () => {
+      if (!img) { status.set('Choose an image first.', 'warning'); return; }
+      revision++; previews.clear();
+      const c = centeredCrop(img.naturalWidth, img.naturalHeight, aspect.getValue());
+      [c.x, c.y, c.w, c.h].forEach((v, i) => { coords[i].value = String(v); });
+      sel = {x:c.x * scaleX, y:c.y * scaleY, w:c.w * scaleX, h:c.h * scaleY};
+      draw(); status.set(`Centered selection: ${c.w} × ${c.h} px. Crop to create a new output.`, 'info');
+    };
     const run = async () => {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
       previews.clear();
@@ -935,10 +954,10 @@ const defs = {
       } catch (e) { if (file === selected && revision === token) status.set(e.message, 'error'); }
     };
     root.append(zone, h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' }, field({ label: 'Aspect ratio', control: aspect })),
-      h('p', { class: 'hint', text: 'Drag the preview or enter pixel coordinates from the top-left corner. Aspect buttons adjust the current selection; manual coordinates can use any ratio.' }),
+      h('p', { class: 'hint', text: 'Drag the preview or enter pixel coordinates from the top-left corner. Aspect buttons adjust the current selection; Center selection uses the whole image and active ratio. Manual coordinates can use any ratio.' }),
       h('div', { class: 'field-row' }, field({ label: 'Left (px)', control: xIn }), field({ label: 'Top (px)', control: yIn }), field({ label: 'Crop width (px)', control: widthIn }), field({ label: 'Crop height (px)', control: heightIn })),
       h('div', {class:'field-row'}, field({label:'Output format', control:format}), field({label:'Quality (5–100)', control:quality, hint:'For JPEG and WebP; PNG ignores quality.'})),
-      actionsRow(btn({ label: 'Crop', icon: 'crop', onClick: run }), btn({label:'Select full image', variant:'secondary', onClick:resetSelection})),
+      actionsRow(btn({ label: 'Crop', icon: 'crop', onClick: run }), btn({label:'Select full image', variant:'secondary', onClick:resetSelection}), btn({label:'Center selection', variant:'secondary', onClick:centerSelection})),
       status, h('br'), stage, preview,
       privacyNote('Processed locally, never uploaded. PNG and WebP can preserve transparency; JPEG uses a white background. JPEG and WebP use lossy quality settings. Canvas output may discard metadata and animation. Unsupported encoders are rejected; output size may be larger than the original. Browser decoding can consume substantial memory. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
   },
