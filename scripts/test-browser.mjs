@@ -86,7 +86,15 @@ try {
   await toolSearch.press('Escape');
   assert.equal(await mobileSearch.getAttribute('aria-expanded'), 'false');
   assert.ok(await mobileSearch.evaluate(el=>el===document.activeElement));
-  await mobileSearch.click(); await toolSearch.fill('zqxjkwv');
+  await mobileSearch.click();
+  for (const [query, id] of [['csv to json','csv-to-json'], ['json to csv','json-to-csv'], ['robots.txt','robots-txt-generator'], ['image compression','image-compressor']]) {
+    await toolSearch.fill(query);
+    await page.locator(`#search-results a[href="/tools/${id}/"]`).first().waitFor();
+    assert.equal(await page.locator('#search-results a').first().getAttribute('href'), `/tools/${id}/`, query);
+  }
+  await toolSearch.fill('x'.repeat(257));
+  await page.locator('#search-results').getByText(/limited to 256 characters/).waitFor();
+  await toolSearch.fill('zqxjkwv');
   await page.locator('#search-results').getByText(/No tools match/).waitFor();
   await toolSearch.fill('json'); await page.locator('#search-results [role=option]').first().waitFor();
   await toolSearch.press('ArrowDown'); await toolSearch.press('Enter');

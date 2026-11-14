@@ -67,6 +67,13 @@ await chromeTest('homepage search: typing finds tools and links work', async () 
   fire(input, 'input');
   await new Promise((r) => setTimeout(r, 250));
   assert.match(doc.querySelector('#search-results').textContent, /No tools match/);
+  input.value = 'x'.repeat(257); fire(input, 'input');
+  await new Promise((r) => setTimeout(r, 150));
+  assert.match(doc.querySelector('#search-results').textContent, /limited to 256 characters/);
+  assert.equal(doc.querySelectorAll('#search-results a').length, 0);
+  input.value = 'robots.txt'; fire(input, 'input');
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(doc.querySelector('#search-results a')?.getAttribute('href'), '/tools/robots-txt-generator/');
 });
 await chromeTest('homepage stats are honest (tool count matches registry)', async () => {
   const { tools } = await import('../assets/js/registry.js');
