@@ -918,8 +918,8 @@ try {
   await page.getByLabel('Target size (KiB)').fill('5');
   await page.getByRole('button',{name:'Compress',exact:true}).click();
   await page.locator('#tool-app .img-preview').waitFor();
-  const info=await page.locator('#tool-app .img-preview').evaluate(async img=>{const b=await (await fetch(img.src)).blob(); return {size:b.size,type:b.type};});
-  assert.ok(info.size<=5120); assert.equal(info.type,'image/jpeg');
+  const compressorInfo=await page.locator('#tool-app .img-preview').evaluate(async img=>{const b=await (await fetch(img.src)).blob(); return {size:b.size,type:b.type};});
+  assert.ok(compressorInfo.size<=5120); assert.equal(compressorInfo.type,'image/jpeg');
   assert.match(await page.locator('#tool-app').innerText(),/Tested quality/);
   const dl=page.waitForEvent('download'); await page.getByRole('button',{name:'Download compressed image'}).click(); assert.match((await dl).suggestedFilename(),/\.jpg$/);
   await page.getByLabel('Output format').selectOption('png'); assert.equal(await page.locator('#tool-app .img-preview').count(),0);
