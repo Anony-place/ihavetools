@@ -83,7 +83,7 @@ export const CASE_MODES = [
 ];
 
 /* ═══════════════════════════ Line operations ═══════════════════════════ */
-export function dedupeLines(text, { caseInsensitive = false, trim = false, keepEmpty = true, keep = 'first' } = {}) {
+export function dedupeLines(text, { caseInsensitive = false, trim = false, normalize = false, keepEmpty = true, keep = 'first' } = {}) {
   if (!['first', 'last'].includes(keep)) throw new Error('Choose first or last occurrence.');
   const lines = text.split(/\r\n|\r|\n/);
   const seen = new Set();
@@ -91,7 +91,8 @@ export function dedupeLines(text, { caseInsensitive = false, trim = false, keepE
   if (keep === 'last') lines.reverse();
   for (const line of lines) {
     const key = trim ? line.trim() : line;
-    const cmp = caseInsensitive ? key.toLowerCase() : key;
+    const lowered = caseInsensitive ? key.toLowerCase() : key;
+    const cmp = normalize ? lowered.normalize('NFC') : lowered;
     if (!key.trim()) { if (keepEmpty) out.push(line); continue; }
     if (seen.has(cmp)) continue;
     seen.add(cmp);
@@ -100,13 +101,14 @@ export function dedupeLines(text, { caseInsensitive = false, trim = false, keepE
   return keep === 'last' ? out.reverse() : out;
 }
 
-export function sortItems(items, { mode = 'alpha', direction = 'asc', caseInsensitive = true, unique = false, random = Math.random } = {}) {
+export function sortItems(items, { mode = 'alpha', direction = 'asc', caseInsensitive = true, unique = false, normalize = false, random = Math.random } = {}) {
   let lines = [...items];
   if (unique) {
     const seen = new Set();
     lines = lines.filter(line => {
       if (!line.trim()) return true;
-      const key = caseInsensitive ? line.toLowerCase() : line;
+      const lowered = caseInsensitive ? line.toLowerCase() : line;
+      const key = normalize ? lowered.normalize('NFC') : lowered;
       if (seen.has(key)) return false;
       seen.add(key); return true;
     });
@@ -121,12 +123,18 @@ export function sortItems(items, { mode = 'alpha', direction = 'asc', caseInsens
     return lines;
   }
   const coll = new Intl.Collator(undefined, { sensitivity: caseInsensitive ? 'accent' : 'variant', numeric: mode === 'natural' });
+  // Cache keys once; JavaScript numbers are binary floating point, not exact decimals.
+  const numericKeys = mode === 'numeric' ? new Map(lines.map(line => {
+    const token = line.match(/[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/);
+    const number = token ? Number(token[0]) : NaN;
+    return [line, Number.isFinite(number) ? number : NaN];
+  })) : null;
   const cmp = (a, b) => {
     let r = 0;
     if (mode === 'alpha') r = coll.compare(a, b);
     else if (mode === 'natural') r = coll.compare(a, b);
     else if (mode === 'numeric') {
-      const na = parseFloat(a.replace(/^[^\d-]*/, '')), nb = parseFloat(b.replace(/^[^\d-]*/, ''));
+      const na = numericKeys.get(a), nb = numericKeys.get(b);
       const va = Number.isFinite(na), vb = Number.isFinite(nb);
       r = va !== vb ? (va ? -1 : 1) : va ? (na < nb ? -1 : na > nb ? 1 : coll.compare(a, b)) : coll.compare(a, b);
     } else if (mode === 'length') r = [...a].length - [...b].length || coll.compare(a, b);
@@ -469,6 +477,7 @@ const defs = {
   'remove-duplicate-lines'(root) {
     const inp = textarea({ rows: 10, value: '', placeholder: 'One entry per line…' });
     const ci = switchChip({ label: 'Case-insensitive' });
+    const normalize = switchChip({ label: 'Match Unicode equivalents (NFC)' });
     const trim = switchChip({ label: 'Trim whitespace before comparing', checked: true });
     const keepEmpty = switchChip({ label: 'Keep empty lines', checked: true });
     const keep = segControl({ options: [{v:'first',t:'Keep first'}, {v:'last',t:'Keep last'}], value:'first', ariaLabel:'Occurrence to keep' });
@@ -487,7 +496,7 @@ const defs = {
       const before = inp.value.split(/\r\n|\r|\n/).filter((l) => l.trim()).length;
       const result = dedupeLines(inp.value, {
         caseInsensitive: ci.querySelector('input').checked,
-        trim: trim.querySelector('input').checked,
+        trim: trim.querySelector('input').checked, normalize: normalize.querySelector('input').checked,
         keepEmpty: keepEmpty.querySelector('input').checked, keep: keep.getValue(),
       });
       const after = result.filter((l) => l.trim()).length;
@@ -496,8 +505,8 @@ const defs = {
     };
     root.append(field({ label: 'Input lines', control: inp }), field({label:'Load text file (optional)',control:imported.file,hint:'Local UTF-8 .txt or .md; up to 4,000,000 bytes.'}),
       field({label:'Occurrence to keep',control:keep}),
-      h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, trim, keepEmpty, sort),
-      h('p',{class:'hint',text:'Maximum 1,000,000 UTF-16 code units and 50,000 lines. Comparison uses optional trim and Unicode lowercasing; retained lines keep their original content. Blank lines are preserved individually or all removed; output uses LF. Sorting uses your browser locale.'}),
+      h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, trim, normalize, keepEmpty, sort),
+      h('p',{class:'hint',text:'Maximum 1,000,000 UTF-16 code units and 50,000 lines. Comparison can use trim, Unicode lowercasing and NFC normalization; retained lines keep their original content. NFC matches canonical equivalents, not every visually similar character. Blank lines are preserved individually or all removed; output uses LF. Sorting uses your browser locale.'}),
       actionsRow(btn({ label: 'Remove duplicates', icon: 'copy-x', onClick: run }),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel, privacyNote('Text and files are processed locally in your browser.'));
@@ -509,6 +518,7 @@ const defs = {
     const dir = segControl({ options: [{ v: 'asc', t: 'Ascending' }, { v: 'desc', t: 'Descending' }], value: 'asc', ariaLabel: 'Direction' });
     const ci = switchChip({ label: 'Case-insensitive', checked: true });
     const uniq = switchChip({ label: 'Remove duplicates' });
+    const normalize = switchChip({ label: 'Match Unicode equivalents (NFC)' });
     const trimItems = switchChip({ label: 'Trim each item' });
     const separator = () => h('select', {class:'input'},
       h('option',{value:'line',text:'Line break'}), h('option',{value:'comma',text:'Comma'}), h('option',{value:'semicolon',text:'Semicolon'}));
@@ -528,7 +538,7 @@ const defs = {
         const result = sortDelimited(inp.value, {
           mode: mode.getValue(), direction: dir.getValue(), inputSeparator: inputSep.value, outputSeparator: outputSep.value,
           trimItems: trimItems.querySelector('input').checked, caseInsensitive: ci.querySelector('input').checked,
-          unique: uniq.querySelector('input').checked,
+          unique: uniq.querySelector('input').checked, normalize: normalize.querySelector('input').checked,
         });
         out.set(result.text);
         status.set(`Sorted ${result.count.toLocaleString()} items (${mode.getValue()}, ${dir.getValue()}).`, 'success');
@@ -539,8 +549,8 @@ const defs = {
         field({ label: 'Mode', control: mode }),
         field({ label: 'Direction', control: dir })),
       h('div', {class:'field-row'}, field({label:'Input separator',control:inputSep}), field({label:'Output separator',control:outputSep})),
-      h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, uniq, trimItems),
-      h('p', { class: 'hint', text: 'Alphabetical order depends on your browser locale. Numeric mode parses the first number after a non-numeric prefix; non-numeric lines sort after numbers in ascending order. Blank items are retained; optional trimming removes surrounding whitespace. Separators are literal, not CSV: quotes are not parsed and output can be ambiguous if items contain the chosen separator. Line-break output uses LF; maximum 50,000 items.' }),
+      h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, ci, uniq, trimItems, normalize),
+      h('p', { class: 'hint', text: 'Alphabetical order depends on your browser locale. Numeric mode uses the first signed ASCII decimal or scientific number; binary floating-point can round or underflow. Non-finite or missing numbers sort after finite numbers in ascending order; ties use locale order. Blank items are retained; optional trimming removes surrounding whitespace. NFC matching only affects duplicate comparison and preserves retained text. Separators are literal, not CSV: quotes are not parsed and output can be ambiguous if items contain the chosen separator. Line-break output uses LF; maximum 50,000 items.' }),
       actionsRow(btn({ label: 'Sort', icon: 'sort', onClick: run }),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { imported.cancel(); inp.value = ''; out.placeholder(); status.set('Cleared.'); } })),
       status, h('br'), out.panel, privacyNote('Text and files are processed locally in your browser.'));

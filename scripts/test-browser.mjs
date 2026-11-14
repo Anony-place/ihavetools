@@ -208,6 +208,22 @@ try {
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
     assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} mobile accessibility`);
   }
+  for (const id of ['remove-duplicate-lines','text-sorter']) {
+    await go(id); await page.locator('#tool-app textarea').fill('e\u0301\né');
+    if (id==='text-sorter') await page.locator('#tool-app label.switch').filter({hasText:'Remove duplicates'}).click();
+    const action=page.getByRole('button',{name:id==='text-sorter'?'Sort':'Remove duplicates',exact:true});
+    await action.click(); assert.equal((await page.locator('#tool-app .result-body pre').textContent()).split('\n').length,2);
+    await page.locator('#tool-app label.switch').filter({hasText:'Match Unicode equivalents'}).click();
+    assert.equal(await page.locator('#tool-app .result-panel').getAttribute('data-has'),null);
+    await action.click(); assert.equal(await page.locator('#tool-app .result-body pre').textContent(),'e\u0301');
+    const nfcDownload=page.waitForEvent('download'); await page.locator('#tool-app .result-panel').getByRole('button',{name:'Download'}).click();
+    assert.equal(await readFile(await (await nfcDownload).path(),'utf8'),'e\u0301');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} NFC accessibility`);
+  }
+  await go('text-sorter'); await page.locator('#tool-app textarea').fill('.5\n-1\n2');
+  await page.getByRole('button',{name:'Numeric',exact:true}).click(); await page.getByRole('button',{name:'Sort',exact:true}).click();
+  assert.equal(await page.locator('#tool-app .result-body pre').textContent(),'-1\n.5\n2');
   console.log('✓ list tools local files, downloads, invalidation and mobile accessibility');
   await go('text-sorter');
   await page.getByLabel('Lines to sort').fill(' B, a,B,,');

@@ -1395,6 +1395,23 @@ await test('CSV replacement keys and positional projection', () => {
   assert.throws(()=>data.csvToJson('x\n'+'v\n'.repeat(2100),{headerNames:['k'.repeat(5000)]}),/output limit/);
 });
 
+await test('numeric list sorting handles signed decimals and exponents', () => {
+ const source='missing\nvalue - text 4\n.5\n-.25\n+2e1\n1e999';
+ assert.equal(text.sortLines(source,{mode:'numeric'}),'-.25\n.5\nvalue - text 4\n+2e1\n1e999\nmissing');
+ assert.equal(text.sortLines('no number\n.5\n-2',{mode:'numeric',direction:'desc'}),'no number\n.5\n-2');
+ assert.equal(text.sortLines('v-1e2\nv+3.5\nv.2',{mode:'numeric'}),'v-1e2\nv.2\nv+3.5');
+});
+await test('NFC matching is optional and retains original list text', () => {
+ const a='é', b='e\u0301';
+ assert.deepEqual(text.dedupeLines(`${a}\n${b}`),[a,b]);
+ assert.deepEqual(text.dedupeLines(`${a}\n${b}`,{normalize:true}),[a]);
+ assert.deepEqual(text.dedupeLines(`  É  \n${b}`,{normalize:true,trim:true,caseInsensitive:true,keep:'last'}),[b]);
+ assert.deepEqual(text.dedupeLines('Ａ\nA',{normalize:true}),['Ａ','A']);
+ assert.equal(text.sortLines(`${b}\n${a}`,{unique:true,normalize:true}),b);
+ assert.deepEqual(text.sortDelimited(`${b},${a}`,{inputSeparator:'comma',unique:true,normalize:true}),{text:b,count:1});
+ assert.equal(text.sortLines(`${b}\n${a}`,{unique:false,normalize:true}).split('\n').length,2);
+});
+
 await test('RFC 4180 quoted commas and escaped quotes', () => {
   const rows = data.parseCsv('a,b\n"x,1",2\n"he said ""hi""",3');
   assert.deepEqual(rows.rows[0], ['x,1', '2']);

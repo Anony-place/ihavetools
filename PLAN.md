@@ -11,6 +11,23 @@
 
 ---
 
+## Text list comparison and numeric sorting — plan
+
+An audit found numeric sorting drops the decimal point in `.5` and can miss a
+number following a stray hyphen. [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/normalize)
+explains why canonically equivalent Unicode sequences can compare differently.
+These are usability and integrity improvements, not measured search demand.
+
+1. Parse the first ASCII signed decimal/scientific token for numeric sorting;
+   clearly disclose floating-point precision, non-finite values and tie behavior.
+2. Add opt-in NFC comparison to duplicate removal in both list tools, without
+   modifying retained content or altering default behavior; explain limitations.
+3. Test decimals, signs, exponents, nonnumbers, direction, Unicode compositions,
+   first/last choice, state invalidation, downloads and mobile accessibility.
+   Run checks/audit, ship one CI-verified PR and verify the production pages.
+
+---
+
 ## CSV to JSON column workflow — plan
 
 [ConvertCSV](https://www.convertcsv.com/csv-to-json.htm) offers selecting and
