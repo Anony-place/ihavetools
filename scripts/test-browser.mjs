@@ -912,6 +912,24 @@ try {
   await page.setViewportSize({ width: 1280, height: 800 });
 
   await page.setViewportSize({ width: 320, height: 844 });
+  await go('image-compressor');
+  const compressorImage = await sharp({create:{width:80,height:60,channels:4,background:'#ff000080'}}).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'alpha.png',mimeType:'image/png',buffer:compressorImage});
+  await page.getByLabel('Target size (KiB)').fill('5');
+  await page.getByRole('button',{name:'Compress',exact:true}).click();
+  await page.locator('#tool-app .img-preview').waitFor();
+  const info=await page.locator('#tool-app .img-preview').evaluate(async img=>{const b=await (await fetch(img.src)).blob(); return {size:b.size,type:b.type};});
+  assert.ok(info.size<=5120); assert.equal(info.type,'image/jpeg');
+  assert.match(await page.locator('#tool-app').innerText(),/Tested quality/);
+  const dl=page.waitForEvent('download'); await page.getByRole('button',{name:'Download compressed image'}).click(); assert.match((await dl).suggestedFilename(),/\.jpg$/);
+  await page.getByLabel('Output format').selectOption('png'); assert.equal(await page.locator('#tool-app .img-preview').count(),0);
+  await page.getByRole('button',{name:'Compress',exact:true}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/JPEG and WebP only/);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+  const compressorAxe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
+  assert.deepEqual(compressorAxe.violations.map(v=>v.id),[],'compressor mobile accessibility');
+  console.log('✓ single compressor target size, download and mobile accessibility');
+
+  await page.setViewportSize({ width: 320, height: 844 });
   await go('bulk-image-resizer');
   const wide = await sharp({ create: { width: 80, height: 40, channels: 4, background: '#ff0000' } }).png().toBuffer();
   const tall = await sharp({ create: { width: 20, height: 60, channels: 4, background: '#00ff00' } }).png().toBuffer();

@@ -300,7 +300,10 @@ const defs = {
     const quality = input({ type: 'range', min: 5, max: 100, value: '80' });
     const qualityOut = h('span', { class: 'hint', text: '80%' });
     quality.addEventListener('input', () => { qualityOut.textContent = `${quality.value}%`; });
-    const fmtSel = select({ options: [{ v: 'jpeg', t: 'JPEG — best for photos' }, { v: 'webp', t: 'WebP — usually smallest' }, { v: 'png', t: 'PNG — lossless' }], value: 'jpeg' });
+    const fmtSel = select({ options: [{ v: 'jpeg', t: 'JPEG' }, { v: 'webp', t: 'WebP' }, { v: 'png', t: 'PNG' }], value: 'jpeg' });
+    const target = input({ type: 'number', min: 1, max: 51200, step: 1, placeholder: 'optional' });
+    const refreshQuality = () => { quality.disabled = fmtSel.value === 'png' || target.value !== ''; };
+    fmtSel.addEventListener('change', refreshQuality); target.addEventListener('input', refreshQuality); target.addEventListener('change', refreshQuality);
     const maxW = input({ type: 'number', min: 1, placeholder: 'original' });
     const status = statusLine('Choose an image to begin.');
     const grid = statsGrid();
@@ -317,7 +320,7 @@ const defs = {
     zone.addEventListener('iht-files', (e) => { if (e.detail[0]) origHook(e.detail[0]); });
     zone.addEventListener('iht-rejected', () => { revision++; file = null; lastBlob = null; grid.replaceChildren(); previews.clear(); zone.resetSelectionUI(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
     window.addEventListener('pagehide', () => { revision++; previews.clear(); }, { once: true });
-    [quality, fmtSel, maxW].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; grid.replaceChildren(); previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
+    [quality, fmtSel, maxW, target].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; grid.replaceChildren(); previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file) { status.set('Choose an image first.', 'warning'); return; }
       previews.clear(); grid.replaceChildren();
@@ -328,6 +331,9 @@ const defs = {
         const img = await loadImage(selected);
         if (file !== selected || revision !== token) return;
         let w = img.naturalWidth, h0 = img.naturalHeight;
+        const fmt = fmtSel.value, targetKiB = target.value === '' ? null : Number(target.value);
+        if (targetKiB !== null && (!Number.isSafeInteger(targetKiB) || targetKiB < 1 || targetKiB > 51200)) throw new Error('Target size must be a whole number from 1 to 51,200 KiB.');
+        if (targetKiB !== null && fmt === 'png') throw new Error('Target size is available for JPEG and WebP only. Clear the target to use PNG.');
         if (maxW.value !== '' && (!Number.isSafeInteger(Number(maxW.value)) || Number(maxW.value) < 1)) throw new Error('Max width must be a positive whole number.');
         if (Number(maxW.value) > 0 && Number(maxW.value) < w) {
           const t = computeTargetDims(w, h0, { width: Math.floor(Number(maxW.value)) });
@@ -339,17 +345,19 @@ const defs = {
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        const fmt = fmtSel.value;
         if (fmt === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h0); }
         ctx.drawImage(img, 0, 0, w, h0);
-        const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : clampQuality(quality.value));
+        const isCurrent = () => file === selected && revision === token;
+        const targetResult = targetKiB === null ? null : await encodeToTarget(q => canvasToBlob(canvas, MIME_BY_FMT[fmt], q), targetKiB * 1024, isCurrent);
+        const blob = targetResult ? targetResult.blob : await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : clampQuality(quality.value));
         if (file !== selected || revision !== token) return;
         lastBlob = blob;
-        const saved = Math.max(0, Math.round((1 - blob.size / file.size) * 100));
+        const change = sizeChange(file.size, blob.size);
         grid.set([
           { label: 'Original', value: fmtBytes(file.size) },
           { label: 'Compressed', value: fmtBytes(blob.size), kind: blob.size < file.size ? 'good' : 'warn' },
-          { label: 'Saved', value: `${saved}%`, kind: saved > 0 ? 'good' : 'bad' },
+          { label: 'Size change', value: change, kind: blob.size < file.size ? 'good' : 'warn' },
+          ...(targetResult ? [{label:'Tested quality', value:`${targetResult.quality}%`}] : []),
           { label: 'Dimensions', value: `${w} × ${h0}` },
         ]);
         previews.show(blob, (url) => h('div', {},
@@ -358,15 +366,17 @@ const defs = {
             h('button', { type: 'button', class: 'btn btn-primary', onclick: () => {
               downloadImage(blob, `compressed-${baseName(selected.name)}.${EXT_BY_FMT[fmt]}`);
             } }, 'Download compressed image'))));
-        if (blob.size >= file.size) status.set('Done — but this format/quality did not shrink the file. Try lower quality or JPEG/WebP.', 'warning');
-        else status.set(`Compressed ✓ ${fmtBytes(file.size)} → ${fmtBytes(blob.size)} (${saved}% smaller).`, 'success');
+        const outcome = `${fmtBytes(file.size)} → ${fmtBytes(blob.size)} (${change}).`;
+        if (blob.size >= file.size) status.set(`Done — ${outcome} Try different dimensions, quality or format if you need a smaller file.`, 'warning');
+        else status.set(`Compressed ✓ ${outcome}${targetResult ? ' Target met using a tested quality.' : ''}`, 'success');
       } catch (e) { if (file === selected && revision === token) { grid.replaceChildren(); previews.clear(); status.set(e.message, 'error'); } }
     };
     root.append(zone,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
-        field({ label: 'Quality (%)', control: quality, hint: 'Used for JPEG and WebP; PNG is lossless.' }), qualityOut,
+        field({ label: 'Quality (%)', control: quality, hint: 'JPEG/WebP only; ignored when a target is set.' }), qualityOut,
         field({ label: 'Output format', control: fmtSel }),
-        field({ label: 'Max width (px)', control: maxW, hint: 'Blank keeps original size' })),
+        field({ label: 'Max width (px)', control: maxW, hint: 'Blank keeps original size' }),
+        field({ label: 'Target size (KiB)', control: target, hint: 'Optional JPEG/WebP quality search. 1 KiB = 1,024 bytes; may fail at these dimensions.' })),
       actionsRow(btn({ label: 'Compress', icon: 'minimize', onClick: run })),
       status, grid, preview,
       privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. JPEG flattens transparency onto white. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
