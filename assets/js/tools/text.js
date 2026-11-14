@@ -184,23 +184,26 @@ function listFileImport(inp, status, invalidate, loadedMessage = 'File loaded lo
 }
 
 /* ═══════════════════════════ Diff (LCS) ═══════════════════════════ */
-export function diffLines(aText, bText) {
+export function diffLines(aText, bText, { trim = false, caseInsensitive = false } = {}) {
   if (aText.length + bText.length > 500000) throw new Error('Texts exceed the combined 500,000-character diff limit.');
   const a = aText ? aText.split(/\r\n|\r|\n/) : [];
   const b = bText ? bText.split(/\r\n|\r|\n/) : [];
   const n = a.length, m = b.length;
+  // Comparison keys are separate from the original lines shown in the report.
+  const key = line => { const value = trim ? line.trim() : line; return caseInsensitive ? value.toLowerCase() : value; };
+  const ak = a.map(key), bk = b.map(key);
   // Bound both dimensions and total cells, including the allocated border.
   if (n > 4000 || m > 4000 || (n + 1) * (m + 1) > 4e6) throw new Error('Diff limit: at most 4,000 lines per side and 4 million table cells. Split the texts into smaller pieces.');
   const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {
-      dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      dp[i][j] = ak[i] === bk[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
     }
   }
   const ops = [];
   let i = 0, j = 0;
   while (i < n && j < m) {
-    if (a[i] === b[j]) { ops.push({ type: 'same', line: a[i], a: i + 1, b: j + 1 }); i++; j++; }
+    if (ak[i] === bk[j]) { ops.push({ type: 'same', line: a[i], ...(a[i] !== b[j] ? { matchedLine: b[j] } : {}), a: i + 1, b: j + 1 }); i++; j++; }
     else if (dp[i + 1][j] >= dp[i][j + 1]) { ops.push({ type: 'del', line: a[i], a: i + 1 }); i++; }
     else { ops.push({ type: 'add', line: b[j], b: j + 1 }); j++; }
   }
@@ -562,6 +565,8 @@ const defs = {
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Differences', copy: false });
     const onlyChanges = switchChip({ label: 'Show changed lines only', checked: false });
+    const trimDiff = switchChip({ label: 'Ignore surrounding whitespace' });
+    const caseDiff = switchChip({ label: 'Ignore letter case' });
     const versions = [0, 0]; let report = '';
     window.addEventListener('pagehide', () => { versions[0]++; versions[1]++; }, { once:true });
     const clearReport = () => { report = ''; out.placeholder(); copy.disabled = true; download.disabled = true; };
@@ -576,7 +581,7 @@ const defs = {
     copy.disabled = download.disabled = true;
     const invalidate = side => { if (side !== null) versions[side]++; clearReport(); status.set('Input or settings changed. Compare again.', 'info'); };
     a.addEventListener('input', () => invalidate(0)); b.addEventListener('input', () => invalidate(1));
-    onlyChanges.addEventListener('change', () => invalidate(null));
+    [onlyChanges, trimDiff, caseDiff].forEach(option => option.addEventListener('change', () => invalidate(null)));
     const makeImport = (side, control, title) => {
       const zone = dropzone({ accept: '.txt,.md,.csv,.json,.log,text/plain,application/json,text/csv', title, sub: 'UTF-8 text, up to 2 MiB and 500,000 characters; read locally.',
         onReject: () => { versions[side]++; zone.clear(); clearReport(); status.set('File rejected. Existing text was kept; choose a file up to 2 MiB.', 'error'); },
@@ -599,20 +604,22 @@ const defs = {
       versions[0]++; versions[1]++; clearReport();
       if (!a.value && !b.value) { status.set('Enter text in at least one box.', 'warning'); return; }
       try {
-        const ops = diffLines(a.value, b.value), sum = diffSummary(ops);
+        const trim = trimDiff.querySelector('input').checked, caseInsensitive = caseDiff.querySelector('input').checked;
+        const ops = diffLines(a.value, b.value, { trim, caseInsensitive }), sum = diffSummary(ops);
+        const ignored = ops.filter(o => Object.hasOwn(o, 'matchedLine')).length;
         const shown = onlyChanges.querySelector('input').checked ? ops.filter(o => o.type !== 'same') : ops;
-        const lines = shown.map(o => `A:${o.a ?? '–'} B:${o.b ?? '–'} ${o.type === 'add' ? '+' : o.type === 'del' ? '-' : ' '} ${o.line}`);
-        report = ['Text comparison report (line endings normalized; not a patch)', `Added: ${sum.add}, removed: ${sum.del}, unchanged: ${sum.same}`, onlyChanges.querySelector('input').checked ? 'Showing changed lines only' : 'Showing all lines', '', ...(lines.length ? lines : ['No changed lines.'])].join('\n');
+        const lines = shown.map(o => `A:${o.a ?? '–'} B:${o.b ?? '–'} ${o.type === 'add' ? '+' : o.type === 'del' ? '-' : ' '} ${o.line}${Object.hasOwn(o, 'matchedLine') ? `\n  Matched B (ignored difference): ${o.matchedLine}` : ''}`);
+        report = ['Text comparison report (line endings normalized; not a patch)', `Added: ${sum.add}, removed: ${sum.del}, ${trim || caseInsensitive ? 'matched' : 'unchanged'}: ${sum.same}`, `Matching: ${trim ? 'trim surrounding whitespace' : 'exact whitespace'}; ${caseInsensitive ? 'ignore case' : 'case-sensitive'}. Matched pairs with ignored differences: ${ignored}.`, onlyChanges.querySelector('input').checked ? 'Showing changed lines only' : 'Showing all lines', '', ...(lines.length ? lines : ['No changed lines.'])].join('\n');
         const view = h('div', { class: 'diff-view' }, shown.map((o, i) => h('span', { class: o.type === 'add' ? 'd-add' : o.type === 'del' ? 'd-del' : 'd-same', text: lines[i] })));
         if (shown.length) out.set(view); else out.set('No changed lines in this view.');
         copy.disabled = download.disabled = false;
-        status.set(sum.unchanged ? 'No differences found — the texts match.' : `${sum.add} line${sum.add === 1 ? '' : 's'} added, ${sum.del} removed, ${sum.same} unchanged.`, sum.unchanged ? 'success' : 'info');
+        status.set(sum.unchanged ? (ignored ? `No differences under selected rules; ${ignored} matched line pair${ignored === 1 ? '' : 's'} differ in ignored details.` : 'No differences found — the texts match.') : `${sum.add} line${sum.add === 1 ? '' : 's'} added, ${sum.del} removed, ${sum.same} matched; ${ignored} matched pair${ignored === 1 ? '' : 's'} differ in ignored details.`, sum.unchanged ? 'success' : 'info');
       } catch (e) { clearReport(); status.set(e.message, 'error'); }
     };
     root.append(
       h('div', { class: 'field-row' }, h('div', {}, field({ label: 'Original', control: a }), zoneA), h('div', {}, field({ label: 'Changed', control: b }), zoneB)),
-      onlyChanges,
-      h('p', { class: 'hint', text: 'A = original line, B = changed line. A dash means no line on that side. Exact line comparison; line endings are normalized and a final newline counts as an extra blank line. Limits: 4,000 lines per side, 4 million table cells and 500,000 combined characters. The report is not a patch.' }),
+      h('div', { class: 'switch-row' }, onlyChanges, trimDiff, caseDiff),
+      h('p', { class: 'hint', text: 'A = original line, B = changed line. A dash means no line on that side. Comparison is exact by default; optional trim ignores surrounding whitespace only, and case uses Unicode lowercasing (not locale-aware case folding). Matched lines with ignored differences show both versions unless changed-only view hides them. Line endings are normalized; a final newline adds a blank line. Limits: 4,000 lines per side, 4 million table cells and 500,000 combined characters. The report is not a patch.' }),
       actionsRow(btn({ label: 'Compare', icon: 'diff', onClick: run }),
         btn({ label: 'Swap sides', variant: 'secondary', onClick: () => { versions[0]++; versions[1]++; [a.value, b.value] = [b.value, a.value]; clearReport(); status.set('Inputs swapped. Compare again.', 'info'); } }),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { versions[0]++; versions[1]++; a.value = ''; b.value = ''; zoneA.clear(); zoneB.clear(); clearReport(); status.set('Cleared.'); } }), copy, download),

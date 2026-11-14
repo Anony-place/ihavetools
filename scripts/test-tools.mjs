@@ -1395,6 +1395,20 @@ await test('CSV replacement keys and positional projection', () => {
   assert.throws(()=>data.csvToJson('x\n'+'v\n'.repeat(2100),{headerNames:['k'.repeat(5000)]}),/output limit/);
 });
 
+await test('text diff comparison rules preserve both original lines', () => {
+ const a='  Hello  \nID\nend', b='hello\nid\nend';
+ assert.equal(text.diffSummary(text.diffLines(a,b)).same,1);
+ const ops=text.diffLines(a,b,{trim:true,caseInsensitive:true});
+ assert.equal(text.diffSummary(ops).unchanged,true);
+ assert.deepEqual(ops[0],{type:'same',line:'  Hello  ',matchedLine:'hello',a:1,b:1});
+ assert.deepEqual(ops[1],{type:'same',line:'ID',matchedLine:'id',a:2,b:2});
+ assert.equal(Object.hasOwn(ops[2],'matchedLine'),false);
+ assert.equal(text.diffSummary(text.diffLines('a  b','a b',{trim:true})).unchanged,false);
+ assert.equal(text.diffSummary(text.diffLines('é','e\u0301',{caseInsensitive:true})).unchanged,false);
+ assert.equal(text.diffSummary(text.diffLines('a\n','a',{trim:true})).unchanged,false);
+ assert.deepEqual(text.diffLines('A\na','a',{caseInsensitive:true})[0],{type:'same',line:'A',matchedLine:'a',a:1,b:1});
+});
+
 await test('numeric list sorting handles signed decimals and exponents', () => {
  const source='missing\nvalue - text 4\n.5\n-.25\n+2e1\n1e999';
  assert.equal(text.sortLines(source,{mode:'numeric'}),'-.25\n.5\nvalue - text 4\n+2e1\n1e999\nmissing');
@@ -1960,7 +1974,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 105);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 106);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

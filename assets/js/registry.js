@@ -409,7 +409,12 @@ export const tools = [
     keywords: ['diff', 'compare', 'text compare', 'changes', 'difference', 'merge'],
     aliases: ['text compare', 'diff checker', 'compare text'],
     popularity: 76, added: '2026-06-08',
-    steps: 'Paste or load original and changed UTF-8 text files.|Optionally show changed lines only, then click Compare.|Review line numbers, and copy or download the report if needed.' }),
+    steps: 'Paste or load original and changed UTF-8 text files.|Choose comparison and display options, then click Compare.|Review line numbers, and copy or download the report if needed.',
+    guide: [
+      {h:'Read the comparison',p:'A is the original and B is the changed text. A removal has only an A line number; an addition has only a B number. The tool compares lines rather than individual words and uses a longest-common-subsequence alignment, so repeated or moved lines can be aligned differently. The report is a readable summary, not an patch that can be applied.'},
+      {h:'Optional matching rules',p:'By default, lines are compared exactly. Ignore surrounding whitespace trims the ends of each line for comparison only; internal spaces remain significant. Ignore letter case uses Unicode lowercasing, not locale-specific case folding. The displayed original text is retained. A matched pair that differs under these rules shows both versions in the full view and is counted in the ignored-difference total. Changed-only view hides all matched pairs, including ignored differences. Turn both options off when exact differences matter, such as code or security-sensitive data.'},
+      {h:'Files and limits',p:'Files are read locally as UTF-8, up to 2 MiB each and 500,000 combined UTF-16 code units. The diff is limited to 4,000 lines per side and 4 million comparison-table cells. CRLF, CR and LF line endings are treated alike; a final line break counts as an extra blank line. Large comparisons may take time on slower devices.'}
+    ] }),
   T({ id: 'slug-generator', name: 'Slug Generator', icon: 'anchor', engine: 'text', categories: ['text', 'web-seo'],
     blurb: 'Turn any title into a clean, SEO-friendly URL slug.',
     description: 'Convert titles to slugs in batches, detect duplicates, optionally add unique suffixes and download results. Latin accents are simplified and other scripts retained; non-ASCII slugs may need URL encoding.',
