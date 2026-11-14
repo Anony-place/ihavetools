@@ -821,6 +821,22 @@ await domTest('json-to-csv: round trips', async () => {
   click(btnByLabel(app, 'Convert to CSV'));
   assert.match(resultText(document), /"Admiral, USN"/);
 });
+await domTest('json-to-csv: exact columns validate and invalidate stale output', async () => {
+  const app = await loadToolPage('json-to-csv', 'data');
+  const source = app.querySelector('textarea');
+  const mode = [...app.querySelectorAll('select')].find(el=>[...el.options].some(o=>o.value==='json'));
+  const columns = app.querySelector('input[placeholder^="e.g. name"]');
+  source.value = '[{"name, full":"Ada"," id ":"001","":"empty"}]'; fire(source,'input');
+  mode.value='json'; fire(mode,'change');
+  columns.value='["name, full"," id ",""]'; fire(columns,'input');
+  click(btnByLabel(app,'Convert to CSV'));
+  assert.equal(resultText(document), '"name, full", id ,\nAda,001,empty');
+  columns.value='[1]'; fire(columns,'input');
+  assert.ok(!app.querySelector('.result-panel').dataset.has);
+  click(btnByLabel(app,'Convert to CSV'));
+  assert.match(statusText(document),/JSON array of strings/);
+  assert.ok(!app.querySelector('.result-panel').dataset.has);
+});
 await domTest('json-lines-converter: both directions', async () => {
   const app = await loadToolPage('json-lines-converter', 'data');
   click(btnByLabel(app, 'JSONL → Array'));

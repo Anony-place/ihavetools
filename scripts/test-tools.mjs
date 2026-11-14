@@ -1413,6 +1413,23 @@ await test('data converters bound input and output expansion', () => {
  assert.equal(data.prettyJsonBounded([{a:1}]),JSON.stringify([{a:1}],null,2));
 });
 
+await test('JSON to CSV exact column list selection', () => {
+  assert.equal(data.parseCsvColumns('   '), null);
+  assert.deepEqual(data.parseCsvColumns(' name , city '), ['name','city']);
+  assert.equal(data.parseCsvColumns('[]','json'), null);
+  const columns = data.parseCsvColumns('["name, full"," id ","","quote\\"key"]','json');
+  assert.deepEqual(columns, ['name, full', ' id ', '', 'quote"key']);
+  const input = JSON.stringify([{ 'name, full':'Ada', ' id ':'001', '':'empty', 'quote"key':'yes', other:7 }]);
+  const csv = data.jsonToCsv(input, { columns });
+  assert.equal(csv, '"name, full", id ,,"quote""key"\nAda,001,empty,yes');
+  assert.throws(()=>data.parseCsvColumns('[1]','json'), /array of strings/);
+  assert.throws(()=>data.parseCsvColumns('{"x":1}','json'), /array of strings/);
+  assert.throws(()=>data.parseCsvColumns('["x",','json'), /JSON array/);
+  assert.throws(()=>data.parseCsvColumns('["x","x"]','json'), /Duplicate/);
+  assert.throws(()=>data.parseCsvColumns('x'.repeat(100001)), /100,000/);
+  assert.throws(()=>data.parseCsvColumns(JSON.stringify(Array.from({length:257},(_,i)=>String(i))),'json'), /256/);
+});
+
 await test('jsonToCsv escapes correctly', () => {
   const csv = data.jsonToCsv('[{"n":"a,b","v":"say \\"hi\\""},{"n":"line\\nbreak","v":null}]');
   const lines = csv.split('\n');

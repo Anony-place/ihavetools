@@ -11,6 +11,25 @@
 
 ---
 
+## JSON to CSV exact-column workflow — plan
+
+[ConvertCSV](https://www.convertcsv.com/json-to-csv.htm) supports options such as
+field separator and optional header, a feature signal rather than evidence of
+search demand. Our JSON to CSV tool cannot currently select a key containing a
+comma or preserve whitespace via its comma-separated selector. Continue product
+work without waiting for comparable verified GSC data; no traffic claim.
+
+1. Keep the existing comma-separated selector as default and add an explicit
+   JSON-array mode for exact key names, including commas, whitespace and empty
+   keys. Preserve selection order and existing empty-field behavior.
+2. Validate malformed, non-string, duplicate and oversized column lists without
+   producing stale exports. Keep formula-injection warnings and local processing.
+3. Update the guide with a reproducible example and limitations; test both
+   modes, downloads, invalidation, mobile and accessibility. Full checks, audit,
+   one PR, CI, merge when green and verify production.
+
+---
+
 ## Search discovery relevance and usability batch — plan
 
 The browser search uses a slim generated index, but an audit found direction and

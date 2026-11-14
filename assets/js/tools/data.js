@@ -89,6 +89,24 @@ function coerce(v) {
 export function csvToJsonString(text, opts = {}) { return JSON.stringify(csvToJson(text, opts), null, 2); }
 
 /* ═══════════════════════════ JSON → CSV ═══════════════════════════ */
+// Comma mode is the original convenience syntax. JSON mode preserves exact
+// keys including commas, surrounding spaces and the empty string.
+export function parseCsvColumns(text, mode = 'simple') {
+  if (text.length > 100000) throw new Error('Column list exceeds 100,000 characters.');
+  if (!['simple', 'json'].includes(mode)) throw new Error('Choose a valid column-list format.');
+  if (!text.trim()) return null;
+  let columns;
+  if (mode === 'simple') columns = text.split(',').map(s => s.trim()).filter(Boolean);
+  else {
+    try { columns = JSON.parse(text); }
+    catch { throw new Error('Columns must be a JSON array of strings, such as ["name, full"," id "].'); }
+    if (!Array.isArray(columns) || columns.some(c => typeof c !== 'string')) throw new Error('Columns must be a JSON array of strings.');
+  }
+  if (columns.length > MAX_COLUMNS) throw new Error('Choose at most 256 columns.');
+  if (new Set(columns).size !== columns.length) throw new Error('Duplicate selected columns would repeat data. Choose unique columns.');
+  return columns.length ? columns : null;
+}
+
 export function jsonToCsv(jsonText, { delimiter = ',', columns = null, includeHeader = true } = {}) {
   if (![';', ',', '\t', '|'].includes(delimiter)) throw new Error('Choose a valid delimiter.');
   const data = parseConversionJson(jsonText);
@@ -248,20 +266,21 @@ const defs = {
     const inp = textarea({ rows: 10, value: '[{"name":"Ada","role":"engineer","city":"London"},{"name":"Grace","role":"Admiral, USN","city":"New York"}]', placeholder: 'Paste a JSON array of objects…' });
     const delim = select({ options: [{ v: ',', t: 'Comma ,' }, { v: ';', t: 'Semicolon ;' }, { v: '\t', t: 'Tab' }, { v: '|', t: 'Pipe |' }], value: ',' });
     const cols = input({ type: 'text', placeholder: 'e.g. name, city (blank = all columns)' });
+    const colMode = select({ options: [{v:'simple', t:'Comma-separated names'}, {v:'json', t:'JSON array (exact names)'}], value:'simple' });
     const header = switchChip({ label: 'Include header row', checked: true });
     const status = statusLine('CSV quoting does not prevent spreadsheet formula execution. Treat untrusted cells as text when opening in spreadsheet software.');
     const out = resultPanel({ label: 'CSV', download: true, downloadName: 'data.csv', downloadMime: 'text/csv;charset=utf-8' });
     const revision = { value: 0 };
     window.addEventListener('pagehide', () => { revision.value++; }, { once:true });
     const invalidate = () => { revision.value++; out.placeholder(); status.set('Input or options changed. Convert again.', 'info'); };
-    [inp, delim, cols, header].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
+    [inp, delim, cols, colMode, header].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     const run = () => {
       revision.value++;
       try {
         const csv = jsonToCsv(inp.value, {
           delimiter: delim.value,
           includeHeader: header.querySelector('input').checked,
-          columns: cols.value.split(',').map((s) => s.trim()).filter(Boolean),
+          columns: parseCsvColumns(cols.value, colMode.value),
         });
         out.set(csv);
         status.set('CSV created. Quoting does not prevent spreadsheet formula execution; treat untrusted values as text.', 'info');
@@ -271,7 +290,7 @@ const defs = {
     root.append(field({ label: 'JSON array', control: inp }), zone,
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Delimiter', control: delim }),
-        field({ label: 'Columns', control: cols, hint: 'Optional — order included columns' }), field({ label: 'Header', control: header })),
+        field({ label: 'Column format', control: colMode }), field({ label: 'Columns', control: cols, hint: 'Blank selects all. For exact keys with commas or spaces, select JSON array and enter e.g. ["name, full"," id "].' }), field({ label: 'Header', control: header })),
       actionsRow(btn({ label: 'Convert to CSV', icon: 'table', onClick: run })),
       status, h('p', { class: 'hint', text: 'Missing, null and empty-string values all become empty cells; nested values become JSON text. Decimal numbers may round; use strings for exact values. Quoting does not prevent spreadsheet formulas. Limit: 1,000,000 input characters, 10,000 rows, 256 columns, 250,000 cells; file import up to 4 MiB.' }), h('br'), out.panel);
   },
