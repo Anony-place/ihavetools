@@ -1418,7 +1418,7 @@ const defs = {
     } catch(e){componentGrid.replaceChildren();componentStatus.set(e.message,'error');}};
     root.append(h('h2',{text:'Calculate current grade from coursework'}),h('p',{class:'hint',text:'Enter one completed component per line as score percentage, weight percentage of the entire course. These must be separate, non-overlapping course weights. The remaining weight is treated as one combined final or set of tasks.'}),
       field({label:'Completed scores and course weights',control:components,hint:'Example: 80, 30 means score 80% on work worth 30% of the whole course. Up to 50 rows; 6 decimal places.'}),
-      actionsRow(btn({label:'Calculate coursework average',variant:'secondary',onClick:()=>calculateComponents(false)}),btn({label:'Apply to final grade',onClick:()=>calculateComponents(true)})),componentGrid,componentStatus,
+      actionsRow(btn({label:'Calculate average',variant:'secondary',onClick:()=>calculateComponents(false)}),btn({label:'Apply to final grade',onClick:()=>calculateComponents(true)})),componentGrid,componentStatus,
       h('p',{class:'hint',text:'Does not model letter grades, nested categories, dropped work, extra credit or institution-specific rounding. Verify your syllabus. Only the main calculator inputs are included in optional share links; coursework rows are not shared.'}));
     shareState(root, [['current', current], ['target', target], ['weight', weight], ['exam', exam]], run);
   },
