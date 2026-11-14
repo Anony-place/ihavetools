@@ -57,6 +57,16 @@ export function pdfRotationTargets(scope, pageCount, ranges = '') {
   return pages;
 }
 
+/** Common ZIP page selections, bounded before materializing output. */
+export function pdfImagePresetPages(scope, pageCount) {
+  if (!Number.isSafeInteger(pageCount) || pageCount < 1 || pageCount > 1000) throw new Error('PDF must contain between 1 and 1,000 pages.');
+  if (!['all','odd','even'].includes(scope)) throw new Error('Choose a valid page selection.');
+  const count = scope === 'all' ? pageCount : scope === 'odd' ? Math.ceil(pageCount / 2) : Math.floor(pageCount / 2);
+  if (!count) throw new Error('No pages match this selection.');
+  if (count > 20) throw new Error('Selection exceeds 20 pages per ZIP. Enter a smaller page range instead.');
+  return Array.from({length:count}, (_,i) => scope === 'all' ? i + 1 : scope === 'odd' ? i * 2 + 1 : i * 2 + 2);
+}
+
 /** Optional merge ranges are deduplicated and sorted, with a strict output cap. */
 export function mergePageSelection(selection, pageCount, remaining = 500) {
   if (!Number.isSafeInteger(pageCount) || pageCount < 1) throw new Error('The PDF has no pages.');
@@ -270,6 +280,20 @@ const defs = {
         status.set('PDF opened. Choose a page and render it.', 'success');
       } catch (e) { if (token === revision) { destroy(loading); loading = null; status.set(/password/i.test(`${e.name} ${e.message}`) ? 'Password-protected PDFs are not supported.' : 'Could not open this PDF or load the renderer. Try an unprotected PDF in a current browser.', 'error'); } }
     } });
+    const changePage = delta => {
+      if (!doc || !file) { status.set('Choose a PDF first.', 'warning'); return; }
+      const n = Number(page.value);
+      if (!Number.isInteger(n) || n < 1 || n > doc.numPages) { status.set('Enter a valid page number first.', 'warning'); return; }
+      const next = n + delta;
+      if (next < 1 || next > doc.numPages) { status.set(`Already at ${delta < 0 ? 'the first' : 'the last'} page.`, 'info'); return; }
+      page.value = String(next); cancelRender(); status.set(`Page ${next} of ${doc.numPages} selected. Render to preview.`, 'info');
+    };
+    const selectPreset = scope => {
+      if (!doc || !file) { status.set('Choose a PDF first.', 'warning'); return; }
+      cancelRender();
+      try { const pages = pdfImagePresetPages(scope, doc.numPages); ranges.value = pages.join(', '); status.set(`${pages.length} page${pages.length === 1 ? '' : 's'} selected for ZIP. Prepare ZIP to render.`, 'info'); }
+      catch(e) { ranges.value = ''; status.set(e.message, 'warning'); }
+    };
     const run = async () => {
       if (!doc || !file) { status.set('Choose a PDF first.', 'warning'); return; }
       cancelRender(); const activeDoc = doc, selectedFile = file, token = revision, action = job;
@@ -346,7 +370,8 @@ const defs = {
     window.addEventListener('pagehide', reset);
     root.append(zone, info, h('div', { class: 'field-row' }, field({ label: 'Page number', control: page }), field({ label: 'Resolution', control: scale }), field({ label: 'Image format', control: format }), field({label:'JPEG quality (1–100)',control:quality,hint:'Only used for JPEG.'}), field({label:'Color mode',control:color}), field({label:'Extra clockwise rotation',control:rotation})),
       h('p',{class:'hint',text:'Rotation is added to each page’s existing PDF rotation. Grayscale is an approximate RGB luminance conversion on the rendered white background; it increases memory use. JPEG quality is a browser encoder hint; file size and visual quality vary.'}),
-      actionsRow(btn({ label: 'Render page', icon: 'image', onClick: run }), download, btn({ label: 'Clear PDF', variant: 'ghost', onClick: () => { reset(); zone.clear(); status.set('PDF cleared.', 'info'); } })), field({ label: 'Pages for ZIP', hint: 'Up to 20 pages and 50 MiB of encoded images; e.g. 1-3, 7. Duplicates are included once.', control: ranges }),
+      actionsRow(btn({label:'Previous page',variant:'secondary',onClick:() => changePage(-1)}), btn({label:'Next page',variant:'secondary',onClick:() => changePage(1)}), btn({ label: 'Render page', icon: 'image', onClick: run }), download, btn({ label: 'Clear PDF', variant: 'ghost', onClick: () => { reset(); zone.clear(); status.set('PDF cleared.', 'info'); } })), field({ label: 'Pages for ZIP', hint: 'Up to 20 pages and 50 MiB of encoded images; e.g. 1-3, 7. Duplicates are included once.', control: ranges }),
+      actionsRow(btn({label:'All pages',variant:'secondary',onClick:() => selectPreset('all')}), btn({label:'Odd pages',variant:'secondary',onClick:() => selectPreset('odd')}), btn({label:'Even pages',variant:'secondary',onClick:() => selectPreset('even')})),
       actionsRow(btn({ label: 'Prepare ZIP', icon: 'image', onClick: runZip }), zipDownload, btn({ label: 'Cancel rendering', variant: 'ghost', onClick: () => { cancelRender(); status.set('Rendering cancelled; any prepared output was cleared.', 'info'); } })), status, preview,
       privacyNote('Files are processed locally. Pages are rasterized on a white background; text is not selectable. Complex fonts, annotations or forms may render differently; review the image. Password-protected PDFs are not supported.'));
   },

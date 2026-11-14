@@ -1364,6 +1364,11 @@ try {
   page.on('request', watchRequest);
   await page.locator('#tool-app input[type=file]').setInputFiles(imagePdf);
   await page.locator('#tool-app .status-line').getByText(/PDF opened/).waitFor();
+  await page.getByRole('button',{name:'Previous page'}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/first page/);
+  await page.getByRole('button',{name:'Next page'}).click(); assert.equal(await page.getByLabel('Page number').inputValue(),'2');
+  await page.getByRole('button',{name:'Odd pages'}).click(); assert.equal(await page.getByLabel('Pages for ZIP').inputValue(),'1, 3');
+  await page.getByRole('button',{name:'Even pages'}).click(); assert.equal(await page.getByLabel('Pages for ZIP').inputValue(),'2');
+  await page.getByRole('button',{name:'All pages',exact:true}).click(); assert.equal(await page.getByLabel('Pages for ZIP').inputValue(),'1, 2, 3');
   await page.getByLabel('Resolution').selectOption('1');
   await page.getByLabel('Page number').fill('2');
   await page.getByRole('button', { name: 'Render page' }).click();
@@ -1374,6 +1379,7 @@ try {
   const pdfPixel = await sharp(pngBytes).removeAlpha().extract({left: 10, top: 10, width: 1, height: 1}).raw().toBuffer();
   assert.ok(pdfPixel[0] > 240 && pdfPixel[1] < 20 && pdfPixel[2] < 20, 'rendered PDF content appears in downloaded PNG');
   assert.equal(imageMeta.format, 'png'); assert.equal(imageMeta.width, 200); assert.equal(imageMeta.height, 100);
+  await page.getByRole('button',{name:'Previous page'}).click(); assert.equal(await page.getByRole('button',{name:'Download image'}).isDisabled(),true); assert.equal(await page.getByLabel('Page number').inputValue(),'1'); await page.getByRole('button',{name:'Next page'}).click();
   await page.getByLabel('Color mode').selectOption('gray'); await page.getByLabel('Extra clockwise rotation').selectOption('90');
   assert.equal(await page.getByRole('button',{name:'Download image'}).isDisabled(),true);
   await page.getByRole('button',{name:'Render page'}).click(); await page.locator('#tool-app .status-line').getByText(/Rendered page 2/).waitFor();
@@ -1405,12 +1411,15 @@ try {
   const zipPixel = await sharp(Buffer.from(pdfZip['pages-page-0002.png'])).removeAlpha().extract({left:10,top:10,width:1,height:1}).raw().toBuffer();
   assert.ok(zipPixel[0] > 240 && zipPixel[1] < 20 && zipPixel[2] < 20);
   await page.getByLabel('Image format').selectOption('jpeg');
-  await page.getByLabel('Pages for ZIP').fill('2'); await page.getByRole('button', {name:'Prepare ZIP'}).click();
+  await page.getByRole('button',{name:'Even pages'}).click(); assert.equal(await page.getByLabel('Pages for ZIP').inputValue(),'2'); await page.getByRole('button', {name:'Prepare ZIP'}).click();
   await page.locator('#tool-app .status-line').getByText(/Prepared 1 page/).waitFor();
   zipEvent = page.waitForEvent('download'); await page.getByRole('button', {name:'Download ZIP'}).click();
   const jpegZip = unzipSync(new Uint8Array(await readFile(await (await zipEvent).path())));
   assert.deepEqual(Object.keys(jpegZip), ['pages-page-0002.jpg']);
   assert.equal((await sharp(Buffer.from(jpegZip['pages-page-0002.jpg'])).metadata()).format, 'jpeg');
+  await page.getByRole('button',{name:'Odd pages'}).click(); assert.equal(await page.getByRole('button',{name:'Download ZIP'}).isDisabled(),true);
+  await page.setViewportSize({width:320,height:844}); assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'PDF page selectors fit mobile');
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'PDF page selection mobile accessibility'); await page.setViewportSize({width:1280,height:800});
   await page.getByLabel('Image format').selectOption('png');
   await page.getByLabel('Pages for ZIP').fill('1-3');
   assert.equal(await page.getByRole('button', {name:'Download ZIP'}).isDisabled(), true);
@@ -1435,6 +1444,8 @@ try {
   const manyPages = await PDFDocument.create(); for (let i = 0; i < 21; i++) manyPages.addPage([50, 50]);
   await page.locator('#tool-app input[type=file]').setInputFiles({name:'many.pdf',mimeType:'application/pdf',buffer:Buffer.from(await manyPages.save())});
   await page.locator('#tool-app .status-line').getByText(/PDF opened/).waitFor();
+  await page.getByRole('button',{name:'All pages',exact:true}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/exceeds 20 pages/); assert.equal(await page.getByLabel('Pages for ZIP').inputValue(),'');
+  await page.getByRole('button',{name:'Even pages'}).click(); assert.equal((await page.getByLabel('Pages for ZIP').inputValue()).split(',').length,10);
   await page.getByLabel('Pages for ZIP').fill('1-21'); await page.getByRole('button', {name:'Prepare ZIP'}).click();
   await page.locator('#tool-app .status-line').getByText(/at most 20 pages/).waitFor();
   assert.equal(await page.getByRole('button', {name:'Download ZIP'}).isDisabled(), true);
