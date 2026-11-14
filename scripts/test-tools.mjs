@@ -1374,6 +1374,27 @@ await test('finance: small rates, safe bounds and decimal withdrawal residue', (
 });
 
 console.log('\n── Data (CSV/JSONL) ──');
+await test('CSV replacement keys and positional projection', () => {
+  assert.equal(data.parseCsvHeaderNames(' '), null);
+  assert.deepEqual(data.parseCsvHeaderNames('["name, full"," id ","", "__proto__"]'), ['name, full',' id ','','__proto__']);
+  for (const value of ['[1]', '{}', '["a",', '["x","x"]']) assert.throws(()=>data.parseCsvHeaderNames(value), /array|Duplicate/);
+  assert.throws(()=>data.parseCsvHeaderNames('x'.repeat(100001)), /100,000/);
+  assert.throws(()=>data.parseCsvHeaderNames(JSON.stringify(Array.from({length:257},(_,i)=>String(i)))), /256/);
+  assert.equal(data.parseCsvPositions(' '), null);
+  assert.deepEqual(data.parseCsvPositions(' 3, 1 '), [3,1]);
+  for (const value of ['1,1','0','1,','1.5','257','-1']) assert.throws(()=>data.parseCsvPositions(value), /positions/);
+  const keys=['name, full',' id ','','__proto__'];
+  const source='x,x,,x\n"Ada, A",001,hello,safe';
+  const result=data.csvToJson(source,{headerNames:keys,positions:[4,1,3]});
+  assert.equal(JSON.stringify(result),'[{"__proto__":"safe","name, full":"Ada, A","":"hello"}]');
+  assert.deepEqual(data.csvToJson('a,b\n1,2',{headerRow:false,headerNames:['x','y'],positions:[2]}),[{y:'b'},{y:'2'}]);
+  assert.throws(()=>data.csvToJson('a,b\n1,2',{headerNames:['x']}), /exactly 2/);
+  assert.throws(()=>data.csvToJson('a,b\n1,2',{positions:[3]}), /between 1 and 2/);
+  assert.throws(()=>data.csvToJson('a,a\n1,2',{positions:[1]}), /Duplicate/);
+  assert.throws(()=>data.csvToJson('a,b\n1',{headerNames:['x','y']}), /different number/);
+  assert.throws(()=>data.csvToJson('x\n'+'v\n'.repeat(2100),{headerNames:['k'.repeat(5000)]}),/output limit/);
+});
+
 await test('RFC 4180 quoted commas and escaped quotes', () => {
   const rows = data.parseCsv('a,b\n"x,1",2\n"he said ""hi""",3');
   assert.deepEqual(rows.rows[0], ['x,1', '2']);
