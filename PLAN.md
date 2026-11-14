@@ -11,6 +11,25 @@
 
 ---
 
+## PDF page image navigation and ZIP selection — plan
+
+[iLovePDF](https://www.ilovepdf.com/pdf_to_jpg) distinguishes rasterizing pages
+from extracting embedded images, a competitor feature signal, not measured
+traffic demand. Our tool already renders up to 20 selected pages but requires
+manual page-number entry even for common all/odd/even selections, and single
+page preview lacks previous/next navigation. Keep page limits and existing
+rendering behavior; do not claim original image extraction.
+
+1. Add bounded all/odd/even ZIP selection shortcuts and previous/next page
+   controls, with accessible status, input validation and stale-result cancellation.
+2. Document sorted/deduplicated selections, limits, rasterization versus
+   extraction, and output tradeoffs; no promise of SEO or ranking improvement.
+3. Test limits for 1–1,000 pages, selection and boundary cases, cancellation,
+   real PNG/JPEG ZIP output and mobile accessibility. Full checks and audit,
+   one PR, merge only with green CI, then verify production.
+
+---
+
 ## Image-to-PDF orientation and memory safety — plan
 
 [iLovePDF](https://www.ilovepdf.com/jpg_to_pdf) offers image-to-PDF layout

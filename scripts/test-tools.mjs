@@ -1978,6 +1978,16 @@ await test('range parsing: singles, ranges, mixed, unsorted, reversed', () => {
   assert.deepEqual(pdf.splitPageGroups(2, 100), [[1,2]]);
   for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(n, 2), /1 to 100 pages/);
   for (const n of [0, 101, 1.5, NaN]) assert.throws(() => pdf.splitPageGroups(3, n), /whole number/);
+  assert.deepEqual(pdf.pdfImagePresetPages('all',3),[1,2,3]);
+  assert.deepEqual(pdf.pdfImagePresetPages('odd',5),[1,3,5]);
+  assert.deepEqual(pdf.pdfImagePresetPages('even',5),[2,4]);
+  assert.equal(pdf.pdfImagePresetPages('odd',39).length,20);
+  assert.equal(pdf.pdfImagePresetPages('even',41).length,20);
+  assert.throws(()=>pdf.pdfImagePresetPages('odd',40+1),/20 pages/);
+  assert.throws(()=>pdf.pdfImagePresetPages('all',21),/20 pages/);
+  assert.throws(()=>pdf.pdfImagePresetPages('even',1),/No pages/);
+  assert.throws(()=>pdf.pdfImagePresetPages('all',1001),/1,000 pages/);
+  assert.throws(()=>pdf.pdfImagePresetPages('unknown',2),/valid page/);
   assert.deepEqual(pdf.pdfRasterOptions(3,'jpeg',80,'gray',90),{scale:3,format:'jpeg',quality:0.8,color:'gray',rotation:90});
   assert.equal(pdf.pdfRasterOptions(1,'png',NaN,'color',0).quality,undefined);
   assert.throws(()=>pdf.pdfRasterOptions(2,'jpeg',0,'color',0),/quality/);
