@@ -1241,18 +1241,18 @@ export const tools = [
   // ── Date & Time ────────────────────────────────────────────────────────────
   T({ id:'date-difference', name:'Date Difference', icon:'calendar', engine:'datetime', categories:['datetime'],
     related:['iso-week-calculator','business-day-calculator','date-add-calculator','age-calculator','time-zone-converter','work-hours-calculator'],
-    blurb:'Days, weeks, calendar difference and weekdays between two dates.', description:'Count calendar days and weekdays between dates, with an optional inclusive end day and a year-month-day breakdown.',
+    blurb:'Days, weeks, calendar difference and weekdays between two dates.', description:'Count calendar and working days between dates, with optional inclusive end day, weekend presets, manual holidays and a year-month-day breakdown.',
     keywords:['date difference','days between','duration','business days','weekday'], aliases:['days between dates','date duration','days calculator'], popularity:82, added:'2026-06-01',
-    steps:'Pick a start date and an end date.|Optionally include the end day in totals.|Read calendar difference, weekdays, weeks and days.',
+    steps:'Pick a start date and an end date.|Optionally include the end day; choose non-working weekdays and enter holidays manually.|Calculate calendar difference, working days, weeks and days.',
     faqs:[
       {q:'What does include the end day change?',a:'It adds one to the day count and affects week, weekday, weekend and hour totals. The calendar years-months-days breakdown always excludes the end date.'},
       {q:'What if dates are reversed?',a:'The calculator sorts the dates and reports the magnitude; the earlier date is the start for weekday counting.'},
-      {q:'Does this count public holidays?',a:'No. Business days exclude Saturday and Sunday only. Use the Business Day Calculator to enter holidays manually.'},
+      {q:'Does this count public holidays?',a:'No holiday calendar is loaded automatically. Enter up to 500 holiday dates manually and select the appropriate non-working weekdays. A holiday on a non-working weekday is not subtracted twice.'},
       {q:'Are the hours actual elapsed hours?',a:'No. Hours are 24 times the number of calendar days. Time zones, daylight-saving clock changes and time of day are not included.'}
     ],guide:[
       {h:'Day counts and calendar breakdown',p:'The day total counts from the earlier date up to but excluding the later date, unless include-end is selected. The calendar breakdown always counts completed years first, then months from the last anniversary, then remaining calendar days; a month-end anniversary is clamped to the last day of the target month.'},
       {h:'Worked month-end example',p:'From 31 January to 1 March 2024 is 30 calendar days. The year-month-day breakdown is 0 years, 1 month and 1 day: one month after January 31 is February 29, then one day remains. Including the end day makes the total 31 days but does not change the calendar breakdown.'},
-      {h:'Weekdays and limitations',list:['Weekdays are Monday through Friday and do not exclude holidays.', 'Reversed dates are treated as an absolute interval.', 'A date-only hour figure assumes 24 hours per calendar day, not actual time elapsed across clock changes.', 'Supported input dates are 1900 through 2100. Different month-counting conventions can yield different breakdowns.']}
+      {h:'Weekdays and limitations',list:['Working days exclude your selected non-working weekdays and unique manually entered holidays. Holidays on non-working weekdays are not subtracted twice; no holiday calendar is loaded automatically.', 'Reversed dates are treated as an absolute interval.', 'A date-only hour figure assumes 24 hours per calendar day, not actual time elapsed across clock changes.', 'Supported input dates are 1900 through 2100. Different month-counting conventions can yield different breakdowns.']}
     ] }),
   T({ id:'date-add-calculator', name:'Date Add / Subtract', icon:'calendar-plus', engine:'datetime', categories:['datetime'],
     related:['iso-week-calculator','business-day-calculator','date-difference','age-calculator','time-zone-converter','work-hours-calculator'],
