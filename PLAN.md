@@ -11,6 +11,28 @@
 
 ---
 
+## Single-image target-size and truthful guidance — plan
+
+[ResizePixel](https://www.resizepixel.com/compress-image) offers target-size
+compression, a competitor feature rather than measured demand. Browser
+[canvas encoding](https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/toBlob)
+can fall back to PNG when a format is unsupported; our helper checks MIME.
+Google's [WebP study](https://developers.google.com/speed/webp/docs/webp_study)
+compared specific encoders/data at equal SSIM, not every image. The existing
+compressor guide incorrectly equates pixel reduction with file reduction and
+claims zero visible difference; size reporting also hides how much output grew.
+
+1. Reuse the bounded local JPEG/WebP target KiB quality search for individual
+   images, reject impossible targets without creating an output, preserve
+   cancellation on file/settings changes, and clearly state its limits.
+2. Report output growth as well as savings; correct format, resizing,
+   transparency and metadata guidance without promising sizes or quality.
+3. Test target validation, unsupported formats, cancellation, byte bounds,
+   download and mobile accessibility; full checks and audit, one PR, green CI
+   before merge, then verify production. No ranking or demand claims.
+
+---
+
 ## JSON duplicate-key diagnostics — plan
 
 [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259) says object member names

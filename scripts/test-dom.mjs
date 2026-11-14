@@ -1585,6 +1585,15 @@ await domTest('image tools accept picker and drop, clear stale results, and refu
     const drop=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(drop,'dataTransfer',{value:{files:[good]}}); zone.dispatchEvent(drop);
     assert.match(app.textContent,/Loaded first.jpg/); click(btnByLabel(app,'Compress')); await new Promise(r=>setTimeout(r,30));
     assert.ok(app.querySelector('.img-preview'), app.textContent);
+    assert.match(app.textContent,/larger/);
+    const targetInput=app.querySelector('input[placeholder=optional]'), format=app.querySelector('select');
+    targetInput.value='1'; fire(targetInput,'input'); assert.equal(app.querySelector('.img-preview'),null);
+    click(btnByLabel(app,'Compress')); await new Promise(r=>setTimeout(r,30));
+    assert.match(app.textContent,/100%Tested quality/); assert.match(app.textContent,/Target met|larger/);
+    format.value='png'; fire(format,'change'); click(btnByLabel(app,'Compress')); await new Promise(r=>setTimeout(r,30));
+    assert.match(app.textContent,/Target size is available for JPEG and WebP only/); assert.equal(app.querySelector('.img-preview'),null);
+    format.value='jpeg'; fire(format,'change'); targetInput.value='51201'; fire(targetInput,'input'); click(btnByLabel(app,'Compress')); await new Promise(r=>setTimeout(r,30)); assert.match(app.textContent,/whole number from 1 to 51,200/);
+    targetInput.value=''; fire(targetInput,'input');
     const picker=zone.querySelector('input[type=file]'); Object.defineProperty(picker,'files',{configurable:true,value:[bad]}); fire(picker,'change');
     assert.equal(app.querySelector('.img-preview'),null,'new file clears stale preview'); click(btnByLabel(app,'Compress')); await new Promise(r=>setTimeout(r,30)); assert.match(app.textContent,/does not look like/);
     Object.defineProperty(picker,'files',{configurable:true,value:[good]}); fire(picker,'change');
