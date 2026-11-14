@@ -87,11 +87,16 @@ try {
   assert.equal(await mobileSearch.getAttribute('aria-expanded'), 'false');
   assert.ok(await mobileSearch.evaluate(el=>el===document.activeElement));
   await mobileSearch.click();
-  for (const [query, id] of [['csv to json','csv-to-json'], ['json to csv','json-to-csv'], ['robots.txt','robots-txt-generator'], ['image compression','image-compressor']]) {
+  for (const [query, id] of [['csv to json','csv-to-json'], ['json to csv','json-to-csv'], ['robots.txt','robots-txt-generator'], ['image compression','image-compressor'], ['merge pdf files','pdf-merge'], ['word counter online','word-counter'], ['convert pdf to jpg','pdf-to-image'], ['convert csv to json','csv-to-json']]) {
     await toolSearch.fill(query);
     await page.locator(`#search-results a[href="/tools/${id}/"]`).first().waitFor();
     assert.equal(await page.locator('#search-results a').first().getAttribute('href'), `/tools/${id}/`, query);
   }
+  await toolSearch.fill('x'.repeat(257));
+  await toolSearch.press('Escape');
+  await page.waitForTimeout(180);
+  assert.equal(await page.locator('#search-results').isHidden(),true);
+  await mobileSearch.click();
   await toolSearch.fill('x'.repeat(257));
   await page.locator('#search-results').getByText(/limited to 256 characters/).waitFor();
   await toolSearch.fill('zqxjkwv');

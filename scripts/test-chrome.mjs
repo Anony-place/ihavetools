@@ -75,6 +75,14 @@ await chromeTest('homepage search: typing finds tools and links work', async () 
   await new Promise((r) => setTimeout(r, 150));
   assert.equal(doc.querySelector('#search-results a')?.getAttribute('href'), '/tools/robots-txt-generator/');
 });
+await chromeTest('search dismissals invalidate pending debounced work', async () => {
+ const dom=await loadPage('/'), doc=dom.window.document, input=doc.querySelector('#global-search'), list=doc.querySelector('#search-results');
+ input.focus(); input.value='x'.repeat(257); fire(input,'input'); input.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+ await new Promise(r=>setTimeout(r,160)); assert.equal(list.hidden,true); assert.equal(input.getAttribute('aria-expanded'),'false');
+ input.value='word counter online'; fire(input,'input'); await new Promise(r=>setTimeout(r,160)); assert.equal(list.querySelector('a')?.getAttribute('href'),'/tools/word-counter/');
+ input.value='merge pdf files'; fire(input,'input'); assert.equal(doc.querySelector('.search-status').textContent,'');
+ await new Promise(r=>setTimeout(r,160)); assert.equal(list.querySelector('a')?.getAttribute('href'),'/tools/pdf-merge/');
+});
 await chromeTest('homepage stats are honest (tool count matches registry)', async () => {
   const { tools } = await import('../assets/js/registry.js');
   const dom = await loadPage('/');

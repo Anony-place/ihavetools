@@ -11,6 +11,26 @@
 
 ---
 
+## Site search discovery and reliability — plan
+
+An internal search audit found everyday queries such as “merge pdf files” and
+“word counter online” return no tools, while “convert pdf to jpg” can rank the
+reverse conversion first. These are reproducible usability cases, not measured
+search demand or traffic. Google's [people-first guidance](https://developers.google.com/search/docs/fundamentals/creating-helpful-content)
+prioritizes a helpful page experience; this batch improves site navigation,
+not a guaranteed search-engine ranking.
+
+1. Preserve meaningful Unicode combining marks, use a bounded fallback for a
+   small explicit set of generic English filler words, and favor ordered core
+   phrases without dropping conversion direction or unknown terms.
+2. Keep exact-name precedence and stable ranking, lazy loading and input caps;
+   prevent delayed search from reopening after dismissal or blur.
+3. Add engine, keyboard/race, mobile accessibility and no-result tests. Run
+   full checks and security audit, ship a single PR if CI is green and verify
+   production. Measure outcomes only with comparable analytics, not guesses.
+
+---
+
 ## Sitemap dates and crawler-testing clarity — plan
 
 Google's [sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)
