@@ -741,6 +741,11 @@ const defs = {
     const flipX = switchChip({ label:'Flip horizontally', checked:false });
     const flipY = switchChip({ label:'Flip vertically', checked:false });
     const format = select({ options: [{v:'png',t:'PNG'}, {v:'jpeg',t:'JPEG'}, {v:'webp',t:'WebP'}], value:'png' });
+    const quality = input({type:'number', min:5, max:100, step:1, value:'92'});
+    const background = input({type:'color', value:'#ffffff'});
+    const backgroundField = field({label:'JPEG background',control:background, hint:'Used behind transparent pixels.'});
+    const refreshOptions = () => { quality.disabled = format.value === 'png'; backgroundField.hidden = format.value !== 'jpeg'; };
+    refreshOptions();
     const status = statusLine('Choose an image, select a rotation or mirror, then create a preview.');
     const info = h('p', { class:'hint' });
     const preview = h('div', {}), previews = previewManager(preview);
@@ -762,13 +767,15 @@ const defs = {
         status.set('Image ready. Choose settings and create a preview.', 'success');
       } catch (err) { if (selection === token) { zone.resetSelectionUI(); status.set(err.message, 'error'); } }
     });
-    [angle, flipX, flipY, format].forEach(el => el.addEventListener('change', () => { invalidate(); status.set('Settings changed. Create a new preview.', 'info'); }));
+    [angle, flipX, flipY, format, quality, background].forEach(el => { for (const event of ['input','change']) el.addEventListener(event, () => { refreshOptions(); invalidate(); status.set('Settings changed. Create a new preview.', 'info'); }); });
     window.addEventListener('pagehide', () => { selection++; invalidate(); }, {once:true});
     const run = async () => {
       if (!file || !img) { status.set('Choose a supported image first.', 'warning'); return; }
       invalidate(); const token = operation, selected = file, source = img;
       const deg = Number(angle.value), fmt = format.value, horizontal = flipX.querySelector('input').checked, vertical = flipY.querySelector('input').checked;
       if (![0,90,180,270].includes(deg) || !Object.hasOwn(MIME_BY_FMT, fmt)) { status.set('Choose valid output settings.', 'error'); return; }
+      const q = Number(quality.value);
+      if (fmt !== 'png' && (!quality.value || !Number.isInteger(q) || q < 5 || q > 100)) { status.set('Quality must be a whole number from 5 to 100.', 'warning'); return; }
       let canvas;
       try {
         const sw = source.naturalWidth, sh = source.naturalHeight;
@@ -776,22 +783,22 @@ const defs = {
         validateCanvasSize(width, height);
         canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Canvas is unavailable in this browser.');
-        if (fmt === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); }
+        if (fmt === 'jpeg') { ctx.fillStyle = background.value; ctx.fillRect(0, 0, width, height); }
         ctx.translate(width / 2, height / 2); ctx.scale(horizontal ? -1 : 1, vertical ? -1 : 1); ctx.rotate(deg * Math.PI / 180);
         ctx.drawImage(source, -sw / 2, -sh / 2); status.set('Creating image locally…', 'info');
-        const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmt], .92);
+        const blob = await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100);
         if (token !== operation || file !== selected) return;
         const name = `rotated-${baseName(selected.name).replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0,70) || 'image'}.${EXT_BY_FMT[fmt]}`;
         previews.show(blob, url => h('div', {}, h('img', {class:'img-preview', src:url, alt:'Rotated and mirrored image preview'}),
           h('div', {style:'margin-top:10px'}, h('button', {type:'button',class:'btn btn-primary',onclick:() => downloadImage(blob,name)}, `Download ${width} × ${height} ${fmt.toUpperCase()}`))));
-        status.set(`Ready: ${width} × ${height} px, ${fmtBytes(blob.size)}.`, 'success');
+        status.set(`Ready: ${width} × ${height} px. ${fmtBytes(selected.size)} → ${fmtBytes(blob.size)} (${sizeChange(selected.size, blob.size)}).`, 'success');
       } catch (err) { if (token === operation && file === selected) status.set(err.message, 'error'); }
       finally { if (canvas) { canvas.width = 0; canvas.height = 0; } }
     };
-    root.append(zone, info, h('div', {class:'field-row'}, field({label:'Rotation',control:angle}), field({label:'Output format',control:format})),
+    root.append(zone, info, h('div', {class:'field-row'}, field({label:'Rotation',control:angle}), field({label:'Output format',control:format}), field({label:'Quality (5–100)',control:quality,hint:'JPEG/WebP only; PNG ignores quality.'}), backgroundField),
       h('div', {class:'field-row'}, field({label:'Mirroring after rotation',control:flipX}), field({label:'',control:flipY})),
       actionsRow(btn({label:'Create preview', icon:'image', onClick:run}), btn({label:'Clear image',variant:'ghost',icon:'x',onClick:() => { reset(); status.set('Image cleared.', 'info'); }})),
-      status, preview, privacyNote('One JPG, PNG or WebP up to 100 MiB. Output is limited to 16,384 px per side and 40 million pixels. Browser decoding may apply orientation; canvas output can discard metadata, color profiles and animation. JPEG and WebP are re-encoded; JPEG uses a white background.'));
+      status, preview, privacyNote('One JPG, PNG or WebP up to 100 MiB. Output is limited to 16,384 px per side and 40 million pixels. Browser decoding may apply orientation; canvas output can discard metadata, color profiles and animation. JPEG and WebP are re-encoded with a lossy quality setting; JPEG uses your selected background.'));
   },
 
   'image-cropper'(root) {

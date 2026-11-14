@@ -1147,12 +1147,24 @@ try {
     }
     assert.deepEqual(actual.data,expected, `rotation ${deg}, horizontal ${flipH}, vertical ${flipV}`);
   }
+  assert.equal(await page.getByLabel('Quality (5–100)').isDisabled(),true);
   await page.getByLabel('Output format').selectOption('jpeg');
+  assert.equal(await page.getByLabel('Quality (5–100)').isDisabled(),false);
+  await page.getByLabel('Quality (5–100)').fill('101'); await page.getByRole('button',{name:'Create preview'}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/Quality must/);
+  await page.getByLabel('Quality (5–100)').fill('70');
   assert.equal(await page.getByRole('button',{name:/Download.*PNG/}).count(),0);
   await page.getByRole('button',{name:'Create preview'}).click();
   await page.locator('#tool-app .status-line').getByText(/Ready:/).waitFor();
   let rotateEvent = page.waitForEvent('download'); await page.getByRole('button',{name:/Download.*JPEG/}).click();
   assert.equal((await sharp(await readFile(await (await rotateEvent).path())).metadata()).format,'jpeg');
+  assert.match(await page.locator('#tool-app .status-line').innerText(), /smaller|larger|Unchanged/);
+  const transparentRotate = await sharp({create:{width:12,height:12,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'transparent.png',mimeType:'image/png',buffer:transparentRotate});
+  await page.locator('#tool-app .status-line').getByText(/Image ready/).waitFor();
+  await page.getByLabel('JPEG background').fill('#ff0000'); await page.getByRole('button',{name:'Create preview'}).click();
+  await page.locator('#tool-app .status-line').getByText(/Ready:/).waitFor(); rotateEvent=page.waitForEvent('download'); await page.getByRole('button',{name:/Download.*JPEG/}).click();
+  const redPixel=await sharp(await readFile(await (await rotateEvent).path())).removeAlpha().raw().toBuffer(); assert.ok(redPixel[0]>240 && redPixel[1]<15 && redPixel[2]<15);
+
   await page.getByLabel('Output format').selectOption('webp'); await page.getByRole('button',{name:'Create preview'}).click();
   await page.locator('#tool-app .status-line').getByText(/Ready:/).waitFor();
   rotateEvent = page.waitForEvent('download'); await page.getByRole('button',{name:/Download.*WEBP/}).click();
@@ -1160,7 +1172,7 @@ try {
   const transparentPng = await sharp({create:{width:4,height:4,channels:4,background:{r:255,g:0,b:0,alpha:0}}}).png().toBuffer();
   await page.locator('#tool-app input[type=file]').setInputFiles({name:'transparent.png',mimeType:'image/png',buffer:transparentPng});
   await page.locator('#tool-app .status-line').getByText(/Image ready/).waitFor();
-  await page.getByLabel('Output format').selectOption('jpeg'); await page.getByRole('button',{name:'Create preview'}).click();
+  await page.getByLabel('Output format').selectOption('jpeg'); await page.getByLabel('JPEG background').fill('#ffffff'); await page.getByRole('button',{name:'Create preview'}).click();
   await page.locator('#tool-app .status-line').getByText(/Ready:/).waitFor();
   rotateEvent = page.waitForEvent('download'); await page.getByRole('button',{name:/Download.*JPEG/}).click();
   const whitePixel = await sharp(await readFile(await (await rotateEvent).path())).raw().toBuffer();
