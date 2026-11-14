@@ -1751,6 +1751,13 @@ await domTest('custom workweek and UTC wall clock conversion invalidate results'
  zone.value='local';fire(zone,'change');assert.ok(!app.querySelector('.result-panel').dataset.has);
 });
 
+await domTest('JWT warning is visible before decoding and oversized input is rejected', async () => {
+ const app=await loadToolPage('jwt-decoder','developer');
+ assert.match(app.textContent, /signatures and claims are not verified/i);
+ const input=app.querySelector('textarea'); input.value='a'.repeat(1000001); fire(input,'input'); click(btnByLabel(app,'Decode'));
+ assert.match(statusText(document), /1,000,000-character limit/);
+ assert.doesNotMatch(app.textContent, /Signature: present/);
+});
 await domTest('timestamp explicit milliseconds and JWT payload copy are correct', async () => {
   let app=await loadToolPage('timestamp-converter','developer'); app.querySelector('input[type=text]').value='1000'; app.querySelector('select').value='milliseconds'; click(btnByLabel(app,'Convert to date')); assert.match(resultText(document),/1970-01-01T00:00:01.000Z/);
   app=await loadToolPage('jwt-decoder','developer'); const header=Buffer.from('{"alg":"none"}').toString('base64url'), payload=Buffer.from('{"sub":"abc"}').toString('base64url'); app.querySelector('textarea').value=`${header}.${payload}.`; click(btnByLabel(app,'Decode'));

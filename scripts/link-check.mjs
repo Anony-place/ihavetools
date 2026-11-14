@@ -160,7 +160,7 @@ test('tool FAQs reflect visible answers and omit generated alias padding', () =>
   }
 });
 test('prioritized guides contain practical examples and caveats in static HTML',()=>{
-  for(const [id, phrases] of Object.entries({'json-validator':['trailing commas','Duplicate object keys','JSON Schema'], 'regex-tester':['UTF-16','worker','2,000'], 'csv-to-json':['column_1','strings','10 MiB'], 'sitemap-generator':['significant update','10,000 URLs','not a guarantee'], 'meta-tag-generator':['no fixed Google character limit','different title link','not security']})) {
+  for(const [id, phrases] of Object.entries({'json-validator':['trailing commas','Duplicate object keys','JSON Schema'], 'regex-tester':['UTF-16','worker','2,000'], 'csv-to-json':['column_1','strings','10 MiB'], 'sitemap-generator':['significant update','10,000 URLs','not a guarantee'], 'meta-tag-generator':['no fixed Google character limit','different title link','not security'], 'json-minifier':['UTF-8 bytes','duplicate keys'], 'jwt-decoder':['not verified','sensitive tokens'], 'json-to-csv':['spreadsheet formula execution','250,000 cells'], 'json-lines-converter':['complete JSON value on each line','10,000 lines']})) {
     const html=readFileSync(join(ROOT,'tools',id,'index.html'),'utf8');
     for(const phrase of phrases) assert.ok(html.includes(phrase),`${id}: missing ${phrase}`);
   }

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="google-site-verification" content="MsDOM6JlqwnItZo1uJAFNYWAEkaDQPOJvzyfIIE9Vbg">
 <title>JWT Decoder — Free &amp; Online | iHaveTools</title>
-<meta name="description" content="Paste a JSON Web Token to decode its header and payload, inspect issued/expiry timestamps in human terms, and see signature details. Nothing is verified online.">
+<meta name="description" content="Paste a JSON Web Token to decode its header and payload, inspect an expiry claim and see signature details. The signature and claims are not verified.">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <link rel="canonical" href="https://i-have-tools.vercel.app/tools/jwt-decoder/">
 <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)">
@@ -18,7 +18,7 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="JWT Decoder — Free &amp; Online | iHaveTools">
-<meta property="og:description" content="Paste a JSON Web Token to decode its header and payload, inspect issued/expiry timestamps in human terms, and see signature details. Nothing is verified online.">
+<meta property="og:description" content="Paste a JSON Web Token to decode its header and payload, inspect an expiry claim and see signature details. The signature and claims are not verified.">
 <meta property="og:url" content="https://i-have-tools.vercel.app/tools/jwt-decoder/">
 <meta property="og:image" content="https://i-have-tools.vercel.app/assets/og/category-developer.png">
 <meta property="og:image:width" content="1200">
@@ -26,7 +26,7 @@
 <meta property="og:image:alt" content="iHaveTools — free online tools">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="JWT Decoder — Free &amp; Online | iHaveTools">
-<meta name="twitter:description" content="Paste a JSON Web Token to decode its header and payload, inspect issued/expiry timestamps in human terms, and see signature details. Nothing is verified online.">
+<meta name="twitter:description" content="Paste a JSON Web Token to decode its header and payload, inspect an expiry claim and see signature details. The signature and claims are not verified.">
 <meta name="twitter:image" content="https://i-have-tools.vercel.app/assets/og/category-developer.png">
 <script>(function(){try{var t=localStorage.getItem('iht-theme');if(!t){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){}})();</script>
 <link rel="stylesheet" href="/assets/css/styles.css">
@@ -34,9 +34,9 @@
 <link rel="modulepreload" href="/assets/js/icons.js">
 <link rel="modulepreload" href="/assets/js/ui.js">
 <link rel="modulepreload" href="/assets/js/tools/developer.js">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"JWT Decoder","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","browserRequirements":"Requires JavaScript","inLanguage":"en","isAccessibleForFree":true,"url":"https://i-have-tools.vercel.app/tools/jwt-decoder/","description":"Paste a JSON Web Token to decode its header and payload, inspect issued/expiry timestamps in human terms, and see signature details. Nothing is verified online.","datePublished":"2026-06-03","publisher":{"@type":"Organization","name":"iHaveTools","url":"https://i-have-tools.vercel.app/"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"JWT Decoder","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (web browser)","browserRequirements":"Requires JavaScript","inLanguage":"en","isAccessibleForFree":true,"url":"https://i-have-tools.vercel.app/tools/jwt-decoder/","description":"Paste a JSON Web Token to decode its header and payload, inspect an expiry claim and see signature details. The signature and claims are not verified.","datePublished":"2026-06-03","publisher":{"@type":"Organization","name":"iHaveTools","url":"https://i-have-tools.vercel.app/"},"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"How to use JWT Decoder","description":"Decode JWT headers and payloads and inspect expiry times.","step":[{"@type":"HowToStep","position":1,"text":"Paste the JWT (the eyJ… string) into the input box."},{"@type":"HowToStep","position":2,"text":"Click Decode."},{"@type":"HowToStep","position":3,"text":"Read the decoded header and payload, plus expiry status. Copy either part as JSON."}]}</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is JWT Decoder free to use?","acceptedAnswer":{"@type":"Answer","text":"Yes — it is free to use without signing up. Individual tools have processing and device limits."}},{"@type":"Question","name":"How is my data handled?","acceptedAnswer":{"@type":"Answer","text":"This tool processes or generates its content locally in your browser."}},{"@type":"Question","name":"What is JWT Decoder used for?","acceptedAnswer":{"@type":"Answer","text":"Paste a JSON Web Token to decode its header and payload, inspect issued/expiry timestamps in human terms, and see signature details. Nothing is verified online."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is JWT Decoder free to use?","acceptedAnswer":{"@type":"Answer","text":"Yes — it is free to use without signing up. Individual tools have processing and device limits."}},{"@type":"Question","name":"How is my data handled?","acceptedAnswer":{"@type":"Answer","text":"This tool processes or generates its content locally in your browser."}},{"@type":"Question","name":"What is JWT Decoder used for?","acceptedAnswer":{"@type":"Answer","text":"Paste a JSON Web Token to decode its header and payload, inspect an expiry claim and see signature details. The signature and claims are not verified."}}]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://i-have-tools.vercel.app/"},{"@type":"ListItem","position":2,"name":"Developer","item":"https://i-have-tools.vercel.app/categories/developer/"},{"@type":"ListItem","position":3,"name":"JWT Decoder","item":"https://i-have-tools.vercel.app/tools/jwt-decoder/"}]}</script>
 </head>
 <body class="page-tool">
@@ -58,7 +58,7 @@
   <header class="page-head">
     <span class="kicker"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-key"/></svg> Developer</span>
     <h1>JWT Decoder</h1>
-    <p class="lede">Paste a JSON Web Token to decode its header and payload, inspect issued/expiry timestamps in human terms, and see signature details. Nothing is verified online.</p>
+    <p class="lede">Paste a JSON Web Token to decode its header and payload, inspect an expiry claim and see signature details. The signature and claims are not verified.</p>
     <span class="privacy-note"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-shield-check"/></svg> This tool processes or generates its content locally in your browser.</span>
     <div class="page-head-actions">
       <button type="button" class="btn btn-secondary btn-sm" data-fav-toggle="jwt-decoder" aria-pressed="false" title="Save to favourites"><span style="display:inline-flex"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-star"/></svg></span> <span data-fav-label>Add to favourites</span></button>
@@ -75,7 +75,7 @@
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use JWT Decoder</h2><ol class="howto"><li>Paste the JWT (the eyJ… string) into the input box.</li><li>Click Decode.</li><li>Read the decoded header and payload, plus expiry status. Copy either part as JSON.</li></ol></section>
-    
+    <section><h2>JWT Decoder guide</h2><h3>Read a token without trusting it</h3><p>A three-part JWT has a Base64URL-encoded header and payload plus a signature segment. Decoding reveals the JSON claims, but does not prove who issued the token or whether its signature is valid. Treat every displayed claim and algorithm as unverified.</p><h3>Expiry and verification</h3><p>The tool displays a numeric exp claim as a UTC date and compares it with your device clock. A future expiry alone does not establish validity: the receiving application must verify the signature and apply its own issuer, audience, timing and authorization checks.</p><h3>Protect tokens and understand limits</h3><p>Tokens can grant access or contain personal data. Avoid pasting live or sensitive tokens, and never share one casually. This browser-local decoder accepts three unpadded Base64URL segments up to 1,000,000 characters, including an empty signature; encrypted five-part tokens are not supported. It does not validate the signature.</p></section>
     <section><h2>Why use the iHaveTools JWT Decoder?</h2>
       <ul>
         <li><strong>Private by design</strong> — This tool processes or generates its content locally in your browser.</li>
@@ -84,7 +84,7 @@
       </ul>
       <p>Explore more <a href="/categories/developer/">Developer tools</a>.</p>
     </section>
-    <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>Is JWT Decoder free to use?</summary><p class="faq-a">Yes — it is free to use without signing up. Individual tools have processing and device limits.</p></details><details><summary>How is my data handled?</summary><p class="faq-a">This tool processes or generates its content locally in your browser.</p></details><details><summary>What is JWT Decoder used for?</summary><p class="faq-a">Paste a JSON Web Token to decode its header and payload, inspect issued/expiry timestamps in human terms, and see signature details. Nothing is verified online.</p></details></div></section>
+    <section><h2>Frequently asked questions</h2><div class="faq-list"><details><summary>Is JWT Decoder free to use?</summary><p class="faq-a">Yes — it is free to use without signing up. Individual tools have processing and device limits.</p></details><details><summary>How is my data handled?</summary><p class="faq-a">This tool processes or generates its content locally in your browser.</p></details><details><summary>What is JWT Decoder used for?</summary><p class="faq-a">Paste a JSON Web Token to decode its header and payload, inspect an expiry claim and see signature details. The signature and claims are not verified.</p></details></div></section>
     <section><h2>Related tools</h2><div class="card-grid cols-3"><div class="tool-card-shell"><a class="tool-card" href="/tools/uuid-generator/">
   <span class="tool-icon"><svg class="ic" width="20" height="20" aria-hidden="true"><use href="/assets/icons/sprite.svg#i-fingerprint"/></svg></span>
   <h3>UUID Generator</h3>

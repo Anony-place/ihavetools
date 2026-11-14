@@ -75,7 +75,7 @@
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use JSON Lines Converter</h2><ol class="howto"><li>Paste JSON or JSON Lines, or load a local .json, .jsonl, .ndjson or .txt file.</li><li>Choose the conversion direction.</li><li>Copy the result or download it with the matching file extension.</li></ol></section>
-    
+    <section><h2>JSON Lines Converter guide</h2><h3>One JSON value per line</h3><p>JSON Lines (also called JSONL or NDJSON) stores a complete JSON value on each line. For example, the array [{&quot;x&quot;:1},{&quot;x&quot;:2}] becomes two lines: {&quot;x&quot;:1} and {&quot;x&quot;:2}. Values need not be objects. Blank input lines are skipped when converting to an array.</p><h3>Choose a direction</h3><p>Array → JSONL requires a nonempty JSON array and writes each element on its own line. JSONL → Array parses each nonblank line separately; a malformed line stops conversion and identifies the first problem. Pretty-printed multi-line JSON is not a single JSONL record.</p><h3>Precision and limits</h3><p>Duplicate keys and unsafe integers are rejected. Decimal values use binary floating point and may round; use strings for exact numeric text. Input is limited to 1,000,000 characters and 10,000 lines or records; formatted output is capped at 10,000,000 characters, and local files at 4 MiB.</p></section>
     <section><h2>Why use the iHaveTools JSON Lines Converter?</h2>
       <ul>
         <li><strong>Private by design</strong> — Calculations and text processing happen in your browser. Optional share links can contain inputs; see the Privacy Policy.</li>

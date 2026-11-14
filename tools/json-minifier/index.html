@@ -75,7 +75,7 @@
 <section class="section tool-docs" style="padding-top:8px">
   <div class="container" style="max-width:860px">
     <section><h2>How to use JSON Minifier</h2><ol class="howto"><li>Paste your JSON into the input box.</li><li>Click Minify.</li><li>Copy the compact result or download it as a .json file.</li></ol></section>
-    
+    <section><h2>JSON Minifier guide</h2><h3>What minification changes</h3><p>Minifying removes whitespace between JSON tokens, not spaces inside strings. For example, { &quot;name&quot;: &quot;Ada Lovelace&quot; } becomes {&quot;name&quot;:&quot;Ada Lovelace&quot;}. The tool validates JSON syntax first and preserves number tokens, string escapes, key order and duplicate keys.</p><h3>Errors, duplicate keys and size</h3><p>JSON does not permit comments or trailing commas. Fix the first reported line and column, then run again. Duplicate keys are preserved with a warning, but other parsers may overwrite them. The reported reduction compares UTF-8 bytes before and after; it is not gzip or network compression.</p><h3>Limits</h3><p>Input is limited to 1,000,000 characters and 256 levels of nesting. The tool runs locally in the browser; keep a separate readable copy if you need one later.</p></section>
     <section><h2>Why use the iHaveTools JSON Minifier?</h2>
       <ul>
         <li><strong>Private by design</strong> — Calculations and text processing happen in your browser. Optional share links can contain inputs; see the Privacy Policy.</li>
