@@ -2,12 +2,32 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (96 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (98 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Sitemap quality and discovery batch — plan
+
+Google’s [sitemap guidance](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)
+recommends canonical URLs and accurate significant modification dates; it ignores
+changefreq and priority and submission does not guarantee indexing. Competitor
+features and unverified/future-dated Search Console exports are not demand or
+traffic evidence. Continue useful SEO development without waiting for metrics.
+
+1. Improve the sitemap generator against duplicate normalized URLs and make the
+   single shared lastmod setting explicit; preserve its scope and existing URLs.
+2. Replace misleading fixed-length metadata advice with Google-aligned guidance,
+   and add practical guides for metadata and sitemaps.
+   Cover sitemap publishing,
+   canonical selection, accuracy, size and indexing caveats; connect existing
+   robots and sitemap workflows with clear guidance.
+3. Add unit, DOM and static SEO regressions; run full checks, security audit and
+   browser CI in one PR, merge if green and verify the live page.
 
 ---
 

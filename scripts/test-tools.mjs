@@ -411,6 +411,8 @@ await test('SEO output rejects invalid URLs, control injection and unsafe sitema
  assert.throws(()=>seo.buildRobots([],{crawlDelay:'1\nDisallow: /'}),/Crawl-delay/);
  assert.throws(()=>seo.buildSitemapXml(['https://a.test/','https://b.test/']),/same scheme/);
  assert.throws(()=>seo.buildSitemapXml(['https://a.test/#part']),/fragment/);
+ assert.throws(()=>seo.buildSitemapXml(['https://a.test','https://A.test:443/']),/Duplicate URL after normalization/);
+ assert.match(seo.buildSitemapXml(['https://a.test/a','https://a.test/b'],{lastmod:'2026-10-01'}),/<lastmod>2026-10-01<\/lastmod>[\s\S]*<lastmod>2026-10-01<\/lastmod>/);
  assert.throws(()=>seo.buildSitemapXml(['ftp://a.test/']),/HTTP/);
  assert.throws(()=>seo.buildSitemapXml(['https://a.test/'],{lastmod:'2026-02-30'}),/valid date/);
  assert.throws(()=>seo.buildSitemapXml(['https://a.test/'],{changefreq:'<script>'}),/frequency/);
@@ -1884,7 +1886,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 96);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 98);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
