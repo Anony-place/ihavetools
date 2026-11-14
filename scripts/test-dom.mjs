@@ -812,6 +812,19 @@ await domTest('csv-to-json: quoted values convert correctly', async () => {
   assert.match(out, /"role": "Admiral, USN"/);
   assert.match(statusText(document), /2 records converted/);
 });
+await domTest('CSV column names and selection clear stale results and validate', async () => {
+  const app=await loadToolPage('csv-to-json','data'); const text=app.querySelector('textarea');
+  const names=app.querySelectorAll('input[type=text]')[0];
+  const positions=app.querySelector('input[placeholder^="e.g. 2,1"]');
+  text.value='x,x\nAda,001'; fire(text,'input'); names.value='["person","id"]'; fire(names,'input');
+  positions.value='2,1'; fire(positions,'input'); click(btnByLabel(app,'Convert to JSON'));
+  assert.match(resultText(document), /"id": "001"/); assert.match(resultText(document), /"person": "Ada"/);
+  positions.value='3'; fire(positions,'input'); assert.doesNotMatch(resultText(document),/Ada/);
+  click(btnByLabel(app,'Convert to JSON')); assert.match(statusText(document),/between 1 and 2/);
+  positions.value=''; fire(positions,'input'); names.value='["same","same"]'; fire(names,'input');
+  click(btnByLabel(app,'Convert to JSON')); assert.match(statusText(document),/Duplicate/);
+});
+
 await domTest('CSV refuses pasted inputs beyond documented bounds', async () => {
  const app=await loadToolPage('csv-to-json','data');const v=app.querySelector('textarea');v.value='x'.repeat(1_000_001);fire(v,'input');click(btnByLabel(app,'Convert to JSON'));assert.match(statusText(document),/1,000,000 characters/);assert.doesNotMatch(resultText(document),/"x"/);
 });

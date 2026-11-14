@@ -45,7 +45,15 @@ jobs:
         run: |
           CHROMIUM_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           test -n "$CHROMIUM_PATH"
-          CHROMIUM_PATH="$CHROMIUM_PATH" npm run test:browser
+          set -o pipefail
+          CHROMIUM_PATH="$CHROMIUM_PATH" npm run test:browser 2>&1 | tee browser-test.log || {
+            echo "::error::Browser smoke test failed; see log tail below."
+            tail -30 browser-test.log | while IFS= read -r line; do
+              line="${line//'%'/'%25'}"; line="${line//$'\r'/'%0D'}"
+              echo "::error::$line"
+            done
+            exit 1
+          }
 
       - name: Verify deployment config
         run: |

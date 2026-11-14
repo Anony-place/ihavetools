@@ -11,7 +11,7 @@ import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultP
 const MAX_TEXT = 1_000_000, MAX_ROWS = 10_000, MAX_COLUMNS = 256, MAX_CELLS = 250_000, MAX_OUTPUT = 10_000_000;
 
 /* ═══════════════════════════ RFC 4180 CSV parser ═══════════════════════════ */
-export function parseCsv(text, { delimiter = ',', headerRow = true } = {}) {
+export function parseCsv(text, { delimiter = ',', headerRow = true, headerNames = null } = {}) {
   if (text.length > MAX_TEXT) throw new Error('CSV input exceeds 1,000,000 characters.');
   if (text.startsWith('\uFEFF')) text = text.slice(1); // UTF-8 BOM, not a header character
   const rows = [];
@@ -54,14 +54,52 @@ export function parseCsv(text, { delimiter = ',', headerRow = true } = {}) {
   const width = rows.reduce((max,r) => Math.max(max,r.length), 0);
   const ragged = rows.filter((r) => r.length !== width).length;
   if (ragged) throw new Error(`${ragged} row${ragged === 1 ? ' has' : 's have'} a different number of columns than the widest row (${width}). Check for missing delimiters.`);
-  if (!headerRow) return { headers: rows[0].map((_, k) => `column_${k + 1}`), rows };
-  const headers = rows[0].map((hd, k) => hd === '' ? `column_${k + 1}` : hd);
+  let headers;
+  if (headerNames !== null) {
+    if (!Array.isArray(headerNames) || headerNames.some(h => typeof h !== 'string')) throw new Error('Replacement keys must be a JSON array of strings.');
+    if (headerNames.length !== width) throw new Error(`Provide exactly ${width} replacement key${width === 1 ? '' : 's'}, one per source column.`);
+    headers = headerNames;
+  } else {
+    headers = headerRow ? rows[0].map((hd, k) => hd === '' ? `column_${k + 1}` : hd) : rows[0].map((_, k) => `column_${k + 1}`);
+  }
   if (new Set(headers).size !== headers.length) throw new Error('Duplicate column headers would overwrite data. Give every column a unique header.');
-  return { headers, rows: rows.slice(1) };
+  return { headers, rows: headerRow ? rows.slice(1) : rows };
+}
+
+// Optional full-width replacement names preserve even empty, comma-containing
+// and whitespace-containing keys. A blank field retains the default behavior.
+export function parseCsvHeaderNames(text) {
+  if (text.length > 100_000) throw new Error('Replacement keys exceed 100,000 characters.');
+  if (!text.trim()) return null;
+  let names;
+  try { names = JSON.parse(text); } catch { throw new Error('Replacement keys must be a JSON array of strings.'); }
+  if (!Array.isArray(names) || names.some(h => typeof h !== 'string')) throw new Error('Replacement keys must be a JSON array of strings.');
+  if (names.length > MAX_COLUMNS) throw new Error('Choose at most 256 replacement keys.');
+  if (new Set(names).size !== names.length) throw new Error('Duplicate replacement keys would overwrite data.');
+  return names;
+}
+
+export function parseCsvPositions(text) {
+  if (text.length > 2048) throw new Error('Column positions exceed 2,048 characters.');
+  if (!text.trim()) return null;
+  const parts = text.split(',').map(x => x.trim());
+  if (parts.length > MAX_COLUMNS || parts.some(x => !/^[1-9]\d{0,2}$/.test(x) || Number(x) > MAX_COLUMNS)) throw new Error('Column positions must be whole numbers from 1 to 256, separated by commas.');
+  const positions = parts.map(Number);
+  if (new Set(positions).size !== positions.length) throw new Error('Duplicate column positions are not allowed.');
+  return positions;
 }
 
 export function csvToJson(text, opts = {}) {
-  const { headers, rows } = parseCsv(text, opts);
+  const parsed = parseCsv(text, opts);
+  let { headers, rows } = parsed;
+  if (opts.positions != null) {
+    const positions = opts.positions;
+    if (!Array.isArray(positions) || !positions.length || positions.length > MAX_COLUMNS || positions.some(n => !Number.isInteger(n) || n < 1 || n > headers.length)) throw new Error(`Column positions must be between 1 and ${headers.length}.`);
+    if (new Set(positions).size !== positions.length) throw new Error('Duplicate column positions are not allowed.');
+    const indices = positions.map(n => n - 1);
+    headers = indices.map(i => headers[i]);
+    rows = rows.map(row => indices.map(i => row[i]));
+  }
   // Estimate pretty JSON size before multiplying long header names across rows.
   const keySizes = headers.map(h => JSON.stringify(h).length);
   let estimate = 2;
@@ -217,6 +255,8 @@ const defs = {
     const inp = textarea({ rows: 10, value: 'name,role,city\nAda,engineer,"London"\nGrace,"Admiral, USN","New York"', placeholder: 'Paste CSV…' });
     const delim = select({ options: [{ v: ',', t: 'Comma ,' }, { v: ';', t: 'Semicolon ;' }, { v: '\t', t: 'Tab' }, { v: '|', t: 'Pipe |' }], value: ',' });
     const header = switchChip({ label: 'First row is a header', checked: true });
+    const names = input({ type: 'text', placeholder: '["name","city"]' });
+    const positions = input({ type: 'text', placeholder: 'e.g. 2,1 (blank = all)' });
     const coerceTypes = switchChip({ label: 'Infer basic types (may change values)', checked: false });
     const status = statusLine('Quoted fields, escaped quotes ("") and multi-line values are all handled.');
     const out = resultPanel({ label: 'JSON', download: true, downloadName: 'data.json', downloadMime: 'application/json;charset=utf-8' });
@@ -224,11 +264,11 @@ const defs = {
     let revision = 0;
     window.addEventListener('pagehide', () => { revision++; });
     const invalidate = () => { revision++; out.placeholder(); status.set('Input or options changed. Convert again.', 'info'); };
-    [inp, delim, header, coerceTypes].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
+    [inp, delim, header, coerceTypes, names, positions].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     const run = () => {
       revision++;
       try {
-        const json = csvToJsonString(inp.value, { delimiter: delim.value, headerRow: header.querySelector('input').checked, coerceTypes: coerceTypes.querySelector('input').checked });
+        const json = csvToJsonString(inp.value, { delimiter: delim.value, headerRow: header.querySelector('input').checked, coerceTypes: coerceTypes.querySelector('input').checked, headerNames: parseCsvHeaderNames(names.value), positions: parseCsvPositions(positions.value) });
         out.set(json);
         const rows = JSON.parse(json).length;
         status.set(`${rows} record${rows === 1 ? '' : 's'} converted ✓`, 'success');
@@ -240,8 +280,11 @@ const defs = {
         field({ label: 'Delimiter', control: delim }),
         field({ label: 'Options', control: header }),
         field({ label: 'Value types', control: coerceTypes, hint: 'Default preserves all CSV values as text, including leading zeroes.' })),
+      h('div', { class: 'field-row', style: 'align-items:end' },
+        field({ label: 'Replacement keys (optional)', control: names, hint: 'JSON array with one unique string per source column, e.g. ["name","city"]. Blank uses the source or generated headers.' }),
+        field({ label: 'Column positions (optional)', control: positions, hint: '1-based positions, e.g. 2,1 to select and reorder. Blank includes all.' })),
       actionsRow(btn({ label: 'Convert to JSON', icon: 'table', onClick: run })),
-      status, h('p', { class: 'hint', text: 'Blank headers get generated names. Header whitespace is preserved; a leading UTF-8 BOM is removed. Type inference can round decimals and change text. CSV text is limited to 1,000,000 characters, 10,000 rows, 256 columns and 250,000 cells; UTF-8 uploads to 10 MiB. Invalid or oversized files do not replace existing input.' }), h('br'), out.panel);
+      status, h('p', { class: 'hint', text: 'By default, blank headers get generated names. Replacement keys preserve exact spaces and empty names. The header switch still controls whether the first row is skipped. Integer-like keys may appear in numeric order in JSON. Header whitespace is preserved; a leading UTF-8 BOM is removed. Type inference can round decimals and change text. CSV text is limited to 1,000,000 characters, 10,000 rows, 256 columns and 250,000 cells; UTF-8 uploads to 10 MiB. Invalid or oversized files do not replace existing input.' }), h('br'), out.panel);
     import('../ui.js').then(({ dropzone }) => {
       const zone = dropzone({
         accept: '.csv,text/csv,text/plain', title: '…or drop a .csv file', sub: 'UTF-8 text only, up to 10 MiB and 1,000,000 characters. Read locally.',

@@ -11,6 +11,26 @@
 
 ---
 
+## CSV to JSON column workflow — plan
+
+[ConvertCSV](https://www.convertcsv.com/csv-to-json.htm) offers selecting and
+reordering fields by position. This is a competitor feature signal, not proof
+of search demand or traffic gain. Existing imports reject duplicate headers and
+cannot choose specific columns; provide a bounded local workflow on the same
+canonical page while preserving defaults.
+
+1. Add optional exact JSON-array replacement keys for every source column and
+   optional 1-based positions to select/reorder output columns. Header toggle
+   still decides whether the first row is skipped. Reject invalid, duplicate or
+   mismatched names and positions rather than silently losing data.
+2. Explain examples, empty keys, header behavior, limits and default preservation;
+   keep file privacy, output bounds and stale-result invalidation intact.
+3. Cover quoted data, both header modes, errors, limits, Unicode, dangerous object
+   keys, selection, downloads, mobile and accessibility. Run full checks and
+   audit, ship a single CI-verified PR and verify the live page.
+
+---
+
 ## CSV import integrity — plan
 
 CSV file import used a replacement-decoding text reader and replaced existing

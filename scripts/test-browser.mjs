@@ -145,9 +145,9 @@ try {
   await page.getByRole('button', { name: 'Format', exact: true }).click();
   assert.match(await page.locator('.result-body').innerText(), /9007199254740993/);
   assert.equal(await page.locator('.result-head button[aria-label="Copy"] svg').count(), 1);
-  const jsonDownload = page.waitForEvent('download');
+  const csvJsonDownload = page.waitForEvent('download');
   await page.locator('.result-head button[aria-label="Download"]').click();
-  assert.match((await readFile(await (await jsonDownload).path())).toString(), /9007199254740993/);
+  assert.match((await readFile(await (await csvJsonDownload).path())).toString(), /9007199254740993/);
   console.log('✓ JSON format and actual download preserve numeric token');
 
   await page.setViewportSize({ width: 320, height: 844 });
@@ -552,6 +552,19 @@ try {
   assert.equal(await page.locator('#tool-app textarea').inputValue(),'id,name\n001,Ada');
   await page.locator('#tool-app input[type=file]').setInputFiles(csvFile);
   await page.locator('#tool-app .status-line').getByText(/1 record converted/).waitFor();
+  await page.getByLabel('Replacement keys (optional)').fill('["person","identifier"]');
+  await page.getByLabel('Column positions (optional)').fill('2,1');
+  await page.getByRole('button',{name:'Convert to JSON'}).click();
+  assert.match(await page.locator('#tool-app .result-body pre').innerText(), /"identifier": "Ada"/);
+  const csvColumnSelectionDownload = page.waitForEvent('download');
+  await page.locator('#tool-app .result-panel').getByRole('button',{name:'Download'}).click();
+  assert.deepEqual(JSON.parse((await readFile(await (await csvColumnSelectionDownload).path())).toString()), [{identifier:'Ada',person:'001'}]);
+  await page.getByLabel('Column positions (optional)').fill('3');
+  assert.equal(await page.locator('#tool-app .result-panel').getAttribute('data-has'),null);
+  await page.getByRole('button',{name:'Convert to JSON'}).click();
+  await page.locator('#tool-app .status-line').getByText(/between 1 and 2/).waitFor();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[], 'CSV to JSON accessibility');
   console.log('✓ QR PNG/SVG roundtrip, safe scanner actions, same-file rescans and CSV reimport');
   await go('json-to-csv');
   const jsonFile={name:'items.json',mimeType:'application/json',buffer:Buffer.from('[{"id":"001","name":"A|B"},{"id":"=2+2","name":"Grace"}]')};
