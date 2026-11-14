@@ -584,6 +584,16 @@ try {
   await page.getByRole('button',{name:'Calculate attendance'}).click();
   assert.match(await page.locator('#tool-app').innerText(),/Not reachable/);
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[], 'attendance mobile accessibility');
+  await go('final-grade-calculator');
+  await page.getByRole('button',{name:'Apply to final grade'}).click();
+  assert.equal(await page.getByLabel('Current grade (%)').inputValue(),'86');assert.equal(await page.getByLabel('Final exam weight (%)').inputValue(),'25');
+  assert.match(await page.locator('#tool-app').innerText(),/94\.00%/);
+  await page.getByLabel('Completed scores and course weights').fill('90, 60\n80, 50');
+  await page.getByRole('button',{name:'Apply to final grade'}).click();assert.match(await page.locator('#tool-app').innerText(),/cannot exceed 100%/);
+  assert.equal(await page.getByLabel('Current grade (%)').inputValue(),'86');
+  await page.getByLabel('Target grade (%)').fill('90');assert.doesNotMatch(await page.locator('#tool-app .stats-grid').first().innerText(),/94\.00%/);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'final grade mobile accessibility');
   await go('roman-numeral-converter');
   await page.getByLabel('Value',{exact:true}).fill('1994');
   assert.match(await page.locator('#tool-app').innerText(),/M = 1000 \+ CM = 900 \+ XC = 90 \+ IV = 4/);

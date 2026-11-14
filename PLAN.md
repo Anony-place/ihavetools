@@ -11,6 +11,26 @@
 
 ---
 
+## Student grade planning batch — plan
+
+[Calculator.net Grade Calculator](https://www.calculator.net/grade-calculator.html)
+uses weighted assignments and planning for remaining tasks. This is a competitor
+feature signal, not measured keyword demand. Site-specific traffic comparison is
+still unverified; the only located export has a date later than this session.
+Don't invent traffic numbers or rank promises.
+
+1. Extend the existing final-grade calculator with a local, optional completed
+   coursework planner: percentage score and whole-course percentage weight per
+   line, remaining-weight calculation and explicit apply to the existing model.
+2. Explain assumptions: disjoint course weights, one aggregate remaining score,
+   no letter-grade conversion, dropped grades, rounding rules or extra credit;
+   avoid incorrect results for empty, invalid, zero or excessive weights.
+3. Clear stale results and generated share links; test boundaries, edits, apply,
+   precision, mobile accessibility and the existing share workflow. Full checks,
+   audit and one PR; merge only with green CI and verify production.
+
+---
+
 ## Roman date conversion and traffic validation — plan
 
 Traffic: Drive search found one site-specific Search Console spreadsheet labelled

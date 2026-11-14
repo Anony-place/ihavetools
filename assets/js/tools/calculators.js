@@ -8,7 +8,7 @@
 // epf-calculator, hra-calculator
 // Shareable calculators offer an opt-in link containing the entered values.
 // =============================================================================
-import { h, field, input, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool, shareState } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool, shareState } from '../ui.js';
 import { DAY_MS, parseCalendarDate, localDateISO, dateISO, addMonthsUTC } from '../calendar.js';
 
 const num = (el) => { const v = parseFloat(String(el.value).replace(/,/g, '')); return v; };
@@ -444,6 +444,21 @@ export function finalGradeCalc(current, target, weight, exam) {
   for (const [v, label] of [[current, 'Current grade'], [target, 'Target grade'], [weight, 'Final weight'], [exam, 'Exam score']]) bounded(v, 0, 100, label);
   const w = weight / 100, base = current * (1 - w);
   return { required: w === 0 ? null : (target - base) / w, overall: base + exam * w, minimum: base, maximum: base + 100 * w, targetMetWithoutExam: w === 0 && current >= target };
+}
+/** Disjoint completed components with weights as percentages of the whole course. */
+export function completedGradeComponents(text) {
+  const lines = String(text).split(/\r?\n/).filter(line => line.trim());
+  if (!lines.length || lines.length > 50) throw new Error('Enter 1 to 50 completed components.');
+  let totalUnits=0, weighted=0;
+  for (const [i,line] of lines.entries()) {
+    const m = /^\s*(\d{1,3}(?:\.\d{1,6})?)\s*,\s*(\d{1,3}(?:\.\d{1,6})?)\s*$/.exec(line);
+    if (!m) throw new Error(`Line ${i+1}: enter score, weight using numbers with up to 6 decimal places.`);
+    const score=Number(m[1]), weight=Number(m[2]);
+    if (score > 100 || weight <= 0 || weight > 100) throw new Error(`Line ${i+1}: score must be 0–100 and weight must be greater than 0 and at most 100.`);
+    const units=Math.round(weight*1000000);totalUnits+=units;weighted+=score*units;
+  }
+  if (totalUnits > 100000000) throw new Error('Completed weights cannot exceed 100% of the course.');
+  return {average:weighted/totalUnits, completedWeight:totalUnits/1000000, remainingWeight:(100000000-totalUnits)/1000000, count:lines.length};
 }
 export function savingsGoalCalc(goal, initial, annualRate, months) {
   bounded(goal, 0, 1e12, 'Goal'); bounded(initial, 0, 1e12, 'Current savings'); bounded(annualRate, 0, 100, 'Annual return');
@@ -1386,6 +1401,25 @@ const defs = {
       status.set(r.required === null ? (r.targetMetWithoutExam ? 'The final has zero weight; your current grade already meets the target.' : 'The final has zero weight; it cannot change your current grade to reach the target.') : r.required > 100 ? 'Target exceeds the maximum without extra credit or a grading adjustment.' : 'Assumes current grade is the average of all work excluding the final. Check your syllabus for rounding and grading rules.', r.required > 100 ? 'warn' : 'success');
     } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
     root.append(h('div', { class: 'field-row' }, field({ label: 'Current grade (%)', control: current }), field({ label: 'Target grade (%)', control: target }), field({ label: 'Final exam weight (%)', control: weight }), field({ label: 'What-if exam score (%)', control: exam })), actionsRow(btn({ label: 'Calculate final grade', icon: 'calculator', onClick: run })), grid, status);
+    for (const el of [current,target,weight,exam]) el.addEventListener('input',()=>{grid.replaceChildren();status.set('Inputs changed. Calculate again.','info');});
+    const components = textarea({rows:4,value:'80, 30\n90, 45',placeholder:'score, course weight — one per line'});
+    const componentGrid = statsGrid(), componentStatus = statusLine('');
+    const clearComponents = () => {componentGrid.replaceChildren();componentStatus.set('Coursework changed. Calculate again.','info');};
+    components.addEventListener('input',clearComponents);
+    const calculateComponents = (apply = false) => {try {
+      const r = completedGradeComponents(components.value);
+      componentGrid.set([{label:'Completed coursework average',value:`${r.average.toFixed(4)}%`},{label:'Completed course weight',value:`${r.completedWeight}%`},{label:'Remaining course weight',value:`${r.remainingWeight}%`}]);
+      if (apply) {
+        current.value=String(Number(r.average.toFixed(10)));weight.value=String(r.remainingWeight);
+        current.dispatchEvent(new window.Event('input',{bubbles:true}));weight.dispatchEvent(new window.Event('input',{bubbles:true}));
+        run();
+      }
+      componentStatus.set(apply ? 'Applied the weighted average and remaining weight above. The what-if score represents all remaining work combined.' : 'Calculated only. Apply to use this average and remaining weight in the final-grade calculator above.', 'success');
+    } catch(e){componentGrid.replaceChildren();componentStatus.set(e.message,'error');}};
+    root.append(h('h2',{text:'Calculate current grade from coursework'}),h('p',{class:'hint',text:'Enter one completed component per line as score percentage, weight percentage of the entire course. These must be separate, non-overlapping course weights. The remaining weight is treated as one combined final or set of tasks.'}),
+      field({label:'Completed scores and course weights',control:components,hint:'Example: 80, 30 means score 80% on work worth 30% of the whole course. Up to 50 rows; 6 decimal places.'}),
+      actionsRow(btn({label:'Calculate average',variant:'secondary',onClick:()=>calculateComponents(false)}),btn({label:'Apply to final grade',onClick:()=>calculateComponents(true)})),componentGrid,componentStatus,
+      h('p',{class:'hint',text:'Does not model letter grades, nested categories, dropped work, extra credit or institution-specific rounding. Verify your syllabus. Only the main calculator inputs are included in optional share links; coursework rows are not shared.'}));
     shareState(root, [['current', current], ['target', target], ['weight', weight], ['exam', exam]], run);
   },
   'savings-goal-calculator'(root) {

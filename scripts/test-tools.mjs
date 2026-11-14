@@ -1985,6 +1985,11 @@ await test('QR payload classifier exposes destinations and refuses script URLs',
 });
 
 console.log('\n── Batch-6 planning tools ──');
+await test('completed grade components validate whole-course weights', () => {
+ const r=calc.completedGradeComponents('80, 30\n90, 45');assert.equal(r.average,86);assert.equal(r.remainingWeight,25);assert.equal(r.completedWeight,75);
+ assert.equal(calc.completedGradeComponents('0, 0.000001\n100, 99.999999').remainingWeight,0);
+ for(const x of ['', '80, 0','101, 1','80, 60\n90, 41','80','80, -1','80, 0.0000001',Array(51).fill('1, 1').join('\n')]) assert.throws(()=>calc.completedGradeComponents(x));
+});
 await test('final grade handles attainable, impossible and zero-weight goals', () => {
   assert.equal(calc.finalGradeCalc(86, 88, 25, 80).required, 94);
   assert.equal(calc.finalGradeCalc(86, 88, 25, 80).overall, 84.5);
