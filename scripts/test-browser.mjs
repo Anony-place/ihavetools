@@ -1602,6 +1602,7 @@ try {
   await page.getByRole('button',{name:'Image size'}).click();
   pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Convert to PDF'}).click();
   result=await PDFDocument.load(await readFile(await (await pdfEvent).path())); assert.equal(result.getPageCount(),1); assert.equal(result.getPage(0).getWidth(),80);
+  assert.equal(await page.getByLabel('Page orientation').isDisabled(),true); assert.equal(await page.getByLabel('Margin (points)').isDisabled(),true);
   await page.getByRole('button',{name:'A4 (fit)'}).click();await page.getByLabel('Page orientation').selectOption('portrait');await page.getByLabel('Margin (points)').fill('0');
   pdfEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Convert to PDF'}).click();result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));
   assert.ok(Math.abs(result.getPage(0).getWidth()-595.28)<0.01);assert.ok(Math.abs(result.getPage(0).getHeight()-841.89)<0.01);
@@ -1612,6 +1613,12 @@ try {
   await page.getByRole('button',{name:'Clear list'}).click();await page.locator('#tool-app input[type=file]').setInputFiles([{name:'alpha.webp',mimeType:'image/webp',buffer:transparentWebp}]);
   pdfEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Convert to PDF'}).click();result=await PDFDocument.load(await readFile(await (await pdfEvent).path()));
   assert.ok(result.context.enumerateIndirectObjects().some(([,obj])=>String(obj).includes('/SMask')),'fallback must retain an alpha mask');
+  const exifJpeg = await sharp({create:{width:80,height:40,channels:3,background:'#ff0000'}}).jpeg().withMetadata({orientation:6}).toBuffer();
+  await page.getByRole('button',{name:'Clear list'}).click(); await page.locator('#tool-app input[type=file]').setInputFiles([{name:'exif.jpg',mimeType:'image/jpeg',buffer:exifJpeg}]);
+  await page.getByRole('button',{name:'Image size'}).click();
+  pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Convert to PDF'}).click(); result=await PDFDocument.load(await readFile(await (await pdfEvent).path())); assert.deepEqual([result.getPage(0).getWidth(),result.getPage(0).getHeight()],[80,40]);
+  await page.locator('#tool-app label.switch').filter({hasText:'Apply browser image orientation'}).click();
+  pdfEvent=page.waitForEvent('download'); await page.getByRole('button',{name:'Convert to PDF'}).click(); result=await PDFDocument.load(await readFile(await (await pdfEvent).path())); assert.deepEqual([result.getPage(0).getWidth(),result.getPage(0).getHeight()],[40,80]);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'image to PDF mobile accessibility');
   console.log('✓ image to PDF layout, alpha fallback and mobile accessibility');

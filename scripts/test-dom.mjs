@@ -1443,12 +1443,24 @@ await domTest('Image to PDF validates queue and layout, cancels settings changes
  margin.value='0';fire(margin,'input');let output=false;const original=URL.createObjectURL;URL.createObjectURL=()=>{output=true;return 'blob:test';};
  try {click(btnByLabel(app,'Convert to PDF'));await new Promise(r=>setTimeout(r,30));assert.ok(release);const orientation=app.querySelector('select');orientation.value='landscape';fire(orientation,'change');release();await new Promise(r=>setTimeout(r,100));assert.equal(output,false);assert.match(statusText(document),/Layout changed/);} finally {URL.createObjectURL=original;}
 });
+await domTest('Image to PDF rejects oversized PNG before invoking decoder', async () => {
+  let called=false; window.PDFLib={PDFDocument:{create:async()=>({embedPng(){called=true;throw new Error('must not decode');}})}};
+  const header=new Uint8Array(24); header.set([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82]);
+  const view=new DataView(header.buffer); view.setUint32(16,10000); view.setUint32(20,5000);
+  const app=await loadToolPage('image-to-pdf','pdf'); const e=new window.Event('drop',{bubbles:true,cancelable:true});
+  Object.defineProperty(e,'dataTransfer',{value:{files:[new File([header],'oversize.png',{type:'image/png'})]}}); app.querySelector('.dropzone').dispatchEvent(e);
+  click(btnByLabel(app,'Convert to PDF')); await new Promise(r=>setTimeout(r,80));
+  assert.equal(called,false); assert.match(statusText(document),/40 million pixels/);
+});
+
 await domTest('Image to PDF page-size changes cancel pending conversion', async () => {
   const lib=await import('pdf-lib'); let release;
   window.PDFLib={...lib, PDFDocument:{create:(...a)=>new Promise(resolve=>{release=()=>resolve(lib.PDFDocument.create(...a));})}};
   const app=await loadToolPage('image-to-pdf','pdf'); const e=new window.Event('drop',{bubbles:true,cancelable:true}); Object.defineProperty(e,'dataTransfer',{value:{files:[new File(['x'],'x.png',{type:'image/png'})]}}); app.querySelector('.dropzone').dispatchEvent(e);
   let output=false; const original=URL.createObjectURL; URL.createObjectURL=()=>{output=true;return 'blob:test';};
-  try { click(btnByLabel(app,'Convert to PDF')); await new Promise(r=>setTimeout(r,30)); assert.ok(release); click(btnByLabel(app,'Letter (fit)')); release(); await new Promise(r=>setTimeout(r,80)); assert.equal(output,false); assert.match(statusText(document),/Page size changed/); }
+  try { click(btnByLabel(app,'Convert to PDF')); await new Promise(r=>setTimeout(r,30)); assert.ok(release); click(btnByLabel(app,'Image size')); assert.equal(app.querySelector('select').disabled,true); assert.equal(app.querySelector('input[type=number]').disabled,true); release(); await new Promise(r=>setTimeout(r,80)); assert.equal(output,false); assert.match(statusText(document),/Page size changed/);
+    click(btnByLabel(app,'A4 (fit)')); assert.equal(app.querySelector('select').disabled,false); click(btnByLabel(app,'Convert to PDF')); await new Promise(r=>setTimeout(r,30)); const toggle=app.querySelector('label.switch input'); toggle.checked=true; fire(toggle,'change'); release(); await new Promise(r=>setTimeout(r,80)); assert.equal(output,false); assert.match(statusText(document),/Layout changed/);
+  }
   finally { URL.createObjectURL=original; }
 });
 

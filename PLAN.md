@@ -11,6 +11,27 @@
 
 ---
 
+## Image-to-PDF orientation and memory safety — plan
+
+[iLovePDF](https://www.ilovepdf.com/jpg_to_pdf) offers image-to-PDF layout
+controls; competitor features are not measured search demand. Our direct JPEG
+embedding can ignore EXIF orientation. [createImageBitmap](https://developer.mozilla.org/en-US/docs/Web/API/Window/createImageBitmap)
+uses image orientation metadata by default, subject to browser support. PNG
+embedding can decompress before the existing pixel check: inspect valid PNG
+headers before handing bytes to the PDF engine, while acknowledging that other
+formats and decoding can allocate memory before dimensions are known.
+
+1. Add opt-in browser-decoded orientation for images, retaining direct embedding
+   by default; explain re-encoding, memory and metadata limitations.
+2. Reject oversized or invalid PNG IHDR dimensions before PDF or canvas decoding;
+   preserve bounds, cancellations, queue and output limits. Make ignored layout
+   controls unambiguous in image-size mode.
+3. Test header edge cases, stale work, PDF page dimensions with real EXIF JPEG,
+   transparency, mobile accessibility and download. Run local checks, audit,
+   one PR, green CI before merge and verify production. No SEO gain claims.
+
+---
+
 ## Image rotation controls and conversion trust — plan
 
 [iLoveIMG](https://www.iloveimg.com/rotate-image) offers image rotation; this
