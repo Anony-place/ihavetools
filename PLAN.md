@@ -2,12 +2,30 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (102 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (105 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Image conversion quality and discovery batch — plan
+
+[Google’s WebP study](https://developers.google.com/speed/webp/docs/webp_study)
+compares encoders under specific test conditions, not every converted file or
+Core Web Vitals result. Registry popularity is editorial, not measured demand;
+no comparable verified Search Console export is available to measure impact.
+
+1. Show actual original/output byte sizes and dimensions after image conversion,
+   so users can compare files without assuming WebP/JPEG is always smaller.
+2. Correct unsupported size, quality and compatibility promises on JPG/PNG/WebP
+   pages; add accurate guides for the general converter and two WebP presets,
+   covering transparency, animation, metadata, quality and browser limits.
+3. Test actual downloaded output, size/dimensions, stale preview invalidation,
+   static guide/schema and mobile behavior. Run checks, audit, browser CI, one PR,
+   merge only when green and verify production. Processing stays local and free.
 
 ---
 
