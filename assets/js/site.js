@@ -72,7 +72,7 @@ export function buildChrome() {
   }
 }
 
-/* ---------- Tool search (homepage + 404) — lazy slim index ---------- */
+/* ---------- Tool search (homepage, header and 404) — lazy slim index ---------- */
 let indexPromise = null;
 function loadSearchIndex() {
   if (!indexPromise) {
@@ -86,13 +86,17 @@ function loadSearchIndex() {
 // Keep search bounded and deterministic; normalize punctuation without regex
 // interpolation or fuzzy matches that silently drop a user's terms.
 export const MAX_SEARCH_QUERY = 256;
-const normalizeSearch = value => String(value).toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}+#]+/gu, ' ').trim().replace(/\s+/g, ' ');
+const SEARCH_FILLER = new Set(['a', 'an', 'the', 'my', 'free', 'online', 'tool', 'tools', 'file', 'files', 'calculate', 'convert']);
+const normalizeSearch = value => String(value).toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{M}\p{N}+#]+/gu, ' ').trim().replace(/\s+/g, ' ');
 export function searchIndex(index, query, limit = 8) {
   if (String(query).length > MAX_SEARCH_QUERY) return [];
   const q = normalizeSearch(query);
   if (!q) return [];
-  const terms = q.split(' ');
-  return index.map((entry, position) => {
+  // Retain directional "to" and all unrecognized terms. Only discard this
+  // explicit set if no full query matches; never fuzzy-match missing intent.
+  const core = q.replace(/^how to /, '').split(' ').filter(t => !SEARCH_FILLER.has(t));
+  const coreQuery = core.join(' ');
+  const rank = (terms) => index.map((entry, position) => {
     const name = normalizeSearch(entry.name);
     const aliases = (entry.a || []).map(normalizeSearch);
     const hay = normalizeSearch(`${entry.name} ${entry.k} ${entry.c} ${entry.cats || ''}`);
@@ -106,10 +110,19 @@ export function searchIndex(index, query, limit = 8) {
     else if (name.includes(q)) score += 1000;
     else if (aliases.includes(q)) score += 900;
     else if (aliases.some(alias => alias.includes(q))) score += 400;
+    if (coreQuery && coreQuery !== q) {
+      if (name === coreQuery) score += 800;
+      else if (name.includes(coreQuery)) score += 700;
+      else if (aliases.includes(coreQuery)) score += 650;
+      else if (aliases.some(alias => alias.includes(coreQuery))) score += 300;
+      else if (hay.includes(coreQuery)) score += 100;
+    }
     score += (entry.p || 0) * 0.05;
     return { entry, score, position };
-  }).filter(Boolean).sort((a, b) => b.score - a.score || a.position - b.position)
-    .slice(0, Math.max(0, limit)).map(item => item.entry);
+  }).filter(Boolean).sort((a, b) => b.score - a.score || a.position - b.position);
+  let matches = rank(q.split(' '));
+  if (!matches.length && core.length && coreQuery !== q) matches = rank(core);
+  return matches.slice(0, Math.max(0, limit)).map(item => item.entry);
 }
 
 function setupSearch() {
@@ -155,6 +168,7 @@ function setupSearch() {
     if (status) status.textContent = items.length ? `${items.length} matching tools. Use arrow keys to choose.` : 'No matching tools.';
   };
   const runSearch = async (token = ++revision) => {
+    if (token !== revision) return;
     const query = input.value;
     if (!query.trim()) { close(); return; }
     if (query.length > MAX_SEARCH_QUERY) {
@@ -178,6 +192,7 @@ function setupSearch() {
   input.addEventListener('input', () => {
     const token = ++revision;
     results = []; active = -1; list.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant');
+    if (status) status.textContent = '';
     if (!input.value.trim()) { close(); return; }
     run(token);
   });

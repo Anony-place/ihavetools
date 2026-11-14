@@ -338,6 +338,18 @@ await test('live slim search ranks exact directions, punctuation, aliases and bo
     'robots.txt': 'robots-txt-generator', 'image compression': 'image-compressor',
     'qr scanner': 'qr-code-scanner', 'scientific calculator': 'scientific-calculator',
   })) assert.equal(searchIndex(SEARCH_INDEX, query)[0]?.id, id, query);
+  for (const [query, id] of Object.entries({
+    'merge pdf files':'pdf-merge', 'how to merge pdf':'pdf-merge',
+    'word counter online':'word-counter', 'calculate gst':'gst-calculator',
+    'convert pdf to jpg':'pdf-to-image', 'convert jpg to png':'jpg-to-png',
+    'convert json to csv':'json-to-csv', 'convert csv to json':'csv-to-json',
+  })) assert.equal(searchIndex(SEARCH_INDEX, query)[0]?.id, id, query);
+  assert.deepEqual(searchIndex(SEARCH_INDEX, 'pdf to word'), []);
+  assert.deepEqual(searchIndex(SEARCH_INDEX, 'free json zqxjkwv'), []);
+  const localized=[{id:'hi',name:'हिन्दी',k:'',c:'',a:[],p:0}];
+  assert.equal(searchIndex(localized,'हिन्दी')[0]?.id,'hi');
+  assert.deepEqual(searchIndex(localized,'हनद'),[], 'combining marks are not stripped');
+  assert.deepEqual(searchIndex([{id:'free',name:'Free',k:'',c:'',a:[],p:0}],'free').map(x=>x.id),['free']);
   assert.deepEqual(searchIndex(SEARCH_INDEX, 'json zqxjkwv'), []);
   assert.deepEqual(searchIndex(SEARCH_INDEX, 'x'.repeat(MAX_SEARCH_QUERY+1)), []);
   assert.deepEqual(searchIndex(SEARCH_INDEX, '...'), []);
