@@ -1132,6 +1132,20 @@ await test('robots crawl tester: specific group and longest pattern win', () => 
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf').allowed, false, 'wildcard plus end anchor matches a PDF path');
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf/extra').allowed, true, 'the $ anchor prevents matching a longer path');
 });
+await test('sitemap row dates override shared fallback and validate strictly', () => {
+ const xml=seo.buildSitemapFromLines('https://a.test/a\t2024-02-29\rhttps://a.test/b\r\nhttps://a.test/c\t2025-01-01',{lastmod:'2023-01-01'});
+ assert.match(xml, /<loc>https:\/\/a.test\/a<\/loc>\n    <lastmod>2024-02-29<\/lastmod>/);
+ assert.match(xml, /<loc>https:\/\/a.test\/b<\/loc>\n    <lastmod>2023-01-01<\/lastmod>/);
+ assert.match(xml, /<loc>https:\/\/a.test\/c<\/loc>\n    <lastmod>2025-01-01<\/lastmod>/);
+ assert.doesNotMatch(seo.buildSitemapFromLines('https://a.test/'),/<lastmod>/);
+ assert.throws(()=>seo.buildSitemapFromLines('https://a.test/\t2023-02-29'),/valid date/);
+ assert.throws(()=>seo.buildSitemapFromLines('\nhttps://a.test/\t'),/Line 2/);
+ assert.throws(()=>seo.buildSitemapFromLines('https://a.test/\t2024-01-01\textra'),/Line 1/);
+ assert.throws(()=>seo.buildSitemapFromLines('https://a.test/\nhttps://a.test\t2024-01-01'),/Duplicate/);
+ assert.throws(()=>seo.buildSitemapFromLines('https://a.test/\nhttps://b.test/\t2024-01-01'),/same scheme/);
+ assert.throws(()=>seo.buildSitemapXml(['https://a.test/'],{lastmods:[]}),/correspond/);
+ assert.throws(()=>seo.buildSitemapFromLines('x'.repeat(2000001)),/2 million/);
+});
 await test('sitemap XML escapes and validates URLs', () => {
   const xml = seo.buildSitemapXml(['https://a.b/x?a=1&b=2'], { changefreq: 'weekly', priority: '0.7' });
   assert.match(xml, /<loc>https:\/\/a\.b\/x\?a=1&amp;b=2<\/loc>/);

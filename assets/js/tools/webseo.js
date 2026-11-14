@@ -367,18 +367,23 @@ function validateWebUrl(raw, label = 'URL') {
   if (!/^https?:$/.test(u.protocol) || !u.hostname || u.username || u.password || u.hash) throw new Error(`${label} must be an absolute HTTP(S) URL without credentials or a fragment.`);
   return u;
 }
-export function buildSitemapXml(urls, { changefreq = '', priority = '', lastmod = '' } = {}) {
+export function buildSitemapXml(urls, { changefreq = '', priority = '', lastmod = '', lastmods = null } = {}) {
   if (!urls.length || !urls.some(raw => String(raw).trim())) throw new Error('Add at least one URL.');
   if (urls.length > 10000 || urls.reduce((n, u) => n + String(u).length, 0) > 2000000) throw new Error('This generator supports at most 10,000 URLs and 2 million input characters per sitemap.');
   if (changefreq && !['always','hourly','daily','weekly','monthly','yearly','never'].includes(changefreq)) throw new Error('Invalid change frequency.');
   if (priority !== '' && (!/^(?:0(?:\.\d+)?|1(?:\.0+)?)$/.test(String(priority)))) throw new Error('Priority must be from 0.0 to 1.0.');
-  if (lastmod) {
-    const date = new Date(`${lastmod}T00:00:00Z`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(lastmod) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0,10) !== lastmod) throw new Error('lastmod must be a valid date (YYYY-MM-DD).');
-  }
+  const validateDate = (value) => {
+    if (!value) return;
+    const date = new Date(`${value}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0,10) !== value) throw new Error('lastmod must be a valid date (YYYY-MM-DD).');
+  };
+  validateDate(lastmod);
+  if (lastmods !== null && (!Array.isArray(lastmods) || lastmods.length !== urls.length)) throw new Error('Per-URL dates must correspond to each URL.');
+  if (lastmods) lastmods.forEach(validateDate);
   let origin = null;
   const seen = new Set();
-  const entries = urls.map(raw => {
+  const entries = urls.map((raw, index) => {
+    const entryDate = lastmods?.[index] || lastmod;
     const value = String(raw).trim(); if (!value) return null;
     const u = validateWebUrl(value);
     if (origin && origin !== u.origin) throw new Error('All sitemap URLs must have the same scheme, host and port.');
@@ -386,9 +391,23 @@ export function buildSitemapXml(urls, { changefreq = '', priority = '', lastmod 
     if (seen.has(u.href)) throw new Error(`Duplicate URL after normalization: ${u.href}. Remove the duplicate and generate again.`);
     seen.add(u.href);
     // URL serialization percent-encodes non-ASCII/control-sensitive characters.
-    return `  <url>\n    <loc>${esc(u.href)}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}${changefreq ? `\n    <changefreq>${changefreq}</changefreq>` : ''}${priority !== '' ? `\n    <priority>${priority}</priority>` : ''}\n  </url>`;
+    return `  <url>\n    <loc>${esc(u.href)}</loc>${entryDate ? `\n    <lastmod>${entryDate}</lastmod>` : ''}${changefreq ? `\n    <changefreq>${changefreq}</changefreq>` : ''}${priority !== '' ? `\n    <priority>${priority}</priority>` : ''}\n  </url>`;
   }).filter(Boolean);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join('\n')}\n</urlset>\n`;
+}
+
+/** Each nonblank line is a URL optionally followed by a tab and an ISO date. */
+export function buildSitemapFromLines(text, options = {}) {
+  if (String(text).length > 2000000) throw new Error('This generator supports at most 10,000 URLs and 2 million input characters per sitemap.');
+  const rows = String(text).split(/\r\n|\r|\n/).map((line, index) => ({line, index})).filter(row => row.line.trim());
+  if (rows.length > 10000) throw new Error('This generator supports at most 10,000 URLs and 2 million input characters per sitemap.');
+  const urls = [], lastmods = [];
+  for (const {line, index} of rows) {
+    const parts = line.split('\t');
+    if (parts.length > 2 || !parts[0].trim() || (parts.length === 2 && !parts[1].trim())) throw new Error(`Line ${index + 1}: enter a URL, optionally followed by a tab and YYYY-MM-DD.`);
+    urls.push(parts[0].trim()); lastmods.push(parts.length === 2 ? parts[1].trim() : '');
+  }
+  return buildSitemapXml(urls, { ...options, lastmods });
 }
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
@@ -456,6 +475,7 @@ const defs = {
     let rules = [{ agent: '*', disallow: [], allow: [] }];
     const runTest = () => {
       try {
+        buildRobots(rules, { sitemap: sitemap.value.trim(), crawlDelay: delay.value });
         const r = testRobotsAccess(rules, testAgent.value, testUrl.value);
         testOut.set([
           r.allowed ? 'Allowed ✓' : 'Blocked ✕',
@@ -463,7 +483,7 @@ const defs = {
           `Path tested: ${r.path}`,
           r.pattern ? `Winning rule: ${r.ruleType}: ${r.pattern}` : 'Winning rule: none — crawling is allowed by default.',
         ].join('\n'));
-      } catch (e) { testOut.set(e.message); }
+      } catch (e) { testOut.placeholder(); status.set(e.message, 'error'); }
     };
     const render = () => {
       rows.replaceChildren(...rules.map((r, i) => h('div', { class: 'file-row', style: 'flex-wrap:wrap' },
@@ -525,7 +545,7 @@ const defs = {
       actionsRow(btn({ label: 'Generate', icon: 'settings', onClick: build })),
       status, h('br'), out.panel,
       h('h3', { text: 'Test a URL against these rules', style: 'margin:22px 0 10px' }),
-      h('p', { class: 'hint', text: 'Approximate local simulation, not a crawler guarantee. Encoding and crawler-specific rule handling may differ; verify with the crawler’s official tools.' }),
+      h('p', { class: 'hint', text: 'Tests saved rules only, not unsaved edits or the live robots.txt. Approximate local simulation, not a crawler guarantee. Encoding and crawler-specific handling may differ; verify with the crawler’s official tools.' }),
       h('div', { class: 'field-row' },
         field({ label: 'Crawler user-agent', control: testAgent }),
         field({ label: 'URL or path', control: testUrl })),
@@ -542,18 +562,18 @@ const defs = {
     const status = statusLine('');
     const out = resultPanel({ label: 'sitemap.xml', download: true, downloadName: 'sitemap.xml', downloadMime: 'application/xml;charset=utf-8' });
     const run = () => {
-      const urls = inp.value.split(/\r\n|\r|\n/).map((s) => s.trim()).filter(Boolean);
+      const urls = inp.value.split(/\r\n|\r|\n/).filter(s => s.trim());
       try {
-        const xml = buildSitemapXml(urls, { changefreq: freq.value, priority: prio.value, lastmod: lastmod.value });
+        const xml = buildSitemapFromLines(inp.value, { changefreq: freq.value, priority: prio.value, lastmod: lastmod.value });
         out.set(xml);
         status.set(`${urls.length} URL${urls.length === 1 ? '' : 's'} in the sitemap ✓`, 'success');
       } catch (e) { out.placeholder(); status.set(e.message, 'error'); }
     };
     [inp, lastmod, freq, prio].forEach(el => { el.addEventListener('input', () => { out.placeholder(); status.set('Inputs changed. Generate again.', 'info'); }); el.addEventListener('change', () => { out.placeholder(); status.set('Inputs changed. Generate again.', 'info'); }); });
-    root.append(field({ label: 'URLs (one per line)', control: inp }),
-      h('p', { class: 'hint', text: 'One HTTP(S) origin per sitemap; max 10,000 URLs / 2 million characters here. The optional lastmod applies to every URL: use it only if accurate for each page. Google ignores changefreq and priority.' }),
+    root.append(field({ label: 'URLs (one per line)', control: inp, hint: 'Optional per-URL date: paste a tab after the URL, then YYYY-MM-DD. Dates override the shared date.' }),
+      h('p', { class: 'hint', text: 'One HTTP(S) origin per sitemap; max 10,000 URLs / 2 million characters here. The optional shared lastmod applies where no per-URL date is supplied: use dates only if accurate for each page. Google ignores changefreq and priority.' }),
       h('div', { class: 'field-row', style: 'align-items:end' },
-        field({ label: 'lastmod (all URLs)', control: lastmod }),
+        field({ label: 'lastmod (shared fallback)', control: lastmod }),
         field({ label: 'changefreq', control: freq }),
         field({ label: 'priority', control: prio })),
       actionsRow(btn({ label: 'Generate sitemap', icon: 'sitemap', onClick: run }),
