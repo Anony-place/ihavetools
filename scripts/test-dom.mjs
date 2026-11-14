@@ -276,6 +276,23 @@ await domTest('remove-duplicate-lines: reports removed count', async () => {
   assert.match(statusText(document), /Removed 1 duplicate line/);
   assert.match(resultText(document), /^a\nb\nc$/);
 });
+await domTest('list tools opt into NFC matching without changing retained content', async () => {
+ for (const id of ['remove-duplicate-lines','text-sorter']) {
+  const app=await loadToolPage(id,'text'), input=app.querySelector('textarea');
+  input.value='e\u0301\né'; fire(input,'input');
+  if(id==='text-sorter') { const unique=[...app.querySelectorAll('label.switch')].find(el=>el.textContent.includes('Remove duplicates')); click(unique.querySelector('input')); }
+  const run=btnByLabel(app,id==='text-sorter'?'Sort':'Remove duplicates'); click(run);
+  assert.equal(resultText(document).split('\n').length,2);
+  const nfc=[...app.querySelectorAll('label.switch')].find(el=>el.textContent.includes('Match Unicode equivalents')); click(nfc.querySelector('input'));
+  assert.ok(!app.querySelector('.result-panel').dataset.has);
+  click(run); assert.equal(resultText(document),'e\u0301');
+ }
+});
+await domTest('text sorter numeric mode uses signed decimal values', async () => {
+ const app=await loadToolPage('text-sorter','text'), input=app.querySelector('textarea');
+ input.value='.5\n-1\n2';fire(input,'input');click(btnByLabel(app,'Numeric'));click(btnByLabel(app,'Sort'));
+ assert.equal(resultText(document),'-1\n.5\n2');
+});
 await domTest('list tools import safely and invalidate results', async () => {
  for (const id of ['remove-duplicate-lines','text-sorter']) {
   const app=await loadToolPage(id,'text'), text=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');
