@@ -269,6 +269,16 @@ try {
     assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} mobile accessibility`);
     await page.getByRole('button',{name:'Clear',exact:true}).click(); assert.equal(await box.inputValue(),'');
   }
+  await go('character-counter');
+  await page.getByLabel('Your text',{exact:true}).fill('😀a');
+  await page.getByLabel('Custom limit (optional)').fill('2');
+  assert.match(await page.locator('#tool-app').innerText(),/Custom code-point limit — 2 \/ 2/);
+  await page.getByLabel('Custom limit unit').selectOption('utf16');
+  assert.match(await page.locator('#tool-app').innerText(),/Custom UTF-16 limit — 3 \/ 2 \(over limit\)/);
+  await page.getByLabel('Custom limit unit').selectOption('utf8');
+  assert.match(await page.locator('#tool-app').innerText(),/Custom UTF-8 byte limit — 5 \/ 2 \(over limit\)/);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[], 'character units accessibility');
   console.log('✓ line and character counters local files and mobile accessibility');
   await go('base64-encoder');
   const b64File=page.getByLabel('Choose file'), b64Mode=page.getByLabel('File operation');

@@ -11,6 +11,27 @@
 
 ---
 
+## Text measurement and content accuracy — plan
+
+Google's [snippet guidance](https://developers.google.com/search/docs/appearance/snippet)
+says there is no fixed meta-description length; a search-result snippet may be
+truncated to fit. SMS segment sizes depend on encoding and carrier; [Twilio's
+reference](https://www.twilio.com/docs/glossary/what-sms-character-limit) gives
+common examples and exceptions. Existing platform meters are not actual SMS
+or Google previews. A text-stat audit also found CR-only paragraph breaks are
+not counted consistently with CRLF/LF.
+
+1. Add explicit code-point, UTF-16 and UTF-8 byte counts and selectable custom
+   limit units to Character Counter. Keep platform reference meters in code points
+   and explain encoding, Unicode and counting limitations without guarantees.
+2. Fix paragraph counting across CR, LF and CRLF; correct misleading meta/SMS
+   guide claims and the Text Diff guide typo in the same batch.
+3. Add Unicode, encoding, paragraph, UI state, mobile, download/copy and guide
+   tests; run full checks/audit and ship a single CI-verified PR. No claim of
+   measured ranking or traffic impact.
+
+---
+
 ## Text comparison controls and guide — plan
 
 [Diffchecker](https://www.diffchecker.com/text-compare/) describes workflows to

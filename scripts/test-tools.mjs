@@ -511,6 +511,13 @@ await test('counts match spec', () => {
   assert.equal(s.chars, 'Hello world. This is a test!\n\nSecond paragraph here.'.length);
   assert.equal(s.charsNoSpaces, [...'Helloworld.This isatest!Secondparagraphhere.'.replace(/\s/g, '')].length);
 });
+await test('paragraph counting supports CR, LF and CRLF blank lines', () => {
+ for (const eol of ['\n','\r','\r\n']) {
+  assert.equal(text.textStats(`one${eol}continued${eol}  ${eol}two${eol}${eol}`).paragraphs,2);
+  assert.equal(text.textStats(`${eol} ${eol}`).paragraphs,0);
+ }
+ assert.equal(text.textStats('one\r\n\rtwo').paragraphs,2);
+});
 await test('empty input is all zeros', () => {
   const s = text.textStats('');
   assert.equal(s.words, 0);
