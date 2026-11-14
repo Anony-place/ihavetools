@@ -241,10 +241,10 @@ const defs = {
         field({ label: 'Options', control: header }),
         field({ label: 'Value types', control: coerceTypes, hint: 'Default preserves all CSV values as text, including leading zeroes.' })),
       actionsRow(btn({ label: 'Convert to JSON', icon: 'table', onClick: run })),
-      status, h('p', { class: 'hint', text: 'Blank headers get generated names. Header whitespace is preserved; a leading UTF-8 BOM is removed. Type inference can round decimals and change text. CSV text is limited to 1,000,000 characters, 10,000 rows, 256 columns and 250,000 cells; uploads to 10 MiB.' }), h('br'), out.panel);
+      status, h('p', { class: 'hint', text: 'Blank headers get generated names. Header whitespace is preserved; a leading UTF-8 BOM is removed. Type inference can round decimals and change text. CSV text is limited to 1,000,000 characters, 10,000 rows, 256 columns and 250,000 cells; UTF-8 uploads to 10 MiB. Invalid or oversized files do not replace existing input.' }), h('br'), out.panel);
     import('../ui.js').then(({ dropzone }) => {
       const zone = dropzone({
-        accept: '.csv,text/csv,text/plain', title: '…or drop a .csv file', sub: 'Read locally — never uploaded',
+        accept: '.csv,text/csv,text/plain', title: '…or drop a .csv file', sub: 'UTF-8 text only, up to 10 MiB and 1,000,000 characters. Read locally.',
         onReject: () => { revision++; zone.clear(); out.placeholder(); status.set('Selection rejected. Existing CSV input was kept; choose a file no larger than 10 MiB.', 'error'); },
         onFiles: async (files) => {
           zone.clear();
@@ -252,8 +252,11 @@ const defs = {
           try {
             if (files[0].size > 10 * 1024 * 1024) throw new Error('Choose a CSV file no larger than 10 MiB.');
             status.set('Reading CSV locally…', 'info');
-            const text = await readFile(files[0], 'text');
+            const bytes = await readFile(files[0], 'buffer');
             if (token !== revision) return;
+            let text;
+            try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch { throw new Error('File is not valid UTF-8 text.'); }
+            if (text.length > MAX_TEXT) throw new Error('File exceeds 1,000,000 characters.');
             inp.value = text; run();
           } catch (e) { if (token === revision) { out.placeholder(); status.set(`${e.message} Existing CSV input was kept.`, 'error'); } }
         },
