@@ -11,6 +11,26 @@
 
 ---
 
+## Search discovery relevance and usability batch — plan
+
+The browser search uses a slim generated index, but an audit found direction and
+punctuation can produce weak matches and the editorial registry search differs from the live search algorithm; tests
+must exercise the live algorithm rather than assuming they are identical. This is an on-site navigation improvement, not
+measured Google search demand or a ranking/traffic guarantee. Continue without
+waiting for a comparable Search Console export.
+
+1. Improve the actual browser search ranking: normalize punctuation, prefer
+   exact names and ordered aliases, keep all meaningful query terms required,
+   preserve partial typing and bound unusually long queries. Add relevant
+   category and safe synonym coverage without downloading the full registry.
+2. Handle overlong and no-result states clearly and retain keyboard, mobile,
+   lazy loading, privacy and no-JS category-link fallbacks.
+3. Add focused pure ranking and real-browser regression tests including direction,
+   punctuation, aliases, long input and accessibility; run full checks, audit,
+   CI, one PR, merge if green and verify production.
+
+---
+
 ## Image conversion quality and discovery batch — plan
 
 [Google’s WebP study](https://developers.google.com/speed/webp/docs/webp_study)

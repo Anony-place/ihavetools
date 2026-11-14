@@ -83,31 +83,33 @@ function loadSearchIndex() {
   return indexPromise;
 }
 
-function scoreEntry(entry, terms) {
-  const name = entry.name.toLowerCase();
-  const hay = `${name} ${entry.k.toLowerCase()} ${entry.c.toLowerCase()}`;
-  let score = 0;
-  for (const term of terms) {
-    let t = 0;
-    if (name === term) t = 220;
-    else if (name.startsWith(term)) t = 150;
-    else if (name.includes(term)) t = 110;
-    else if (hay.includes(term)) t = 60;
-    if (t === 0) return 0; // every term must match somewhere
-    score = Math.max(score, t) + t * 0.1;
-  }
-  return score + entry.p * 0.05;
-}
-
-function searchIndex(index, query, limit = 8) {
-  const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  if (!terms.length) return [];
-  return index
-    .map((e) => [scoreEntry(e, terms), e])
-    .filter(([s]) => s > 0)
-    .sort((a, b) => b[0] - a[0])
-    .slice(0, limit)
-    .map(([, e]) => e);
+// Keep search bounded and deterministic; normalize punctuation without regex
+// interpolation or fuzzy matches that silently drop a user's terms.
+export const MAX_SEARCH_QUERY = 256;
+const normalizeSearch = value => String(value).toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}+#]+/gu, ' ').trim().replace(/\s+/g, ' ');
+export function searchIndex(index, query, limit = 8) {
+  if (String(query).length > MAX_SEARCH_QUERY) return [];
+  const q = normalizeSearch(query);
+  if (!q) return [];
+  const terms = q.split(' ');
+  return index.map((entry, position) => {
+    const name = normalizeSearch(entry.name);
+    const aliases = (entry.a || []).map(normalizeSearch);
+    const hay = normalizeSearch(`${entry.name} ${entry.k} ${entry.c} ${entry.cats || ''}`);
+    let score = 0;
+    for (const term of terms) {
+      if (!hay.includes(term)) return null;
+      score += name.includes(term) ? 30 : 10;
+    }
+    // Ordered phrases distinguish e.g. CSV to JSON from JSON to CSV.
+    if (name === q) score += 2000;
+    else if (name.includes(q)) score += 1000;
+    else if (aliases.includes(q)) score += 900;
+    else if (aliases.some(alias => alias.includes(q))) score += 400;
+    score += (entry.p || 0) * 0.05;
+    return { entry, score, position };
+  }).filter(Boolean).sort((a, b) => b.score - a.score || a.position - b.position)
+    .slice(0, Math.max(0, limit)).map(item => item.entry);
 }
 
 function setupSearch() {
@@ -155,6 +157,12 @@ function setupSearch() {
   const runSearch = async (token = ++revision) => {
     const query = input.value;
     if (!query.trim()) { close(); return; }
+    if (query.length > MAX_SEARCH_QUERY) {
+      results = []; list.replaceChildren(h('li', {class:'no-results', role:'option', 'aria-disabled':'true', 'aria-selected':'false', text:`Search is limited to ${MAX_SEARCH_QUERY} characters. Shorten your query.`}));
+      list.hidden = false; input.setAttribute('aria-expanded', 'true');
+      if (status) status.textContent = `Search is limited to ${MAX_SEARCH_QUERY} characters.`;
+      return;
+    }
     try {
       const index = await loadSearchIndex();
       if (token !== revision || input.value !== query) return;

@@ -329,6 +329,21 @@ await test('named groups', () => {
   assert.deepEqual({ ...r.matches[0].named }, { year: '2026', month: '09' });
 });
 
+await test('live slim search ranks exact directions, punctuation, aliases and bounded queries', async () => {
+  const { searchIndex, MAX_SEARCH_QUERY } = await import('../assets/js/site.js');
+  const { SEARCH_INDEX } = await import('../assets/js/search-index.js');
+  for (const [query, id] of Object.entries({
+    'csv to json': 'csv-to-json', 'json to csv': 'json-to-csv',
+    'jpg-to-png': 'jpg-to-png', 'png to jpg': 'png-to-jpg',
+    'robots.txt': 'robots-txt-generator', 'image compression': 'image-compressor',
+    'qr scanner': 'qr-code-scanner', 'scientific calculator': 'scientific-calculator',
+  })) assert.equal(searchIndex(SEARCH_INDEX, query)[0]?.id, id, query);
+  assert.deepEqual(searchIndex(SEARCH_INDEX, 'json zqxjkwv'), []);
+  assert.deepEqual(searchIndex(SEARCH_INDEX, 'x'.repeat(MAX_SEARCH_QUERY+1)), []);
+  assert.deepEqual(searchIndex(SEARCH_INDEX, '...'), []);
+  for (const t of registry.tools) assert.equal(searchIndex(SEARCH_INDEX, t.name)[0]?.id, t.id, t.name);
+});
+
 console.log('\n── JWT ──');
 await test('decodes real token structure', () => {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');

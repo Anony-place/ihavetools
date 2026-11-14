@@ -856,7 +856,7 @@ export const tools = [
     blurb: 'Shrink JPG, PNG and WebP in your browser — no uploads.',
     description: 'Reduce image file size with a quality slider and optional maximum dimensions. Compare before/after sizes and preview the result, then download.',
     keywords: ['compress image', 'image optimizer', 'reduce image size', 'jpeg', 'png', 'webp', 'file size'],
-    aliases: ['compress jpeg', 'compress png', 'reduce image size', 'image optimizer'],
+    aliases: ['compress jpeg', 'compress png', 'reduce image size', 'image optimizer', 'image compression'],
     popularity: 92, featured: true, added: '2026-06-04',
     steps: 'Drop or choose an image (JPG, PNG or WebP).|Set quality and an optional maximum width.|Click Compress, compare sizes, then download.',
     guide: [
