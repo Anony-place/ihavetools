@@ -373,11 +373,14 @@ export function buildSitemapXml(urls, { changefreq = '', priority = '', lastmod 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(lastmod) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0,10) !== lastmod) throw new Error('lastmod must be a valid date (YYYY-MM-DD).');
   }
   let origin = null;
+  const seen = new Set();
   const entries = urls.map(raw => {
     const value = String(raw).trim(); if (!value) return null;
     const u = validateWebUrl(value);
     if (origin && origin !== u.origin) throw new Error('All sitemap URLs must have the same scheme, host and port.');
     origin = u.origin;
+    if (seen.has(u.href)) throw new Error(`Duplicate URL after normalization: ${u.href}. Remove the duplicate and generate again.`);
+    seen.add(u.href);
     // URL serialization percent-encodes non-ASCII/control-sensitive characters.
     return `  <url>\n    <loc>${esc(u.href)}</loc>${lastmod ? `\n    <lastmod>${lastmod}</lastmod>` : ''}${changefreq ? `\n    <changefreq>${changefreq}</changefreq>` : ''}${priority !== '' ? `\n    <priority>${priority}</priority>` : ''}\n  </url>`;
   }).filter(Boolean);
@@ -387,8 +390,8 @@ export function buildSitemapXml(urls, { changefreq = '', priority = '', lastmod 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
   'meta-tag-generator'(root) {
-    const title = input({ type: 'text', placeholder: 'Page title (aim for ≤60 characters)', maxlength: '120' });
-    const desc = textarea({ rows: 3, mono: false, placeholder: 'Meta description (aim for ≤160 characters)…' });
+    const title = input({ type: 'text', placeholder: 'Descriptive page title', maxlength: '120' });
+    const desc = textarea({ rows: 3, mono: false, placeholder: 'Summarize this page for searchers…' });
     const url = input({ type: 'url', placeholder: 'https://example.com/page' });
     const image = input({ type: 'url', placeholder: 'https://example.com/og-image.png (1200×630 recommended)' });
     const siteName = input({ type: 'text', placeholder: 'Site name, e.g. Example Inc.' });
@@ -421,11 +424,7 @@ const defs = {
       L.push(`<meta name="twitter:description" content="${esc(d)}">`);
       if (img) L.push(`<meta name="twitter:image" content="${esc(img)}">`);
       out.set(L.join('\n'));
-      const notes = [];
-      if (t.length > 60) notes.push('title exceeds 60 characters — it may be truncated in search results');
-      if (d.length > 160) notes.push('description exceeds 160 characters — it may be truncated');
-      if (d && d.length < 70) notes.push('description is short — aim for 70–160 characters');
-      status.set(notes.length ? `Generated ✓ — but ${notes.join(' and ')}.` : 'Generated ✓ — lengths look good.', notes.length ? 'warning' : 'success');
+      status.set('Generated. Search engines may choose different titles or snippets; display width varies.', 'success');
     };
     [title, desc, url, image, siteName, twitter, robots].forEach((el) => { el.addEventListener('input', build); el.addEventListener('change', build); });
     root.append(
@@ -546,9 +545,9 @@ const defs = {
     };
     [inp, lastmod, freq, prio].forEach(el => { el.addEventListener('input', () => { out.placeholder(); status.set('Inputs changed. Generate again.', 'info'); }); el.addEventListener('change', () => { out.placeholder(); status.set('Inputs changed. Generate again.', 'info'); }); });
     root.append(field({ label: 'URLs (one per line)', control: inp }),
-      h('p', { class: 'hint', text: 'One HTTP(S) origin per sitemap; max 10,000 URLs / 2 million characters here. Use real modification dates only; Google ignores changefreq and priority.' }),
+      h('p', { class: 'hint', text: 'One HTTP(S) origin per sitemap; max 10,000 URLs / 2 million characters here. The optional lastmod applies to every URL: use it only if accurate for each page. Google ignores changefreq and priority.' }),
       h('div', { class: 'field-row', style: 'align-items:end' },
-        field({ label: 'lastmod', control: lastmod }),
+        field({ label: 'lastmod (all URLs)', control: lastmod }),
         field({ label: 'changefreq', control: freq }),
         field({ label: 'priority', control: prio })),
       actionsRow(btn({ label: 'Generate sitemap', icon: 'sitemap', onClick: run }),

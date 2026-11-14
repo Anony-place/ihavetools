@@ -692,6 +692,8 @@ await domTest('meta-tag-generator: emits full tag set', async () => {
   assert.match(text, /<title>My Page<\/title>/);
   assert.match(text, /property="og:title" content="My Page"/);
   assert.match(text, /name="twitter:card"/);
+  assert.match(statusText(document), /display width varies/);
+  assert.doesNotMatch(statusText(document), /lengths look good|aim for 70/);
 });
 await domTest('url-parser: components + decoded params', async () => {
   const app = await loadToolPage('url-parser', 'webseo');
@@ -709,6 +711,12 @@ await domTest('sitemap-generator: validates URLs', async () => {
   click(btnByLabel(app, 'Generate sitemap'));
   assert.match(resultText(document), /<urlset/);
   assert.match(statusText(document), /2 URLs in the sitemap/);
+  ta.value = 'https://a.b\nhttps://a.b/';
+  fire(ta, 'input');
+  click(btnByLabel(app, 'Generate sitemap'));
+  assert.match(statusText(document), /Duplicate URL/);
+  assert.doesNotMatch(resultText(document), /<urlset/);
+  assert.match(app.textContent, /lastmod.*all URLs/i);
 });
 
 /* ═════════════════ Student / Math ═════════════════ */
