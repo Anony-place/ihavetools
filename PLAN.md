@@ -11,6 +11,24 @@
 
 ---
 
+## Keyword-frequency workflow and accuracy — plan
+
+Google's [people-first guidance](https://developers.google.com/search/docs/fundamentals/creating-helpful-content)
+warns against writing to a preferred word count for ranking. Keyword frequency
+is an editorial diagnostic, not an SEO score or proven demand. Audit uncovered
+inconsistent CR-only target lists, silent symbol-only single targets, and stale
+results during invalid/pending file imports.
+
+1. Add optional Unicode NFC matching across content, targets and exclusions;
+   default remains unchanged. Clarify overlapping phrase counts and 100% cap.
+2. Consistently parse CR/LF/CRLF target lists, reject invalid single targets,
+   clear stale results on imports, cancel pending reads on page exit; keep old
+   input on invalid files and existing work/size limits.
+3. Add engine, asynchronous UI, CSV, mobile and accessibility tests, update the
+   guide without ranking promises, run checks and audit, and ship one PR.
+
+---
+
 ## Text measurement and content accuracy — plan
 
 Google's [snippet guidance](https://developers.google.com/search/docs/appearance/snippet)

@@ -173,7 +173,10 @@ export function parseUrlParts(raw) {
 
 /* ═══════════════════════════ Keyword density ═══════════════════════════ */
 const STOPWORDS = new Set('a,an,and,are,as,at,be,been,but,by,can,could,did,do,does,for,from,had,has,have,he,her,his,how,i,if,in,into,is,it,its,just,like,may,might,must,not,of,on,or,our,shall,she,should,since,so,some,than,that,the,their,them,then,there,these,they,this,those,to,too,us,was,we,were,what,when,where,which,while,who,whom,why,will,with,would,you,your,yours'.split(','));
-const tokenizeWords = (text) => String(text || '').toLowerCase().match(/\p{L}[\p{L}\p{M}'’-]*/gu) || [];
+const tokenizeWords = (text, normalize = false) => {
+  const lowered = String(text || '').toLowerCase();
+  return (normalize ? lowered.normalize('NFC') : lowered).match(/\p{L}[\p{L}\p{M}'’-]*/gu) || [];
+};
 
 /**
  * Keyword frequency + density.
@@ -182,11 +185,13 @@ const tokenizeWords = (text) => String(text || '').toLowerCase().match(/\p{L}[\p
  * capped at 100% for pathological overlapping phrases. A target phrase is
  * counted independently of the stop-word filter and phrase-length setting.
  */
-export function keywordDensity(text, { phraseLength = 1, filterStop = true, minCount = 1, limit = 100, target = '', excluded = '' } = {}) {
+export function keywordDensity(text, { phraseLength = 1, filterStop = true, minCount = 1, limit = 100, target = '', excluded = '', normalize = false } = {}) {
   if (String(text).length > 200000 || String(target).length > 1000) throw new Error('Input limit: 200,000 characters of content and 1,000 characters in the target phrase.');
   if (String(excluded).length > 2000) throw new Error('Excluded words are limited to 2,000 characters.');
-  const exclusions = new Set(tokenizeWords(excluded));
-  const words = tokenizeWords(text);
+  const exclusions = new Set(tokenizeWords(excluded, normalize));
+  const words = tokenizeWords(text, normalize);
+  const targetWords = tokenizeWords(target, normalize);
+  if (String(target).trim() && !targetWords.length) throw new Error('The target must contain at least one word made of letters.');
   const n = [1, 2, 3].includes(Number(phraseLength)) ? Number(phraseLength) : 1;
   const minimum = Math.max(1, Number(minCount) || 1);
   const cap = Math.min(500, Math.max(1, Math.floor(Number(limit) || 100)));
@@ -207,7 +212,6 @@ export function keywordDensity(text, { phraseLength = 1, filterStop = true, minC
     .map(([phrase, count]) => ({ phrase, count, density: Math.min(100, (count * n / words.length) * 100) }));
   const terms = matchedTerms.slice(0, cap);
 
-  const targetWords = tokenizeWords(target);
   let targetResult = null;
   if (targetWords.length) {
     if (targetWords.length * words.length > 2000000) throw new Error('Target phrase is too long for this content. Shorten it or the input.');
@@ -226,19 +230,19 @@ export function keywordDensity(text, { phraseLength = 1, filterStop = true, minC
 }
 
 /** Count a small, normalized list of phrases independently of table filters. */
-export function keywordTargetList(text, targets) {
+export function keywordTargetList(text, targets, { normalize = false } = {}) {
   if (String(text).length > 200000) throw new Error('Content exceeds the 200,000-character limit.');
   if (String(targets).length > 2000) throw new Error('Target list exceeds 2,000 characters.');
-  const lines = String(targets).split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const lines = String(targets).split(/\r\n|\r|\n/).map(s => s.trim()).filter(Boolean);
   if (lines.length > 20) throw new Error('Enter at most 20 target phrases.');
   const unique = new Map();
   for (const line of lines) {
-    const tokens = tokenizeWords(line);
+    const tokens = tokenizeWords(line, normalize);
     if (!tokens.length) throw new Error('Each target must contain at least one word made of letters.');
     const key = tokens.join(' ');
     if (!unique.has(key)) unique.set(key, tokens);
   }
-  const words = tokenizeWords(text);
+  const words = tokenizeWords(text, normalize);
   const work = [...unique.values()].reduce((sum,tokens) => sum + tokens.length * words.length, 0);
   if (work > 2000000) throw new Error('Target list is too long for this content. Reduce the targets or content.');
   return [...unique].map(([phrase,tokens]) => {
@@ -620,15 +624,19 @@ const defs = {
     const limit = select({ options: [{v:'25',t:'25 terms'}, {v:'100',t:'100 terms'}, {v:'500',t:'500 terms'}], value: '100' });
     const minimum = select({ options: [{ v: '1', t: 'All terms' }, { v: '2', t: '2+ times' }, { v: '3', t: '3+ times' }, { v: '5', t: '5+ times' }], value: '1' });
     const stop = switchChip({ label: 'Filter stop words', checked: true });
+    const normalize = switchChip({ label: 'Match Unicode equivalents (NFC)' });
     const grid = statsGrid();
     const status = statusLine('');
     const out = h('div', {});
     let lastCsv = '', targetCsv = '', importRevision = 0;
+    window.addEventListener('pagehide', () => { importRevision++; }, {once:true});
+    const clearResults = () => { lastCsv = ''; targetCsv = ''; grid.replaceChildren(); out.replaceChildren(); };
     const file = input({ type: 'file', accept: '.txt,.md,text/plain,text/markdown' });
     file.addEventListener('change', async () => {
       const selected = file.files?.[0]; file.value = '';
       const token = ++importRevision;
       if (!selected) return;
+      clearResults();
       if (!/\.(txt|md)$/i.test(selected.name) || selected.size > 800000) {
         status.set('Choose a .txt or .md file of at most 800,000 bytes. Existing content was kept.', 'error'); return;
       }
@@ -647,7 +655,8 @@ const defs = {
       importRevision++;
       const text = inp.value;
       if (!text.trim()) { lastCsv = ''; targetCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Paste some content first.', 'warning'); return; }
-      let r, list; try { list = keywordTargetList(text, targets.value); r = keywordDensity(text, {
+      let r, list; try { const nfc = normalize.querySelector('input').checked; list = keywordTargetList(text, targets.value, { normalize: nfc }); r = keywordDensity(text, {
+        normalize: nfc,
         phraseLength: Number(len.value),
         filterStop: stop.querySelector('input').checked,
         minCount: Number(minimum.value),
@@ -676,10 +685,10 @@ const defs = {
         r.matched > r.terms.length
           ? h('p', { class: 'hint', text: `Showing the top ${r.terms.length} of ${r.matched.toLocaleString()} matching terms. Download the CSV for the displayed rows.` })
           : h('span'),
-        ...(list.length ? [h('h3',{text:'Target phrase comparison'}), h('p',{class:'hint',text:'One row per unique normalized target; counts include overlapping matches and ignore phrase-table filters.'}), table({headers:['Target','Frequency','Density'],rows:list.map(t=>[t.phrase,String(t.count),`${t.density.toFixed(2)}%`])})] : []));
+        ...(list.length ? [h('h3',{text:'Target phrase comparison'}), h('p',{class:'hint',text:'One row per unique token sequence; counts include overlapping matches and ignore phrase-table filters. Density is capped at 100%.'}), table({headers:['Target','Frequency','Density'],rows:list.map(t=>[t.phrase,String(t.count),`${t.density.toFixed(2)}%`])})] : []));
       status.set(`Analysed ${r.totalWords.toLocaleString()} words ✓`, 'success');
     };
-    [inp, target, targets, excluded, len, minimum, limit, stop].forEach(el => { const clear = () => { lastCsv = ''; targetCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Inputs changed. Analyse again.', 'info'); }; el.addEventListener('input', clear); el.addEventListener('change', clear); });
+    [inp, target, targets, excluded, len, minimum, limit, stop, normalize].forEach(el => { const clear = () => { lastCsv = ''; targetCsv = ''; grid.replaceChildren(); out.replaceChildren(); status.set('Inputs changed. Analyse again.', 'info'); }; el.addEventListener('input', clear); el.addEventListener('change', clear); });
     root.append(field({ label: 'Content', control: inp }),
       field({ label: 'Load text file (optional)', control: file, hint: 'Local .txt or .md, UTF-8, up to 800,000 bytes and 200,000 characters; replaces the content above.' }),
       field({ label: 'Target keyword or phrase', control: target, hint: 'Counted even if it contains excluded or stop words' }),
@@ -690,6 +699,8 @@ const defs = {
         field({ label: 'Show terms occurring', control: minimum }),
         field({ label: 'Maximum results', control: limit }),
         field({ label: 'Options', control: stop })),
+      normalize,
+      h('p', {class:'hint', text:'NFC matching combines canonically equivalent spellings in content, targets and exclusions; output terms are normalized. Overlapping phrases can count shared words more than once; displayed density is capped at 100%. No keyword percentage guarantees rankings.'}),
       actionsRow(
         btn({ label: 'Count keywords', icon: 'chart', onClick: run }),
         btn({ label: 'Download target CSV', variant:'secondary', onClick: () => {
