@@ -135,6 +135,18 @@ function rasterGrayscale(ctx, width, height) {
   grayscalePixels(pixels.data); ctx.putImageData(pixels, 0, 0);
 }
 
+/** Inspect PNG dimensions before pdf-lib inflates PNG data; null for non-PNG. */
+export function preflightPngDimensions(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const signature = [137,80,78,71,13,10,26,10];
+  if (bytes.length < 8 || !signature.every((n,i) => bytes[i] === n)) return null;
+  if (bytes.length < 24 || bytes[8] !== 0 || bytes[9] !== 0 || bytes[10] !== 0 || bytes[11] !== 13 || bytes[12] !== 73 || bytes[13] !== 72 || bytes[14] !== 68 || bytes[15] !== 82) throw new Error('PNG has an invalid or truncated header.');
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const width = view.getUint32(16), height = view.getUint32(20);
+  if (!width || !height || width * height > 40000000) throw new Error('PNG exceeds 40 million pixels or has invalid dimensions.');
+  return {width, height};
+}
+
 /** Page geometry in points. Image-size mode uses one point per pixel. */
 export function imagePdfLayout(width, height, size, orientation, margin) {
   if (![width,height].every(n => Number.isSafeInteger(n) && n > 0) || width * height > 40000000) throw new Error('Image exceeds 40 million pixels or has invalid dimensions.');
@@ -705,11 +717,13 @@ const defs = {
     const listWrap = h('div', { class: 'file-list' });
     const status = statusLine('Add one or more images — each becomes a page. Use ↑/↓ to reorder.');
     const grid = statsGrid();
-    const pageSize = segControl({ options: [{ v: 'a4', t: 'A4 (fit)' }, { v: 'letter', t: 'Letter (fit)' }, { v: 'original', t: 'Image size' }], value: 'a4', ariaLabel: 'Page size', onChange: () => { operation++; grid.replaceChildren(); status.set('Page size changed. Start conversion again.', 'info'); } });
+    const pageSize = segControl({ options: [{ v: 'a4', t: 'A4 (fit)' }, { v: 'letter', t: 'Letter (fit)' }, { v: 'original', t: 'Image size' }], value: 'a4', ariaLabel: 'Page size', onChange: () => { refreshLayout(); operation++; grid.replaceChildren(); status.set('Page size changed. Start conversion again.', 'info'); } });
     const orientation = select({options:[{v:'auto',t:'Auto (match image)'},{v:'portrait',t:'Portrait'},{v:'landscape',t:'Landscape'}],value:'auto'});
     const margin = input({type:'number',min:0,max:144,step:1,value:'36'});
+    const normalize = switchChip({label:'Apply browser image orientation',checked:false});
+    const refreshLayout = () => { const ignored = pageSize.getValue() === 'original'; orientation.disabled = ignored; margin.disabled = ignored; };
     const settingsChanged = () => { operation++; grid.replaceChildren(); status.set('Layout changed. Start conversion again.', 'info'); };
-    orientation.addEventListener('change', settingsChanged); margin.addEventListener('input', settingsChanged);
+    orientation.addEventListener('change', settingsChanged); margin.addEventListener('input', settingsChanged); normalize.addEventListener('change', settingsChanged); refreshLayout();
     const zone = dropzone({
       accept: 'image/*', multiple: true, title: 'Choose images or drop them here',
       sub: 'JPG, PNG, WebP, GIF… — converted locally, never uploaded',
@@ -733,16 +747,17 @@ const defs = {
       { label: 'Images', value: String(listWrap.children.length) },
       { label: 'Total size', value: fmtBytes([...listWrap.children].reduce((s, row) => s + row.file.size, 0)) },
     ]); };
-    async function embedImage(pdf, file) {
+    async function embedImage(pdf, file, normalizeImage) {
       const buf = await readFile(file, 'buffer');
+      preflightPngDimensions(buf);
       const isJpg = /jpe?g/i.test(file.type) || /\.jpe?g$/i.test(file.name);
       const isPng = /png/i.test(file.type) || /\.png$/i.test(file.name);
-      if (isJpg) { try { return await pdf.embedJpg(buf); } catch { /* fall through to canvas */ } }
-      if (isPng) { try { return await pdf.embedPng(buf); } catch { /* fall through to canvas */ } }
+      if (!normalizeImage && isJpg) { try { return await pdf.embedJpg(buf); } catch { /* fall through to canvas */ } }
+      if (!normalizeImage && isPng) { try { return await pdf.embedPng(buf); } catch { /* fall through to canvas */ } }
       let bmp;
       try {
         bmp = await createImageBitmap(file);
-        if (!(bmp.width > 0 && bmp.height > 0) || bmp.width * bmp.height > 40000000) throw new Error(`“${file.name}” exceeds 40 million pixels or has invalid dimensions.`);
+        if (!(bmp.width > 0 && bmp.height > 0) || bmp.width * bmp.height > 40000000 || bmp.width > 16384 || bmp.height > 16384) throw new Error('Decoded image exceeds 40 million pixels, 16,384 pixels per side, or has invalid dimensions.');
         const canvas = document.createElement('canvas'); canvas.width = bmp.width; canvas.height = bmp.height;
         const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Could not create an image canvas.');
         ctx.drawImage(bmp, 0, 0);
@@ -757,7 +772,7 @@ const defs = {
       const version = revision, token = ++operation;
       const current = () => version === revision && token === operation;
       if (!ordered.length) { status.set('Add at least one image first.', 'warning'); return; }
-      const chosenSize = pageSize.getValue(), chosenOrientation = orientation.value, chosenMargin = margin.value === '' ? NaN : Number(margin.value);
+      const chosenSize = pageSize.getValue(), chosenOrientation = chosenSize === 'original' ? 'auto' : orientation.value, chosenMargin = chosenSize === 'original' ? 0 : margin.value === '' ? NaN : Number(margin.value), normalizeImage = normalize.querySelector('input').checked;
       try { imagePdfLayout(1,1,chosenSize,chosenOrientation,chosenMargin); } catch(e) { status.set(e.message,'error'); return; }
       status.set(`Loading the PDF engine, then converting ${ordered.length} image${ordered.length === 1 ? '' : 's'}…`, 'info');
       try {
@@ -766,7 +781,7 @@ const defs = {
         for (const f of ordered) {
           if (!current()) return;
           let img;
-          try { img = await embedImage(pdf, f); } catch(e) { throw new Error(`“${f.name}”: ${e.message || 'Image could not be decoded.'}`); }
+          try { img = await embedImage(pdf, f, normalizeImage); } catch(e) { throw new Error(`“${f.name}”: ${e.message || 'Image could not be decoded.'}`); }
           if (!current()) return;
           let layout; try { layout = imagePdfLayout(img.width,img.height,chosenSize,chosenOrientation,chosenMargin); }
           catch(e) { throw new Error(`“${f.name}”: ${e.message}`); }
@@ -787,7 +802,9 @@ const defs = {
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
         field({ label: 'Page size', control: pageSize }),
         field({label:'Page orientation',control:orientation}), field({label:'Margin (points)',control:margin,hint:'0–144 points; A4/Letter only.'})),
-      h('p',{class:'hint',text:'Limit: 20 images, 20 MiB each, 100 MiB combined, 40 million pixels per image and 100 MiB output. Image-size mode uses 1 pixel = 1 PDF point (max 14,400 points per side), ignoring orientation and margin. Animated images use one frame. EXIF orientation may not be applied to embedded JPEG; rotate images before conversion. Device memory can impose lower limits.'}),
+      h('div', {class:'switch-row'}, normalize),
+      h('p',{class:'hint',text:'Apply browser image orientation decodes each image to a still PNG; this may increase PDF size, discard metadata, alter colors and use more memory. Browser support and orientation handling vary; inspect the PDF.'}),
+      h('p',{class:'hint',text:'Limit: 20 images, 20 MiB each, 100 MiB combined, 40 million pixels per image and 100 MiB output. Image-size mode uses 1 pixel = 1 PDF point (max 14,400 points per side), ignoring orientation and margin. Canvas-decoded images are additionally limited to 16,384 pixels per side. Animated images use one frame. Direct JPEG embedding may ignore EXIF orientation; enable browser orientation or rotate images before conversion. Device memory can impose lower limits.'}),
       actionsRow(
         btn({ label: 'Convert to PDF', icon: 'file-text', onClick: run }),
         btn({ label: 'Clear list', variant: 'ghost', icon: 'x', onClick: () => { listWrap.replaceChildren(); updateGrid(); status.set('Cleared.'); } })),

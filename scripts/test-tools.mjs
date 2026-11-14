@@ -1983,6 +1983,13 @@ await test('range parsing: singles, ranges, mixed, unsorted, reversed', () => {
   assert.throws(()=>pdf.pdfRasterOptions(2,'jpeg',0,'color',0),/quality/);
   assert.throws(()=>pdf.pdfRasterOptions(2,'jpeg',92,'gray',45),/settings/);
   assert.deepEqual([...pdf.grayscalePixels(new Uint8ClampedArray([255,0,0,255,0,255,0,100]))],[54,54,54,255,182,182,182,100]);
+  const pngHeader = (w,h) => {const b=new Uint8Array(24); b.set([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82]);const v=new DataView(b.buffer);v.setUint32(16,w);v.setUint32(20,h);return b.buffer;};
+  assert.deepEqual(pdf.preflightPngDimensions(pngHeader(800,600)),{width:800,height:600});
+  assert.deepEqual(pdf.preflightPngDimensions(pngHeader(8000,5000)),{width:8000,height:5000});
+  assert.throws(()=>pdf.preflightPngDimensions(pngHeader(8001,5000)),/40 million/);
+  assert.throws(()=>pdf.preflightPngDimensions(pngHeader(0,10)),/invalid dimensions/);
+  assert.throws(()=>pdf.preflightPngDimensions(pngHeader(1,1).slice(0,20)),/truncated header/);
+  assert.equal(pdf.preflightPngDimensions(new Uint8Array([255,216,255]).buffer),null);
   assert.deepEqual(pdf.imagePdfLayout(200,100,'letter','portrait',0), {width:612,height:792,rect:{x:0,y:243,width:612,height:306}});
   assert.equal(pdf.imagePdfLayout(200,100,'a4','auto',36).width,841.89);
   assert.equal(pdf.imagePdfLayout(100,200,'a4','landscape',36).width,841.89);
