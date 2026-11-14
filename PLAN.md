@@ -11,6 +11,32 @@
 
 ---
 
+## Roman date conversion and traffic validation — plan
+
+Traffic: Drive search found one site-specific Search Console spreadsheet labelled
+2026-11-12, later than the session date 2026-10-31. Do not treat it as current
+or report its metrics until chronology is verified. No comparable page-filtered
+periods or total site traffic are available here. Prioritize a useful workflow
+hypothesis rather than claiming measured demand or a ranking benefit.
+
+Market: [RapidTables Roman converter](https://www.rapidtables.com/convert/number/roman-numerals-converter.html)
+links to a date conversion workflow and a chart. Competitor functionality is
+not search volume. Our converter supports standard numbers already; extend the
+same page with a clearly labelled Gregorian date ↔ Roman date workflow, explicit
+component order, strict date validation, and no zero or overline notation.
+
+1. Build local bidirectional conversion with unambiguous slash-separated parts,
+   explicit day/month ordering and strict Gregorian leap-year validation.
+2. Explain calendar, ordering and scope limitations; keep current converter
+   behavior and canonical URL unchanged. Avoid unsupported traffic claims.
+3. Test valid and invalid dates, Gregorian century leap rules, both orders,
+   round trips, copy/output clearing, mobile and accessibility; run full checks,
+   audit, one PR, CI, merge only when green and verify production.
+4. Later, acquire a correctly dated GSC export and compare equal windows with
+   page-filtered queries; do not stall feature work waiting for it.
+
+---
+
 ## Image resizer workflow batch — plan
 
 [ResizePixel](https://www.resizepixel.com/resize-image/) offers aspect-ratio
