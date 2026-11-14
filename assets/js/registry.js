@@ -1128,12 +1128,12 @@ export const tools = [
     related: ['word-counter', 'meta-tag-generator', 'slug-generator', 'character-counter', 'robots-txt-generator', 'sitemap-generator'],
     faqs: [
       { q: 'What is the ideal keyword density?', a: 'There is no universal percentage that guarantees better rankings. Use density as a sanity check: the dominant terms should match the page’s topic naturally, and the same exact phrase repeated unnaturally can make copy read like keyword stuffing. Clear coverage of the reader’s questions matters more than hitting a magic number.' },
-      { q: 'What is the difference between keyword frequency and density?', a: 'Frequency is the raw occurrence count. Density puts that count in the context of the whole text. In a 200-word article, a two-word phrase appearing 4 times has frequency 4 and density 4% here, because its occurrences account for 8 of the 200 words.' },
-      { q: 'Why does a phrase disappear when stop-word filtering is on?', a: 'The automatic phrase table skips phrases containing common English stop words such as “the” or “of”. Turn the filter off to include them. A phrase entered in the target box is always counted exactly, even when filtering is on.' },
+      { q: 'What is the difference between keyword frequency and density?', a: 'Frequency is the raw occurrence count. Density puts that count in the context of the whole text; overlapping matches can count the same words more than once, and this tool caps the displayed value at 100%. In a 200-word article, a two-word phrase appearing 4 times has frequency 4 and density 4% here, because its occurrences account for 8 of the 200 words.' },
+      { q: 'Why does a phrase disappear when stop-word filtering is on?', a: 'The automatic phrase table skips phrases containing common English stop words such as “the” or “of”. Turn the filter off to include them. A target is counted using the same lowercase tokenization, independent of those filters; numbers and punctuation are not searchable as separate tokens.' },
     ],
     guide: [
       { h: 'Frequency first, density second',
-        p: 'Frequency answers “how many times?” Density answers “how much of the whole text is that?” This checker calculates one-word density as count ÷ total words × 100. For a phrase it uses count × phrase length ÷ total words × 100, so a two-word phrase used four times in 200 words accounts for 8 words, or 4%.',
+        p: 'Frequency answers “how many times?” Density answers “how much of the whole text is that?” This checker calculates one-word density as count ÷ total words × 100. For a phrase it uses count × phrase length ÷ total words × 100. Overlapping matches can reuse the same words, and values are capped at 100%; this is a frequency-derived indicator, not necessarily the unique share of words. For four non-overlapping occurrences of a two-word phrase in 200 words, it is 4%.',
         table: { head: ['In a 200-word text', 'Frequency', 'Words used by occurrences', 'Density shown'], rows: [
           ['tools (1 word)', '10', '10', '5%'],
           ['keyword research (2 words)', '4', '8', '4%'],
@@ -1145,9 +1145,10 @@ export const tools = [
         'Compare 1-word and 2–3-word views: single words show themes, while phrases reveal canned wording and repeated calls to action.',
         'Do not chase a universal “ideal density”. A short product page, a technical specification and a long guide can all be relevant at very different densities.',
       ] },
-      { h: 'Compare several target phrases', p: 'Enter up to 20 phrases, one per line. The comparison counts each unique lowercase token sequence, even when automatic-table stop words or exclusions are enabled. Overlapping matches count, and absent phrases show zero. Numbers and punctuation are not searchable as tokens: iPhone 15 is treated as iphone. The target CSV contains this comparison separately from the displayed frequency table. For long content and target lists, an operation limit may require shorter input.' },
+      { h: 'Compare several target phrases', p: 'Enter up to 20 phrases, one per line. The comparison counts each unique lowercase token sequence (optionally NFC-normalized), even when automatic-table stop words or exclusions are enabled. Overlapping matches count, and absent phrases show zero. Numbers and punctuation are not searchable as tokens: iPhone 15 is treated as iphone. The target CSV contains this comparison separately from the displayed frequency table. For long content and target lists, an operation limit may require shorter input.' },
       { h: 'Counting rules and honest limits', list: [
-        'Counting is case-insensitive and recognises Unicode letters. Internal apostrophes and hyphens can remain part of a word.',
+        'Counting uses Unicode lowercasing and recognises letters. Optional NFC matches canonically equivalent spellings in content, targets and exclusions, and output terms use NFC; it is not locale-aware case folding or a match for every visually similar character. Internal apostrophes and hyphens can remain part of a word.',
+        'Overlapping phrases are counted at each starting position; the density formula can count a word more than once. The reported percentage is capped at 100%.',
         'Numbers and symbols are not counted as words, so a target such as “iPhone 15” is effectively matched on its letters (“iphone”).',
         'There is no stemming: “tool” and “tools” are different terms, and synonyms are never merged.',
         'The built-in stop-word list is English. You can also exclude individual words in any supported script. Automatic phrases containing any excluded or filtered word are skipped; target counts bypass both filters.',

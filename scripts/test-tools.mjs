@@ -1048,6 +1048,21 @@ await test('registry guides are well-formed and cover the top tools', () => {
     }
   }
 });
+await test('keyword NFC matching, target validation and CR-separated lists', () => {
+ const source='café cafe\u0301 café';
+ assert.equal(seo.keywordDensity(source,{filterStop:false}).distinct,2);
+ const result=seo.keywordDensity(source,{filterStop:false,normalize:true,target:'cafe\u0301'});
+ assert.equal(result.terms[0].phrase,'café'); assert.equal(result.terms[0].count,3); assert.equal(result.target.count,3);
+ assert.equal(seo.keywordDensity(source,{filterStop:false,normalize:true,excluded:'cafe\u0301'}).terms.length,0);
+ const list=seo.keywordTargetList(source,'café\rcafe\u0301\rabsent',{normalize:true});
+ assert.equal(list.length,2); assert.equal(list[0].count,3); assert.equal(list[1].count,0);
+ assert.throws(()=>seo.keywordDensity('alpha',{target:'123 !!!'}),/at least one word/);
+ assert.throws(()=>seo.keywordDensity('123',{target:'123'}),/at least one word/);
+ const overlap=seo.keywordDensity('a a a',{phraseLength:2,filterStop:false});
+ assert.equal(overlap.terms[0].count,2); assert.equal(overlap.terms[0].density,100);
+ assert.equal(seo.keywordTargetList('a a a','a a')[0].density,100);
+});
+
 await test('keyword density math', () => {
   const r = seo.keywordDensity('tool tools tools more words here and more words', { phraseLength: 1, filterStop: false });
   assert.equal(r.total, 9);

@@ -2134,6 +2134,16 @@ await domTest('keyword target list compares and invalidates reports', async () =
  targets.value='123';fire(targets,'input');assert.equal(app.querySelectorAll('table').length,0);click(btnByLabel(app,'Count keywords'));assert.match(statusText(document),/at least one word/);
  click(btnByLabel(app,'Download target CSV'));assert.match(statusText(document),/Analyse a target list/);
 });
+await domTest('keyword NFC setting and invalid single target invalidate exports', async () => {
+ const app=await loadToolPage('keyword-density-checker','webseo'), [content,targets]=app.querySelectorAll('textarea');
+ const target=[...app.querySelectorAll('input[type=text]')].find(el=>el.placeholder.includes('online tools'));
+ content.value='café cafe\u0301 café'; targets.value='cafe\u0301'; fire(content,'input'); fire(targets,'input');
+ click(btnByLabel(app,'Count keywords')); assert.equal(app.querySelectorAll('table')[1].querySelector('tbody').textContent.includes('1'),true);
+ const option=[...app.querySelectorAll('label.switch')].find(el=>el.textContent.includes('Match Unicode equivalents')); click(option.querySelector('input'));
+ assert.equal(app.querySelectorAll('table').length,0); click(btnByLabel(app,'Count keywords')); assert.match(app.querySelectorAll('table')[1].textContent,/café3/);
+ target.value='123 !!!'; fire(target,'input'); click(btnByLabel(app,'Count keywords')); assert.match(statusText(document),/at least one word/); assert.equal(app.querySelectorAll('table').length,0);
+ click(btnByLabel(app,'Download CSV')); assert.match(statusText(document),/Analyse some content/);
+});
 await domTest('keyword text import preserves content on rejection and ignores stale reads', async () => {
  const app=await loadToolPage('keyword-density-checker','webseo'), box=app.querySelector('textarea'), picker=app.querySelector('input[type=file]');
  const saved=global.FileReader; let reader;
@@ -2143,7 +2153,7 @@ await domTest('keyword text import preserves content on rejection and ignores st
    box.value='existing'; choose(new File(['x'],'draft.txt')); assert.ok(reader); box.value='new edit'; fire(box,'input'); reader.result=new TextEncoder().encode('late overwrite').buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'new edit');
    choose(new File(['x'],'bad.pdf')); assert.match(statusText(document),/Existing content was kept/); assert.equal(box.value,'new edit');
    choose(new File(['hello'],'draft.txt')); reader.result=new TextEncoder().encode('hello hello').buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'hello hello'); click(btnByLabel(app,'Count keywords')); assert.match(app.textContent,/hello/);
-   choose(new File(['x'],'bad.txt')); reader.result=new Uint8Array([255]).buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.match(statusText(document),/not valid UTF-8/); assert.equal(box.value,'hello hello');
+   choose(new File(['x'],'bad.txt')); assert.equal(app.querySelectorAll('table').length,0); click(btnByLabel(app,'Download CSV')); assert.match(statusText(document),/Analyse some content/); reader.result=new Uint8Array([255]).buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.match(statusText(document),/not valid UTF-8/); assert.equal(box.value,'hello hello');
    choose(new File(['x'],'slow.txt')); click(btnByLabel(app,'Count keywords')); reader.result=new TextEncoder().encode('late').buffer; reader.onload(); await new Promise(r=>setTimeout(r,0)); assert.equal(box.value,'hello hello');
    choose({name:'huge.txt',size:800001}); assert.match(statusText(document),/Existing content was kept/); assert.equal(box.value,'hello hello');
  } finally {global.FileReader=saved;}
