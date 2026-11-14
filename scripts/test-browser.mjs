@@ -923,7 +923,7 @@ try {
   assert.match(await page.locator('#tool-app').innerText(),/tested quality/i);
   const dl=page.waitForEvent('download'); await page.getByRole('button',{name:'Download compressed image'}).click(); assert.match((await dl).suggestedFilename(),/\.jpg$/);
   await page.getByLabel('Output format').selectOption('png'); assert.equal(await page.locator('#tool-app .img-preview').count(),0);
-  await page.getByRole('button',{name:'Compress',exact:true}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/JPEG and WebP only/);
+  await page.getByRole('button',{name:'Compress',exact:true}).click(); await page.locator('#tool-app .status-line').getByText(/JPEG and WebP only/).waitFor();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
   const compressorAxe=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze();
   assert.deepEqual(compressorAxe.violations.map(v=>v.id),[],'compressor mobile accessibility');
