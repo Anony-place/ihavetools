@@ -2,12 +2,31 @@
 
 > **Goal:** Google par rank karne wali, lightning-fast, best-quality free tools site.
 > **Updated:** 2026-11-07 · **Live:** https://i-have-tools.vercel.app (Vercel,
-> `main` par merge = auto-deploy) · **Tools:** 133 (98 guides)
+> `main` par merge = auto-deploy) · **Tools:** 133 (102 guides)
 >
 > **🧭 KAAM KARNE KA RULE (2026-11-01 se):** Chhote-chhote changes ke liye
 > baar-baar branch nahi banega. **Pehle ye pura plan, phir ek branch = ek
 > BADA batch = ek PR.** Har batch ke end par: `npm run check` full green →
 > PR → CI + Vercel preview pass → merge → production verify → PLAN tick.
+
+---
+
+## Data and developer discovery & safety batch — plan
+
+Prioritize related JSON conversion and developer pages that lack detailed help;
+registry popularity is an editorial score, not measured search demand. Follow
+[Google's people-first guidance](https://developers.google.com/search/docs/fundamentals/creating-helpful-content)
+and [OWASP CSV injection guidance](https://owasp.org/www-community/attacks/CSV_Injection):
+CSV quoting alone does not make untrusted values safe in spreadsheets. No traffic
+or ranking gains can be measured without a comparable verified GSC export.
+
+1. Document actual JSON Minifier, JSON to CSV, JSON Lines and JWT Decoder
+   behavior, limits, examples and security trade-offs; avoid generic SEO padding.
+2. Make the JWT decode-only warning visible before input and bound token input
+   before decoding; do not imply verification, security or private token safety.
+3. Test examples, conversion limitations, rejected oversized tokens and static
+   discovery. Run full tests, audit and browser CI in a single PR; merge only when
+   green and verify production. No new paid services or data collection.
 
 ---
 

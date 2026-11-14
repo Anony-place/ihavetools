@@ -448,6 +448,7 @@ function b64urlToText(s) {
   return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 }
 export function decodeJwt(token) {
+  if (token.length > 1000000) throw new Error('Token exceeds the 1,000,000-character limit.');
   const t = token.trim();
   if (!t) throw new Error('Paste a JWT to decode.');
   const parts = t.split('.');
@@ -1175,11 +1176,11 @@ const defs = {
         detail.append(h('div', {},
           expInfo,
           h('p', { class: 'status-line info', text: `Algorithm: ${algorithm || 'not specified'}. Signature: ${signature ? 'present (not verified — decoding only).' : 'empty (not verified).'}` })),
-          h('p', { class: 'hint', text: 'Decoding only verifies structure, not authenticity. Signature verification requires the secret or public key and should happen on a server.' }));
+          h('p', { class: 'hint', text: 'Decoding only verifies structure, not authenticity. Use a trusted verifier with the appropriate key and validate claims before relying on them.' }));
         status.set('Decoded ✓', 'success');
       } catch (e) { status.set(e.message, 'error'); }
     };
-    root.append(field({ label: 'JWT token', control: inp }),
+    root.append(h('p', { class: 'hint', text: 'Decode only: signatures and claims are not verified. Avoid pasting live or sensitive tokens. Input is limited to 1,000,000 characters.' }), field({ label: 'JWT token', control: inp }),
       actionsRow(btn({ label: 'Decode', icon: 'key', onClick: run }),
         btn({ label: 'Clear', variant: 'ghost', icon: 'x', onClick: () => { inp.value = ''; detail.replaceChildren(); status.set('Cleared.'); } })),
       status, detail);
