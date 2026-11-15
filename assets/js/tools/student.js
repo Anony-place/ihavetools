@@ -195,10 +195,10 @@ export function durationTotal(rows, op) {
     const secs = row[0] * 3600 + row[1] * 60 + row[2];
     total += (i > 0 && op[i - 1] === '-' ? -1 : 1) * secs;
   }
-  if (total < 0) throw new Error('The subtraction goes below zero — check your rows.');
-  const hh = Math.floor(total / 3600), mm = Math.floor((total % 3600) / 60), ss = total % 60;
+  const magnitude = Math.abs(total);
+  const hh = Math.floor(magnitude / 3600), mm = Math.floor((magnitude % 3600) / 60), ss = magnitude % 60;
   const pad = x => String(x).padStart(2, '0');
-  return { h: hh, m: mm, s: ss, text: `${pad(hh)}:${pad(mm)}:${pad(ss)}`, decimalHours: total / 3600, totalSeconds: total };
+  return { h: hh, m: mm, s: ss, text: `${total < 0 ? '-' : ''}${pad(hh)}:${pad(mm)}:${pad(ss)}`, decimalHours: total / 3600, totalSeconds: total };
 }
 
 /* ═══════════════════════════ CGPA + attendance ═══════════════════════════ */
@@ -349,20 +349,35 @@ const defs = {
     const rowsWrap = h('div', { class: 'file-list' });
     const grid = statsGrid();
     const status = statusLine('Tip: use this like a timesheet — add rows, then choose + or − between them.');
-    const mkRow = (i) => {
-      const hh = input({ type: 'number', min: 0, step: '1', placeholder: 'h', 'aria-label': 'Hours' });
-      const mm = input({ type: 'number', min: 0, max: 59, step: '1', placeholder: 'm', 'aria-label': 'Minutes' });
-      const ss = input({ type: 'number', min: 0, max: 59, step: '1', placeholder: 's', 'aria-label': 'Seconds' });
-      const opSel = i === 0 ? null : select({ options: [{ v: '+', t: '+' }, { v: '-', t: '−' }], value: '+', 'aria-label': 'Add or subtract duration' });
-      const row = h('div', { class: 'file-row', dataset: { row: String(i) } },
-        opSel ? h('div', { style: 'width:64px' }, opSel) : h('span', { class: 'hint', text: 'Duration' }),
-        hh, mm, ss,
+    let addButton;
+    const updateRows = () => {
+      const rows = [...rowsWrap.children];
+      rows.forEach((row, i) => {
+        const op = row.querySelector('select'); op.parentElement.hidden = i === 0;
+        if (i === 0) op.value = '+';
+        row.querySelector('.duration-row-number').textContent = `Row ${i + 1}`;
+        row.querySelectorAll('input').forEach((el, j) => el.setAttribute('aria-label', `Row ${i + 1} ${['hours','minutes','seconds'][j]}`));
+        op.setAttribute('aria-label', `Row ${i + 1} operation`);
+        const remove = row.querySelector('button'); remove.disabled = rows.length === 1;
+        remove.setAttribute('aria-label', `Remove row ${i + 1}`);
+      });
+      if (addButton) addButton.disabled = rows.length >= 1000;
+    };
+    const mkRow = () => {
+      const hh = input({ type: 'number', min: 0, max: 1000000, step: '1', placeholder: 'h' });
+      const mm = input({ type: 'number', min: 0, max: 59, step: '1', placeholder: 'm' });
+      const ss = input({ type: 'number', min: 0, max: 59, step: '1', placeholder: 's' });
+      const opSel = select({ options: [{ v: '+', t: '+' }, { v: '-', t: '−' }], value: '+' });
+      const row = h('div', { class: 'file-row duration-row' },
+        h('span', { class: 'hint duration-row-number' }), h('div', { style: 'width:64px' }, opSel), hh, mm, ss,
         h('span', { class: 'fr-actions' },
-          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': 'Remove row', onclick: () => { row.remove(); grid.replaceChildren(); status.set('Rows changed. Calculate again.', 'info'); } }, '✕')));
+          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => { row.remove(); updateRows(); grid.replaceChildren(); status.set('Rows changed. The first row is always added. Calculate again.', 'info'); } }, '✕')));
       row.getValues = () => [hh, mm, ss].map(el => el.value === '' ? 0 : Number(el.value));
       return row;
     };
-    rowsWrap.append(mkRow(0), mkRow(1));
+    rowsWrap.append(mkRow(), mkRow());
+    addButton = btn({ label: 'Add row', variant: 'secondary', icon: 'plus', onClick: () => { if (rowsWrap.children.length >= 1000) return; rowsWrap.append(mkRow()); updateRows(); grid.replaceChildren(); status.set('Rows changed. Calculate again.', 'info'); } });
+    updateRows();
     const run = () => {
       const rowEls = [...rowsWrap.querySelectorAll('.file-row')];
       const rows = rowEls.map((r) => r.getValues());
@@ -373,7 +388,7 @@ const defs = {
         grid.set([
           { label: 'Total', value: r.text, kind: 'good' },
           { label: 'Decimal hours', value: r.decimalHours.toFixed(4) },
-          { label: 'Total minutes', value: Math.floor(r.totalSeconds / 60).toLocaleString() },
+          { label: 'Whole minutes (toward zero)', value: (Math.trunc(r.totalSeconds / 60) || 0).toLocaleString() },
           { label: 'Total seconds', value: r.totalSeconds.toLocaleString() },
         ]);
         status.set('Calculated ✓', 'success');
@@ -382,9 +397,9 @@ const defs = {
     rowsWrap.addEventListener('input', () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });
     rowsWrap.addEventListener('change', () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });
     root.append(
-      rowsWrap, h('p', { class: 'hint', text: 'Whole non-negative values only; minutes and seconds must be 0–59. Up to 1,000 rows.' }),
+      rowsWrap, h('p', { class: 'hint', text: 'Blank fields count as zero. Enter whole non-negative hours up to 1,000,000 per row; minutes and seconds must be 0–59. The first row is always added. Up to 1,000 rows.' }),
       actionsRow(
-        btn({ label: 'Add row', variant: 'secondary', icon: 'plus', onClick: () => { rowsWrap.append(mkRow(rowsWrap.children.length)); grid.replaceChildren(); status.set('Rows changed. Calculate again.', 'info'); } }),
+        addButton,
         btn({ label: 'Calculate total', icon: 'hourglass', onClick: run })),
       grid, status);
   },

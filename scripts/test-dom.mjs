@@ -953,9 +953,19 @@ await domTest('time-duration-calculator: survives middle-row removal', async () 
   click(btnByLabel(app, 'Calculate total'));
   assert.match(app.querySelector('.stats-grid').textContent, /1:20:00/, '1h - 30m + 10m should be 1:20:00');
   // remove the middle row: now 1h minus 10m = 0:50:00
-  rows[1].querySelector('button[aria-label="Remove row"]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  rows[1].querySelector('button[aria-label="Remove row 2"]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
   click(btnByLabel(app, 'Calculate total'));
   assert.match(app.querySelector('.stats-grid').textContent, /0:50:00/, 'after removing row, operator must be re-read from DOM');
+});
+
+await domTest('duration signed output and first-row removal stay consistent', async()=>{
+ const app=await loadToolPage('time-duration-calculator','student');let rows=app.querySelectorAll('.file-row');
+ rows[0].querySelectorAll('input')[0].value='1'; rows[1].querySelectorAll('input')[0].value='2';rows[1].querySelector('select').value='-';
+ click(btnByLabel(app,'Calculate total'));assert.match(app.querySelector('.stats-grid').textContent,/-01:00:00/);
+ rows[0].querySelector('button').click(); rows=app.querySelectorAll('.file-row'); assert.equal(rows.length,1);assert.equal(rows[0].querySelector('select').parentElement.hidden,true);assert.equal(rows[0].querySelector('select').value,'+');assert.equal(rows[0].querySelector('button').disabled,true);
+ click(btnByLabel(app,'Calculate total'));assert.match(app.querySelector('.stats-grid').textContent,/02:00:00/);
+ click(btnByLabel(app,'Add row'));rows=app.querySelectorAll('.file-row');rows[1].querySelectorAll('input')[0].value='2';rows[1].querySelectorAll('input')[2].value='1';rows[1].querySelector('select').value='-';
+ click(btnByLabel(app,'Calculate total'));assert.match(app.querySelector('.stats-grid').textContent,/-00:00:01/);assert.equal(app.querySelectorAll('.stat-value')[2].textContent,'0');
 });
 
 /* ═════════════════ Audio & Video ═════════════════ */
