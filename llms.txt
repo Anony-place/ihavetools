@@ -99,7 +99,7 @@
 - [GCD & LCM Calculator](https://i-have-tools.vercel.app/tools/gcd-lcm-calculator/): Greatest common divisor and least common multiple, with prime factors.
 - [Date Difference](https://i-have-tools.vercel.app/tools/date-difference/): Days, weeks, calendar difference and weekdays between two dates.
 - [Date Add / Subtract](https://i-have-tools.vercel.app/tools/date-add-calculator/): Add or subtract days, weeks, months or years from a date.
-- [Time Zone Converter](https://i-have-tools.vercel.app/tools/time-zone-converter/): Convert a time between any two IANA time zones.
+- [Time Zone Converter](https://i-have-tools.vercel.app/tools/time-zone-converter/): Convert a time between browser-supported time zones.
 - [CSV to JSON](https://i-have-tools.vercel.app/tools/csv-to-json/): Convert quoted CSV to JSON while preserving text by default.
 - [JSON to CSV](https://i-have-tools.vercel.app/tools/json-to-csv/): JSON arrays to properly escaped CSV, with column selection.
 - [JSON Lines Converter](https://i-have-tools.vercel.app/tools/json-lines-converter/): Convert JSON ⇄ JSON Lines (NDJSON) with per-line validation.
