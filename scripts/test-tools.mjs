@@ -1225,7 +1225,11 @@ await test('duration math with borrow/carry', () => {
   const r2 = stu.durationTotal([[1, 0, 30], [0, 0, 45]], ['-']);
   assert.equal(r2.text, '00:59:45');
   assert.ok(Math.abs(r2.decimalHours - 0.9958333333333334) < 1e-12);
-  assert.throws(() => stu.durationTotal([[0, 10, 0], [1, 0, 0]], ['-']), /below zero/);
+  assert.equal(stu.durationTotal([[0, 10, 0], [1, 0, 0]], ['-']).text, '-00:50:00');
+  const negative=stu.durationTotal([[0,0,0],[0,1,1]],['-']); assert.equal(negative.text,'-00:01:01'); assert.equal(negative.totalSeconds,-61);
+  assert.equal(stu.durationTotal([[0,0,0],[0,0,0]],['-']).text,'00:00:00');
+  assert.equal(stu.durationTotal(Array(1000).fill([1000000,59,59]),Array(999).fill('+')).totalSeconds,3600003599000);
+  assert.throws(()=>stu.durationTotal(Array(1001).fill([0,0,0]),Array(1000).fill('+')),/1,000/);
 });
 await test('average statistics', () => {
   const s = math.averageStats([4, 8, 6, 5, 3, 2, 8, 9, 2, 8]);
@@ -2092,7 +2096,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 108);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 109);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

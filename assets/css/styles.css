@@ -531,6 +531,9 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 9px 12px; font-size: 0.88rem;
 }
+.duration-row { flex-wrap: wrap; }
+.duration-row-number { white-space: nowrap; }
+.duration-row > input { flex: 1 1 65px; min-width: 0; width: auto; }
 .file-row > code { min-width: 0; overflow-wrap: anywhere; }
 .file-row .fr-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-row .fr-size { color: var(--text-3); font-size: 0.8rem; white-space: nowrap; }

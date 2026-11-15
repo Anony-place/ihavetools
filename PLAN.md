@@ -11,6 +11,24 @@
 
 ---
 
+## Time-duration calculator accuracy and workflow — plan
+
+[CalculatorSoup](https://www.calculatorsoup.com/calculators/time/time-calculator.php)
+shows multi-row addition/subtraction as a useful competing workflow, not a
+measurement of demand. Our duration tool rejects negative totals, and removing
+the first row can leave a visible operator that the calculation ignores.
+
+1. Support signed results using exact integer seconds; display signed HH:MM:SS,
+   decimal hours and whole minutes truncated toward zero, explicitly labelled.
+2. Keep at least one row, cap additions at 1,000, synchronize row labels and
+   operators after removal and explain first-row and blank-field behavior.
+3. Add a useful crawlable guide with examples and honest limits; test negative
+   results, borrowing, maximums, removal, invalidation, mobile accessibility,
+   local checks and audit. One PR; merge after green CI and verify production.
+   No claim that competitor features represent market demand or ranking gains.
+
+---
+
 ## Time-zone coverage and selection — plan
 
 The converter claims any IANA zone but offers a short fixed list, so people

@@ -1190,7 +1190,17 @@ export const tools = [
     keywords: ['time duration', 'add time', 'hours minutes', 'timesheet', 'time math'],
     aliases: ['add time', 'time addition', 'duration calculator', 'timesheet calculator'],
     popularity: 63, added: '2026-06-12',
-    steps: 'Enter durations in h / m / s fields.|Add more rows, choose add or subtract between them.|Read the total in HH:MM:SS plus decimal hours for payroll.' }),
+    steps: 'Enter whole hours, minutes and seconds; blank fields count as zero.|Add rows and choose add or subtract for each after the first.|Read the signed total, decimal hours and whole minutes.',
+    faqs:[
+      {q:'Can the result be negative?',a:'Yes. If subtractions exceed additions, the minus sign applies to the entire HH:MM:SS result. Individual input fields must be non-negative.'},
+      {q:'What happens when I remove a row?',a:'The operation belongs to that row and is removed with it. The first remaining row is always added, even if it previously had a minus operation.'},
+      {q:'Are decimal hours exact?',a:'The decimal-hour display is rounded to four decimal places. Total seconds are exact; whole minutes discard the remaining seconds toward zero.'},
+      {q:'Can I calculate clock times or payroll rules?',a:'This adds durations, not clock times. It does not account for dates, daylight-saving changes, overtime rules, breaks or payroll rounding.'}
+    ], guide:[
+      {h:'How to add and subtract durations',p:'Enter whole hours, minutes and seconds in each row. The first row is added; each later row has its own plus or minus operation. A blank field counts as zero. The result is calculated in seconds, so carrying and borrowing are automatic.'},
+      {h:'Worked examples',p:'2 hours 45 minutes plus 30 minutes is 03:15:00, or 3.2500 decimal hours. One hour minus 90 minutes can be entered as 1:00:00 minus 1:30:00, giving −00:30:00.'},
+      {h:'Limits and interpretation',list:['Use 0–1,000,000 whole hours per row and 0–59 minutes and seconds. There can be up to 1,000 rows.', 'The leading minus sign applies to the entire result. Whole minutes are truncated toward zero; decimal hours are rounded to four places.', 'This calculator adds durations, not time-of-day intervals. Check payroll, overtime and rounding rules independently.']}
+    ] }),
 
   // ── Math ───────────────────────────────────────────────────────────────────
   T({ id: 'average-calculator', name: 'Average Calculator', icon: 'sigma', engine: 'math', categories: ['math', 'student'],

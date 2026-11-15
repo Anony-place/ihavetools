@@ -327,6 +327,13 @@ try {
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'hash comparison mobile accessibility');
   console.log('✓ URL line conversion and trusted checksum comparison');
+  await go('time-duration-calculator');
+  await page.getByLabel('Row 1 hours').fill('1');await page.getByLabel('Row 2 hours').fill('2');await page.getByLabel('Row 2 operation').selectOption('-');
+  await page.getByRole('button',{name:'Calculate total'}).click(); assert.match(await page.locator('#tool-app .stats-grid').textContent(),/-01:00:00/);
+  await page.getByRole('button',{name:'Remove row 1'}).click();assert.equal(await page.getByLabel('Row 1 operation').isVisible(),false);
+  await page.getByRole('button',{name:'Calculate total'}).click();assert.match(await page.locator('#tool-app .stats-grid').textContent(),/02:00:00/);
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'duration mobile accessibility');
   await go('time-zone-converter');
   await page.getByLabel('Date',{exact:true}).fill('2024-01-15'); await page.getByLabel('Time',{exact:true}).fill('12:00');
   await page.getByLabel('Source zone override (optional)').fill('America/Phoenix'); await page.getByLabel('Target zone override (optional)').fill('Pacific/Chatham');
