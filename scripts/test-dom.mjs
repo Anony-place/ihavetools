@@ -870,7 +870,17 @@ await domTest('timezone Now uses selected source zone, not browser timezone', as
  const app=await loadToolPage('time-zone-converter','datetime');const [from,to]=app.querySelectorAll('select');from.value='Asia/Kolkata';fire(from,'change');to.value='UTC';fire(to,'change');
  const wall=() => {const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;};
  const before=wall();click(btnByLabel(app,'Now'));const after=wall();const got=app.querySelector('input[type=date]').value+'T'+app.querySelector('input[type=time]').value;
- assert.ok([before,after].includes(got));assert.match(app.textContent,/Now uses the selected source/);
+ assert.ok([before,after].includes(got));assert.match(app.textContent,/Now uses the source override/);
+});
+
+await domTest('timezone overrides use browser-supported zones and reject invalid entries', async()=>{
+ const app=await loadToolPage('time-zone-converter','datetime'), [date,time]=app.querySelectorAll('input'), [source,target]=app.querySelectorAll('input[type=text]');
+ date.value='2024-01-15';time.value='12:00';source.value='America/Phoenix';target.value='Pacific/Chatham';click(btnByLabel(app,'Convert'));
+ assert.match(app.textContent,/Source \(Phoenix\)/);assert.match(app.textContent,/Target \(Chatham\)/);assert.match(app.textContent,/UTC-07:00/);
+ source.value='Not/A_Zone';fire(source,'input');assert.equal(app.querySelectorAll('.stat-card').length,0);click(btnByLabel(app,'Convert'));assert.match(statusText(document),/Source time zone is not recognized/);
+ click(btnByLabel(app,'Now'));assert.match(statusText(document),/Source time zone is not recognized/);
+ source.value='UTC';target.value='UTC'; const before=new Date().toISOString().slice(0,16);click(btnByLabel(app,'Now'));const after=new Date().toISOString().slice(0,16);assert.ok([before,after].includes(date.value+'T'+time.value));assert.match(app.textContent,/Source \(UTC\)/);
+ source.value='UTC';target.value='Not/A_Zone';click(btnByLabel(app,'Convert'));assert.match(statusText(document),/Target time zone is not recognized/);
 });
 
 await domTest('csv-to-json: quoted values convert correctly', async () => {

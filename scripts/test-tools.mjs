@@ -1319,6 +1319,15 @@ await test('date add month-end clamping', () => {
   assert.equal(dt.dateAdd('2024-01-01', 7, 'days', 'add').toISOString().slice(0, 10), '2024-01-08');
   assert.equal(dt.dateAdd('2024-01-08', 7, 'days', 'sub').toISOString().slice(0, 10), '2024-01-01');
 });
+await test('time zone options enumerate browser support with common fallback', async () => {
+ assert.ok(dt.TIME_ZONES.includes('UTC')); assert.ok(dt.TIME_ZONES.includes('America/New_York'));
+ if (typeof Intl.supportedValuesOf==='function') for (const tz of Intl.supportedValuesOf('timeZone')) assert.ok(dt.TIME_ZONES.includes(tz),tz);
+ assert.equal(new Set(dt.TIME_ZONES).size,dt.TIME_ZONES.length);
+ const code=`Intl.supportedValuesOf=undefined; const m=await import('./assets/js/tools/datetime.js'); console.log(JSON.stringify(m.TIME_ZONES))`;
+ const {execFileSync}=await import('node:child_process');
+ const list=JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',code],{encoding:'utf8'}));
+ assert.ok(list.includes('UTC') && list.includes('America/New_York'));
+});
 await test('time zone conversion uses IANA data', () => {
   // 2024-01-15 12:00 in New York = 17:00 UTC = 2024-01-15 17:00 London (winter, same offset)... NY=UTC-5, London=UTC+0
   const r = dt.convertTimeZone({ dateStr: '2024-01-15', timeStr: '12:00', fromTz: 'America/New_York', toTz: 'Europe/London' });

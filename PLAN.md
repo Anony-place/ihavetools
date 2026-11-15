@@ -11,6 +11,25 @@
 
 ---
 
+## Time-zone coverage and selection — plan
+
+The converter claims any IANA zone but offers a short fixed list, so people
+cannot select many supported locations. [Timeanddate's converter](https://www.timeanddate.com/worldclock/converter.html)
+is a feature signal, not evidence of search volume. [MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/supportedValuesOf)
+describes browser-supported zone enumeration, which can vary by implementation.
+
+1. Populate supported zone options from the browser with the existing common
+   zones and UTC as fallback; support optional manual browser-recognized zone
+   identifiers, including aliases not listed by enumeration.
+2. Keep the chosen source consistent for Convert and Now; reject invalid manual
+   zones clearly, preserve DST ambiguity safeguards and clear stale results.
+3. Update crawlable guidance about browser-dependent coverage and data, test
+   enumeration fallback, manual identifiers, invalid entries, DST, real browser
+   keyboard/mobile accessibility; run the full suite and audit. One PR, merge
+   only after CI passes and verify production. No ranking or demand guarantees.
+
+---
+
 ## Date difference working-day options — plan
 
 [Timeanddate](https://www.timeanddate.com/date/duration.html) distinguishes

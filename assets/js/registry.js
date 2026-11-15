@@ -1271,19 +1271,21 @@ export const tools = [
       {h:'Check the convention',list:['Enter a positive whole number and select the direction.', 'Month and year operations clamp once to the target month; adding and then subtracting may not recover the original date.', 'Input and result dates must be between 1900 and 2100. Unix seconds use the browser’s local midnight.']}
     ] }),
   T({ id: 'time-zone-converter', name: 'Time Zone Converter', icon: 'globe', engine: 'datetime', categories: ['datetime', 'developer'],
-    blurb: 'Convert a time between any two IANA time zones.',
-    description: 'Convert a specific time between time zones using your browser’s built-in IANA database — accurate daylight-saving handling included.',
+    blurb: 'Convert a time between browser-supported time zones.',
+    description: 'Convert a specific time between browser-supported time zones, with UTC offsets and checks for ambiguous or missing local times.',
     keywords: ['time zone', 'timezone', 'utc', 'gmt', 'convert time', 'meeting planner', 'dst'],
     aliases: ['timezone converter', 'utc converter', 'gmt converter'],
     popularity: 68, added: '2026-09-14',
-    steps: 'Pick a date and time, and its time zone.|Choose the target time zone.|Read the converted time with the UTC offset for both zones.',
+    steps: 'Pick a date and time, and its source time zone.|Choose the target zone, or enter browser-supported zone identifiers in the optional overrides.|Read the converted time with UTC offsets; resolve any clock-transition errors.',
     faqs:[
       {q:'What happens during a spring clock change?',a:'If the chosen local time does not exist because the clock jumps forward, the tool reports an error. Choose an unambiguous local time.'},
       {q:'What happens when a local time occurs twice?',a:'The tool reports an ambiguous time rather than guessing an occurrence. Choose an unambiguous time; it does not offer an earlier/later occurrence selector.'},
-      {q:'Where do time-zone rules come from?',a:'The conversion uses your browser’s Intl time-zone database. Historical rules and future changes depend on the browser and system version.'}
+      {q:'Where do time-zone rules come from?',a:'The conversion uses your browser’s Intl time-zone database. Historical rules and future changes depend on the browser and system version.'},
+      {q:'What if my time zone is not listed?',a:'Enter its IANA identifier, such as America/Phoenix, in the relevant optional override. It takes precedence over the list; unrecognized identifiers are rejected. Available zones depend on your browser.'}
     ],guide:[
       {h:'Converting wall time',p:'Choose the local date and time in the source zone. The tool resolves that wall time to an instant, then displays it in the target zone using the browser’s time-zone data.'},
       {h:'Worked example',p:'On 15 January 2024, noon in New York (UTC−05:00) is 17:00 in London (UTC+00:00). Seasonal offsets can differ on other dates.'},
+      {h:'Choosing zones',p:'The lists include common zones and browser-enumerated time zones where available. If a supported identifier or alias is missing, enter it in the source or target override; the override takes precedence until cleared. Browser support varies.'},
       {h:'Clock changes and limits',list:['A time skipped by a forward clock change does not exist and is rejected.', 'A time repeated by a backward change has two possible instants and is rejected rather than silently guessed.', 'Dates are limited to 1900–2100. Browser time-zone data may not reflect the latest changes; verify important appointments independently.']}
     ] }),
 

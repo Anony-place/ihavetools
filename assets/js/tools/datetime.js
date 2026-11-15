@@ -144,10 +144,13 @@ export const TIME_ZONES = (() => {
     'Australia/Adelaide', 'Australia/Brisbane', 'Australia/Sydney', 'Pacific/Auckland', 'Pacific/Fiji',
   ];
   try {
+    if (typeof Intl.supportedValuesOf === 'function') list.push(...Intl.supportedValuesOf('timeZone'));
+  } catch { /* retain common-zone fallback */ }
+  try {
     const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (local && !list.includes(local)) list.unshift(local);
-  } catch { /* ignore */ }
-  return list;
+    if (local) list.push(local);
+  } catch { /* retain common-zone fallback */ }
+  return [...new Set(list)].sort();
 })();
 
 const defs = {
@@ -255,14 +258,23 @@ const defs = {
     const timeIn = input({ type: 'time', value: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` });
     const fromTz = select({ options: TIME_ZONES.map((tz) => ({ v: tz, t: tz })), value: Intl.DateTimeFormat().resolvedOptions().timeZone });
     const toTz = select({ options: TIME_ZONES.map((tz) => ({ v: tz, t: tz })), value: 'UTC' });
+    const fromManual = input({ type:'text', maxlength:100, placeholder:'e.g. America/Phoenix' });
+    const toManual = input({ type:'text', maxlength:100, placeholder:'e.g. Pacific/Chatham' });
+    const zone = (manual, fallback, label) => {
+      const value = manual.value.trim() || fallback.value;
+      try { new Intl.DateTimeFormat('en-US', {timeZone:value}); }
+      catch { throw new Error(`${label} time zone is not recognized by this browser.`); }
+      return value;
+    };
     const grid = statsGrid();
     const status = statusLine('Your browser’s timezone database is used. Missing or repeated clock-transition times must be changed to an unambiguous time.');
     const run = () => {
       try {
-        const r = convertTimeZone({ dateStr: dateIn.value, timeStr: timeIn.value, fromTz: fromTz.value, toTz: toTz.value });
+        const source = zone(fromManual, fromTz, 'Source'), target = zone(toManual, toTz, 'Target');
+        const r = convertTimeZone({ dateStr: dateIn.value, timeStr: timeIn.value, fromTz: source, toTz: target });
         grid.set([
-          { label: `Source (${fromTz.value.split('/').pop().replace(/_/g, ' ')})`, value: r.from.text, kind: '' },
-          { label: `Target (${toTz.value.split('/').pop().replace(/_/g, ' ')})`, value: r.to.text, kind: 'good' },
+          { label: `Source (${source.split('/').pop().replace(/_/g, ' ')})`, value: r.from.text, kind: '' },
+          { label: `Target (${target.split('/').pop().replace(/_/g, ' ')})`, value: r.to.text, kind: 'good' },
           { label: 'Source offset', value: r.from.offset },
           { label: 'Target offset', value: r.to.offset },
           { label: 'As UTC', value: r.utc },
@@ -277,16 +289,19 @@ const defs = {
         field({ label: 'Time', control: timeIn }),
         field({ label: 'From zone', control: fromTz }),
         field({ label: 'To zone', control: toTz })),
+      h('div', {class:'field-row'},
+        field({label:'Source zone override (optional)', control:fromManual, hint:'A browser-supported IANA identifier overrides the From zone list.'}),
+        field({label:'Target zone override (optional)', control:toManual, hint:'A browser-supported IANA identifier overrides the To zone list.'})),
       actionsRow(btn({ label: 'Convert', icon: 'globe', onClick: run }),
         btn({ label: 'Now', variant: 'secondary', onClick: () => {
           try {
-            const nowInSource = wallTimeAt(fromTz.value);
+            const nowInSource = wallTimeAt(zone(fromManual, fromTz, 'Source'));
             dateIn.value = nowInSource.date;
             timeIn.value = nowInSource.time;
             run();
           } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
         } })),
-      grid, status, h('p', { class: 'hint', text: 'Now uses the selected source time zone and rounds down to the minute. Time-zone rules depend on your browser’s database.' }));
+      grid, status, h('p', { class: 'hint', text: 'Now uses the source override if present, otherwise the selected source zone, and rounds down to the minute. Zone availability and rules depend on your browser.' }));
     run();
   },
 };
