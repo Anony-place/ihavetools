@@ -331,7 +331,7 @@ try {
   await page.getByLabel('Date',{exact:true}).fill('2024-01-15'); await page.getByLabel('Time',{exact:true}).fill('12:00');
   await page.getByLabel('Source zone override (optional)').fill('America/Phoenix'); await page.getByLabel('Target zone override (optional)').fill('Pacific/Chatham');
   await page.getByRole('button',{name:'Convert',exact:true}).click();
-  assert.match(await page.locator('#tool-app').innerText(),/Source \(Phoenix\)/); assert.match(await page.locator('#tool-app').innerText(),/Target \(Chatham\)/);
+  assert.match(await page.locator('#tool-app .stats-grid').textContent(),/Source \(Phoenix\)/); assert.match(await page.locator('#tool-app .stats-grid').textContent(),/Target \(Chatham\)/);
   await page.getByLabel('Source zone override (optional)').fill('Not/A_Zone'); assert.equal(await page.locator('#tool-app .stat-card').count(),0);
   await page.getByRole('button',{name:'Convert',exact:true}).click(); assert.match(await page.locator('#tool-app .status-line').innerText(),/Source time zone is not recognized/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
