@@ -760,6 +760,15 @@ await test('income tax FY25-26: resident age bands and surcharge marginal relief
   assert.ok(Math.abs(above.total - 1123201.04) < 0.01);
   assert.ok(above.surcharge > 0);
 });
+await test('income tax: eligible new-regime deductions and rebate boundaries', () => {
+  const base = calc.incomeTaxIndia({grossSalary: 1575000});
+  const adjusted = calc.incomeTaxIndia({grossSalary: 1575000, deductionsNew: 300000});
+  assert.equal(adjusted.newRegime.taxable, 1200000);
+  assert.equal(adjusted.newRegime.total, 0);
+  assert.equal(adjusted.oldRegime.total, base.oldRegime.total);
+  assert.equal(calc.incomeTaxIndia({otherIncome: 100000, deductionsNew: 200000}).newRegime.taxable, 0);
+  for (const deductionsNew of [-1, Infinity, NaN, 1e12+1]) assert.throws(() => calc.incomeTaxIndia({otherIncome: 1, deductionsNew}), /between zero/);
+});
 await test('tip with rounding and split', () => {
   const r = calc.tipCalc(84.5, 15, 3);
   assert.ok(Math.abs(r.tip - 12.675) < 1e-9);

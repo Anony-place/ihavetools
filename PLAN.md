@@ -11,6 +11,25 @@
 
 ---
 
+## Tax estimate accuracy and evidence hygiene — plan (2026-10-31)
+
+The Income Tax Department's AY 2026–27 guidance lists some new-regime
+allowances, including eligible employer NPS contributions. Our page wrongly
+says none of the listed deductions is allowed and cannot account for any.
+The supplied search export is future-dated relative to this session; do not
+use it as verified current traffic or market demand.
+
+1. Add an explicit optional input for eligible new-regime deductions, without
+   checking eligibility or double-counting the standard deduction. Keep both
+   regimes scoped to resident individuals and ordinary slab-rate income.
+2. Correct broad guide claims, distinguish the supported FY from other years,
+   and clarify that the comparison does not calculate a break-even threshold.
+3. Test deduction boundaries, rebate, UI invalidation and sharing; rebuild,
+   run checks and audit. One PR, green CI before merge, verify production.
+   This is an estimate, not tax advice or a ranking guarantee.
+
+---
+
 ## Single-image resize controls — plan
 
 [iLoveIMG](https://www.iloveimg.com/resize-image) highlights dimension-based
