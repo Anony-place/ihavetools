@@ -521,13 +521,20 @@ export function loanPrepaymentCalc(principal, annualRate, payment, extra, lump, 
   const rate = annualRate / 1200;
   if (payment <= principal * rate) throw new Error('Monthly payment must exceed the first month of interest for the baseline loan.');
   const simulate = (accelerated) => {
-    let balance = principal, interest = 0, paid = 0, lumpApplied = 0;
+    let balance = principal, interest = 0, paid = 0, lumpApplied = 0, extraApplied = 0;
+    const schedule = [];
     for (let month = 1; month <= 1200; month++) {
       const charge = balance * rate; interest += charge; balance += charge;
-      const regular = Math.min(balance, payment + (accelerated ? extra : 0)); balance -= regular; paid += regular;
-      if (accelerated && month === lumpMonth && balance > 0) { lumpApplied = Math.min(balance, lump); balance -= lumpApplied; paid += lumpApplied; }
-      // Eliminate only floating-point residue and include it in total paid.
-      if (balance <= Number.EPSILON * principal * 8) { paid += balance; return { months: month, interest, paid, lumpApplied }; }
+      const regular = Math.min(balance, payment); balance -= regular;
+      const extraPayment = accelerated ? Math.min(balance, extra) : 0; balance -= extraPayment; extraApplied += extraPayment;
+      const lumpPayment = accelerated && month === lumpMonth ? Math.min(balance, lump) : 0; balance -= lumpPayment; lumpApplied += lumpPayment;
+      // Include tiny floating-point residue in the final regular payment.
+      const residue = balance <= Number.EPSILON * principal * 8 ? balance : 0;
+      balance -= residue;
+      const regularPaid = regular + residue;
+      paid += regularPaid + extraPayment + lumpPayment;
+      schedule.push({ month, interest: charge, regular: regularPaid, extra: extraPayment, lump: lumpPayment, balance });
+      if (balance === 0) return { months: month, interest, paid, lumpApplied, extraApplied, schedule };
     }
     throw new Error('Loan takes over 1,200 months to repay under these assumptions.');
   };
@@ -1399,15 +1406,39 @@ const defs = {
 
   'loan-prepayment-calculator'(root) {
     const principal = input({ type: 'number', step: 'any', value: '120000' }), rate = input({ type: 'number', step: 'any', value: '0' }), payment = input({ type: 'number', step: 'any', value: '10000' }), extra = input({ type: 'number', step: 'any', value: '1000' }), lump = input({ type: 'number', step: 'any', value: '20000' }), month = input({ type: 'number', step: '1', value: '3' });
-    const grid = statsGrid(), status = statusLine('');
-    const run = () => { try { const r = loanPrepaymentCalc(num(principal), num(rate), num(payment), num(extra), num(lump), num(month));
-      grid.set([{ label: 'Time saved (months)', value: String(r.monthsSaved), kind: 'good' }, { label: 'Interest saved', value: money(r.interestSaved), kind: 'good' }, { label: 'Baseline months', value: String(r.baseline.months) }, { label: 'With prepayment months', value: String(r.accelerated.months) }, { label: 'Baseline interest', value: money(r.baseline.interest) }, { label: 'With prepayment interest', value: money(r.accelerated.interest) }, { label: 'Lump sum applied', value: money(r.accelerated.lumpApplied) }]);
-      status.set('Fixed rate and payment. Interest accrues monthly; extra and lump sum are paid after that month’s interest. Fees, rate changes, tax and lender rounding excluded. Lump sum is capped to the remaining balance.', 'success');
-    } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
-    root.append(h('div', { class: 'field-row' }, field({ label: 'Outstanding balance', control: principal }), field({ label: 'Annual rate (%)', control: rate }), field({ label: 'Monthly payment', control: payment }), field({ label: 'Extra every month', control: extra }), field({ label: 'One-time prepayment', control: lump }), field({ label: 'Prepayment month', control: month })), actionsRow(btn({ label: 'Calculate prepayment', icon: 'calculator', onClick: run })), grid, status);
-    clearOnEdit(root, status, grid);
+    const grid = statsGrid(), status = statusLine(''), detail = h('div', {});
+    let current = null;
+    const renderSchedule = r => {
+      const scenario = select({ options: [{ v: 'accelerated', t: 'With prepayment' }, { v: 'baseline', t: 'Baseline' }] });
+      const year = select({ options: [] }), rows = h('div', {});
+      const showYear = () => {
+        const selected = r[scenario.value].schedule.filter(row => Math.ceil(row.month / 12) === Number(year.value));
+        rows.replaceChildren(table({ headers: ['Month', 'Interest', 'Regular', 'Extra', 'Lump sum', 'Balance'], rows: selected.map(row => [String(row.month), money(row.interest), money(row.regular), money(row.extra), money(row.lump), money(row.balance)]) }));
+      };
+      const showScenario = () => {
+        const count = Math.ceil(r[scenario.value].months / 12);
+        year.replaceChildren(...Array.from({ length: count }, (_, i) => h('option', { value: String(i + 1), text: `Year ${i + 1}` })));
+        showYear();
+      };
+      scenario.addEventListener('change', showScenario); year.addEventListener('change', showYear);
+      const csv = () => ['Scenario,Month,Interest,Regular,Extra,Lump sum,Balance', ...['baseline', 'accelerated'].flatMap(key => r[key].schedule.map(row => [key, row.month, ...[row.interest, row.regular, row.extra, row.lump, row.balance].map(v => v.toFixed(2))].join(',')))].join('\r\n') + '\r\n';
+      detail.replaceChildren(h('h3', { text: 'Monthly repayment schedule', style: 'margin:20px 0 10px' }),
+        h('div', { class: 'field-row' }, field({ label: 'Schedule scenario', control: scenario }), field({ label: 'Schedule year', control: year })), rows,
+        h('p', { class: 'hint', text: 'CSV contains both complete schedules and sensitive loan figures. Keep it private. Each value is rounded independently; displayed values may not add exactly.' }),
+        downloadButton(() => current === r ? csv() : '', 'loan-prepayment-schedules.csv', { label: 'Download schedules CSV', mime: 'text/csv;charset=utf-8', small: false }));
+      showScenario();
+    };
+    const run = () => { try { const r = loanPrepaymentCalc(num(principal), num(rate), num(payment), num(extra), num(lump), num(month)); current = r;
+      grid.set([{ label: 'Time saved (months)', value: String(r.monthsSaved), kind: 'good' }, { label: 'Interest saved', value: money(r.interestSaved), kind: 'good' }, { label: 'Baseline months', value: String(r.baseline.months) }, { label: 'With prepayment months', value: String(r.accelerated.months) }, { label: 'Baseline interest', value: money(r.baseline.interest) }, { label: 'With prepayment interest', value: money(r.accelerated.interest) }, { label: 'Baseline total paid', value: money(r.baseline.paid) }, { label: 'With prepayment total paid', value: money(r.accelerated.paid) }, { label: 'Extra monthly payments applied', value: money(r.accelerated.extraApplied) }, { label: 'Lump sum applied', value: money(r.accelerated.lumpApplied) }]);
+      renderSchedule(r);
+      status.set('Fixed rate and payment. Interest accrues monthly; extra and lump sum are paid after that month’s interest and regular payment. Payments are capped to the remaining balance. Fees, rate changes, tax and lender rounding excluded.', 'success');
+    } catch (e) { current = null; grid.replaceChildren(); detail.replaceChildren(); status.set(e.message, 'error'); } };
+    const invalidate = () => { current = null; grid.replaceChildren(); detail.replaceChildren(); status.set('Inputs changed. Calculate again.', 'info'); };
+    [principal, rate, payment, extra, lump, month].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
+    root.append(h('p', { class: 'hint', text: 'Compare a fixed monthly payment against the same payment plus optional extra and lump-sum payments. Use your current balance, not the original loan amount.' }), h('div', { class: 'field-row' }, field({ label: 'Outstanding balance', control: principal }), field({ label: 'Annual rate (%)', control: rate }), field({ label: 'Monthly payment', control: payment }), field({ label: 'Extra every month', control: extra }), field({ label: 'One-time prepayment', control: lump }), field({ label: 'Prepayment month', control: month, hint: 'Month 1 is the first payment from now.' })), actionsRow(btn({ label: 'Calculate prepayment', icon: 'calculator', onClick: run })), grid, detail, status);
     shareState(root, [['principal', principal], ['rate', rate], ['payment', payment], ['extra', extra], ['lump', lump], ['month', month]], run);
   },
+
   'inflation-calculator'(root) {
     const amount = input({ type: 'number', step: 'any', value: '100000' }), rate = input({ type: 'number', step: 'any', value: '6' }), years = input({ type: 'number', step: 'any', value: '10' });
     const grid = statsGrid(), status = statusLine('');

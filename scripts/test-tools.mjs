@@ -2391,6 +2391,27 @@ await test('loan prepayment compares baseline and respects timing and caps', () 
   assert.throws(() => calc.loanPrepaymentCalc(1000, 12, 10, 0, 0, 1), /exceed/);
   assert.throws(() => calc.loanPrepaymentCalc(1000, 0, 100, 0, 0, 1.5), /whole number/);
 });
+await test('Prepayment schedules account for each capped payment', () => {
+  for (const args of [[120000,0,10000,1000,20000,3],[100000,9,3000,500,10000,6],[1000,0,100,5000,5000,1],[1000,0,1000,200,100,5]]) {
+    const r=calc.loanPrepaymentCalc(...args);
+    for (const key of ['baseline','accelerated']) {
+      const s=r[key]; assert.equal(s.schedule.length,s.months); assert.equal(s.schedule.at(-1).balance,0);
+      let previous=args[0];
+      for (const row of s.schedule) {
+        assert.ok(row.balance>=0 && row.regular>=0 && row.extra>=0 && row.lump>=0);
+        assert.ok(Math.abs(previous+row.interest-row.regular-row.extra-row.lump-row.balance)<1e-7);
+        previous=row.balance;
+      }
+      assert.ok(Math.abs(s.paid-args[0]-s.interest)<1e-7);
+      assert.ok(Math.abs(s.extraApplied-s.schedule.reduce((a,x)=>a+x.extra,0))<1e-7);
+      assert.ok(Math.abs(s.lumpApplied-s.schedule.reduce((a,x)=>a+x.lump,0))<1e-7);
+    }
+    assert.ok(r.interestSaved>=-1e-7 && r.monthsSaved>=0);
+  }
+  const capped=calc.loanPrepaymentCalc(1000,0,100,5000,5000,1).accelerated;
+  assert.equal(capped.extraApplied,900); assert.equal(capped.lumpApplied,0);
+  assert.equal(calc.loanPrepaymentCalc(1000,0,1000,200,100,5).accelerated.lumpApplied,0);
+});
 await test('inflation factors and zero rates follow the worked example', () => {
   const r = calc.inflationCalc(100000, 6, 10); assert.ok(Math.abs(r.futureCost - 179084.76965428545) < 1e-8); assert.ok(Math.abs(r.purchasingPower - 55839.47769151179) < 1e-8);
   assert.equal(calc.inflationCalc(100, 0, 10).futureCost, 100); assert.equal(calc.inflationCalc(100, 6, 0).purchasingPower, 100);

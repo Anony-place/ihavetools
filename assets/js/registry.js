@@ -2280,7 +2280,7 @@ export const tools = [
     blurb: 'Compare loan repayment time and interest with extra payments.',
     description: 'Estimate interest and time saved by making extra monthly payments and a one-time prepayment on an existing fixed-rate loan.',
     keywords: ['loan prepayment calculator', 'emi prepayment calculator', 'home loan part payment calculator', 'loan interest saved'], aliases: ['loan part payment calculator', 'extra payment calculator'], popularity: 81, added: '2026-11-06',
-    steps: 'Enter the current outstanding balance, annual interest rate and normal monthly payment.|Add an extra monthly payment and/or a one-time prepayment with its month.|Compare the baseline and prepayment payoff time and interest.',
+    steps: 'Enter the current outstanding balance, annual interest rate and normal monthly payment.|Add an extra monthly payment and/or a one-time prepayment with its month.|Compare payoff time, interest and total paid; inspect the monthly schedules or download CSV.',
     faqs: [
       { q: 'Does the calculator reduce the EMI or the tenure?', a: 'It keeps the entered regular payment fixed and estimates a shorter payoff time. It does not recalculate a lower EMI after prepayment.' },
       { q: 'Are lender prepayment fees included?', a: 'No. Charges, taxes, insurance, lender rounding, rate changes and payment-date rules are excluded. Check your loan agreement and lender quote.' },
@@ -2289,6 +2289,7 @@ export const tools = [
     ],
     guide: [
       { h: 'How the comparison works', p: 'Each month interest is calculated on the outstanding balance at annual rate divided by 12. The regular payment is applied, then any extra monthly amount and, in the chosen month, the lump sum. The last payment and lump sum are capped to the balance; the regular payment is kept constant.' },
+      { h: 'Reading the schedules', p: 'Month 1 is the first payment from now, not the original loan date. Choose a scenario and year to inspect monthly interest, regular payment, extra payment, lump sum and remaining balance. The CSV includes both complete schedules and sensitive financial figures; keep it private. Displayed values are rounded independently, while calculations use unrounded values.' },
       { h: 'Zero-interest example', p: 'A remaining balance of 120,000 with a monthly payment of 10,000 takes 12 months at zero interest. An extra 1,000 each month and a 20,000 lump sum after month 3 shorten this model to 10 months. Interest saved is zero because the rate is zero.' },
       { h: 'Before prepaying', list: ['Check whether the lender reduces EMI or tenure, uses daily interest, or applies fees.', 'The estimate excludes variable rates, taxes, insurance and lender-specific rounding.', 'Keep an emergency reserve and compare other financial priorities before using cash for a prepayment.', 'Copying a share link includes entered figures in its URL; share it only when appropriate.'] },
     ] }),

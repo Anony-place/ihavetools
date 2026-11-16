@@ -374,6 +374,15 @@ await domTest('emi-calculator: shows EMI and schedule', async () => {
   assert.match(app.textContent, /Monthly EMI/);
   assert.match(app.textContent, /Year-by-year balance/);
 });
+await domTest('Loan prepayment schedules navigate and invalidate on loan edits', async () => {
+  const app=await loadToolPage('loan-prepayment-calculator','calculators');
+  click(btnByLabel(app,'Calculate prepayment'));
+  assert.match(app.textContent,/Monthly repayment schedule/);
+  const selects=app.querySelectorAll('select'); selects[0].value='baseline'; fire(selects[0],'change');
+  assert.match(app.textContent,/Baseline total paid/); assert.ok(btnByLabel(app,'Download schedules CSV'));
+  const nums=app.querySelectorAll('input[type=number]'); nums[0].value='100000'; fire(nums[0],'input');
+  assert.doesNotMatch(app.textContent,/Monthly repayment schedule|Interest saved/); assert.equal(btnByLabel(app,'Download schedules CSV'),undefined);
+});
 await domTest('EMI monthly detail remains interactive and inputs invalidate exports', async () => {
   const app=await loadToolPage('emi-calculator','calculators');
   const nums=app.querySelectorAll('input[type=number]'); nums[0].value='1200'; nums[1].value='0'; nums[2].value='2';
