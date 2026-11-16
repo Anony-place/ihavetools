@@ -1530,6 +1530,15 @@ await domTest('date difference counts holidays, invalidates and rejects invalid 
  const weekend=app.querySelector('select');weekend.value='none';fire(weekend,'change');assert.equal(app.querySelector('.result-body'),null);click(btnByLabel(app,'Calculate difference'));assert.match(app.textContent,/5Business days/);
  holidays.value='2024-02-30';fire(holidays,'input');click(btnByLabel(app,'Calculate difference'));assert.match(statusText(document),/Invalid date/);assert.equal(app.querySelector('.result-body'),null);
 });
+await domTest('date difference custom weekdays and date shortcuts invalidate results',async()=>{
+ const app=await loadToolPage('date-difference','datetime'), dates=app.querySelectorAll('input[type=date]'), select=app.querySelector('select'), wrap=app.querySelector('fieldset');
+ dates[0].value='2024-01-01';dates[1].value='2024-01-08';select.value='custom';fire(select,'change');assert.equal(wrap.hidden,false);
+ const wed=[...wrap.querySelectorAll('label')].find(x=>x.textContent.includes('Wednesday')).querySelector('input');wed.checked=true;fire(wed,'change');click(btnByLabel(app,'Calculate difference'));assert.match(app.querySelector('.stats-grid').textContent,/4Business days/);
+ click(btnByLabel(app,'Swap dates'));assert.equal(dates[0].value,'2024-01-08');assert.equal(dates[1].value,'2024-01-01');assert.equal(app.querySelectorAll('.stat-card').length,0);
+ const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+ const before=today();click(btnByLabel(app,'Start: today'));const after=today();assert.ok([before,after].includes(dates[0].value));click(btnByLabel(app,'End: today'));assert.ok([before,today()].includes(dates[1].value));
+ select.value='none';fire(select,'change');assert.equal(wrap.hidden,true);
+});
 await domTest('date add rejects fractional amount and clears output',async()=>{
  const app=await loadToolPage('date-add-calculator','datetime');app.querySelector('input[type=date]').value='2024-01-31'; app.querySelector('input[type=number]').value='1'; app.querySelector('select').value='months';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/2024-02-29ISO/);
  app.querySelector('input[type=number]').value='1.5';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/whole number/);assert.doesNotMatch(app.textContent,/2024-02-29ISO/);

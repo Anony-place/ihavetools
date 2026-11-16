@@ -1308,8 +1308,17 @@ await test('date difference weekend and holiday counting', () => {
   r=dt.dateDiff('2024-01-01','2024-01-01',false,'none','2024-01-01'); assert.deepEqual([r.businessDays,r.holidayCount],[0,0]);
   r=dt.dateDiff('2024-01-01','2024-01-01',true,'none','2024-01-01'); assert.deepEqual([r.businessDays,r.holidayCount],[0,1]);
   assert.throws(()=>dt.dateDiff('2024-01-01','2024-01-02',false,'sat_sun','2024-02-30'),/Invalid date/);
-  assert.throws(()=>dt.dateDiff('2024-01-01','2024-01-02',false,'invalid'),/weekend/);
+  assert.throws(()=>dt.dateDiff('2024-01-01','2024-01-02',false,'invalid'),/non-working weekdays/);
   assert.throws(()=>dt.dateDiff('2024-01-01','2024-01-02',false,'none',Array(501).fill('x').join(',')),/500/);
+  const dates=Array(500).fill('2024-01-01').join(', '); assert.equal(dt.dateDiff('2024-01-01','2024-01-08',false,[],dates).holidayCount,1);
+  assert.equal(dt.countBusinessDays('2024-01-01','2024-01-08',[],dates,false).working,6);
+  for(const f of [()=>dt.dateDiff('2024-01-01','2024-01-08',false,[], ' '.repeat(12001)),()=>dt.countBusinessDays('2024-01-01','2024-01-08',[],' '.repeat(12001)),()=>dt.addBusinessDays('2024-01-01',1,[],' '.repeat(12001))]) assert.throws(f,/12,000/);
+  for(const invalid of [[1,1],[7],[-1],['1'],'toString']) { assert.throws(()=>dt.dateDiff('2024-01-01','2024-01-08',false,invalid),/non-working weekdays/); assert.throws(()=>dt.countBusinessDays('2024-01-01','2024-01-08',invalid),/non-working weekdays/); }
+  for(let mask=0;mask<128;mask++) for(const inclusive of [false,true]) {
+    const days=Array.from({length:7},(_,i)=>i).filter(i=>mask & (1<<i)), holidays='2024-01-01, 2024-01-06, 2024-01-06, 2024-01-08';
+    const fast=dt.dateDiff('2024-01-08','2024-01-01',inclusive,days,holidays), slow=dt.countBusinessDays('2024-01-01','2024-01-08',days,holidays,inclusive);
+    assert.equal(fast.businessDays,slow.working);assert.equal(fast.businessDays+fast.weekendDays+fast.holidayCount,fast.totalDays);
+  }
   for(const weekend of ['sat_sun','fri_sat','sun','none']) for(const inclusive of [false,true]) {
     const fast=dt.dateDiff('2000-01-01','2099-12-31',inclusive,weekend,'2000-01-03,2050-01-01,2099-12-31');
     const slow=dt.countBusinessDays('2000-01-01','2099-12-31',weekend,'2000-01-03,2050-01-01,2099-12-31',inclusive);
