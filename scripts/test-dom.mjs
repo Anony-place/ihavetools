@@ -389,6 +389,20 @@ await domTest('SIP step-up updates contribution and clears stale output', async 
  click(btnByLabel(app,'Calculate SIP')); assert.match(app.textContent,/25,200\.00/);
  values[3].value='20'; fire(values[3],'input'); assert.equal(app.querySelectorAll('.stat-card').length,0); assert.doesNotMatch(app.textContent,/Year-by-year growth/);
 });
+await domTest('Wi-Fi builder applies safely and invalidates old QR', async () => {
+  const app = await loadToolPage('qr-code-generator', 'webseo');
+  const name = [...app.querySelectorAll('input')].find(el => el.type === 'text');
+  const password = app.querySelector('input[type=password]');
+  const security = app.querySelector('select');
+  const text = app.querySelector('textarea');
+  text.value = 'existing'; name.value='Cafe;Guest'; password.value='p:secret';
+  click(btnByLabel(app,'Apply Wi-Fi payload'));
+  assert.equal(text.value, 'WIFI:T:WPA;S:Cafe\\;Guest;P:p\\:secret;;');
+  assert.match(app.textContent, /password to anyone/);
+  security.value='nopass'; fire(security,'change'); assert.equal(password.disabled,true);
+  click(btnByLabel(app,'Apply Wi-Fi payload')); assert.equal(text.value,'WIFI:T:nopass;S:Cafe\\;Guest;;');
+  name.value=''; click(btnByLabel(app,'Apply Wi-Fi payload')); assert.match(app.textContent,/Enter a Wi-Fi network name/);
+});
 await domTest('qr-code-generator: mounts and validates empty input', async () => {
   const app = await loadToolPage('qr-code-generator', 'webseo');
   assert.match(app.textContent, /Text or URL to encode/);

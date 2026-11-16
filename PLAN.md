@@ -11,6 +11,24 @@
 
 ---
 
+## QR Wi-Fi workflow and safety — plan (2026-10-31)
+
+The QR page advertises Wi-Fi but requires hand-written syntax, where special
+characters can break the network or password. [ZXing's barcode guide](https://github.com/zxing/zxing/wiki/Barcode-Contents#wi-fi-network-config-android-ios-11)
+documents escaping and scanner-dependent interpretation; this is a usability
+signal, not measured search demand.
+
+1. Add a local optional Wi-Fi payload builder for WPA/WEP and open networks,
+   hidden SSIDs, delimiter escaping and validation. Preserve existing free-text
+   workflow and explicitly replace it only on user action; no server or storage.
+2. Clearly warn the QR and payload expose the password to anyone scanning, and
+   note compatibility, hexadecimal ambiguity and unsupported enterprise Wi-Fi.
+3. Test actual decoded payloads, reserved characters, errors, invalidation and
+   mobile accessibility; run full checks/audit and CI in one PR. Merge and
+   verify production only after checks pass; do not claim rankings or traffic.
+
+---
+
 ## Tax estimate accuracy and evidence hygiene — plan (2026-10-31)
 
 The Income Tax Department's AY 2026–27 guidance lists some new-regime

@@ -1693,10 +1693,10 @@ export const tools = [
     keywords: ['qr code generator', 'qr generator', 'create qr code', 'qr code maker', 'wifi qr code', 'free qr code'],
     aliases: ['qr maker', 'qr creator', 'generate qr code', 'wifi qr generator'],
     popularity: 93, featured: true, added: '2026-10-31',
-    steps: 'Type or paste the text, URL, or Wi-Fi string to encode.|Pick an error-correction level and colours (keep strong contrast for reliable scanning).|Click Generate, test-scan it with your phone, then download the PNG or SVG.',
+    steps: 'Type text or a URL, or use the Wi-Fi builder to create a network payload.|Pick an error-correction level and colours (keep strong contrast for reliable scanning).|Click Generate, test-scan it with your phone, then download the PNG or SVG.',
     guide: [
       { h: 'One QR code, many payload types',
-        p: 'A QR code is just text in a machine-readable pattern — phone cameras recognise certain text formats and act on them. Type any of these into the box above:',
+        p: 'A QR code is just text in a machine-readable pattern — phone cameras may recognise certain formats. Use the Wi-Fi builder for personal networks or type one of these formats:',
         table: { head: ['You want to open…', 'Type exactly this format'], rows: [
           ['A website', 'https://example.com/page'],
           ['A Wi-Fi network (auto-join)', 'WIFI:S:NetworkName;T:WPA;P:password;;'],
@@ -1705,6 +1705,7 @@ export const tools = [
           ['An SMS draft', 'SMSTO:+919876543210:Your message'],
           ['A map location', 'geo:28.6139,77.2090'],
         ] } },
+      { h: 'Wi-Fi QR privacy and compatibility', p: 'The optional builder escapes special characters in network names and passwords for common Wi-Fi QR readers. Choose WPA/WPA2 personal, WEP or an open network and optionally mark it hidden. Enterprise Wi-Fi is not supported by the builder. Scanner support varies, and hex-like names or keys can be interpreted differently: test the actual device. The encoded password is visible to anyone who scans the code or reads the text; only share it with trusted people.' },
       { h: 'Error correction: L, M, Q or H?',
         p: 'Error correction adds redundancy: L, M, Q and H roughly correspond to 7%, 15%, 25% and 30% of codewords recoverable under suitable conditions, not a guaranteed fraction of damaged image area. Higher levels can make the code denser. Damage to finder patterns, glare, size and print quality can still prevent scanning; test the actual final code.' },
       { h: 'Printing QR codes that actually scan', list: [
@@ -1717,7 +1718,7 @@ export const tools = [
     ],
     faqs: [
       { q: 'Do these QR codes expire?', a: 'No. The code contains your text/URL itself (a “static” QR code), with no redirect through any server — it keeps working forever, as long as the destination does.' },
-      { q: 'How do I make a Wi-Fi QR code?', a: 'Use this exact format as the text: WIFI:S:YourNetworkName;T:WPA;P:yourpassword;; — phones will offer to join the network when scanned. For open networks use T:nopass and leave P empty.' },
+      { q: 'How do I make a Wi-Fi QR code?', a: 'Open the Wi-Fi builder, enter the network name and security, then apply and generate. For open networks select no password. Scanner support varies; test it before sharing and remember anyone who scans can read the password.' },
       { q: 'Which error-correction level should I choose?', a: 'M suits most uses. Higher levels (Q/H) survive more damage, dirt or a logo placed over the code, but make the pattern denser. If you customise colours, keep the code much darker than the background and always test-scan before printing.' },
     ] }),
   T({ id: 'rd-calculator', name: 'RD Calculator', icon: 'bank', engine: 'calculators', categories: ['calculators'],
