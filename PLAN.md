@@ -11,6 +11,23 @@
 
 ---
 
+## Loan prepayment comparison — plan (2026-10-31)
+
+Calculator.net's [amortization calculator](https://www.calculator.net/amortization-calculator.html)
+shows monthly breakdowns and optional extra payments. This is a competitor
+feature signal, not proof of demand. Our existing comparison reports totals but
+not the applied payment timing or actual extra amounts.
+
+1. Expose both baseline and accelerated monthly schedules with capped regular,
+   extra and lump-sum payments and interest; compare totals and final payments.
+2. Provide year navigation and optional local CSV download, clear all results
+   after loan edits, and explain assumptions, timing, privacy and lender limits.
+3. Test accounting, zero and positive rates, early payoff and unapplied lump,
+   limits, stale output, CSV and narrow-screen accessibility. Run full checks,
+   audit and CI before a single PR merge and production verification.
+
+---
+
 ## EMI schedule accuracy and practical comparison — plan (2026-10-31)
 
 The EMI calculator leaves a previous result after edits, and forward recursion
