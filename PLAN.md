@@ -11,6 +11,26 @@
 
 ---
 
+## Single-image resize controls — plan
+
+[iLoveIMG](https://www.iloveimg.com/resize-image) highlights dimension-based
+resizing; a competitor feature is not measured search demand. Our resizer
+keeps an old percentage active even after a user types pixel dimensions, so
+the visible width can silently be ignored. JPEG transparency also always uses
+white, unlike related conversion tools.
+
+1. Make the most recently edited sizing mode explicit: editing pixels clears
+   scale and editing scale clears pixels. Add percentage shortcuts and a reset
+   to original size, invalidating any previously generated download.
+2. Add a selectable JPEG transparency background without changing PNG/WebP
+   alpha behavior; retain browser encoding, size and memory limits.
+3. Update the crawlable guide, test transitions, invalid/oversized settings,
+   pixel colors, transparency, stale results and mobile accessibility. Full
+   checks, audit and one PR; merge only after CI and verify production. No
+   unsupported ranking or traffic claims.
+
+---
+
 ## Calendar working-week and date entry improvements — plan
 
 [Timeanddate](https://www.timeanddate.com/date/duration.html) offers Today

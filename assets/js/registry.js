@@ -920,11 +920,11 @@ export const tools = [
     keywords: ['resize image', 'image size', 'dimensions', 'scale', 'pixels', 'thumbnail'],
     aliases: ['resize photo', 'change image size', 'image scaler'],
     popularity: 85, added: '2026-06-04',
-    steps: 'Drop or choose an image.|Enter a width, height or percentage; unlock the ratio to stretch. Empty dimensions keep the original size.|Choose format and optional JPEG/WebP quality or target KiB, then resize and download.',
+    steps: 'Drop or choose an image.|Enter pixel dimensions or a scale percentage; the last edited mode is used. Unlock the ratio to stretch or select original size.|Choose format and optional JPEG/WebP quality or target KiB, then resize and download.',
     guide: [
-      {h:'Set image dimensions',p:'With aspect ratio locked, changing width or height updates the other using the original dimensions, rounded to at least one pixel. Unlock to stretch independently; relocking uses the last edited dimension. Percentage overrides both dimensions. Selecting a new file clears dimensions and percentage.'},
+      {h:'Set image dimensions',p:'With aspect ratio locked, changing width or height updates the other using the original dimensions, rounded to at least one pixel. Unlock to stretch independently; relocking uses the last edited dimension. Editing percentage clears the pixel fields; editing a pixel field clears percentage. Presets set the scale; Original size clears both. Selecting a new file clears dimensions and percentage.'},
       {h:'Quality and target file size',p:'JPEG and WebP allow quality from 5 to 100. Optionally enter a target in KiB (1 KiB = 1,024 bytes); a bounded quality search checks actual output size at the chosen dimensions. It may fail and does not guarantee the best quality. Reduce dimensions or increase the target if needed. PNG ignores both quality and target; a new file may be larger than the original.'},
-      {h:'Review the output',p:'This runs locally. JPEG uses white behind transparency; PNG and WebP may retain it. Canvas re-encoding can discard metadata and turns animation into a still frame. Enlarging may blur pixels. Output is limited to 16,384 pixels per side and 40 million pixels; the input limit is 100 MiB. Keep the original and inspect the downloaded file.'}
+      {h:'Review the output',p:'This runs locally. JPEG uses the chosen background behind transparency; PNG and WebP may retain it. Canvas re-encoding can discard metadata and turns animation into a still frame. Enlarging may blur pixels. Output is limited to 16,384 pixels per side and 40 million pixels; the input limit is 100 MiB. Keep the original and inspect the downloaded file.'}
     ] }),
   T({ id: 'image-converter', name: 'Image Converter', icon: 'swap', engine: 'image', categories: ['image'],
     related: ['bulk-image-resizer','image-compressor','image-resizer','image-converter','image-cropper','image-metadata-viewer'].filter(id => id !== 'image-converter'),

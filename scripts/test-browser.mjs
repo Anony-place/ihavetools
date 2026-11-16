@@ -928,6 +928,15 @@ try {
   await page.getByLabel('Target size (KiB)').fill('');await page.getByLabel('Quality (5–100)').fill('101');await page.getByRole('button',{name:'Resize',exact:true}).click();assert.match(await page.locator('#tool-app .status-line').innerText(),/Quality must/);
   await page.getByLabel('Format',{exact:true}).selectOption('png');assert.equal(await page.getByLabel('Target size (KiB)').isDisabled(),true);
   await page.locator('#tool-app').getByText('Lock aspect ratio',{exact:true}).click();await page.getByLabel('Height (px)').fill('12');await page.locator('#tool-app').getByText('Lock aspect ratio',{exact:true}).click();assert.equal(await page.getByLabel('Width (px)').inputValue(),'24');
+  await page.getByRole('button',{name:'50%',exact:true}).click();assert.equal(await page.getByLabel('Scale %').inputValue(),'50');assert.equal(await page.getByLabel('Width (px)').inputValue(),'');
+  await page.getByLabel('Width (px)').fill('30');assert.equal(await page.getByLabel('Scale %').inputValue(),'');assert.equal(await page.getByLabel('Height (px)').inputValue(),'15');
+  await page.getByRole('button',{name:'Original size'}).click();assert.equal(await page.getByLabel('Width (px)').inputValue(),'');
+  const transparentResize=await sharp({create:{width:8,height:8,channels:4,background:'#00000000'}}).png().toBuffer();
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'transparent.png',mimeType:'image/png',buffer:transparentResize});await page.locator('#tool-app .status-line').getByText(/Loaded/).waitFor();
+  await page.getByLabel('Format',{exact:true}).selectOption('jpeg');await page.getByLabel('Quality (5–100)').fill('90');await page.getByLabel('JPEG background').fill('#000000');
+  await page.getByRole('button',{name:'Resize',exact:true}).click();await page.locator('#tool-app .img-preview').waitFor();
+  const bgEvent=page.waitForEvent('download');await page.getByRole('button',{name:'Download 8 × 8'}).click();const bgPixels=await sharp(await readFile(await (await bgEvent).path())).raw().toBuffer();assert.ok(bgPixels[0]<10 && bgPixels[1]<10 && bgPixels[2]<10);
+  await page.getByLabel('JPEG background').fill('#ffffff');assert.equal(await page.locator('#tool-app .img-preview').count(),0);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'image resizer mobile accessibility');
   console.log('✓ single image resize target size, ratio, errors and mobile accessibility');

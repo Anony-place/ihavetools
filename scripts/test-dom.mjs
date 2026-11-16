@@ -1804,6 +1804,12 @@ await domTest('image resizer invalidates stale encodes, revokes previews and bou
     width.value='300'; fire(width,'input'); assert.equal(app.querySelector('.img-preview'),null); assert.ok(revoked.includes(previewUrl));
     width.value='20000'; fire(width,'input'); click(btnByLabel(app,'Resize')); assert.match(app.textContent,/16,384 pixels/); assert.equal(callbacks.length,0);
     const nums=app.querySelectorAll('input[type=number]'), height=nums[1], checkbox=app.querySelector('input[type=checkbox]');
+    click(btnByLabel(app,'50%'));assert.equal(nums[2].value,'50');assert.equal(width.value,'');assert.equal(height.value,'');
+    width.value='200';fire(width,'input');assert.equal(nums[2].value,'');assert.equal(height.value,'150');
+    nums[2].value='75';fire(nums[2],'input');assert.equal(width.value,'');assert.equal(height.value,'');
+    click(btnByLabel(app,'Original size'));assert.equal(nums[2].value,'');assert.equal(width.value,'');
+    const color=app.querySelector('input[type=color]');assert.equal(color.disabled,true);app.querySelector('select').value='jpeg';fire(app.querySelector('select'),'change');assert.equal(color.disabled,false);
+
     width.value='1';fire(width,'input');assert.equal(height.value,'1');
     checkbox.checked=false;fire(checkbox,'change');height.value='150';fire(height,'input');checkbox.checked=true;fire(checkbox,'change');assert.equal(width.value,'200');
     const second=new File([new Uint8Array([255,216,255,217])],'second.jpg',{type:'image/jpeg'});const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[second]}});app.querySelector('.dropzone').dispatchEvent(e);await new Promise(r=>setTimeout(r,30));assert.equal(width.value,'');assert.equal(height.value,'');
