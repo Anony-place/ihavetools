@@ -2415,7 +2415,20 @@ await test('Prepayment schedules account for each capped payment', () => {
 await test('inflation factors and zero rates follow the worked example', () => {
   const r = calc.inflationCalc(100000, 6, 10); assert.ok(Math.abs(r.futureCost - 179084.76965428545) < 1e-8); assert.ok(Math.abs(r.purchasingPower - 55839.47769151179) < 1e-8);
   assert.equal(calc.inflationCalc(100, 0, 10).futureCost, 100); assert.equal(calc.inflationCalc(100, 6, 0).purchasingPower, 100);
-  assert.throws(() => calc.inflationCalc(100, -1, 10));
+  assert.ok(Math.abs(calc.inflationCalc(100, -10, 2).futureCost - 81) < 1e-9);
+  assert.throws(() => calc.inflationCalc(100, -50.01, 10));
+  assert.throws(() => calc.inflationCalc(100, 101, 10));
+});
+await test('inflation timeline supports zero, fractional, deflation and bounded extremes', () => {
+  assert.deepEqual(calc.inflationTimeline(100,6,0).map(x=>x.year),[0]);
+  const rows=calc.inflationTimeline(100,-10,2.5);
+  assert.deepEqual(rows.map(x=>x.year),[0,1,2,2.5]);
+  assert.ok(Math.abs(rows.at(-1).futureCost-100*Math.pow(.9,2.5))<1e-9);
+  assert.ok(rows.at(-1).purchasingPower>100);
+  assert.ok(Number.isFinite(calc.inflationCalc(1e12,-50,100).purchasingPower));
+  assert.ok(Number.isFinite(calc.inflationCalc(1e12,100,100).futureCost));
+  assert.throws(()=>calc.inflationTimeline(100,NaN,0));
+  assert.throws(()=>calc.inflationTimeline(100,6,101));
 });
 await test('work hours handle midnight, breaks and equal times', () => {
   assert.equal(calc.workHoursCalc('09:00','17:00',60,20).pay,140);

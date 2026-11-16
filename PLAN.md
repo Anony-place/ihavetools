@@ -11,6 +11,24 @@
 
 ---
 
+## Inflation scenarios and purchasing power — plan (2026-10-31)
+
+[Calculator.net](https://www.calculator.net/inflation-calculator.html) separates
+historical CPI from flat-rate scenarios. We have no maintained CPI dataset, so
+our tool must remain an explicitly hypothetical constant-rate calculator; a
+competitor feature is not evidence of demand or ranking performance.
+
+1. Allow bounded negative inflation scenarios and an optional second constant
+   rate, showing comparable future cost and purchasing power without implying
+   either is a forecast. Preserve existing shared links and fractional years.
+2. Add year-by-year projections including a fractional endpoint and local CSV,
+   clear stale outputs after edits, and make the two directions unambiguous.
+3. Update the static guide, test zero/negative/extreme rates, fractional years,
+   optional comparison, CSV, invalidation and mobile accessibility; run full
+   checks/audit and CI before a single merge and production verification.
+
+---
+
 ## Loan prepayment comparison — plan (2026-10-31)
 
 Calculator.net's [amortization calculator](https://www.calculator.net/amortization-calculator.html)
