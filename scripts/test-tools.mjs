@@ -963,6 +963,18 @@ await test('youtube id extraction (watch, youtu.be, shorts, raw id)', () => {
   assert.throws(() => seo.extractYouTubeId('https://example.com/watch?v=123'), /No video ID/);
   assert.throws(() => seo.extractYouTubeId(''), /Paste a YouTube/);
 });
+await test('Wi-Fi QR builder escapes delimiters, preserves input and validates', () => {
+  const ssid = ' Café; \\,:" '; const password = 'p;\\a,:"';
+  const payload = seo.wifiQrPayload({ssid, password, hidden:true});
+  assert.equal(payload, String.raw`WIFI:T:WPA;S: Café\; \\\,\:\" ;P:p\;\\a\,\:\";H:true;;`);
+  assert.match(seo.qrPayloadInfo(payload).summary, /Café; /);
+  assert.equal(seo.wifiQrPayload({ssid:'Guest',password:'secret',security:'nopass'}), 'WIFI:T:nopass;S:Guest;;');
+  assert.equal(seo.wifiQrPayload({ssid:'x',password:'y',security:'WEP'}), 'WIFI:T:WEP;S:x;P:y;;');
+  assert.throws(() => seo.wifiQrPayload({ssid:' '}), /network name/);
+  assert.throws(() => seo.wifiQrPayload({ssid:'x'}), /password/);
+  assert.throws(() => seo.wifiQrPayload({ssid:'x',security:'WPA2-EAP'}), /security/);
+  assert.throws(() => seo.wifiQrPayload({ssid:'x\n',password:'y'}), /control characters/);
+});
 await test('QR codes round-trip through a real decoder (jsQR)', async () => {
   const { readFileSync } = await import('node:fs');
   const vm = await import('node:vm');
@@ -988,7 +1000,7 @@ await test('QR codes round-trip through a real decoder (jsQR)', async () => {
     }
     return seo.decodeQrPixels(scanCtx.jsQR, { data, width: dim, height: dim });
   };
-  for (const payload of ['https://i-have-tools.vercel.app/tools/qr-code-generator/', 'Hello QR — ₹100 ✓', 'WIFI:S:HomeWifi;T:WPA;P:secret123;;', '  padded text \n']) {
+  for (const payload of [seo.wifiQrPayload({ssid:'Café;Guest',password:'s:ec;ret',hidden:true}), 'https://i-have-tools.vercel.app/tools/qr-code-generator/', 'Hello QR — ₹100 ✓', 'WIFI:S:HomeWifi;T:WPA;P:secret123;;', '  padded text \n']) {
     const { modules, version } = seo.makeQrModules(ctx.qrcode, payload, 'M');
     assert.ok(version >= 1 && version <= 40);
     assert.equal(decode(modules), payload, `round-trip failed for: ${payload}`);

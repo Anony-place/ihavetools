@@ -80,6 +80,17 @@ export function qrPayloadInfo(raw) {
   return base;
 }
 
+/** Wi-Fi QR format for personal networks. Values are not trimmed. */
+export function wifiQrPayload({ ssid = '', password = '', security = 'WPA', hidden = false } = {}) {
+  if (typeof ssid !== 'string' || !ssid.length || !ssid.trim()) throw new Error('Enter a Wi-Fi network name.');
+  if (!['WPA', 'WEP', 'nopass'].includes(security)) throw new Error('Choose a supported Wi-Fi security type.');
+  if (typeof password !== 'string' || (security !== 'nopass' && !password.length)) throw new Error('Enter the Wi-Fi password or choose an open network.');
+  if (/[\u0000-\u001f\u007f]/.test(ssid) || /[\u0000-\u001f\u007f]/.test(password)) throw new Error('Network name and password cannot contain control characters.');
+  if (ssid.length > 256 || password.length > 256) throw new Error('Network name and password must each be at most 256 characters.');
+  const escape = value => value.replace(/[\\;,:"]/g, '\\$&');
+  return `WIFI:T:${security};S:${escape(ssid)};${security === 'nopass' ? '' : `P:${escape(password)};`}${hidden ? 'H:true;' : ''};`;
+}
+
 /** Build a QR module matrix. lib = the vendored qrcode() factory. */
 export function makeQrModules(lib, text, ecl = 'M') {
   const s = String(text ?? '');
@@ -808,6 +819,11 @@ const defs = {
 
   'qr-code-generator'(root) {
     const inp = textarea({ rows: 3, mono: false, placeholder: 'Text, a URL, or Wi-Fi like: WIFI:S:MyNetwork;T:WPA;P:mypassword;;' });
+    const wifiName = input({ type: 'text', maxlength: '256', autocomplete: 'off' });
+    const wifiPassword = input({ type: 'password', maxlength: '256', autocomplete: 'off' });
+    const wifiSecurity = select({ options: [{ v: 'WPA', t: 'WPA / WPA2 personal' }, { v: 'WEP', t: 'WEP' }, { v: 'nopass', t: 'Open (no password)' }], value: 'WPA' });
+    const wifiHidden = h('input', { type: 'checkbox', style: 'align-self:start' });
+    wifiSecurity.addEventListener('change', () => { wifiPassword.disabled = wifiSecurity.value === 'nopass'; });
     const ecl = select({ options: [{ v: 'L', t: 'L — smallest code (~7% recovery)' }, { v: 'M', t: 'M — balanced (~15%)' }, { v: 'Q', t: 'Q — sturdy (~25%)' }, { v: 'H', t: 'H — toughest (~30%)' }], value: 'M' });
     const sizeSel = select({ options: [{ v: '512', t: 'Up to 512 px' }, { v: '1024', t: 'Up to 1024 px' }, { v: '2048', t: 'Up to 2048 px' }], value: '1024' });
     const fg = input({ type: 'color', value: '#000000' });
@@ -874,7 +890,22 @@ const defs = {
         status.set(fg.value === bg.value ? 'Foreground and background are the same colour; this code will not be readable. Change colours and generate again.' : 'QR code ready ✓ — scan it with your phone camera to verify before using it.', fg.value === bg.value ? 'warning' : 'success');
       } catch (e) { if (token === revision) { last = null; out.replaceChildren(); grid.replaceChildren(); status.set(e.message, 'error'); } }
     };
-    root.append(field({ label: 'Text or URL to encode', control: inp, hint: 'Payload whitespace is preserved. Wi-Fi format: WIFI:S:NetworkName;T:WPA;P:password;;' }),
+    const wifiBuilder = h('details', { class: 'result-panel', style: 'margin-bottom:16px' },
+      h('summary', { text: 'Build a Wi-Fi payload' }),
+      h('p', { class: 'hint', text: 'Personal networks only. Applying replaces the text below. The QR and text reveal the password to anyone who scans or sees them; share only with people you trust.' }),
+      h('div', { class: 'field-row' },
+        field({ label: 'Wi-Fi network name (SSID)', control: wifiName }),
+        field({ label: 'Wi-Fi security', control: wifiSecurity }),
+        field({ label: 'Wi-Fi password', control: wifiPassword, hint: 'Required for WPA/WEP. Not included for open networks.' })),
+      field({ label: 'Hidden network', control: wifiHidden }),
+      btn({ label: 'Apply Wi-Fi payload', onClick: () => {
+        try {
+          inp.value = wifiQrPayload({ ssid: wifiName.value, password: wifiPassword.value, security: wifiSecurity.value, hidden: wifiHidden.checked });
+          invalidate(); status.set('Wi-Fi payload applied to the text below. Generate and test-scan it.', 'success');
+        } catch (e) { status.set(e.message, 'error'); }
+      } }),
+      h('p', { class: 'hint', text: 'Scanner support varies. Enterprise Wi-Fi is not supported by this builder. Hex-like SSIDs or keys may be interpreted differently by scanners; check your device and test the connection.' }));
+    root.append(wifiBuilder, field({ label: 'Text or URL to encode', control: inp, hint: 'Payload whitespace is preserved. Wi-Fi format: WIFI:S:NetworkName;T:WPA;P:password;;' }),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Error correction', control: ecl }),
         field({ label: 'PNG size', control: sizeSel }),
