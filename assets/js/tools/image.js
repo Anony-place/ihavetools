@@ -573,6 +573,7 @@ const defs = {
     const pctIn = input({ type: 'number', min: 1, max: 1000, placeholder: 'e.g. 50 (= half size)' });
     const lock = switchChip({ label: 'Lock aspect ratio', checked: true });
     const fmtSel = select({ options: [{ v: 'png', t: 'PNG' }, { v: 'jpeg', t: 'JPEG' }, { v: 'webp', t: 'WebP' }], value: 'png' });
+    const background = input({type:'color', value:'#ffffff'});
     const quality = input({type:'number', min:5, max:100, step:1, value:'92'});
     const target = input({type:'number', min:1, max:51200, step:1, placeholder:'Optional'});
     const status = statusLine('Choose an image to begin.');
@@ -580,7 +581,7 @@ const defs = {
     const preview = h('div', {}), previews = previewManager(preview);
     let revision = 0, selectionRevision = 0;
     let file = null, img = null, lastBlob = null, lastDimension = 'width';
-    const refreshOptions = () => { quality.disabled = fmtSel.value === 'png' || target.value !== ''; target.disabled = fmtSel.value === 'png'; };
+    const refreshOptions = () => { quality.disabled = fmtSel.value === 'png' || target.value !== ''; target.disabled = fmtSel.value === 'png'; background.disabled = fmtSel.value !== 'jpeg'; };
     refreshOptions();
     zone.addEventListener('iht-rejected', () => { revision++; selectionRevision++; file = null; img = null; lastBlob = null; info.textContent = ''; wIn.placeholder = 'width'; hIn.placeholder = 'height'; previews.clear(); zone.resetSelectionUI(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
     window.addEventListener('pagehide', () => { revision++; selectionRevision++; previews.clear(); }, { once: true });
@@ -610,10 +611,11 @@ const defs = {
       if (!Number.isSafeInteger(n) || n < 1) return;
       to.value = String(Math.max(1, Math.round(n * (from === wIn ? img.naturalHeight / img.naturalWidth : img.naturalWidth / img.naturalHeight))));
     };
-    [wIn, hIn].forEach(el => el.addEventListener('input', () => { lastDimension = el === wIn ? 'width' : 'height'; syncRatio(); }));
+    [wIn, hIn].forEach(el => el.addEventListener('input', () => { pctIn.value = ''; lastDimension = el === wIn ? 'width' : 'height'; syncRatio(); }));
+    pctIn.addEventListener('input', () => { wIn.value = ''; hIn.value = ''; });
     lock.addEventListener('change', syncRatio);
     fmtSel.addEventListener('change', refreshOptions); target.addEventListener('input', refreshOptions);
-    [wIn, hIn, pctIn, fmtSel, lock, quality, target].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
+    [wIn, hIn, pctIn, fmtSel, lock, quality, target, background].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file || !img) { status.set('Choose an image first.', 'warning'); return; }
       previews.clear();
@@ -635,7 +637,7 @@ const defs = {
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        if (format === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, dims.width, dims.height); }
+        if (format === 'jpeg') { ctx.fillStyle = background.value; ctx.fillRect(0, 0, dims.width, dims.height); }
         ctx.drawImage(img, 0, 0, dims.width, dims.height);
         const choice = format !== 'png' && targetKiB !== null
           ? await encodeToTarget(q => canvasToBlob(canvas, MIME_BY_FMT[format], q), targetKiB * 1024, () => file === selected && revision === token)
@@ -653,13 +655,15 @@ const defs = {
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
         field({ label: 'Width (px)', control: wIn }),
         field({ label: 'Height (px)', control: hIn }),
-        field({ label: 'Or scale %', control: pctIn, hint: 'Overrides W/H' }),
+        field({ label: 'Scale %', control: pctIn, hint: 'Editing scale clears pixel fields; editing pixels clears scale.' }),
         field({ label: 'Format', control: fmtSel })),
+      actionsRow(...[25,50,75,100].map(n=>btn({label:`${n}%`,variant:'secondary',onClick:()=>{pctIn.value=String(n);pctIn.dispatchEvent(new window.Event('input',{bubbles:true}));}})),
+        btn({label:'Original size',variant:'secondary',onClick:()=>{pctIn.value='';wIn.value='';hIn.value='';lastDimension='width';revision++;previews.clear();status.set('Original dimensions selected. Resize again.', 'info');}})),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, lock),
-      h('div',{class:'field-row'}, field({label:'Quality (5–100)',control:quality,hint:'JPEG/WebP only; ignored for PNG or target mode.'}),field({label:'Target size (KiB)',control:target,hint:'Optional JPEG/WebP quality search; 1 KiB = 1,024 bytes. May fail at these dimensions.'})),
+      h('div',{class:'field-row'}, field({label:'JPEG background',control:background,hint:'Used behind transparent pixels in JPEG only.'}),field({label:'Quality (5–100)',control:quality,hint:'JPEG/WebP only; ignored for PNG or target mode.'}),field({label:'Target size (KiB)',control:target,hint:'Optional JPEG/WebP quality search; 1 KiB = 1,024 bytes. May fail at these dimensions.'})),
       actionsRow(btn({ label: 'Resize', icon: 'crop', onClick: run })),
       status, preview,
-      privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. JPEG flattens transparency onto white. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
+      privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. JPEG flattens transparency onto the chosen background. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
   },
 
   'image-converter'(root, preset = null) {
