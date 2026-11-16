@@ -852,6 +852,21 @@ await test('password charset honors options', () => {
 await test('entropy math', () => {
   assert.ok(Math.abs(sec.passwordEntropyBits(12, 94) - 12 * Math.log2(94)) < 1e-9);
 });
+await test('password composition coverage has correct uniform search space', () => {
+  const exclude = [...sec.CHARSETS.upper, ...sec.CHARSETS.lower, ...sec.CHARSETS.digits, ...sec.CHARSETS.symbols].filter(c => !'Ab1!'.includes(c)).join('');
+  const opts = {upper:true, lower:true, digits:true, symbols:true, exclude, requireEach:true};
+  assert.ok(Math.abs(sec.passwordSpaceBits(4,opts)-Math.log2(24)) < 1e-12);
+  assert.ok(Math.abs(sec.passwordSpaceBits(5,opts)-Math.log2(240)) < 1e-12);
+  for (let i=0;i<30;i++) {
+    const pw=sec.generatePassword(8,opts);
+    assert.equal(pw.length,8); for (const c of 'Ab1!') assert.ok(pw.includes(c));
+    assert.match(pw,/^[Ab1!]+$/);
+  }
+  assert.throws(()=>sec.generatePassword(8,{...opts,exclude:exclude+'A'}),/No characters remain/);
+  assert.throws(()=>sec.generatePassword(8,{...opts,custom:'abc'}),/custom alphabet/);
+  assert.throws(()=>sec.buildCharset({exclude:'\ud800'}),/surrogate/);
+  assert.ok(Number.isFinite(sec.passwordSpaceBits(256,opts)));
+});
 await test('common password flagged regardless of length', () => {
   const r = sec.analyzePassword('password123456789');
   assert.ok(r.issues.some((i) => /common password/i.test(i)));

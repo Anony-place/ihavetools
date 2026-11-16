@@ -24,7 +24,7 @@ export const CHARSETS = {
   symbols: '!@#$%^&*()-_=+[]{};:,.?/',
   lookalikes: 'Il1O0o|`\'"~;:,.{}[]()/\\',
 };
-export function buildCharset({ upper = true, lower = true, digits = true, symbols = true, excludeLookalikes = false, custom = '' } = {}) {
+export function buildCharset({ upper = true, lower = true, digits = true, symbols = true, excludeLookalikes = false, custom = '', exclude = '' } = {}) {
   let s = '';
   if (upper) s += CHARSETS.upper;
   if (lower) s += CHARSETS.lower;
@@ -32,16 +32,83 @@ export function buildCharset({ upper = true, lower = true, digits = true, symbol
   if (symbols) s += CHARSETS.symbols;
   if (excludeLookalikes) s = [...s].filter((c) => !CHARSETS.lookalikes.includes(c)).join('');
   if (custom) s = custom;
+  if (typeof exclude !== 'string' || exclude.length > 4096) throw new Error('Excluded characters must be at most 4096 UTF-16 code units.');
+  if (Array.from(exclude).some(c => c.length === 1 && c.charCodeAt(0) >= 0xd800 && c.charCodeAt(0) <= 0xdfff)) throw new Error('Excluded characters contain an unpaired Unicode surrogate.');
+  if (exclude) { const removed = new Set([...exclude]); s = [...s].filter(c => !removed.has(c)).join(''); }
   if (!s) throw new Error('Select at least one character set (or provide a custom alphabet).');
   if (s.length > 4096) throw new Error('Alphabet must be at most 4096 UTF-16 code units.');
   if (Array.from(s).some(c => c.length === 1 && c.charCodeAt(0) >= 0xd800 && c.charCodeAt(0) <= 0xdfff)) throw new Error('The alphabet contains an unpaired Unicode surrogate.');
   return [...new Set([...s])].join('');
 }
 
-export function generatePassword(length, charset, rng) {
+const PASSWORD_SETS = ['upper', 'lower', 'digits', 'symbols'];
+function passwordGroups(options) {
+  if (options.custom) throw new Error('Required character sets cannot be combined with a custom alphabet.');
+  const groups = PASSWORD_SETS.filter(key => options[key] ?? true).map(key => {
+    const only = Object.fromEntries(PASSWORD_SETS.map(k => [k, k === key]));
+    try { return buildCharset({ ...only, excludeLookalikes: options.excludeLookalikes, exclude: options.exclude }); }
+    catch (error) {
+      if (/Select at least one character set/.test(error.message)) throw new Error(`No characters remain in the selected ${key} set. Change exclusions or deselect it.`);
+      throw error;
+    }
+  });
+  if (!groups.length) throw new Error('Select at least one character set.');
+  return groups;
+}
+/** Number of valid suffixes for each number of remaining characters and coverage mask. */
+function coverageCounts(length, groups) {
+  if (length < groups.length) throw new Error('Length must be at least the number of selected character sets.');
+  const full = (1 << groups.length) - 1;
+  const counts = [Array.from({ length: full + 1 }, (_, mask) => mask === full ? 1n : 0n)];
+  for (let n = 1; n <= length; n++) {
+    counts.push(Array.from({ length: full + 1 }, (_, mask) => groups.reduce((sum, chars, i) => sum + BigInt(chars.length) * counts[n - 1][mask | (1 << i)], 0n)));
+  }
+  return counts;
+}
+function randomBigInt(max, rng = globalThis.crypto) {
+  if (!rng?.getRandomValues) throw new Error('Your browser does not provide crypto.getRandomValues. Please use a modern, secure browser.');
+  if (max <= 0n) throw new Error('Invalid random range.');
+  if (max === 1n) return 0n;
+  const bits = (max - 1n).toString(2).length;
+  const words = Math.ceil(bits / 32), topBits = bits - (words - 1) * 32;
+  const buffer = new Uint32Array(words);
+  let value;
+  do {
+    rng.getRandomValues(buffer);
+    if (topBits < 32) buffer[0] &= (2 ** topBits - 1);
+    value = buffer.reduce((n, word) => (n << 32n) + BigInt(word), 0n);
+  } while (value >= max);
+  return value;
+}
+function log2BigInt(value) {
+  const bits = value.toString(2).length;
+  const shift = Math.max(0, bits - 53);
+  return Math.log2(Number(value >> BigInt(shift))) + shift;
+}
+export function passwordSpaceBits(length, charset) {
   if (!Number.isInteger(length) || length < 4 || length > 256) throw new Error('Password length must be between 4 and 256.');
-  const chars = buildCharset(charset);
-  return Array.from({ length }, () => randomFrom(chars, rng)).join('');
+  if (!charset?.requireEach) return passwordEntropyBits(length, Array.from(buildCharset(charset)).length);
+  const groups = passwordGroups(charset);
+  return log2BigInt(coverageCounts(length, groups)[length][0]);
+}
+export function generatePassword(length, charset = {}, rng) {
+  if (!Number.isInteger(length) || length < 4 || length > 256) throw new Error('Password length must be between 4 and 256.');
+  if (!charset.requireEach) {
+    const chars = buildCharset(charset);
+    return Array.from({ length }, () => randomFrom(chars, rng)).join('');
+  }
+  const groups = passwordGroups(charset), counts = coverageCounts(length, groups);
+  let mask = 0, result = '';
+  for (let left = length; left > 0; left--) {
+    let choice = randomBigInt(counts[left][mask], rng);
+    for (let i = 0; i < groups.length; i++) {
+      const next = mask | (1 << i);
+      const weight = BigInt(groups[i].length) * counts[left - 1][next];
+      if (choice < weight) { result += randomFrom(groups[i], rng); mask = next; break; }
+      choice -= weight;
+    }
+  }
+  return result;
 }
 export function passwordEntropyBits(length, charsetSize) {
   return Math.log2(charsetSize) * length;
@@ -90,6 +157,8 @@ const defs = {
     length.addEventListener('input', () => { if (Number(length.value) >= 4 && Number(length.value) <= 64) range.value = length.value; });
     const sets = ['upper', 'lower', 'digits', 'symbols'].map((s) => switchChip({ label: { upper: 'A–Z', lower: 'a–z', digits: '0–9', symbols: '!@#…' }[s], checked: s !== 'symbols' ? true : true, name: s }));
     const noLook = switchChip({ label: 'Exclude look-alikes (I, l, 1, O, 0…)' });
+    const requireEach = switchChip({ label: 'Include each selected character type' });
+    const exclude = input({ type: 'text', autocomplete: 'off', spellcheck: 'false', placeholder: 'Characters to omit (optional)' });
     const status = statusLine('Ready.');
     const out = resultPanel({ label: 'Password', copy: true, placeholder: 'Click Generate.' });
     out.panel.querySelector('.result-body pre').style.cssText = 'font-size:1.15rem;word-break:break-all;font-weight:600';
@@ -98,13 +167,14 @@ const defs = {
       const opts = {};
       sets.forEach((c) => { opts[c.querySelector('input').name] = c.querySelector('input').checked; });
       try {
-        const pw = generatePassword(Number(length.value), { ...opts, excludeLookalikes: noLook.querySelector('input').checked });
+        const config = { ...opts, excludeLookalikes: noLook.querySelector('input').checked, exclude: exclude.value, requireEach: requireEach.querySelector('input').checked };
+        const pw = generatePassword(Number(length.value), config);
         out.set(pw);
-        const cs = Array.from(buildCharset({ ...opts, excludeLookalikes: noLook.querySelector('input').checked })).length;
-        const bits = passwordEntropyBits(pw.length, cs);
+        const cs = Array.from(buildCharset(config)).length;
+        const bits = passwordSpaceBits(Number(length.value), config);
         meter.replaceChildren(
           h('div', { class: 'strength-meter' }, h('div', { style: `width:${Math.min(100, (bits / 128) * 100)}%;background:${bits >= 75 ? 'var(--success)' : bits >= 50 ? 'var(--warning)' : 'var(--danger)'}` })),
-          h('p', { class: 'status-line info', text: `Entropy: ${bits.toFixed(0)} bits (${bits >= 75 ? 'excellent' : bits >= 50 ? 'decent — go longer for critical accounts' : 'too weak for real accounts'}) · Alphabet size: ${cs} · Assumes independent uniform random characters` }));
+          h('p', { class: 'status-line info', text: `Entropy: ${bits.toFixed(0)} bits (${bits >= 75 ? 'excellent' : bits >= 50 ? 'decent — go longer for critical accounts' : 'too weak for real accounts'}) · Alphabet size: ${cs} · ${config.requireEach ? 'Uniform among passwords covering each selected type' : 'Independent uniform random characters'}` }));
         status.set(`Generated a ${pw.length}-character password locally ✓`, 'success');
       } catch (e) { out.placeholder(); meter.replaceChildren(); status.set(e.message, 'error'); }
     };
@@ -114,7 +184,8 @@ const defs = {
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Length (4–256)', control: length }),
         field({ label: 'Quick pick', control: range })),
-      h('div', { class: 'field' }, h('span', { class: 'field-legend', text: 'Character sets' }), h('div', { class: 'switch-row' }, sets[0], sets[1], sets[2], sets[3], noLook)),
+      h('div', { class: 'field' }, h('span', { class: 'field-legend', text: 'Character sets' }), h('div', { class: 'switch-row' }, sets[0], sets[1], sets[2], sets[3], noLook, requireEach)),
+      field({ label: 'Exclude specific characters', control: exclude, hint: 'Optional: remove characters your destination does not accept. Spaces are treated as characters.' }),
       actionsRow(btn({ label: 'Generate', icon: 'refresh', onClick: gen }),
         btn({ label: 'Copy', variant: 'secondary', icon: 'copy', onClick: async () => { const t = out.text; if (!t) { toast('Generate a password first', 'error'); return; } (await copyText(t)) ? toast('Password copied — handle it carefully', 'success') : toast('Copy failed', 'error'); } })),
       status, h('br'), out.panel, meter,
@@ -201,4 +272,4 @@ const defs = {
 };
 
 export function mount(id) { mountTool(id, defs); }
-export const __test = { randomInt, buildCharset, generatePassword, passwordEntropyBits, analyzePassword, CHARSETS };
+export const __test = { randomInt, buildCharset, generatePassword, passwordEntropyBits, passwordSpaceBits, analyzePassword, CHARSETS };
