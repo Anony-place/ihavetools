@@ -633,19 +633,20 @@ export const tools = [
   T({ id: 'compound-interest-calculator', name: 'Compound Interest Calculator', icon: 'trending', engine: 'calculators', categories: ['calculators'],
     related: ["inflation-calculator","loan-prepayment-calculator","savings-goal-calculator","swp-calculator","sip-calculator","percentage-calculator"],
     blurb: 'Growth of savings with compounding, contributions and a schedule.',
-    description: 'Project compound growth of a principal with optional regular contributions and any compounding frequency — with a year-by-year balance table.',
+    description: 'Project compound growth of a principal with optional regular contributions and selected compounding frequencies, contribution timing and a growth schedule.',
     keywords: ['compound interest', 'savings', 'investment', 'growth', 'future value', 'cagr'],
     aliases: ['compound interest', 'investment calculator', 'future value'],
     popularity: 78, added: '2026-06-07',
-    steps: 'Enter the principal, annual rate and years.|Choose compounding frequency and optional end-of-month contribution.|Read the future value, interest earned and yearly schedule.',
+    steps: 'Enter the principal, nominal annual rate and duration in years or months.|Choose a compounding frequency and optional monthly contribution and timing.|Review the estimate and growth schedule or download CSV.',
     faqs: [
-      { q: 'How often should interest compound — yearly, quarterly or monthly?', a: 'More frequent compounding always earns a little more, but the difference is smaller than most people expect: ₹1 lakh at 10% for 5 years grows to ₹1,61,051 yearly, ₹1,63,862 quarterly and ₹1,64,531 monthly. The interest rate and the number of years matter far more than the frequency.' },
+      { q: 'How often should interest compound — yearly, quarterly or monthly?', a: 'For the same positive nominal rate and no other differences, more frequent compounding increases the effective rate. For example: ₹1 lakh at 10% for 5 years grows to ₹1,61,051 yearly, ₹1,63,862 quarterly and ₹1,64,531 monthly. Compare rates, terms, fees and taxes rather than frequency alone.' },
       { q: 'What is the Rule of 72?', a: 'A shortcut for doubling time: divide 72 by the yearly rate. At 8% money doubles in about 9 years (72 ÷ 8); at 12% in about 6 years. It is an approximation of the exact compounding formula, accurate enough for planning.' },
-      { q: 'Does this calculator add my monthly contribution before or after interest?', a: 'Contributions are added at the end of every month, independently of the selected compounding frequency. The monthly growth rate is derived from the chosen nominal rate and frequency. For a mutual-fund style SIP where money goes in at the start of the month, the dedicated SIP Calculator models that timing.' },
+      { q: 'Does this calculator add my monthly contribution before or after interest?', a: 'Choose either the start or the end of each month. The tool uses an equivalent monthly growth rate derived from the nominal rate and compounding frequency. Actual products can use different dates and crediting rules.' },
     ],
     guide: [
       { h: 'The compound interest formula',
         p: 'Final amount = P × (1 + r ÷ n)^(n × t), where P is the principal, r the annual rate (as a decimal), n the times interest compounds per year and t the years. The engine behind compounding is simple: each period, interest is calculated on the original money plus all interest earned so far — your interest itself starts earning interest.' },
+      { h: 'Monthly contributions and limitations', p: 'The principal-only formula above does not include contributions. For monthly contributions the tool derives an equivalent monthly growth rate from the nominal rate and selected frequency, then applies each contribution at the selected start or end of month. This smooth-growth model may differ from an actual bank crediting schedule, especially for partial periods. Years must correspond to whole months; the schedule shows complete years and the final partial year. The effective annual rate is (1 + r/n)^n − 1. This fixed-rate estimate excludes taxes, fees, inflation, withdrawals and changing rates. CSV files contain financial figures; keep them private.' },
       { h: 'Compounding frequency matters less than you think',
         table: { head: ['₹1,00,000 at 10% for 5 years', 'Final value', 'Interest earned'], rows: [
           ['Simple interest (no compounding)', '₹1,50,000', '₹50,000'],
@@ -653,7 +654,7 @@ export const tools = [
           ['Compounded quarterly', '₹1,63,862', '₹63,862'],
           ['Compounded monthly', '₹1,64,531', '₹64,531'],
         ] },
-        p: 'Going from simple to yearly compounding adds ₹11,051; going from yearly to monthly adds just ₹3,480 more. Chasing a lender who compounds monthly is worth far less than negotiating 0.5% more rate or staying invested one extra year — at 10 years the yearly-compounded value is ₹2,59,374, because time is the exponent in the formula.' },
+        p: 'Going from simple to yearly compounding adds ₹11,051; going from yearly to monthly adds just ₹3,480 more. These examples hold the nominal rate fixed and exclude taxes, fees and changing rates. Actual account terms can differ.' },
       { h: 'The Rule of 72 (and 114 and 144)', list: [
         'Doubling: 72 ÷ rate. At 9% your money doubles in ~8 years.',
         'Tripling: 114 ÷ rate. At 9% that is ~12.7 years.',

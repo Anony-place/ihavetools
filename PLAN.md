@@ -11,6 +11,26 @@
 
 ---
 
+## Compound growth planning — plan (2026-10-31)
+
+[Investor.gov](https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator)
+provides regular contributions, frequency and scenarios; features are not proof
+of search demand. Our calculator has an inaccessible month-duration workflow,
+forces end-of-month contributions and keeps stale results after edits.
+
+1. Add explicit months/years and start/end monthly contribution options while
+   keeping old shared links compatible, support weekly compounding and show
+   effective annual rate. Reject blank required principal rather than silently
+   treating it as zero; blank optional contribution remains zero.
+2. Offer a downloadable annual/partial-year schedule and explain the equivalent
+   monthly growth model, unrounded estimates and product-specific limitations.
+   Correct unqualified frequency comparisons and avoid financial advice.
+3. Test closed-form and contribution timing, short duration, annual/weekly
+   frequencies, validation, input invalidation, share links, mobile and CSV;
+   run full check, audit and Chromium CI before merge and production verification.
+
+---
+
 ## Inflation scenarios and purchasing power — plan (2026-10-31)
 
 [Calculator.net](https://www.calculator.net/inflation-calculator.html) separates

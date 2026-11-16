@@ -813,6 +813,21 @@ await test('compound interest schedule', () => {
   const fv = 100 * ((Math.pow(1.01, 12) - 1) / 0.01);
   assert.ok(Math.abs(withContrib.finalBalance - fv) < 1e-6);
 });
+await test('compound growth start and end contributions and partial years', () => {
+  for (const perYear of [1,2,4,12,52,365]) {
+    const args={principal:0,annualRatePct:12,years:1,perYear,monthlyContribution:100};
+    const end=calc.compoundInterest(args), begin=calc.compoundInterest({...args,contributionTiming:'begin'});
+    const growth=Math.pow(1+.12/perYear,perYear/12);
+    assert.ok(Math.abs(begin.finalBalance-end.finalBalance*growth)<1e-8);
+    assert.equal(end.totalContributed,1200);
+    assert.ok(Math.abs(end.finalBalance-100*(Math.pow(growth,12)-1)/(growth-1))<1e-7);
+  }
+  const partial=calc.compoundInterest({principal:1000,annualRatePct:0,years:13/12,perYear:52,monthlyContribution:100});
+  assert.equal(partial.schedule.length,2); assert.equal(partial.schedule[1].year,13/12); assert.equal(partial.finalBalance,2300);
+  assert.throws(()=>calc.compoundInterest({principal:NaN,annualRatePct:5,years:1}),/Principal/);
+  assert.throws(()=>calc.compoundInterest({principal:100,annualRatePct:5,years:1/24}),/whole number of months/);
+  assert.throws(()=>calc.compoundInterest({principal:100,annualRatePct:5,years:1,contributionTiming:'wrong'}),/timing/);
+});
 await test('simple interest', () => {
   const r = calc.simpleInterest({ principal: 5000, annualRatePct: 6, time: 3 });
   assert.equal(r.interest, 900);

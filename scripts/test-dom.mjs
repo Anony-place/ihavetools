@@ -374,6 +374,21 @@ await domTest('emi-calculator: shows EMI and schedule', async () => {
   assert.match(app.textContent, /Monthly EMI/);
   assert.match(app.textContent, /Year-by-year balance/);
 });
+await domTest('Compound growth old share links retain end-of-month and years defaults', async () => {
+  const app=await loadToolPage('compound-interest-calculator','calculators','?principal=0&rate=12&years=1&freq=12&contrib=100');
+  assert.match(app.textContent,/1,268\.25Final balance/);
+  const selects=app.querySelectorAll('select'); assert.equal(selects[0].value,'years'); assert.equal(selects[2].value,'end');
+});
+await domTest('Compound growth timing, monthly duration and stale results', async () => {
+  const app=await loadToolPage('compound-interest-calculator','calculators');
+  const nums=app.querySelectorAll('input[type=number]'), selects=app.querySelectorAll('select');
+  nums[0].value='0'; nums[1].value='12'; nums[2].value='1'; nums[3].value='100';
+  selects[0].value='months'; selects[1].value='12'; selects[2].value='begin';
+  click(btnByLabel(app,'Calculate growth')); assert.match(app.textContent,/101\.00Final balance/); assert.ok(btnByLabel(app,'Download growth CSV'));
+  selects[2].value='end'; fire(selects[2],'change'); assert.doesNotMatch(app.textContent,/Growth schedule/); assert.equal(btnByLabel(app,'Download growth CSV'),undefined);
+  click(btnByLabel(app,'Calculate growth')); assert.match(app.textContent,/100\.00Final balance/);
+  nums[0].value=''; fire(nums[0],'input'); click(btnByLabel(app,'Calculate growth')); assert.match(app.textContent,/Principal must be between/);
+});
 await domTest('Inflation scenarios, fractional endpoint and stale result clearing', async () => {
   const app=await loadToolPage('inflation-calculator','calculators');
   const nums=app.querySelectorAll('input[type=number]'); nums[0].value='100'; nums[1].value='-10'; nums[2].value='2.5'; nums[3].value='0';
@@ -1899,7 +1914,7 @@ await domTest('all registered tools mount in jsdom',async()=>{
  assert.deepEqual(issues,[]);
 });
 await domTest('compound interest always contributes monthly for yearly compounding',async()=>{
- const app=await loadToolPage('compound-interest-calculator','calculators');const inputs=app.querySelectorAll('input[type=number]'); inputs[0].value='0';inputs[1].value='0';inputs[2].value='1';inputs[3].value='100';app.querySelector('select').value='1';click(btnByLabel(app,'Calculate growth'));assert.match(app.textContent,/1,200\.00Total contributed/);
+ const app=await loadToolPage('compound-interest-calculator','calculators');const inputs=app.querySelectorAll('input[type=number]'); inputs[0].value='0';inputs[1].value='0';inputs[2].value='1';inputs[3].value='100';app.querySelectorAll('select')[1].value='1';click(btnByLabel(app,'Calculate growth'));assert.match(app.textContent,/1,200\.00Total contributed/);
 });
 await domTest('CSV text preservation and duplicate headers in UI',async()=>{
  const app=await loadToolPage('csv-to-json','data');const input=app.querySelector('textarea');input.value='id,flag\n001,true';click(btnByLabel(app,'Convert to JSON'));assert.match(app.textContent,/"001"/);assert.match(app.textContent,/"true"/);input.value='x,x\n1,2';click(btnByLabel(app,'Convert to JSON'));assert.match(app.textContent,/Duplicate column/);assert.doesNotMatch(resultText(document),/001/);
