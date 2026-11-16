@@ -11,6 +11,29 @@
 
 ---
 
+## PPF projection accuracy and planning — plan (2026-10-31)
+
+The PPF calculator assumes an April lump sum, cannot model an existing balance
+or monthly contributions, and leaves results visible after edits. Its guide also
+makes time-sensitive rate and instalment claims. India Post lists PPF at 7.1%
+when checked; rates can change. The 2019 scheme calculates monthly interest on
+the lowest balance between close of day 5 and month end, credited yearly.
+Sources: [India Post](https://www.indiapost.gov.in/banking-services/savings),
+[scheme text](https://www.gconnect.in/news/public-provident-fund-scheme-2019.html).
+These are not evidence of search demand or future returns.
+
+1. Model an opening balance and annual April, monthly by day 5, and monthly
+   after day 5 contributions using full financial-year projections at one
+   assumed rate. Preserve default April calculation and make assumptions clear.
+2. Invalidate stale results, distinguish projections from actual maturity and
+   account rules, flag deposit-limit assumptions and remove unsupported
+   time-sensitive guide claims. Do not imply personalised financial advice.
+3. Test timing math, existing balances, zero rates, errors, mobile/accessibility
+   and output invalidation; one PR, local checks/audit, green CI and production
+   verification. No guarantees of traffic or returns.
+
+---
+
 ## Password generator compatibility and safety — plan (2026-10-31)
 
 The generator samples from a combined alphabet, so selecting character sets does

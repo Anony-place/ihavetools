@@ -578,6 +578,16 @@ await domTest('keyword CSV reports blocked downloads', async () => {
  const app=await loadToolPage('keyword-density-checker','webseo'), old=URL.createObjectURL; const input=app.querySelector('textarea'); input.value='alpha alpha beta'; fire(input,'input');click(btnByLabel(app,'Count keywords'));
  try {URL.createObjectURL=()=>{throw new Error('blocked');};click(btnByLabel(app,'Download CSV'));assert.match(statusText(document),/Could not request the CSV/);} finally {URL.createObjectURL=old;}
 });
+await domTest('PPF projects timing and clears stale results', async () => {
+  const app=await loadToolPage('ppf-calculator','calculators');
+  const inputs=app.querySelectorAll('input[type=number]');
+  inputs[0].value='12000'; inputs[1].value='10000'; inputs[2].value='12'; inputs[3].value='1';
+  const timing=app.querySelector('select'); timing.value='monthly-early';
+  click(btnByLabel(app,'Calculate PPF')); assert.match(app.textContent,/1,980/); assert.match(app.textContent,/Projected balance/);
+  timing.value='monthly-late'; fire(timing,'change'); assert.doesNotMatch(app.textContent,/Projected balance/);
+  click(btnByLabel(app,'Calculate PPF')); assert.match(app.textContent,/1,860/);
+  inputs[0].value='200000'; fire(inputs[0],'input'); click(btnByLabel(app,'Calculate PPF')); assert.match(app.textContent,/illustrative only/);
+});
 await domTest('income tax labels historical year and equal regimes correctly', async () => {
  const app=await loadToolPage('income-tax-calculator','calculators'); assert.match(app.textContent,/does not model Tax Year 2026/);
  const nums=app.querySelectorAll('input[type=number]'); nums[0].value='400000';nums[1].value='1';nums[2].value='0';click(btnByLabel(app,'Calculate tax'));assert.match(app.textContent,/Neither \(tie\)/);
