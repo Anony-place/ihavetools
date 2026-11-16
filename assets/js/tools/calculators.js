@@ -960,38 +960,50 @@ const defs = {
     const principal = input({ type: 'number', step: 'any', placeholder: 'e.g. 10000', value: '10000' });
     const rate = input({ type: 'number', step: 'any', placeholder: 'e.g. 7', value: '7' });
     const years = input({ type: 'number', step: 'any', placeholder: 'e.g. 10', value: '10' });
-    const freq = select({ options: [{ v: 1, t: 'Yearly' }, { v: 2, t: 'Half-yearly' }, { v: 4, t: 'Quarterly' }, { v: 12, t: 'Monthly' }, { v: 365, t: 'Daily' }], value: 12 });
+    const unit = select({ options: [{ v: 'years', t: 'Years' }, { v: 'months', t: 'Months' }], value: 'years' });
+    const freq = select({ options: [{ v: 1, t: 'Yearly' }, { v: 2, t: 'Half-yearly' }, { v: 4, t: 'Quarterly' }, { v: 12, t: 'Monthly' }, { v: 52, t: 'Weekly' }, { v: 365, t: 'Daily' }], value: 12 });
     const contrib = input({ type: 'number', step: 'any', placeholder: 'optional, per month' });
-    const grid = statsGrid();
-    const status = statusLine('');
-    const scheduleWrap = h('div', {});
+    const timing = select({ options: [{ v: 'end', t: 'End of month' }, { v: 'begin', t: 'Start of month' }], value: 'end' });
+    const grid = statsGrid(), status = statusLine(''), scheduleWrap = h('div', {});
+    let current = null;
     const run = () => {
       try {
+        const duration = num(years), annualRate = num(rate), frequency = Number(freq.value);
         const r = compoundInterest({
-          principal: num(principal) || 0, annualRatePct: num(rate), years: num(years),
-          perYear: Number(freq.value), monthlyContribution: num(contrib) || 0,
+          principal: num(principal), annualRatePct: annualRate, years: unit.value === 'months' ? duration / 12 : duration,
+          perYear: frequency, monthlyContribution: contrib.value.trim() === '' ? 0 : num(contrib), contributionTiming: timing.value,
         });
+        const effective = Math.expm1(Math.log1p(annualRate / 100 / frequency) * frequency) * 100;
+        current = r;
         grid.set([
           { label: 'Final balance', value: money(r.finalBalance), kind: 'good' },
           { label: 'Interest earned', value: money(r.totalInterest), kind: 'warn' },
           { label: 'Total contributed', value: money(r.totalContributed) },
+          { label: 'Effective annual rate', value: `${fmtNumber(effective, 3)}%` },
           { label: 'Growth multiple', value: r.totalContributed ? `${fmtNumber(r.finalBalance / r.totalContributed, 2)}×` : '—' },
         ]);
+        const csv = () => ['Months,Years,Balance,Contributed,Interest', ...r.schedule.map(s => [Math.round(s.year * 12), s.year, s.balance.toFixed(2), s.contributed.toFixed(2), s.interest.toFixed(2)].join(','))].join('\r\n') + '\r\n';
         scheduleWrap.replaceChildren(
           h('h3', { text: 'Growth schedule', style: 'margin:20px 0 10px' }),
-          table({ headers: ['Year', 'Balance', 'Contributed', 'Interest'], rows: r.schedule.map((s) => [`Y${s.year}`, money(s.balance), money(s.contributed), money(s.interest)]) }));
-        status.set('Contributions are added at the end of each month. Monthly growth is the equivalent rate derived from the selected compounding frequency; results are estimates.', 'info');
-      } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
+          table({ headers: ['Years elapsed', 'Balance', 'Contributed', 'Interest'], rows: r.schedule.map((s) => [String(s.year), money(s.balance), money(s.contributed), money(s.interest)]) }),
+          h('p', { class: 'hint', text: 'Schedule includes each complete year and the final partial year. CSV contains your figures; keep it private. Values are rounded independently.' }),
+          downloadButton(() => current === r ? csv() : '', 'compound-growth-schedule.csv', { label: 'Download growth CSV', mime: 'text/csv;charset=utf-8', small: false }));
+        status.set(`Contributions are added at the ${timing.value === 'begin' ? 'start' : 'end'} of each month. Monthly growth is the equivalent rate derived from the selected nominal rate and compounding frequency. Estimates exclude taxes, fees, inflation and changing rates.`, 'info');
+      } catch (e) { current = null; grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
+    const invalidate = () => { current = null; grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set('Inputs changed. Calculate again.', 'info'); };
+    [principal, rate, years, unit, freq, contrib, timing].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     root.append(
+      h('p', { class: 'hint', text: 'A hypothetical fixed-rate projection in your chosen currency, not a guaranteed return or a bank-specific statement.' }),
       h('div', { class: 'field-row' },
-        field({ label: 'Principal', control: principal }),
-        field({ label: 'Annual rate %', control: rate }),
-        field({ label: 'Years', control: years, hint: 'Whole months only; up to 100 years.' }),
+        field({ label: 'Principal', control: principal, hint: 'Enter 0 if starting with contributions only.' }),
+        field({ label: 'Annual nominal rate %', control: rate }),
+        field({ label: 'Duration', control: years, hint: 'Whole months only; up to 100 years.' }),
+        field({ label: 'Duration unit', control: unit }),
         field({ label: 'Compounding', control: freq })),
-      field({ label: 'Additional contribution', control: contrib, hint: 'Per month, optional' }),
+      h('div', { class: 'field-row' }, field({ label: 'Additional contribution', control: contrib, hint: 'Per month, optional' }), field({ label: 'Contribution timing', control: timing })),
       actionsRow(btn({ label: 'Calculate growth', icon: 'trending', onClick: run })), grid, scheduleWrap, status);
-    shareState(root, [['principal', principal], ['rate', rate], ['years', years], ['freq', freq], ['contrib', contrib]], run);
+    shareState(root, [['principal', principal], ['rate', rate], ['years', years], ['unit', unit], ['freq', freq], ['contrib', contrib], ['timing', timing]], run);
   },
 
   'simple-interest-calculator'(root) {
