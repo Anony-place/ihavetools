@@ -374,6 +374,11 @@ await domTest('emi-calculator: shows EMI and schedule', async () => {
   assert.match(app.textContent, /Monthly EMI/);
   assert.match(app.textContent, /Year-by-year balance/);
 });
+await domTest('Compound growth old share links retain end-of-month and years defaults', async () => {
+  const app=await loadToolPage('compound-interest-calculator','calculators','?principal=0&rate=12&years=1&freq=12&contrib=100');
+  assert.match(app.textContent,/1,268\.25Final balance/);
+  const selects=app.querySelectorAll('select'); assert.equal(selects[0].value,'years'); assert.equal(selects[2].value,'end');
+});
 await domTest('Compound growth timing, monthly duration and stale results', async () => {
   const app=await loadToolPage('compound-interest-calculator','calculators');
   const nums=app.querySelectorAll('input[type=number]'), selects=app.querySelectorAll('select');
