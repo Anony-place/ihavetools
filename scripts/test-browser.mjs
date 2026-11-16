@@ -350,6 +350,10 @@ try {
   assert.match(await page.locator('#tool-app').innerText(),/4\s*Business days/i); assert.match(await page.locator('#tool-app').innerText(),/1\s*Holidays excluded/i);
   await page.getByLabel('Non-working weekdays').selectOption('fri_sat'); assert.equal(await page.locator('#tool-app .stat-card').count(),0);
   await page.getByRole('button',{name:'Calculate difference'}).click(); assert.match(await page.locator('#tool-app').innerText(),/4\s*Business days/i);
+  await page.getByLabel('Non-working weekdays').selectOption('custom');
+  await page.locator('#tool-app fieldset label.switch').filter({hasText:'Wednesday'}).click();
+  await page.getByRole('button',{name:'Calculate difference'}).click(); assert.match(await page.locator('#tool-app .stats-grid').innerText(),/3\s*Business days/i);
+  await page.getByRole('button',{name:'Swap dates'}).click(); assert.equal(await page.getByLabel('Start date',{exact:true}).inputValue(),'2024-01-08');assert.equal(await page.locator('#tool-app .stat-card').count(),0);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'date difference mobile accessibility');
   await go('business-day-calculator');

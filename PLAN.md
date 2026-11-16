@@ -11,6 +11,27 @@
 
 ---
 
+## Calendar working-week and date entry improvements — plan
+
+[Timeanddate](https://www.timeanddate.com/date/duration.html) offers Today
+shortcuts; this is a usability signal, not evidence of search demand. Our Date
+Difference offers only weekend presets even though Business Day Calculator
+supports custom weekdays; its holiday character limit also rejects 500 valid
+dates separated by comma and space, and the other tool lacks a text-size bound.
+
+1. Support custom non-working weekdays in Date Difference, including none/all,
+   preserving absolute range, inclusion, holiday deduplication and fast counts.
+   Add accessible Today and swap shortcuts with stale-output invalidation.
+2. Use shared bounded holiday and weekend validation for both tools, permitting
+   500 dates in normal comma-space format and rejecting oversized input rather
+   than silently truncating it. Document the limits and calendar conventions.
+3. Test cross-tool equivalence, custom patterns, all/none, validation, Today,
+   swapping, invalidation and real browser mobile accessibility. Run full checks
+   and audit; one PR, green CI before merge, verify production. No ranking or
+   demand guarantees.
+
+---
+
 ## Time-duration calculator accuracy and workflow — plan
 
 [CalculatorSoup](https://www.calculatorsoup.com/calculators/time/time-calculator.php)
