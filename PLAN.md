@@ -11,6 +11,26 @@
 
 ---
 
+## Password generator compatibility and safety — plan (2026-10-31)
+
+The generator samples from a combined alphabet, so selecting character sets does
+not guarantee that every selected type appears. Some sites impose composition
+rules even though [NIST SP 800-63B](https://pages.nist.gov/800-63-4/sp800-63b.html)
+discourages such verifier requirements. This usability issue is not evidence of
+search demand.
+
+1. Add optional per-selected-set coverage and optional explicit exclusions.
+   Preserve unbiased cryptographic generation, fail on impossible settings, and
+   compute the constrained search-space entropy rather than the unconstrained
+   formula. Avoid mandatory composition rules and keep the existing default.
+2. Update guide and privacy/security caveats, without promising account
+   acceptance or portraying entropy as protection from phishing or reuse.
+3. Cover constrained combinatorics, deterministic rejection, invalidation,
+   browser/mobile accessibility, local checks and audit. One PR, green CI then
+   merge and verify live. No paid services or ranking guarantees.
+
+---
+
 ## QR Wi-Fi workflow and safety — plan (2026-10-31)
 
 The QR page advertises Wi-Fi but requires hand-written syntax, where special

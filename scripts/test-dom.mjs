@@ -665,6 +665,19 @@ await domTest('password-generator: generates 20-char password with entropy', asy
   click(btnByLabel(app, 'Generate'));
   assert.notEqual(resultText(document).trim(), before, 'regenerate should change password');
 });
+await domTest('password generator coverage and exclusions clear old output', async () => {
+  const app = await loadToolPage('password-generator', 'security');
+  const cover = [...app.querySelectorAll('label')].find(l => l.textContent.includes('Include each selected'));
+  const toggle = cover.querySelector('input'); toggle.checked=true; fire(toggle,'change');
+  assert.doesNotMatch(app.textContent,/Entropy: \d+ bits/);
+  const exclude = [...app.querySelectorAll('input')].find(i => i.placeholder.includes('Characters to omit'));
+  exclude.value='A1!'; fire(exclude,'input'); click(btnByLabel(app,'Generate'));
+  const pw = resultText(document).trim();
+  assert.match(pw,/[A-Z]/); assert.match(pw,/[a-z]/); assert.match(pw,/[0-9]/); assert.match(pw,/[!@#$%^&*()\-_=+\[\]{};:,.?/]/);
+  assert.ok(!/[A1!]/.test(pw)); assert.match(app.textContent,/covering each selected type/);
+  exclude.value='ABCDEFGHIJKLMNOPQRSTUVWXYZ'; fire(exclude,'input'); click(btnByLabel(app,'Generate'));
+  assert.match(app.textContent,/No characters remain/); assert.doesNotMatch(app.textContent,/Entropy: \d+ bits/);
+});
 await domTest('password-strength-checker: weak flagged live', async () => {
   const app = await loadToolPage('password-strength-checker', 'security');
   const input = app.querySelector('input');
