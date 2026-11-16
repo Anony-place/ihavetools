@@ -541,8 +541,10 @@ try {
   assert.equal(await htmlCode.inputValue(), 'a  d');
   await page.locator('#tool-app label.switch').filter({hasText:'Tab inserts spaces'}).click();
   await page.getByRole('button',{name:'Reset example'}).click({ trial: true });
+  await page.evaluate(() => { window.__resetFrameLoad = new Promise(resolve => document.querySelector('#tool-app iframe').addEventListener('load', resolve, {once:true})); });
   page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button',{name:'Reset example'}).click();
+  await page.evaluate(() => window.__resetFrameLoad);
   const htmlFrame = page.frameLocator('#tool-app iframe');
   await htmlFrame.getByRole('heading', { name: 'Hello, world!' }).waitFor();
   await htmlFrame.getByRole('button', { name: 'Click me' }).click();
