@@ -374,6 +374,15 @@ await domTest('emi-calculator: shows EMI and schedule', async () => {
   assert.match(app.textContent, /Monthly EMI/);
   assert.match(app.textContent, /Year-by-year balance/);
 });
+await domTest('Inflation scenarios, fractional endpoint and stale result clearing', async () => {
+  const app=await loadToolPage('inflation-calculator','calculators');
+  const nums=app.querySelectorAll('input[type=number]'); nums[0].value='100'; nums[1].value='-10'; nums[2].value='2.5'; nums[3].value='0';
+  click(btnByLabel(app,'Calculate inflation')); assert.match(app.textContent,/Projection over time/); assert.match(app.textContent,/Comparison buying power/);
+  assert.match(app.textContent,/2\.5/); assert.ok(btnByLabel(app,'Download projection CSV'));
+  nums[3].value=''; fire(nums[3],'input'); assert.doesNotMatch(app.textContent,/Projection over time/); assert.equal(btnByLabel(app,'Download projection CSV'),undefined);
+  click(btnByLabel(app,'Calculate inflation')); assert.doesNotMatch(app.textContent,/Comparison buying power/);
+  nums[1].value='-51'; fire(nums[1],'input'); click(btnByLabel(app,'Calculate inflation')); assert.match(app.textContent,/between -50 and 100/);
+});
 await domTest('Loan prepayment schedules navigate and invalidate on loan edits', async () => {
   const app=await loadToolPage('loan-prepayment-calculator','calculators');
   click(btnByLabel(app,'Calculate prepayment'));

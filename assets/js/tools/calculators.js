@@ -542,9 +542,16 @@ export function loanPrepaymentCalc(principal, annualRate, payment, extra, lump, 
   return { baseline, accelerated, interestSaved: baseline.interest - accelerated.interest, monthsSaved: baseline.months - accelerated.months };
 }
 export function inflationCalc(amount, rate, years) {
-  bounded(amount, 0, 1e12, 'Amount'); bounded(rate, 0, 100, 'Annual inflation'); bounded(years, 0, 100, 'Years');
-  const factor = Math.pow(1 + rate / 100, years);
-  return { futureCost: amount * factor, purchasingPower: amount / factor, increase: amount * (factor - 1) };
+  bounded(amount, 0, 1e12, 'Amount'); bounded(rate, -50, 100, 'Annual inflation'); bounded(years, 0, 100, 'Years');
+  const logFactor = years * Math.log1p(rate / 100);
+  const factor = Math.exp(logFactor);
+  return { futureCost: amount * factor, purchasingPower: amount / factor, increase: amount * Math.expm1(logFactor) };
+}
+export function inflationTimeline(amount, rate, years) {
+  inflationCalc(amount, rate, years); // Validate even when years is zero.
+  const points = Array.from({ length: Math.floor(years) + 1 }, (_, year) => year);
+  if (!Number.isInteger(years)) points.push(years);
+  return points.map(year => ({ year, ...inflationCalc(amount, rate, year) }));
 }
 export function workHoursCalc(start, end, breakMinutes, hourlyRate) {
   const minutes = (time) => { const m = /^(\d{2}):(\d{2})$/.exec(time); if (!m || +m[1] > 23 || +m[2] > 59) throw new Error('Enter valid start and end times.'); return +m[1] * 60 + +m[2]; };
@@ -1441,11 +1448,35 @@ const defs = {
 
   'inflation-calculator'(root) {
     const amount = input({ type: 'number', step: 'any', value: '100000' }), rate = input({ type: 'number', step: 'any', value: '6' }), years = input({ type: 'number', step: 'any', value: '10' });
-    const grid = statsGrid(), status = statusLine('');
-    const run = () => { try { const r = inflationCalc(num(amount), num(rate), num(years)); grid.set([{ label: 'Equivalent future cost', value: money(r.futureCost) }, { label: 'Increase in cost', value: money(r.increase) }, { label: 'Future money in today’s buying power', value: money(r.purchasingPower) }]); status.set('Constant assumed annual inflation, compounded yearly. Actual inflation varies; this is not an official CPI forecast.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
-    root.append(h('div', { class: 'field-row' }, field({ label: 'Amount today', control: amount }), field({ label: 'Annual inflation (%)', control: rate }), field({ label: 'Years', control: years })), actionsRow(btn({ label: 'Calculate inflation', icon: 'calculator', onClick: run })), grid, status);
-    shareState(root, [['amount', amount], ['rate', rate], ['years', years]], run);
+    const comparison = input({ type: 'number', step: 'any', placeholder: 'Optional, e.g. 8' });
+    const grid = statsGrid(), status = statusLine(''), detail = h('div', {});
+    let current = null;
+    const run = () => { try {
+      const a = num(amount), r = num(rate), y = num(years);
+      const result = inflationCalc(a, r, y);
+      const secondRate = comparison.value.trim() === '' ? null : num(comparison);
+      const second = secondRate === null ? null : inflationCalc(a, secondRate, y);
+      const timeline = inflationTimeline(a, r, y);
+      const otherTimeline = second ? inflationTimeline(a, secondRate, y) : null;
+      current = { timeline, otherTimeline, r, secondRate };
+      grid.set([{ label: 'Equivalent future cost', value: money(result.futureCost) }, { label: 'Change in cost', value: money(result.increase) }, { label: 'Future money in today’s buying power', value: money(result.purchasingPower) }]);
+      const rows = timeline.map((point, i) => [String(point.year), money(point.futureCost), money(point.purchasingPower), ...(second ? [money(otherTimeline[i].futureCost), money(otherTimeline[i].purchasingPower)] : [])]);
+      const csv = () => ['Years,Primary rate percent,Primary future cost,Primary future amount in today’s buying power' + (second ? ',Comparison rate percent,Comparison future cost,Comparison future amount in today’s buying power' : ''), ...timeline.map((point, i) => [String(point.year), String(r), point.futureCost.toFixed(2), point.purchasingPower.toFixed(2), ...(second ? [String(secondRate), otherTimeline[i].futureCost.toFixed(2), otherTimeline[i].purchasingPower.toFixed(2)] : [])].join(','))].join('\r\n') + '\r\n';
+      const snapshot = current;
+      detail.replaceChildren(h('h3', { text: 'Projection over time', style: 'margin:20px 0 10px' }),
+        h('p', { class: 'hint', text: `Primary rate: ${r}% per year${second ? `; comparison: ${secondRate}% per year` : ''}. Cost starts today; buying power treats the same entered amount as future money.` }),
+        table({ headers: ['Years', 'Primary future cost', 'Primary buying power', ...(second ? ['Comparison future cost', 'Comparison buying power'] : [])], rows }),
+        h('p', { class: 'hint', text: 'CSV contains your figures. Keep it private. Values are independently rounded to two decimals; fractional years use the annual factor raised to that fraction.' }),
+        downloadButton(() => current === snapshot ? csv() : '', 'inflation-projection.csv', { label: 'Download projection CSV', mime: 'text/csv;charset=utf-8', small: false }));
+      status.set('Constant assumed annual rates, compounded yearly; negative rates model deflation. Actual price changes vary. This is not historical CPI or an official forecast.', 'success');
+    } catch (e) { current = null; grid.replaceChildren(); detail.replaceChildren(); status.set(e.message, 'error'); } };
+    const invalidate = () => { current = null; grid.replaceChildren(); detail.replaceChildren(); status.set('Inputs changed. Calculate again.', 'info'); };
+    [amount, rate, years, comparison].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
+    root.append(h('p', { class: 'hint', text: 'The amount is used in two separate examples: as today’s cost, and as a future amount whose buying power is expressed in today’s money. Use any currency.' }),
+      h('div', { class: 'field-row' }, field({ label: 'Amount', control: amount }), field({ label: 'Annual inflation (%)', control: rate, hint: 'From -50% to 100%; negative means deflation.' }), field({ label: 'Years', control: years }), field({ label: 'Comparison rate (%) — optional', control: comparison })), actionsRow(btn({ label: 'Calculate inflation', icon: 'calculator', onClick: run })), grid, detail, status);
+    shareState(root, [['amount', amount], ['rate', rate], ['years', years], ['comparison', comparison]], run);
   },
+
   'work-hours-calculator'(root) {
     const start = input({ type: 'time', value: '09:00' }), end = input({ type: 'time', value: '17:00' }), pause = input({ type: 'number', step: '1', value: '60' }), hourly = input({ type: 'number', step: 'any', value: '20' });
     const grid = statsGrid(), status = statusLine('');
