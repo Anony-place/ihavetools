@@ -8,7 +8,7 @@
 // epf-calculator, hra-calculator
 // Shareable calculators offer an opt-in link containing the entered values.
 // =============================================================================
-import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool, shareState } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, table, fmtNumber, mountTool, shareState, downloadButton } from '../ui.js';
 import { DAY_MS, parseCalendarDate, localDateISO, dateISO, addMonthsUTC } from '../calendar.js';
 
 const num = (el) => { const v = parseFloat(String(el.value).replace(/,/g, '')); return v; };
@@ -88,18 +88,23 @@ export function emiCalc(principal, annualRatePct, months) {
   const r = annualRatePct / 1200;
   const emi = r === 0 ? principal / months : principal * r / -Math.expm1(-months * Math.log1p(r));
   const total = emi * months;
-  // yearly amortization summary
-  const years = [];
-  let balance = principal;
+  // Remaining balance is computed from the remaining payments rather than
+  // forward recurrence, which magnifies rounding error at long/high rates.
+  const logRate = Math.log1p(r);
+  const balanceAt = m => r === 0 ? principal * (months - m) / months : principal * (-Math.expm1(-(months - m) * logRate)) / (-Math.expm1(-months * logRate));
+  const years = [], schedule = [];
+  let previous = principal;
   for (let m = 1; m <= months; m++) {
-    const interest = balance * r;
-    const principalPart = Math.min(emi - interest, balance);
-    balance -= principalPart;
+    const balance = balanceAt(m);
+    const principalPart = Math.max(0, previous - balance);
+    const interest = previous * r;
+    schedule.push({ month: m, payment: emi, principal: principalPart, interest, balance });
     if (m % 12 === 0 || m === months) {
-      years.push({ year: Math.ceil(m / 12), paid: emi * m, interestTotal: emi * m - (principal - Math.max(balance, 0)), balance: Math.max(balance, 0) });
+      years.push({ year: Math.ceil(m / 12), paid: emi * m, interestTotal: emi * m - (principal - balance), balance });
     }
+    previous = balance;
   }
-  return { emi, total, totalInterest: total - principal, years };
+  return { emi, total, totalInterest: total - principal, years, schedule };
 }
 export function tipCalc(bill, tipPct, people, { roundTip = false, roundTotal = false } = {}) {
   if (!Number.isFinite(bill) || bill < 0 || bill > 1e12) throw new Error('Bill amount must be between 0 and 1 trillion.');
@@ -845,26 +850,44 @@ const defs = {
     const grid = statsGrid();
     const status = statusLine('');
     const scheduleWrap = h('div', {});
+    let current = null;
+    const renderSchedule = r => {
+      const yearSelect = select({ options: r.years.map(y => ({ v: String(y.year), t: `Year ${y.year}` })) });
+      const monthlyWrap = h('div', {});
+      const renderMonth = () => {
+        const year = Number(yearSelect.value);
+        monthlyWrap.replaceChildren(table({ headers: ['Month', 'Payment', 'Principal', 'Interest', 'Balance'], rows: r.schedule.filter(row => Math.ceil(row.month / 12) === year).map(row => [String(row.month), money(row.payment), money(row.principal), money(row.interest), money(row.balance)]) }));
+      };
+      yearSelect.addEventListener('change', renderMonth);
+      const csv = () => ['Month,Payment,Principal,Interest,Balance', ...r.schedule.map(row => [row.month, row.payment, row.principal, row.interest, row.balance].map((v, i) => i ? v.toFixed(2) : String(v)).join(','))].join('\r\n') + '\r\n';
+      scheduleWrap.replaceChildren(
+        h('h3', { text: 'Year-by-year balance', style: 'margin:20px 0 10px' }),
+        table({ headers: ['Year', 'Paid so far', 'Interest so far', 'Balance left'], rows: r.years.map(y => [`Y${y.year}`, money(y.paid), money(y.interestTotal), money(y.balance)]) }),
+        h('h3', { text: 'Monthly amortization', style: 'margin:20px 0 10px' }),
+        field({ label: 'Schedule year', control: yearSelect }), monthlyWrap,
+        h('p', { class: 'hint', text: 'CSV contains all months and loan amounts. Rows are rounded independently to two decimals, so displayed totals may not add exactly. Keep the file private.' }),
+        downloadButton(() => current === r ? csv() : '', 'emi-schedule.csv', { label: 'Download monthly CSV', mime: 'text/csv;charset=utf-8', small: false }));
+      renderMonth();
+    };
     const run = () => {
       const P = num(principal), R = num(rate);
-      let n = num(years);
-      if (monthsOnly.querySelector('input').checked) n = n;
-      else n = n * 12;
+      const n = num(years) * (monthsOnly.querySelector('input').checked ? 1 : 12);
       try {
-        const r = emiCalc(P, R, n);
+        const r = emiCalc(P, R, n); current = r;
         grid.set([
           { label: 'Monthly EMI', value: money(r.emi), kind: 'good' },
           { label: 'Total interest', value: money(r.totalInterest), kind: 'warn' },
           { label: 'Total repayment', value: money(r.total) },
           { label: 'Payments', value: `${n}` },
         ]);
-        scheduleWrap.replaceChildren(
-          h('h3', { text: 'Year-by-year balance', style: 'margin:20px 0 10px' }),
-          table({ headers: ['Year', 'Paid so far', 'Interest so far', 'Balance left'], rows: r.years.map((y) => [`Y${y.year}`, money(y.paid), money(y.interestTotal), money(y.balance)]) }));
-        status.set(`EMI ${money(r.emi)} per month for ${n} payments.`, 'success');
-      } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
+        renderSchedule(r);
+        status.set(`EMI ${money(r.emi)} per month for ${n} payments. Fixed rate and monthly reducing balance assumed; fees, taxes, rate changes and lender-specific rounding excluded.`, 'success');
+      } catch (e) { current = null; grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
-    root.append(field({ label: 'Loan amount', control: principal }),
+    const invalidate = () => { current = null; grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set('Inputs changed. Calculate again.', 'info'); };
+    [principal, rate, years, monthsOnly.querySelector('input')].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
+    root.append(h('p', { class: 'hint', text: 'Estimate for a fixed-rate loan with monthly reducing-balance interest. Actual lender schedules, fees, rate changes and rounding can differ.' }),
+      field({ label: 'Loan amount', control: principal }),
       h('div', { class: 'field-row' },
         field({ label: 'Annual interest rate %', control: rate }),
         field({ label: 'Tenure', control: years, hint: 'Years (or months if toggled below)' })),

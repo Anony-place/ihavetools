@@ -374,6 +374,14 @@ await domTest('emi-calculator: shows EMI and schedule', async () => {
   assert.match(app.textContent, /Monthly EMI/);
   assert.match(app.textContent, /Year-by-year balance/);
 });
+await domTest('EMI monthly detail remains interactive and inputs invalidate exports', async () => {
+  const app=await loadToolPage('emi-calculator','calculators');
+  const nums=app.querySelectorAll('input[type=number]'); nums[0].value='1200'; nums[1].value='0'; nums[2].value='2';
+  click(btnByLabel(app,'Calculate EMI')); assert.match(app.textContent,/Monthly amortization/);
+  const select=app.querySelector('select'); select.value='2'; fire(select,'change');
+  assert.match(app.textContent,/Month/); assert.match(app.textContent,/24/); assert.ok(btnByLabel(app,'Download monthly CSV'));
+  nums[1].value='12'; fire(nums[1],'input'); assert.doesNotMatch(app.textContent,/Monthly amortization|Monthly EMI/); assert.equal(btnByLabel(app,'Download monthly CSV'),undefined);
+});
 await domTest('sip-calculator: shows maturity and growth table', async () => {
   const app = await loadToolPage('sip-calculator', 'calculators');
   const nums = app.querySelectorAll('input[type=number]');

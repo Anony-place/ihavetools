@@ -11,6 +11,26 @@
 
 ---
 
+## EMI schedule accuracy and practical comparison — plan (2026-10-31)
+
+The EMI calculator leaves a previous result after edits, and forward recursion
+loses precision for long, high-rate loans (e.g. a 100-year schedule may show
+an unpaid balance at the end). [Calculator.net](https://www.calculator.net/loan-calculator.html)
+offers detailed amortization tables; this is a feature signal, not measured demand.
+
+1. Compute balances stably from the remaining payment term, including zero
+   interest, and provide monthly principal/interest breakdowns alongside yearly
+   summaries without rendering 1,200 rows at once. Add optional CSV export.
+2. Clear results and downloads after changing loan inputs; explain fixed-rate,
+   reducing-balance, rounding and excluded fees. Correct broad zero-rate and
+   lender-rule claims in the guide; do not treat the projection as loan advice.
+3. Test high-rate long-tenure numeric stability, full schedule conservation,
+   zero rate, partial years, downloads, invalidation and mobile accessibility.
+   Run full checks, audit and browser CI in one PR, merge only when green and
+   verify production; no ranking or traffic claims.
+
+---
+
 ## PPF projection accuracy and planning — plan (2026-10-31)
 
 The PPF calculator assumes an April lump sum, cannot model an existing balance

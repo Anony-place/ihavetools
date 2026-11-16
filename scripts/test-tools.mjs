@@ -685,6 +685,17 @@ await test('EMI standard formula', () => {
   const zero = calc.emiCalc(1200, 0, 12);
   assert.ok(Math.abs(zero.emi - 100) < 1e-9);
 });
+await test('EMI stable monthly schedules for extreme and partial terms', () => {
+  for (const [principal,rate,months] of [[1000000,100,1200],[1000000,40,1200],[100000,12,13],[1200,0,12],[1,1e-9,1200]]) {
+    const r=calc.emiCalc(principal,rate,months);
+    assert.equal(r.schedule.length,months); assert.equal(r.schedule.at(-1).balance,0); assert.equal(r.years.at(-1).balance,0);
+    assert.ok(Math.abs(r.schedule.reduce((s,x)=>s+x.principal,0)-principal)<principal*1e-9+1e-8);
+    assert.ok(Math.abs(r.schedule.reduce((s,x)=>s+x.interest,0)-r.totalInterest)<Math.max(1e-7,r.total*1e-9));
+    for (const row of r.schedule) assert.ok(row.balance>=0 && row.principal>=0 && row.interest>=0);
+  }
+  const zero=calc.emiCalc(1200,0,12); assert.ok(zero.schedule.every(x=>x.interest===0 && Math.abs(x.principal-100)<1e-8));
+  assert.equal(calc.emiCalc(100,1,13).years.length,2);
+});
 await test('SIP future value (annuity due)', () => {
   const r = calc.sipCalc({ monthly: 1000, annualRatePct: 12, years: 1 });
   // FV = P × [((1+i)^n − 1)/i] × (1+i), i = 0.01, n = 12
