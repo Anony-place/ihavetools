@@ -716,6 +716,22 @@ await test('PPF annual compounding', () => {
   assert.equal(r.overLimit, false);
   assert.equal(calc.ppfCalc({ yearlyDeposit: 200000 }).overLimit, true);
 });
+await test('PPF timing, opening balance, zero deposits and boundaries', () => {
+  const base={yearlyDeposit:12000, openingBalance:10000, annualRatePct:12, years:1};
+  const annual=calc.ppfCalc({...base,timing:'annual'});
+  const early=calc.ppfCalc({...base,timing:'monthly-early'});
+  const late=calc.ppfCalc({...base,timing:'monthly-late'});
+  assert.ok(Math.abs(annual.totalInterest-2640)<1e-8);
+  assert.ok(Math.abs(early.totalInterest-1980)<1e-8);
+  assert.ok(Math.abs(late.totalInterest-1860)<1e-8);
+  const next=calc.ppfCalc({...base,timing:'monthly-late',years:2});
+  assert.ok(Math.abs(next.schedule[1].interest - (late.maturity * .12 + 660)) < 1e-8);
+  const zero=calc.ppfCalc({yearlyDeposit:0,openingBalance:10000,annualRatePct:0,years:3});
+  assert.equal(zero.maturity,10000); assert.equal(zero.totalInterest,0); assert.equal(zero.belowMinimum,true);
+  assert.throws(()=>calc.ppfCalc({yearlyDeposit:0,openingBalance:0}),/deposit or an opening/);
+  assert.throws(()=>calc.ppfCalc({...base,openingBalance:-1}),/Opening balance/);
+  assert.throws(()=>calc.ppfCalc({...base,timing:'invalid'}),/timing/);
+});
 await test('FD quarterly compounding', () => {
   const r = calc.fdCalc({ principal: 100000, annualRatePct: 6, years: 5, perYear: 4 });
   const expected = 100000 * Math.pow(1 + 0.06 / 4, 20);

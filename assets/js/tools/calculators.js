@@ -155,21 +155,35 @@ export function sipCalc({ monthly, annualRatePct, years, stepUpPct = 0 }) {
   return { invested, maturity: balance, gain: balance - invested, months: n, schedule };
 }
 
-export function ppfCalc({ yearlyDeposit, annualRatePct = 7.1, years = 15 }) {
-  if (!Number.isFinite(yearlyDeposit) || yearlyDeposit <= 0 || yearlyDeposit > 1e12) throw new Error('Yearly deposit must be greater than zero and at most 1 trillion.');
+export function ppfCalc({ yearlyDeposit, annualRatePct = 7.1, years = 15, openingBalance = 0, timing = 'annual' }) {
+  if (!Number.isFinite(yearlyDeposit) || yearlyDeposit < 0 || yearlyDeposit > 1e12) throw new Error('Yearly deposit must be between zero and 1 trillion.');
+  if (!Number.isFinite(openingBalance) || openingBalance < 0 || openingBalance > 1e12) throw new Error('Opening balance must be between zero and 1 trillion.');
+  if (yearlyDeposit === 0 && openingBalance === 0) throw new Error('Enter a yearly deposit or an opening balance.');
   if (!Number.isInteger(years) || years < 1 || years > 50) throw new Error('Duration must be a whole number of years between 1 and 50.');
   if (!Number.isFinite(annualRatePct) || annualRatePct < 0 || annualRatePct > 100) throw new Error('Interest rate must be between 0% and 100%.');
+  if (!['annual', 'monthly-early', 'monthly-late'].includes(timing)) throw new Error('Choose a valid deposit timing.');
   const r = annualRatePct / 100;
-  let balance = 0;
+  let balance = openingBalance;
   const schedule = [];
   for (let y = 1; y <= years; y++) {
-    const opening = balance + yearlyDeposit; // deposit at the start of the year
-    const interest = opening * r;
-    balance = opening + interest;
+    let interest = 0;
+    if (timing === 'annual') {
+      balance += yearlyDeposit;
+      interest = balance * r;
+    } else {
+      const monthly = yearlyDeposit / 12;
+      for (let m = 0; m < 12; m++) {
+        if (timing === 'monthly-early') balance += monthly;
+        interest += balance * r / 12;
+        if (timing === 'monthly-late') balance += monthly;
+      }
+    }
+    balance += interest;
+    if (!Number.isFinite(balance)) throw new Error('Result is too large to calculate.');
     schedule.push({ year: y, deposit: yearlyDeposit, interest, balance });
   }
   const invested = yearlyDeposit * years;
-  return { invested, maturity: balance, totalInterest: balance - invested, schedule, overLimit: yearlyDeposit > 150000 };
+  return { invested, openingBalance, maturity: balance, totalInterest: balance - openingBalance - invested, schedule, overLimit: yearlyDeposit > 150000, belowMinimum: yearlyDeposit < 500 };
 }
 
 export function fdCalc({ principal, annualRatePct, years, perYear = 4 }) {
@@ -1008,34 +1022,40 @@ const defs = {
 
   'ppf-calculator'(root) {
     const yearly = input({ type: 'number', step: 'any', placeholder: 'e.g. 150000', value: '150000' });
+    const opening = input({ type: 'number', step: 'any', value: '0' });
     const rate = input({ type: 'number', step: 'any', placeholder: 'e.g. 7.1', value: '7.1' });
-    const years = input({ type: 'number', step: 'any', placeholder: 'e.g. 15', value: '15' });
+    const years = input({ type: 'number', step: '1', placeholder: 'e.g. 15', value: '15' });
+    const timing = select({ options: [{ v:'annual', t:'Annual lump sum by 5 April' }, { v:'monthly-early', t:'Monthly by the 5th' }, { v:'monthly-late', t:'Monthly after the 5th' }], value:'annual' });
     const grid = statsGrid();
     const status = statusLine('');
     const scheduleWrap = h('div', {});
     const run = () => {
       try {
-        const r = ppfCalc({ yearlyDeposit: num(yearly), annualRatePct: num(rate), years: num(years) });
+        const r = ppfCalc({ yearlyDeposit: num(yearly), openingBalance: num(opening), annualRatePct: num(rate), years: num(years), timing: timing.value });
         grid.set([
-          { label: 'Total deposited', value: money(r.invested) },
-          { label: 'Total interest', value: money(r.totalInterest), kind: 'warn' },
-          { label: 'Maturity value', value: money(r.maturity), kind: 'good' },
+          { label: 'Opening balance', value: money(r.openingBalance) },
+          { label: 'New deposits', value: money(r.invested) },
+          { label: 'Estimated interest', value: money(r.totalInterest), kind: 'warn' },
+          { label: 'Projected balance', value: money(r.maturity), kind: 'good' },
         ]);
         scheduleWrap.replaceChildren(
-          h('h3', { text: 'Year-by-year balance', style: 'margin:20px 0 10px' }),
+          h('h3', { text: 'Year-by-year projection', style: 'margin:20px 0 10px' }),
           table({ headers: ['Year', 'Deposit', 'Interest', 'Balance'], rows: r.schedule.map((y) => [`Y${y.year}`, money(y.deposit), money(y.interest), money(y.balance)]) }));
-        status.set(r.overLimit
-          ? 'Note: PPF rules allow at most ₹1,50,000 per financial year — amounts above that are shown for illustration only.'
-          : `Depositing ${money(num(yearly))} a year at ${fmtNumber(num(rate))}% for ${fmtNumber(num(years))} years. The PPF rate is set by the Government of India and can change every quarter.`, r.overLimit ? 'warning' : 'success');
+        const warning = r.overLimit ? 'Above ₹1,50,000 per financial year: illustrative only, not a valid deposit projection.' : r.belowMinimum ? 'Below ₹500 per financial year: account status and eligibility depend on PPF rules; zero deposits can be relevant for eligible extensions.' : '';
+        status.set(`${warning} Projection assumes a fixed rate and full April–March financial years; actual rates, transactions, eligibility and rounding can differ.`.trim(), warning ? 'warning' : 'success');
       } catch (e) { grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
+      h('p', { class: 'hint', text: 'Estimate only: assumes a balance at the start of April, equal deposits, one constant rate and annual interest credit. No withdrawals, loans, account opening date or actual maturity calculation. Check current rates and account rules.' }),
       h('div', { class: 'field-row' },
-        field({ label: 'Yearly deposit', control: yearly, hint: 'PPF limit: ₹1,50,000 per year' }),
-        field({ label: 'Interest rate % (p.a.)', control: rate }),
-        field({ label: 'Duration (years)', control: years, hint: 'PPF matures in 15 years, extendable by 5' })),
+        field({ label: 'Yearly deposit', control: yearly, hint: 'Total per financial year; monthly options split this evenly into 12.' }),
+        field({ label: 'Opening balance at start of April', control: opening }),
+        field({ label: 'Interest rate % (p.a.)', control: rate, hint: 'Assumed constant; verify the current rate.' }),
+        field({ label: 'Duration (years)', control: years, hint: 'Full financial years; not an actual maturity date.' }),
+        field({ label: 'Deposit timing', control: timing })),
       actionsRow(btn({ label: 'Calculate PPF', icon: 'bank', onClick: run })), grid, scheduleWrap, status);
-    shareState(root, [['yearly', yearly], ['rate', rate], ['years', years]], run);
+    clearOnEdit(root, status, grid, scheduleWrap);
+    shareState(root, [['yearly', yearly], ['opening', opening], ['rate', rate], ['years', years], ['timing', timing]], run);
   },
 
   'fd-calculator'(root) {
