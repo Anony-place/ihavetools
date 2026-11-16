@@ -577,6 +577,16 @@ await domTest('income tax: edits clear stale estimates and show limitations', as
   const salary = app.querySelector('input[type=number]'); salary.value = '2000000'; fire(salary, 'input');
   assert.doesNotMatch(app.textContent, /New regime tax|New regime — FY 2025-26 slabs/);
 });
+await domTest('income tax: new-regime deduction changes estimate and clears results', async () => {
+  const app = await loadToolPage('income-tax-calculator', 'calculators');
+  const nums = app.querySelectorAll('input[type=number]');
+  nums[0].value='1575000'; nums[1].value='0'; nums[2].value='0'; nums[3].value='300000';
+  click(btnByLabel(app, 'Calculate tax'));
+  assert.match(app.textContent, /New regime tax/);
+  assert.match(app.textContent, /1,200,000/);
+  nums[3].value='0'; fire(nums[3], 'input');
+  assert.doesNotMatch(app.textContent, /New regime tax/);
+});
 await domTest('income-tax-calculator: compares both regimes', async () => {
   const app = await loadToolPage('income-tax-calculator', 'calculators');
   const nums = app.querySelectorAll('input[type=number]');

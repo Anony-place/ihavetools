@@ -373,15 +373,15 @@ function taxWithSurcharge(income, slabs, regime) {
   return { tax, surcharge: Math.max(0, total - tax) };
 }
 /** India income tax, FY 2025-26 (AY 2026-27), both regimes. Estimates only. */
-export function incomeTaxIndia({ grossSalary = 0, otherIncome = 0, deductionsOld = 0, ageGroup = 'below60' } = {}) {
-  if ([grossSalary, otherIncome, deductionsOld].some(v => !Number.isFinite(v) || v < 0 || v > 1e12)) throw new Error('Each income and deduction must be between zero and 1 trillion.');
+export function incomeTaxIndia({ grossSalary = 0, otherIncome = 0, deductionsOld = 0, deductionsNew = 0, ageGroup = 'below60' } = {}) {
+  if ([grossSalary, otherIncome, deductionsOld, deductionsNew].some(v => !Number.isFinite(v) || v < 0 || v > 1e12)) throw new Error('Each income and deduction must be between zero and 1 trillion.');
   if (!['below60','60to79','80plus'].includes(ageGroup)) throw new Error('Choose a valid age group.');
   const gross = grossSalary + otherIncome;
   if (!(gross > 0)) throw new Error('Enter your salary or other income first.');
 
   // ── New regime (Section 115BAC, FY 2025-26 slabs) ──
   const stdNew = Math.min(grossSalary, 75000);
-  const taxableNew = Math.max(0, gross - stdNew);
+  const taxableNew = Math.max(0, gross - stdNew - deductionsNew);
   const newSlabs = [[400000, 0], [800000, 0.05], [1200000, 0.10], [1600000, 0.15], [2000000, 0.20], [2400000, 0.25], [Infinity, 0.30]];
   const n = slabTax(taxableNew, newSlabs);
   let taxNew = n.tax;
@@ -1072,6 +1072,7 @@ const defs = {
     const salary = input({ type: 'number', step: 'any', placeholder: 'e.g. 1500000', value: '1500000' });
     const other = input({ type: 'number', step: 'any', placeholder: 'e.g. 50000', value: '0' });
     const deductions = input({ type: 'number', step: 'any', placeholder: 'e.g. 150000', value: '150000' });
+    const deductionsNew = input({ type: 'number', step: 'any', placeholder: 'e.g. 50000', value: '0' });
     const age = select({ options: [{ v: 'below60', t: 'Below 60 years' }, { v: '60to79', t: '60–79 years (senior)' }, { v: '80plus', t: '80+ years (super senior)' }], value: 'below60' });
     const inr = (v) => `₹${money(v)}`;
     const grid = statsGrid();
@@ -1094,7 +1095,7 @@ const defs = {
       h('p', { class: 'hint', text: stdNote }));
     const run = () => {
       try {
-        const r = incomeTaxIndia({ grossSalary: num(salary), otherIncome: num(other), deductionsOld: num(deductions), ageGroup: age.value });
+        const r = incomeTaxIndia({ grossSalary: num(salary), otherIncome: num(other), deductionsOld: num(deductions), deductionsNew: num(deductionsNew), ageGroup: age.value });
         grid.set([
           { label: 'New regime tax', value: inr(r.newRegime.total), kind: r.saving > 0 && r.better === 'new' ? 'good' : undefined },
           { label: 'Old regime tax', value: inr(r.oldRegime.total), kind: r.saving > 0 && r.better === 'old' ? 'good' : undefined },
@@ -1102,7 +1103,7 @@ const defs = {
           { label: 'Saving', value: inr(r.saving), kind: 'good' },
         ]);
         detailWrap.replaceChildren(
-          breakdown('New regime — FY 2025-26 slabs', r.newRegime, 'Includes up to ₹75,000 standard deduction (limited to salary), 87A rebate up to ₹60,000 (taxable income up to ₹12 lakh) and marginal relief.'),
+          breakdown('New regime — FY 2025-26 slabs', r.newRegime, 'Includes up to ₹75,000 standard deduction (limited to salary), your eligible new-regime deductions, 87A rebate up to ₹60,000 (taxable income up to ₹12 lakh) and marginal relief.'),
           breakdown('Old regime', r.oldRegime, `Includes up to ₹50,000 standard deduction (limited to salary) plus your deductions of ${inr(num(deductions))}, and 87A rebate up to ₹12,500 (taxable income up to ₹5 lakh).`));
         status.set(r.saving < 0.5
           ? 'Both regimes give almost the same tax for these inputs.'
@@ -1110,15 +1111,16 @@ const defs = {
       } catch (e) { grid.replaceChildren(); detailWrap.replaceChildren(); status.set(e.message, 'error'); }
     };
     root.append(
-      h('p', { class: 'hint', text: 'Historical estimate for FY 2025–26 (AY 2026–27), resident individuals and ordinary slab-rate income only. This calculator does not model Tax Year 2026–27, capital gains or special-rate income. It does not check whether your deductions are eligible; verify rules before planning or filing.' }),
+      h('p', { class: 'hint', text: 'Estimate for FY 2025–26 (AY 2026–27), resident individuals and ordinary slab-rate income only. This calculator does not model Tax Year 2026–27, capital gains or special-rate income. It does not check whether your deductions are eligible; verify rules before planning or filing.' }),
       h('div', { class: 'field-row' },
         field({ label: 'Gross salary (yearly)', control: salary }),
         field({ label: 'Other income (yearly)', control: other, hint: 'Ordinary slab-rate taxable income only; exclude capital gains and other special-rate income.' }),
         field({ label: 'Deductions (old regime)', control: deductions, hint: 'Enter eligible deductions and exemptions only; do not include the standard deduction again. Limits and eligibility are not checked.' }),
+        field({ label: 'Deductions (new regime)', control: deductionsNew, hint: 'Only deductions eligible under the new regime, such as an eligible employer NPS contribution. Do not include the standard deduction. Eligibility and limits are not checked.' }),
         field({ label: 'Age', control: age })),
       actionsRow(btn({ label: 'Calculate tax (FY 2025-26)', icon: 'receipt', onClick: run })), grid, detailWrap, status);
     clearOnEdit(root, status, grid, detailWrap);
-    shareState(root, [['salary', salary], ['other', other], ['deductions', deductions], ['age', age]], run);
+    shareState(root, [['salary', salary], ['other', other], ['deductions', deductions], ['deductionsNew', deductionsNew], ['age', age]], run);
   },
 
   'rd-calculator'(root) {

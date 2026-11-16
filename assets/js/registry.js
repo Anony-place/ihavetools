@@ -1548,9 +1548,9 @@ export const tools = [
     keywords: ['income tax calculator', 'income tax india', 'tax calculator fy 2025-26', 'new regime vs old regime', '87a rebate', 'salary tax calculator'],
     aliases: ['tax calculator india', 'income tax slab calculator', 'old vs new regime calculator', 'salary tax calculator india'],
     popularity: 92, featured: true, added: '2026-10-31',
-    steps: 'Enter your yearly gross salary and any other income.|Enter your total deductions (80C, 80D, HRA, home-loan interest) — used only by the old regime.|Compare both regimes slab by slab and see which one is cheaper for you.',
+    steps: 'Enter your yearly gross salary and any other income.|Enter eligible deductions separately for each regime; do not include the standard deduction again.|Compare both regimes slab by slab and see which one is cheaper for you.',
     guide: [
-      { h: 'Which tax year does this cover?', p: 'This calculator is limited to FY 2025-26 (AY 2026-27), not the current Tax Year 2026-27. Tax rules and filing terminology can change; check official guidance or consult a qualified tax professional before using an estimate for planning or filing.' },
+      { h: 'Which tax year does this cover?', p: 'This calculator is limited to FY 2025-26 (AY 2026-27), not Tax Year 2026-27. Tax rules and filing terminology can change; check official guidance or consult a qualified tax professional before using an estimate for planning or filing.' },
       { h: 'New regime slabs — FY 2025-26 (Section 115BAC)',
         table: { head: ['Taxable income', 'Rate'], rows: [
           ['Up to ₹4,00,000', 'Nil'],
@@ -1569,13 +1569,13 @@ export const tools = [
           ['₹5–10 lakh', '20%'],
           ['Above ₹10 lakh', '30%'],
         ] },
-        p: 'The basic exemption rises to ₹3 lakh at age 60–79 and ₹5 lakh at 80+. The old regime also has a ₹50,000 standard deduction and an 87A rebate of ₹12,500 up to ₹5 lakh taxable income — but its real value is deductions: 80C (₹1.5 lakh), 80D, HRA and home-loan interest, none of which the new regime allows. A 4% health & education cess applies on the tax in both regimes, plus surcharge at higher incomes.' },
+        p: 'The basic exemption rises to ₹3 lakh at age 60–79 and ₹5 lakh at 80+. The old regime also has a ₹50,000 standard deduction and an 87A rebate of ₹12,500 up to ₹5 lakh taxable income — but its real value is deductions: 80C (₹1.5 lakh), 80D, HRA and home-loan interest, many of which are restricted under the new regime. Some deductions, such as qualifying employer NPS contributions, can be available under the new regime; eligibility and limits depend on the circumstances. A 4% health & education cess applies on the tax in both regimes, plus surcharge at higher incomes.' },
       { h: 'Worked example: ₹15 lakh salary, ₹1.5 lakh of deductions',
-        p: 'With a ₹15,00,000 gross salary and ₹1,50,000 claimed under deductions like 80C, this calculator gives: new regime ₹97,500 vs old regime ₹2,10,600 (both including cess) — the new regime saves ₹1,13,100 here. The old regime only starts winning when deductions (especially large HRA or home-loan interest) are big enough to offset its harsher slabs — which is exactly the break-even this comparison shows for your numbers.' },
+        p: 'With a ₹15,00,000 gross salary and ₹1,50,000 claimed under deductions like 80C, this calculator gives: new regime ₹97,500 vs old regime ₹2,10,600 (both including cess) — the new regime saves ₹1,13,100 here. The old regime only starts winning when deductions (especially large HRA or home-loan interest) are big enough to offset its harsher slabs. The tool compares the amounts entered; it does not calculate a break-even deduction threshold.' },
     ],
     faqs: [
       { q: 'How much salary is tax-free in FY 2025-26?', a: 'Under the new regime, taxable income up to ₹12 lakh pays zero tax thanks to the Section 87A rebate of up to ₹60,000. With the ₹75,000 standard deduction, a salaried person earning up to ₹12,75,000 pays no income tax (before cess nuances on other income types).' },
-      { q: 'Which is better: old or new regime?', a: 'The new regime wins for most people with modest deductions. The old regime can win when your deductions (80C, HRA, home-loan interest, 80D…) are large — this calculator compares both on your numbers so you do not have to guess.' },
+      { q: 'Which is better: old or new regime?', a: 'The result depends on your income and eligible deductions. The old regime can win when your deductions (80C, HRA, home-loan interest, 80D…) are large — this calculator compares both on your numbers so you do not have to guess.' },
       { q: 'Does this include capital gains or business income?', a: 'No. Capital gains and some other incomes are taxed at special rates and are outside this estimate. The tool assumes a resident individual and ordinary slab-rate income; it does not model special rates, all exemptions or individual filing conditions. Verify with a tax professional before filing.' },
     ] }),
   T({ id: 'jpg-to-png', name: 'JPG to PNG Converter', icon: 'image', engine: 'image', categories: ['image', 'converters'],
