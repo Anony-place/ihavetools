@@ -313,7 +313,7 @@ const defs = {
       field({ label: 'Expression', control: inp, hint: 'Supports + − × ÷ ^ ! %, parentheses, sqrt, cbrt, ln, log (base 10), log2, exp, abs, floor, ceil, round, sign, sin/cos/tan (+ inverses, hyperbolic), pi, e, tau, phi' }),
       h('div', { class: 'field-row', style: 'align-items:end;margin-bottom:8px' },
         field({ label: 'Angles', control: mode }),
-        field({ label: ' ', control: btn({ label: 'Calculate', icon: 'calculator', onClick: () => show(inp.value) }) })),
+        h('div', { class: 'field' }, btn({ label: 'Calculate', icon: 'calculator', onClick: () => show(inp.value) }))),
       grid, status,
       actionsRow(h('h3', { text: 'Keypad', style: 'margin:14px 0 4px' })),
       pad,
