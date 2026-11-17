@@ -11,6 +11,26 @@
 
 ---
 
+## New image-planning tools — consolidated growth batch (2026-10-31)
+
+Research: [aspect ratio example](https://trevorfox.com/tools/calculators/aspect-ratio/)
+and [pixel/print sizing example](https://pixeltoinch.com/convert-pixels-to-inches/)
+show two distinct workflows. These are competitor features, not proven demand
+or ranking potential. Our image resizer edits a file and the generic ratio tool
+solves a proportion; neither is a focused image-dimension planner.
+
+1. Add an aspect-ratio planner: simplify pixel dimensions and calculate a new
+   width or height using exact integer arithmetic with explicit pixel rounding.
+2. Add a pixels ↔ inches print-size converter using a user-specified PPI. Make
+   print assumptions, pixel rounding, CSS pixel differences and PPI/DPI limits
+   explicit; do not imply quality or screen-size guarantees.
+3. Publish useful distinct pages, worked examples, contextual inbound links,
+   canonical and sitemap entries; test invalid values, boundaries, mobile and
+   accessibility. One PR and production verification after CI. GSC demand and
+   post-release performance remain unmeasured.
+
+---
+
 ## Growth-first consolidation — plan (2026-10-31)
 
 The recent batches primarily improved existing tools and reliability, not new

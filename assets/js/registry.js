@@ -917,7 +917,7 @@ export const tools = [
       { q: 'What happens if a file fails?', a: 'The result table identifies each failure. The ZIP contains only successful files, with numbered filenames to avoid collisions. Keep the originals and verify the output before deleting anything.' },
     ] }),
   T({ id: 'image-resizer', name: 'Image Resizer', icon: 'crop', engine: 'image', categories: ['image'],
-    related: ['bulk-image-resizer','image-compressor','image-resizer','image-converter','image-cropper','image-metadata-viewer'].filter(id => id !== 'image-resizer'),
+    related: ['aspect-ratio-calculator','pixels-to-inches-converter','bulk-image-resizer','image-compressor','image-converter','image-cropper'],
     blurb: 'Resize images to exact pixels, keeping the aspect ratio.',
     description: 'Resize images to exact dimensions with aspect-ratio lock, percentage scaling and high-quality smoothing. Choose the output format too.',
     keywords: ['resize image', 'image size', 'dimensions', 'scale', 'pixels', 'thumbnail'],
@@ -1260,8 +1260,40 @@ export const tools = [
       {h:'Worked example',p:'For 1, 2, 2, 3, 5 the sum is 13, mean 2.6, median 2, mode 2 and range 4. The squared deviations sum to 9.2: population variance is 1.84 and sample variance is 2.3.'},
       {h:'Choose the right denominator',list:['Population variance divides by n when the data describe the whole population.', 'Sample variance divides by n − 1 when estimating spread from a sample; one observation is insufficient.', 'Results use floating-point arithmetic and are rounded for display. Do not infer outliers from the sorted list alone.']}
     ] }),
+  T({ id:'aspect-ratio-calculator', name:'Aspect Ratio Calculator', icon:'ratio', engine:'math', categories:['math','image'],
+    blurb:'Find an image aspect ratio and calculate proportional pixel dimensions.',
+    description:'Simplify image or video dimensions to an aspect ratio and calculate a new width or height while keeping proportions as closely as whole pixels allow.',
+    keywords:['aspect ratio calculator','image aspect ratio','resize aspect ratio','calculate width height ratio','video aspect ratio'], aliases:['image ratio calculator','aspect ratio dimensions'], popularity:75, added:'2026-10-31',
+    related:['image-resizer','image-cropper','pixels-to-inches-converter','ratio-calculator','bulk-image-resizer','image-metadata-viewer'],
+    steps:'Enter the original width and height in pixels.|Optionally choose a new width or height and enter its value.|Calculate the simplified ratio and proportional dimensions.',
+    guide:[
+      {h:'Find the aspect ratio',p:'Divide width and height by their greatest common divisor. For example, 1920 × 1080 reduces to 16:9. The first number refers to width and the second to height.'},
+      {h:'Calculate new dimensions',p:'For a new width, multiply it by the original height and divide by the original width. A 1920 × 1080 image at 1280 pixels wide becomes 1280 × 720. For a target height, reverse the calculation.'},
+      {h:'Pixel rounding and limits',list:['Enter whole positive pixel values up to 1 billion per side. The calculated side must also be within this range.', 'A fractional calculated side is rounded to the nearest whole pixel, with exact halves rounded up. This can make the actual ratio approximate.', 'This plans dimensions only: it does not resize or crop a file, guarantee print size or prevent quality loss when enlarging.']}
+    ], faqs:[
+      {q:'What is the aspect ratio of 1920 × 1080?',a:'The simplified ratio is 16:9.'},
+      {q:'Why does the new ratio sometimes differ slightly?',a:'Image dimensions must be whole pixels. If the ideal side is fractional, it is rounded to the nearest pixel and the ratio becomes approximate.'},
+      {q:'Does this tool resize my image?',a:'No. It calculates dimensions only. Use an image editor or the Image Resizer to actually change a file.'},
+      {q:'Does a 16:9 ratio mean a specific resolution?',a:'No. Many different dimensions share 16:9, including 1280 × 720 and 1920 × 1080.'}
+    ] }),
+  T({ id:'pixels-to-inches-converter', name:'Pixels to Inches Converter', icon:'repeat', engine:'math', categories:['converters','image'],
+    blurb:'Convert pixels and inches using a specified pixels-per-inch value.',
+    description:'Convert pixel dimensions to inches, centimetres and millimetres at an assumed PPI, or calculate whole pixels for an inch measurement.',
+    keywords:['pixels to inches','pixels to inches converter','inches to pixels','pixel print size calculator','ppi calculator'], aliases:['pixel to inch','px to inch','inches to pixels converter'], popularity:74, added:'2026-10-31',
+    related:['aspect-ratio-calculator','image-resizer','image-metadata-viewer','bulk-image-resizer','length-converter','image-cropper'],
+    steps:'Choose the conversion direction and enter a pixel or inch value.|Enter the intended pixels per inch (PPI).|Convert and check the physical units or rounded pixel count.',
+    guide:[
+      {h:'Pixels to physical size',p:'Divide pixels by the intended PPI. At 300 pixels per inch, 3000 pixels span 10 inches, or 25.4 centimetres. The same pixels at 150 PPI span 20 inches.'},
+      {h:'Physical size to pixels',p:'Multiply the size in inches by PPI. A 10-inch edge at 300 PPI needs 3000 pixels. This calculator rounds a fractional pixel count to the nearest whole pixel and shows the unrounded value.'},
+      {h:'Understand the assumptions',list:['PPI is image pixels per inch; printer DPI describes ink dots per inch and is not necessarily the same.', 'Physical size depends on print settings, scaling and device density. CSS pixels are reference units and do not necessarily match physical screen pixels.', 'A PPI choice is not a promise of visual quality. Displayed values use floating-point arithmetic and are rounded.', 'Enter 1–1 billion whole pixels, or positive inches up to 1 billion; PPI must be positive and at most 1 million. Decimal inputs support up to six fractional places.']}
+    ], faqs:[
+      {q:'How many inches is 3000 pixels at 300 PPI?',a:'3000 ÷ 300 is 10 inches, equivalent to 25.4 centimetres.'},
+      {q:'Is 300 PPI always required?',a:'No. Suitable resolution depends on print size, content, viewing distance and printer requirements. Check with the print provider.'},
+      {q:'Are PPI and DPI the same?',a:'No. PPI describes image pixels per inch; DPI describes printer dots per inch. They are often used loosely but are different quantities.'},
+      {q:'Will this tell me the physical size on any screen?',a:'No. Screen scaling, CSS reference pixels and physical device density can differ from the entered PPI.'}
+    ] }),
   T({ id: 'ratio-calculator', name: 'Ratio Calculator', icon: 'ratio', engine: 'math', categories: ['math'],
-    related:['average-calculator','weighted-average-calculator','gcd-lcm-calculator','percentage-calculator','fraction-calculator','percentage-change'],
+    related:['aspect-ratio-calculator','decimal-to-fraction','average-calculator','gcd-lcm-calculator','percentage-calculator','fraction-calculator'],
     blurb: 'Simplify ratios and solve for the missing value.', description: 'Reduce positive decimal ratios exactly and solve proportions like a:b = c:x, with decimal results.',
     keywords: ['ratio', 'proportion', 'simplify ratio', 'equivalent ratio', 'scale'], aliases: ['simplify ratio', 'proportion calculator', 'aspect ratio math'], popularity: 66, added: '2026-06-13',
     steps: 'Enter positive a and b.|Optionally enter c in a:b = c:x.|Read the simplified ratio and the calculated x.',

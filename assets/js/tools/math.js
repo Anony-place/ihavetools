@@ -1,5 +1,5 @@
 // Math tools — bounded inputs and explicit calculation conventions.
-import { h, field, input, textarea, btn, actionsRow, statusLine, statsGrid, table, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, btn, actionsRow, statusLine, statsGrid, table, mountTool } from '../ui.js';
 
 const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 const display = (n) => n !== 0 && (Math.abs(n) < 1e-7 || Math.abs(n) >= 1e15)
@@ -89,7 +89,68 @@ export function weightedAverage(raw) {
   return { pairs, weightedSum, totalWeight, average: weightedSum / totalWeight };
 }
 
+function pixelInteger(value, label) {
+  const text = String(value).trim();
+  if (!/^\d{1,10}$/.test(text) || Number(text) < 1 || Number(text) > 1000000000) throw new Error(`${label} must be a whole number from 1 to 1,000,000,000.`);
+  return Number(text);
+}
+export function aspectDimensions(width, height, target = '', axis = 'width') {
+  const w = pixelInteger(width, 'Width'), h = pixelInteger(height, 'Height'), g = gcd2(w, h);
+  if (!['width','height'].includes(axis)) throw new Error('Choose a valid target dimension.');
+  let scaled = null;
+  if (String(target).trim() !== '') {
+    const t = pixelInteger(target, 'Target dimension');
+    const numerator = BigInt(t) * BigInt(axis === 'width' ? h : w);
+    const denominator = BigInt(axis === 'width' ? w : h);
+    const rounded = (numerator * 2n + denominator) / (2n * denominator);
+    if (rounded < 1n || rounded > 1000000000n) throw new Error('The rounded dimension is outside the supported 1–1,000,000,000 pixel range.');
+    scaled = {width: axis === 'width' ? t : Number(rounded), height: axis === 'height' ? t : Number(rounded), rounded: numerator % denominator !== 0n};
+  }
+  return {ratio:`${w / g}:${h / g}`, scaled};
+}
+function positiveDecimal(value, label, max) {
+  const text = String(value).trim();
+  if (text.length > 24 || !/^(?:\d+(?:\.\d{1,6})?|\.\d{1,6})$/.test(text)) throw new Error(`${label} must be a positive decimal with at most six decimal places.`);
+  const n = Number(text);
+  if (!(n > 0 && n <= max)) throw new Error(`${label} must be greater than zero and at most ${max.toLocaleString('en-US')}.`);
+  return n;
+}
+export function pixelsInches(value, ppi, direction) {
+  const density = positiveDecimal(ppi, 'PPI', 1000000);
+  if (direction === 'pixels') {
+    const pixels = pixelInteger(value, 'Pixels');
+    return {pixels, inches:pixels / density};
+  }
+  if (direction === 'inches') {
+    const inches = positiveDecimal(value, 'Inches', 1000000000), exact = inches * density;
+    const pixels = Math.round(exact);
+    if (pixels < 1) throw new Error('The rounded result is less than one pixel.');
+    return {pixels, inches, unroundedPixels:exact};
+  }
+  throw new Error('Choose a conversion direction.');
+}
+
 const defs = {
+  'aspect-ratio-calculator'(root) {
+    const width=input({type:'number',step:1,min:1,max:1000000000,value:'1920'}), height=input({type:'number',step:1,min:1,max:1000000000,value:'1080'}), target=input({type:'number',step:1,min:1,max:1000000000,placeholder:'Optional'});
+    const axis=select({options:[{v:'width',t:'New width'},{v:'height',t:'New height'}],value:'width'}), grid=statsGrid(), status=statusLine('');
+    const run=()=>{try { const r=aspectDimensions(width.value,height.value,target.value,axis.value);
+      grid.set([{label:'Simplified aspect ratio',value:r.ratio,kind:'good'}, ...(r.scaled ? [{label:'New dimensions (pixels)',value:`${r.scaled.width} × ${r.scaled.height}`}] : [])]);
+      status.set(r.scaled?.rounded ? 'The missing dimension is rounded to the nearest whole pixel; the resulting ratio is approximate.' : 'The ratio is exact for the entered whole-pixel dimensions.', 'info');
+    }catch(e){grid.replaceChildren();status.set(e.message,'error');}};
+    const invalidate=()=>{grid.replaceChildren();status.set('Input changed. Calculate again.','info');}; root.addEventListener('input',invalidate);root.addEventListener('change',invalidate);
+    root.append(h('div',{class:'field-row'},field({label:'Original width (pixels)',control:width}),field({label:'Original height (pixels)',control:height}),field({label:'Scale using',control:axis}),field({label:'New dimension (pixels, optional)',control:target})),actionsRow(btn({label:'Calculate aspect ratio',icon:'ratio',onClick:run})),grid,status);
+  },
+  'pixels-to-inches-converter'(root) {
+    const direction=select({options:[{v:'pixels',t:'Pixels to inches'},{v:'inches',t:'Inches to pixels'}],value:'pixels'});
+    const value=input({type:'text',inputmode:'decimal',value:'3000'}), ppi=input({type:'text',inputmode:'decimal',value:'300'}),grid=statsGrid(),status=statusLine('');
+    const run=()=>{try { const r=pixelsInches(value.value,ppi.value,direction.value);
+      grid.set([{label:'Pixels (whole)',value:display(r.pixels),kind:'good'},{label:'Inches',value:display(r.inches)},{label:'Centimetres',value:display(r.inches*2.54)},{label:'Millimetres',value:display(r.inches*25.4)}, ...(direction.value==='inches' ? [{label:'Pixels before rounding',value:display(r.unroundedPixels)}] : [])]);
+      status.set('Uses the entered pixels per inch; results are rounded for display. Print and screen settings can change the actual size.', 'info');
+    }catch(e){grid.replaceChildren();status.set(e.message,'error');}};
+    const invalidate=()=>{grid.replaceChildren();status.set('Input changed. Convert again.','info');};root.addEventListener('input',invalidate);root.addEventListener('change',invalidate);
+    root.append(h('div',{class:'field-row'},field({label:'Conversion direction',control:direction}),field({label:'Value (pixels or inches)',control:value}),field({label:'Pixels per inch (PPI)',control:ppi})),h('p',{class:'hint',text:'Enter whole pixels or a positive inch value, depending on direction. PPI is an assumed pixel density, not a guarantee of print quality or screen size.'}),actionsRow(btn({label:'Convert pixels and inches',icon:'repeat',onClick:run})),grid,status);
+  },
   'average-calculator'(root) {
     const inp = textarea({ rows: 4, placeholder: 'e.g. 1, 2, 2, 3, 5' }), grid = statsGrid(), status = statusLine(''), detail = h('div', {});
     const run = () => { try {

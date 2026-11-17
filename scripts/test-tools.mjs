@@ -1260,6 +1260,18 @@ await test('robots crawl tester: specific group and longest pattern win', () => 
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf').allowed, false, 'wildcard plus end anchor matches a PDF path');
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf/extra').allowed, true, 'the $ anchor prevents matching a longer path');
 });
+await test('aspect ratio and print sizing are accurate and bounded', () => {
+ assert.deepEqual(math.aspectDimensions('1920','1080','1280','width'),{ratio:'16:9',scaled:{width:1280,height:720,rounded:false}});
+ assert.deepEqual(math.aspectDimensions('3','2','2','width').scaled,{width:2,height:1,rounded:true});
+ assert.deepEqual(math.aspectDimensions('1920','1080','720','height').scaled,{width:1280,height:720,rounded:false});
+ assert.throws(()=>math.aspectDimensions('100','1','1','width'),/outside/);
+ for(const value of ['0','-1','1.2','1000000001','']) assert.throws(()=>math.aspectDimensions(value,'1'));
+ assert.deepEqual(math.pixelsInches('3000','300','pixels'),{pixels:3000,inches:10});
+ assert.deepEqual(math.pixelsInches('10','300','inches'),{pixels:3000,inches:10,unroundedPixels:3000});
+ assert.equal(math.pixelsInches('2.5','1','inches').pixels,3); assert.throws(()=>math.pixelsInches('0.1','1','inches'),/less than one/);
+ for(const [v,p,d] of [['1','0','pixels'],['1.2','300','pixels'],['10','-1','inches'],['1','300','x']]) assert.throws(()=>math.pixelsInches(v,p,d));
+ for(const id of ['aspect-ratio-calculator','pixels-to-inches-converter']) { const tool=registry.getTool(id); assert.ok(tool.guide.length>=3 && tool.faqs.length>=4); assert.ok(registry.searchTools(tool.name,20).some(x=>x.id===id)); }
+});
 await test('decimal and fraction converter uses exact bounded arithmetic', () => {
  assert.deepEqual(stu.decimalToFraction('0.125'),{numerator:'1',denominator:'8',originalNumerator:'125',originalDenominator:'1000'});
  assert.equal(stu.decimalToFraction('-2.75').numerator,'-11'); assert.equal(stu.decimalToFraction('-0.000').denominator,'1');
@@ -2244,8 +2256,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 134);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 112);
+  assert.equal(registry.tools.length, 136);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 114);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
