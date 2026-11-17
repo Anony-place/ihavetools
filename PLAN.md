@@ -11,6 +11,22 @@
 
 ---
 
+## Robots.txt simulator and sitemap audit — plan (2026-10-31)
+
+Google's robots specification says trailing wildcards are ignored, URL fragments
+are not part of the request path, and multiple absolute sitemap declarations are
+supported. The local tester remains an approximation, not a crawler guarantee.
+
+1. Fix misleading simulator precedence for trailing wildcards and handle URL
+   fragments consistently; reject non-HTTP test URLs rather than treating them as paths.
+2. Support multiple sitemap declarations without breaking the existing single-URL
+   API and interface. Validate limits and clear invalid output safely.
+3. Cover precedence, fragments, URL validation, multiple sitemaps, stale output,
+   real-browser accessibility and full CI before merge and production verification.
+   Source: https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec
+
+---
+
 ## Business-day range and deadline reliability — plan (2026-10-31)
 
 The calculator artificially rejects valid long ranges and offsets within its

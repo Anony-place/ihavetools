@@ -1260,6 +1260,21 @@ await test('robots crawl tester: specific group and longest pattern win', () => 
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf').allowed, false, 'wildcard plus end anchor matches a PDF path');
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf/extra').allowed, true, 'the $ anchor prevents matching a longer path');
 });
+await test('robots tester ignores trailing stars and URL fragments', () => {
+ const rules=[{agent:'*', disallow:['/fish*'], allow:['/fish']}];
+ assert.equal(seo.testRobotsAccess(rules,'ExampleBot','/fish/').allowed,true);
+ assert.equal(seo.testRobotsAccess([{agent:'*',disallow:['/a$']}],'ExampleBot','/a#section').allowed,false);
+ assert.equal(seo.testRobotsAccess([{agent:'*',disallow:['/a$']}],'ExampleBot','https://example.com/a#section').allowed,false);
+ assert.equal(seo.testRobotsAccess([{agent:'*',disallow:['/a$']}],'ExampleBot','/a?q=1#section').allowed,true);
+ for(const url of ['ftp://example.com/a','https://','https://u:p@example.com/']) assert.throws(()=>seo.testRobotsAccess([], 'x',url), /HTTP/);
+});
+await test('robots builder supports and validates multiple sitemap URLs', () => {
+ const rules=[{agent:'*',disallow:[],allow:[]}];
+ const text=seo.buildRobots(rules,{sitemap:'https://example.com/sitemap.xml',sitemaps:['https://example.com/posts.xml','https://cdn.example.com/index.xml']});
+ assert.deepEqual(text.split('\n').filter(s=>s.startsWith('Sitemap:')), ['Sitemap: https://example.com/sitemap.xml','Sitemap: https://example.com/posts.xml','Sitemap: https://cdn.example.com/index.xml']);
+ assert.throws(()=>seo.buildRobots(rules,{sitemaps:['javascript:alert(1)']}),/HTTP/);
+ assert.throws(()=>seo.buildRobots(rules,{sitemaps:Array(21).fill('https://example.com/a')}),/20/);
+});
 await test('sitemap row dates override shared fallback and validate strictly', () => {
  const xml=seo.buildSitemapFromLines('https://a.test/a\t2024-02-29\rhttps://a.test/b\r\nhttps://a.test/c\t2025-01-01',{lastmod:'2023-01-01'});
  assert.match(xml, /<loc>https:\/\/a.test\/a<\/loc>\n    <lastmod>2024-02-29<\/lastmod>/);
