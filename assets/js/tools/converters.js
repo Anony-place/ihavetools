@@ -203,7 +203,7 @@ function converterUI(root, setId, defaults) {
   [value, from, to].forEach((el) => el.addEventListener('input', render));
   [from, to].forEach((el) => el.addEventListener('change', render));
   root.append(
-    ...(setId === 'time' ? [h('p', {class:'hint'}, 'Months and years use Gregorian averages; a day is 24 hours. Actual calendar months and local daylight-saving days vary. ', h('a', {href:'/tools/date-add-calculator/', text:'Add calendar dates'}), ' or ', h('a', {href:'/tools/time-duration-calculator/', text:'add time durations'}), ' instead.')] : []),
+    ...(setId === 'time' ? [h('p', {class:'hint'}, 'Months and years use Gregorian averages; a day is 24 hours. Actual calendar months and local daylight-saving days vary. ', h('a', {href:'/tools/date-add-calculator/', text:'Add calendar dates', style:'text-decoration:underline'}), ' or ', h('a', {href:'/tools/time-duration-calculator/', text:'add time durations', style:'text-decoration:underline'}), ' instead.')] : []),
     field({ label: 'Value', control: value, hint: setId === 'fuel' ? 'Positive values only; finite magnitude 1e-100 to 1e100.' : 'Finite values: magnitude 1e-100 to 1e100, or zero.' }),
     h('div', { class: 'field-row', style: 'align-items:end' },
       field({ label: 'From', control: from }),
