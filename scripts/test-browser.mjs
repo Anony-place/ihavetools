@@ -496,6 +496,12 @@ try {
   await page.getByRole('button',{name:'Count working days'}).click();
   assert.match(await page.locator('#tool-app').innerText(),/1\s*Working days/i);
   assert.match(await page.locator('#tool-app .status-line').innerText(),/end date is excluded/);
+  await page.getByRole('button',{name:'Add / subtract working days'}).click();
+  const deadline = await page.locator('#tool-app .stat-card').first().innerText();
+  const iso = deadline.match(/\d{4}-\d{2}-\d{2}/)[0];
+  await page.getByRole('button',{name:'Use deadline as start date'}).click();
+  assert.equal(await page.getByLabel('Start date',{exact:true}).inputValue(),iso);
+  assert.equal(await page.getByRole('button',{name:'Copy deadline ISO date'}).isDisabled(),true);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'business day custom mobile accessibility');
   await go('timestamp-converter');

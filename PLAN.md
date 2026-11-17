@@ -11,6 +11,22 @@
 
 ---
 
+## Business-day range and deadline reliability — plan (2026-10-31)
+
+The calculator artificially rejects valid long ranges and offsets within its
+1900–2100 date limits, especially when only one weekday is working. Audit the
+calendar arithmetic rather than treating competitor features or unverified
+future-dated exports as evidence of demand.
+
+1. Count whole weeks plus remaining days and unique working-day holidays,
+   supporting the full documented date range without unbounded iteration.
+2. Remove the misleading offset step cap while retaining date and input bounds;
+   add copy/reuse deadline controls and explain counting conventions.
+3. Test long ranges and sparse working weeks, boundaries, holidays, invalidation,
+   mobile accessibility, full checks and CI before merge and production verify.
+
+---
+
 ## Calendar date arithmetic and reuse — plan (2026-10-31)
 
 [timeanddate](https://www.timeanddate.com/date/dateadd.html) supports combined

@@ -2525,6 +2525,16 @@ await test('business days honor inclusive range, weekends and manually supplied 
   assert.throws(() => dt.addBusinessDays('2026-11-06',1.5), /whole number/);
   assert.throws(() => dt.addBusinessDays('2100-12-31',1,'none'), /outside/);
 });
+await test('business day full range and sparse workweeks remain bounded and accurate', () => {
+  assert.deepEqual(dt.countBusinessDays('1900-01-01','2100-12-31','none'), {working:73414, nonWorking:0, calendarDays:73414});
+  assert.deepEqual(dt.countBusinessDays('1900-01-01','2100-12-31',[0,1,2,3,4,5,6]), {working:0, nonWorking:73414, calendarDays:73414});
+  const sparse = [0,2,3,4,5,6];
+  assert.equal(dt.addBusinessDays('1900-01-01',6000,sparse),'2014-12-29');
+  assert.equal(dt.addBusinessDays('2014-12-29',-6000,sparse),'1900-01-01');
+  assert.equal(dt.countBusinessDays('1900-01-01','2014-12-29',sparse,'',false).working,6000);
+  assert.throws(()=>dt.addBusinessDays('1900-01-01',-1,sparse),/outside/);
+  assert.throws(()=>dt.countBusinessDays('1900-01-01','2100-12-31','none','',1),/include/);
+});
 await test('local date output is not shifted by UTC offset', async () => {
   const { execFileSync } = await import('node:child_process');
   for (const tz of ['Asia/Kolkata', 'America/Los_Angeles']) {
