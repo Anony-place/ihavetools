@@ -1177,7 +1177,17 @@ export const tools = [
     keywords: ['scientific calculator', 'trigonometry', 'logarithm', 'sqrt', 'sin cos tan', 'expression'],
     aliases: ['calculator', 'math calculator', 'trig calculator'],
     popularity: 84, added: '2026-06-12',
-    steps: 'Type an expression or use the keypad.|Toggle DEG/RAD for trigonometric functions.|Press = (or Enter) to evaluate; review your history.' }),
+    steps: 'Type an expression or use the keypad.|Select DEG or RAD for trigonometric functions.|Press Calculate or Enter to evaluate; review your history.',
+    faqs: [
+      {q:'How are powers and negative signs evaluated?',a:'Powers are evaluated before a leading minus: -2^2 is -4, while (-2)^2 is 4. Powers associate right to left: 2^3^2 is 512.'},
+      {q:'What do DEG and RAD change?',a:'They set the units for sin, cos and tan inputs and inverse-trigonometric outputs. Hyperbolic functions do not use angle units.'},
+      {q:'Why is tan(90) undefined?',a:'In degree mode, exact odd multiples of 90 degrees within the safe integer magnitude are rejected as undefined. Nearby values may be very large; floating-point results are approximate, especially near poles and for very large angles.'},
+      {q:'Are results exact?',a:'No. Calculations use JavaScript floating-point numbers. Results display 12 significant digits; history reuse inserts the underlying number rather than the rounded display.'}
+    ], guide: [
+      {h:'Enter expressions',p:'Use explicit operators and parentheses, for example 2*(3+4), 2^3^2 or sqrt(25). The % operator is remainder, not a percentage key. Factorial accepts whole numbers from 0 to 170.'},
+      {h:'Choose the angle unit',p:'In DEG mode sin(30) is approximately 0.5. In RAD mode sin(pi/2) is approximately 1. Inverse trigonometric results follow the selected mode; hyperbolic functions do not.'},
+      {h:'Precision and history',p:'Binary floating-point calculations can round and produce tiny residuals; the displayed result is rounded to 12 significant digits. History shows the mode used and can reuse the underlying computed number. Clear history removes it from this page.'}
+    ] }),
   T({ id: 'fraction-calculator', name: 'Fraction Calculator', icon: 'divide', engine: 'student', categories: ['student', 'math'],
     related: ["gcd-lcm-calculator","cgpa-calculator","scientific-calculator","percentage-calculator","average-calculator","weighted-average-calculator"],
     blurb: 'Add, subtract, multiply and divide fractions — simplified.',
@@ -1185,7 +1195,17 @@ export const tools = [
     keywords: ['fraction', 'mixed number', 'simplify', 'lcd', 'numerator', 'denominator'],
     aliases: ['fraction math', 'add fractions', 'simplify fractions'],
     popularity: 70, added: '2026-06-12',
-    steps: 'Enter two fractions (mixed numbers allowed, e.g. 2 1/2).|Choose the operation.|Read the simplified result, mixed form, decimal and working.' }),
+    steps: 'Enter two fractions (mixed numbers allowed, e.g. 2 1/2).|Choose the operation.|Read the simplified result, mixed form, decimal and working.',
+    faqs: [
+      {q:'How do I enter a negative mixed number?',a:'Write -2 1/2 for negative two and one half. The minus sign applies to the whole mixed number.'},
+      {q:'Why is the decimal approximate?',a:'A fraction can have a repeating decimal, and JavaScript uses binary floating-point. The decimal display is rounded to eight significant digits; the simplified fraction is exact within the stated limits.'},
+      {q:'Can I divide by zero?',a:'No. Denominators cannot be zero and division by a zero fraction is undefined.'},
+      {q:'What are the size limits?',a:'Each parsed numerator and denominator and the simplified result must fit the JavaScript safe integer range. Intermediate arithmetic uses exact integers; each input is limited to 2,048 characters.'}
+    ], guide: [
+      {h:'Add and subtract',p:'Enter fractions such as 1/2 and 1/3. For addition the calculator forms 5/6, then simplifies. Subtraction can produce a negative result.'},
+      {h:'Multiply and divide',p:'Multiplication multiplies numerators and denominators. Division multiplies by the reciprocal of the second fraction, which must not be zero. For example 3/4 ÷ 1/2 is 3/2 or 1 1/2.'},
+      {h:'Exact fraction, rounded decimal',p:'Intermediate integer arithmetic is exact and results are reduced before checking the safe integer limit. The displayed decimal is approximate. Negative mixed numbers apply the sign to the whole value.'}
+    ] }),
   T({ id: 'time-duration-calculator', name: 'Time Duration Calculator', icon: 'hourglass', engine: 'student', categories: ['student', 'datetime'],
     related: ["iso-week-calculator","business-day-calculator","work-hours-calculator","cgpa-calculator","attendance-calculator","electricity-cost-calculator"],
     blurb: 'Add or subtract durations like 2h 45m + 30m.',

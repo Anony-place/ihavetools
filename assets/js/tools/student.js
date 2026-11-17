@@ -103,6 +103,8 @@ export function evaluate(input, { degrees = false, factorial = true } = {}) {
         const arg = parseExpr();
         if (peek() !== ')') throw new Error(`Missing “)” after the ${name}(...) argument.`);
         pos++;
+        // Reject exact degree-mode poles, but do not reject nearby finite angles.
+        if (name === 'tan' && degrees && Number.isFinite(arg) && Math.abs(arg) <= Number.MAX_SAFE_INTEGER && Math.abs(arg % 180) === 90) throw new Error('Tangent is undefined at odd multiples of 90 degrees.');
         const trigIn = ['sin', 'cos', 'tan'].includes(name);
         const trigOut = ['asin', 'acos', 'atan'].includes(name);
         let r = FUNCS1[name](trigIn ? arg * D2R : arg);
@@ -130,6 +132,7 @@ function safeFraction(n, d) {
   return { n, d };
 }
 export function parseFraction(text) {
+  if (String(text).length > 2048) throw new Error('Fraction input is limited to 2,048 characters.');
   const s = String(text).trim().replace(/\s+/g, ' ');
   let m = /^(-?)(\d+)\s+(\d+)\/(\d+)$/.exec(s); // mixed: -2 1/2
   if (m) {
@@ -152,37 +155,34 @@ export function parseFraction(text) {
   if (/^-?\d+$/.test(s)) return safeFraction(Number(s), 1);
   throw new Error(`“${text}” is not a fraction. Write 3/4 or a mixed number like 2 1/2.`);
 }
-function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a; }
-function simplify({ n, d }) {
-  if (d < 0) { n = -n; d = -d; }
-  const g = gcd(n, d) || 1;
-  return { n: n / g, d: d / g };
-}
 export function fractionCalc(aText, op, bText) {
   const a = parseFraction(aText), b = parseFraction(bText);
-  let r;
+  const an = BigInt(a.n), ad = BigInt(a.d), bn = BigInt(b.n), bd = BigInt(b.d);
+  let n, d;
   switch (op) {
-    case '+':
-    case '-': {
-      const left = a.n * b.d, right = b.n * a.d;
-      if (!Number.isSafeInteger(left) || !Number.isSafeInteger(right)) throw new Error('Fraction is too large for exact integer arithmetic. Use smaller numbers.');
-      r = { n: op === '+' ? left + right : left - right, d: a.d * b.d }; break;
-    }
-    case '*': r = { n: a.n * b.n, d: a.d * b.d }; break;
+    case '+': n = an * bd + bn * ad; d = ad * bd; break;
+    case '-': n = an * bd - bn * ad; d = ad * bd; break;
+    case '*': n = an * bn; d = ad * bd; break;
     case '/':
-      if (b.n === 0) throw new Error('Division by the zero fraction is undefined.');
-      r = { n: a.n * b.d, d: a.d * b.n };
-      break;
+      if (bn === 0n) throw new Error('Division by the zero fraction is undefined.');
+      n = an * bd; d = ad * bn; break;
     default: throw new Error('Unknown operation.');
   }
-  safeFraction(r.n, r.d);
-  const simp = simplify(r);
+  const unsimplified = `${n}/${d}`;
+  if (d < 0n) { n = -n; d = -d; }
+  let x = n < 0n ? -n : n, y = d;
+  while (y) [x, y] = [y, x % y];
+  const divisor = x || 1n;
+  n /= divisor; d /= divisor;
+  const limit = BigInt(Number.MAX_SAFE_INTEGER);
+  if (n > limit || n < -limit || d > limit) throw new Error('Fraction is too large for exact integer arithmetic. Use smaller numbers.');
+  const simp = { n: Number(n), d: Number(d) };
   const mixed = (() => {
     const whole = Math.trunc(simp.n / simp.d);
     const rem = Math.abs(simp.n % simp.d);
     return whole !== 0 && rem !== 0 ? `${whole} ${rem}/${simp.d}` : whole !== 0 ? `${whole}` : null;
   })();
-  return { result: `${simp.n}/${simp.d}`, mixed, decimal: simp.n / simp.d, unsimplified: `${r.n}/${r.d}` };
+  return { result: `${simp.n}/${simp.d}`, mixed, decimal: simp.n / simp.d, unsimplified };
 }
 
 /* ═══════════════════════════ Time durations ═══════════════════════════ */
@@ -291,11 +291,11 @@ const defs = {
         const r = evaluate(expr, { degrees });
         grid.set([{ label: 'Result', value: String(Number(r.toPrecision(12))), kind: 'good' }]);
         status.set('Evaluated ✓', 'success');
-        historyData.unshift({ expr, res: Number(r.toPrecision(12)) });
+        historyData.unshift({ expr, res: r, degrees });
         if (historyData.length > 30) historyData.pop();
         history.replaceChildren(...historyData.map((hh) => h('li', {},
-          h('span', { class: 'h-expr', text: hh.expr }),
-          h('button', { type: 'button', class: 'h-res', style: 'background:none;border:0;cursor:pointer;color:var(--primary);font:inherit;font-weight:700', text: `= ${hh.res}`, title: 'Reuse this result', onclick: () => { inp.value = String(hh.res); grid.replaceChildren(); status.set('History value loaded. Calculate again.', 'info'); inp.focus(); } }))));
+          h('span', { class: 'h-expr', text: `${hh.expr} (${hh.degrees ? 'DEG' : 'RAD'})` }),
+          h('button', { type: 'button', class: 'h-res', style: 'background:none;border:0;cursor:pointer;color:var(--primary);font:inherit;font-weight:700', text: `= ${Number(hh.res.toPrecision(12))}`, title: 'Reuse the full-precision result', onclick: () => { inp.value = String(hh.res); grid.replaceChildren(); status.set('History value loaded. Calculate again.', 'info'); inp.focus(); } }))));
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
     const PAD = [
@@ -313,11 +313,13 @@ const defs = {
       field({ label: 'Expression', control: inp, hint: 'Supports + − × ÷ ^ ! %, parentheses, sqrt, cbrt, ln, log (base 10), log2, exp, abs, floor, ceil, round, sign, sin/cos/tan (+ inverses, hyperbolic), pi, e, tau, phi' }),
       h('div', { class: 'field-row', style: 'align-items:end;margin-bottom:8px' },
         field({ label: 'Angles', control: mode }),
-        field({ label: ' ', control: btn({ label: 'Calculate', icon: 'calculator', onClick: () => show(inp.value) }) })),
+        h('div', { class: 'field' }, btn({ label: 'Calculate', icon: 'calculator', onClick: () => show(inp.value) }))),
       grid, status,
       actionsRow(h('h3', { text: 'Keypad', style: 'margin:14px 0 4px' })),
       pad,
       h('h3', { text: 'History', style: 'margin:20px 0 6px' }),
+      h('p', { class: 'hint', text: 'Results are displayed to 12 significant digits; history reuse inserts the full JavaScript number. Calculations use floating-point arithmetic.' }),
+      actionsRow(btn({ label: 'Clear history', variant: 'ghost', onClick: () => { historyData.length = 0; history.replaceChildren(); status.set('History cleared.', 'info'); } })),
       historyWrap(history));
     inp.addEventListener('input', () => { grid.replaceChildren(); status.set('Expression changed. Calculate again.', 'info'); });
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); show(inp.value); } });
@@ -330,14 +332,14 @@ const defs = {
     const op = segControl({ options: [{ v: '+', t: '+' }, { v: '-', t: '−' }, { v: '*', t: '×' }, { v: '/', t: '÷' }], value: '+', ariaLabel: 'Operation' });
     const grid = statsGrid();
     const status = statusLine('');
-    const steps = h('p', { class: 'hint' });
+    const steps = h('p', { class: 'hint', style: 'overflow-wrap:anywhere' });
     const run = () => {
       try {
         const r = fractionCalc(a.value, op.getValue(), b.value);
         grid.set([
           { label: 'Result', value: r.result, kind: 'good' },
           ...(r.mixed ? [{ label: 'Mixed number', value: r.mixed }] : []),
-          { label: 'Decimal', value: String(Number(r.decimal.toPrecision(8))) },
+          { label: 'Decimal (approx.)', value: String(Number(r.decimal.toPrecision(8))) },
         ]);
         steps.textContent = `Working: (${a.value}) ${op.getValue()} (${b.value}) = ${r.unsimplified} → simplified to ${r.result}`;
         status.set('Calculated ✓', 'success');
