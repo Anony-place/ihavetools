@@ -906,6 +906,21 @@ await domTest('fraction-calculator: simplified result with steps', async () => {
   assert.match(app.textContent, /5\/6/);
   assert.match(app.querySelector('.hint').textContent, /Working:/);
 });
+await domTest('scientific history reuses full precision and reports tangent pole', async () => {
+ const app=await loadToolPage('scientific-calculator','student'), expr=app.querySelector('input[type=text]');
+ expr.value='1/3'; click(btnByLabel(app,'Calculate'));
+ assert.match(app.querySelector('.calc-history').textContent,/DEG/); click(app.querySelector('.h-res'));
+ assert.equal(expr.value,String(1/3));
+ expr.value='tan(90)'; click(btnByLabel(app,'Calculate')); assert.match(statusText(document),/undefined/); assert.equal(app.querySelectorAll('.stat-card').length,0);
+ click(btnByLabel(app,'Clear history')); assert.equal(app.querySelectorAll('.calc-history li').length,0);
+});
+await domTest('fraction UI displays exact cancellation and approximate decimal',async()=>{
+ const app=await loadToolPage('fraction-calculator','student'), [a,b]=app.querySelectorAll('input');
+ a.value='100000000/100000001'; b.value='100000001/100000000';
+ const multiply=[...app.querySelectorAll('button')].find(x=>x.textContent.trim()==='×'); click(multiply); click(btnByLabel(app,'Calculate'));
+ assert.match(app.textContent,/1\/1Result/); assert.match(app.textContent,/Decimal \(approx\.\)/);
+ a.value='1/0'; fire(a,'input'); assert.doesNotMatch(app.textContent,/1\/1Result/); click(btnByLabel(app,'Calculate')); assert.match(statusText(document),/zero denominator/);
+});
 await domTest('gcd-lcm-calculator: GCD/LCM with prime factors', async () => {
   const app = await loadToolPage('gcd-lcm-calculator', 'math');
   const input = app.querySelector('input');

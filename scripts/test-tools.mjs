@@ -1260,6 +1260,20 @@ await test('robots crawl tester: specific group and longest pattern win', () => 
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf').allowed, false, 'wildcard plus end anchor matches a PDF path');
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf/extra').allowed, true, 'the $ anchor prevents matching a longer path');
 });
+await test('scientific tangent poles and nearby degree angles', () => {
+ for (const n of [90,-90,270,-270,450]) assert.throws(()=>stu.evaluate(`tan(${n})`,{degrees:true}),/undefined/);
+ assert.ok(Number.isFinite(stu.evaluate('tan(89.999999)',{degrees:true})));
+ assert.ok(Number.isFinite(stu.evaluate('tan(90)',{degrees:false})));
+ assert.equal(stu.evaluate('-2^2'),-4); assert.equal(stu.evaluate('2^3^2'),512);
+});
+await test('fraction calculation reduces exact large intermediate products', () => {
+ assert.equal(stu.fractionCalc('100000000/100000001','*','100000001/100000000').result,'1/1');
+ assert.equal(stu.fractionCalc('1/100000000','+','1/100000000').result,'1/50000000');
+ assert.equal(stu.fractionCalc('9007199254740991','-','9007199254740991').result,'0/1');
+ assert.equal(stu.fractionCalc('-2 1/2','/','1/2').result,'-5/1');
+ assert.throws(()=>stu.fractionCalc('9007199254740991','+','1'),/too large/);
+ assert.throws(()=>stu.parseFraction('0'.repeat(2049)),/2,048/);
+});
 await test('robots tester ignores trailing stars and URL fragments', () => {
  const rules=[{agent:'*', disallow:['/fish*'], allow:['/fish']}];
  assert.equal(seo.testRobotsAccess(rules,'ExampleBot','/fish/').allowed,true);
@@ -2219,7 +2233,7 @@ await test('merge two PDFs and split pages', async () => {
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
   assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 109);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 111);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

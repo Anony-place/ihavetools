@@ -11,6 +11,27 @@
 
 ---
 
+## Student math accuracy and usability — consolidated plan (2026-10-31)
+
+Audit Scientific and Fraction calculators together: their current expression
+history reuses rounded display values, exact tangent singularities display a
+misleading finite value, and safe fraction results can be rejected because
+intermediate products exceed JavaScript's safe integer range.
+[Calculator.net](https://www.calculator.net/fraction-calculator.html) offers
+mixed numbers and a separate big-number calculator: feature signals, not
+measured demand; our input and simplified-result limits remain explicit.
+
+1. Detect exactly representable degree-mode tangent poles without treating
+   nearby angles as undefined; preserve full precision when reusing history and
+   label angle mode and floating-point display limits.
+2. Use bounded exact integer intermediates for fraction operations, retain
+   safe-number output limits, and label the approximate decimal. Document
+   operation order, conventions, limitations and worked examples.
+3. Add edge, cancellation, history, UI, mobile accessibility and regression
+   tests; run full checks and CI before merging and verifying both live pages.
+
+---
+
 ## Robots.txt simulator and sitemap audit — plan (2026-10-31)
 
 Google's robots specification says trailing wildcards are ignored, URL fragments
