@@ -906,6 +906,15 @@ await domTest('fraction-calculator: simplified result with steps', async () => {
   assert.match(app.textContent, /5\/6/);
   assert.match(app.querySelector('.hint').textContent, /Working:/);
 });
+await domTest('decimal fraction converter supports both directions and clears stale output',async()=>{
+ const app=await loadToolPage('decimal-to-fraction','student'), inputs=app.querySelectorAll('input');
+ const result=app.querySelector('[aria-label="Conversion result output"]');
+ click(btnByLabel(app,'Convert decimal to fraction')); assert.match(result.textContent,/1\/8/); assert.match(result.textContent,/125\/1000/);
+ inputs[0].value='0.(3)'; fire(inputs[0],'input'); assert.doesNotMatch(result.textContent,/125\/1000/);
+ click(btnByLabel(app,'Convert decimal to fraction')); assert.match(statusText(document),/finite decimal/);
+ click(btnByLabel(app,'Convert fraction to decimal')); assert.match(result.textContent,/0.\(3\)/); assert.match(statusText(document),/repeating/);
+ inputs[1].value='1/0'; fire(inputs[1],'input'); click(btnByLabel(app,'Convert fraction to decimal')); assert.match(statusText(document),/denominator cannot be zero/); assert.doesNotMatch(result.textContent,/0.\(3\)/);
+});
 await domTest('scientific history reuses full precision and reports tangent pole', async () => {
  const app=await loadToolPage('scientific-calculator','student'), expr=app.querySelector('input[type=text]');
  expr.value='1/3'; click(btnByLabel(app,'Calculate'));

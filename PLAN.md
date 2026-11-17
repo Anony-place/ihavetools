@@ -11,6 +11,50 @@
 
 ---
 
+## Growth-first consolidation — plan (2026-10-31)
+
+The recent batches primarily improved existing tools and reliability, not new
+search acquisition. There is no measured causal ranking or traffic uplift from
+them. Stop presenting isolated feature updates as a growth strategy. The
+previously supplied GSC export shows candidate pages, but its dates conflict
+with the session date; its chronology and comparable windows need verification.
+Impressions are search appearances, not visitors or total market demand.
+
+Implementation batch: build one new Decimal ↔ Fraction converter, not two
+near-duplicate pages. Support exact finite decimals and bounded long division
+with honest repeating/truncated results; add examples, internal links and tests.
+Competitor presence is a feature signal only, not verified search demand. A
+current comparable GSC baseline and outreach remain separate open work.
+
+1. Measurement: establish an attributable baseline from a verified, complete
+   Search Console export: equal 14- or 28-day windows, page-filtered queries,
+   country/device, clicks, impressions, CTR and position. Record indexing and
+   canonical status separately; low click counts make conclusions noisy.
+2. Opportunity research: inspect actual queries and intent alongside existing
+   pages and competitors. Shortlist genuinely distinct user problems; avoid
+   thin near-duplicate pages and do not assert keyword volumes without evidence.
+   Decimal-to-fraction conversion is an initial candidate, not validated demand:
+   Calculator.net offers it, and our existing fraction calculator does arithmetic
+   rather than decimal conversion. Check scope and user value before shipping.
+3. Consolidated build: implement worthwhile new tools/workflows with accurate,
+   useful explanations, explicit limits, responsive UI and privacy, together
+   with relevant internal links, unique titles and canonical/sitemap checks.
+   Audit existing high-impression, low-click candidates for intent mismatch,
+   but do not change snippets purely to chase CTR or imply Google uses them.
+4. Distribution: prepare useful, non-spammy demos or resources for relevant
+   communities and directories, subject to their rules; do not publish as the
+   user without authorization or invent backlinks. No paid domain or tools.
+5. Evaluation: test and release one consolidated PR only after checks; compare
+   equivalent post-release windows when enough data exists. Report indexed
+   pages, impressions and clicks separately, alongside actual work shipped,
+   unresolved gaps and no promises of ranking or timing.
+
+References: https://developers.google.com/search/docs/fundamentals/creating-helpful-content
+and https://www.calculator.net/fraction-calculator.html (competitor features
+are not evidence of traffic volume).
+
+---
+
 ## Student math accuracy and usability — consolidated plan (2026-10-31)
 
 Audit Scientific and Fraction calculators together: their current expression

@@ -1171,7 +1171,7 @@ export const tools = [
 
   // ── Student ────────────────────────────────────────────────────────────────
   T({ id: 'scientific-calculator', name: 'Scientific Calculator', icon: 'calculator', engine: 'student', categories: ['student', 'math'],
-    related: ["gcd-lcm-calculator","cgpa-calculator","fraction-calculator","percentage-calculator","average-calculator","weighted-average-calculator"],
+    related: ["decimal-to-fraction","gcd-lcm-calculator","cgpa-calculator","fraction-calculator","percentage-calculator","average-calculator"],
     blurb: 'Full expression calculator with functions, history and keyboard support.',
     description: 'Evaluate mathematical expressions with parentheses, powers, roots, trigonometry, logarithms and constants — with degree/radian modes and a calculation history.',
     keywords: ['scientific calculator', 'trigonometry', 'logarithm', 'sqrt', 'sin cos tan', 'expression'],
@@ -1188,8 +1188,26 @@ export const tools = [
       {h:'Choose the angle unit',p:'In DEG mode sin(30) is approximately 0.5. In RAD mode sin(pi/2) is approximately 1. Inverse trigonometric results follow the selected mode; hyperbolic functions do not.'},
       {h:'Precision and history',p:'Binary floating-point calculations can round and produce tiny residuals; the displayed result is rounded to 12 significant digits. History shows the mode used and can reuse the underlying computed number. Clear history removes it from this page.'}
     ] }),
+  T({ id: 'decimal-to-fraction', name: 'Decimal to Fraction Converter', icon: 'repeat', engine: 'student', categories: ['math', 'student', 'converters'],
+    blurb: 'Convert finite decimals to simplified fractions and fractions to decimals.',
+    description: 'Convert a finite decimal into an exact simplified fraction, or use long division to show a terminating or repeating decimal from a fraction.',
+    keywords: ['decimal to fraction', 'decimal to fraction converter', 'fraction to decimal', 'convert decimal to fraction', 'repeating decimal'],
+    aliases: ['decimal fraction converter', 'fraction to decimal converter'], popularity: 74, added: '2026-10-31',
+    related: ['fraction-calculator','scientific-calculator','gcd-lcm-calculator','percentage-calculator','ratio-calculator','average-calculator'],
+    steps: 'Enter a finite decimal and select Convert decimal to fraction.|Alternatively enter a fraction and select Convert fraction to decimal.|Read the simplified fraction or decimal; parentheses mark repeating digits.',
+    guide: [
+      {h:'Convert a decimal to a fraction',p:'Count the digits after the decimal point and use the corresponding power of ten as the denominator. For example, 0.125 is 125/1000, which simplifies to 1/8. The calculator uses exact integers rather than binary floating-point approximations.'},
+      {h:'Convert a fraction to a decimal',p:'Long division of 3/8 gives 0.375. For 1/6 the result is 0.1(6): the digits in parentheses repeat indefinitely. A minus sign applies to the whole result.'},
+      {h:'Limits and notation',list:['Decimal input must be finite, with at most 100 digits. Scientific notation and repeating-decimal input are not supported.', 'Fraction input accepts a signed integer numerator and a positive integer denominator, with at most 100 digits each. Mixed numbers are not accepted here.', 'Long division stops after 200 fractional digits. An ellipsis means the expansion was truncated, not rounded; it may terminate or repeat beyond that point.', 'This tool runs in the browser. Copying a result places it on your clipboard.']}
+    ],
+    faqs: [
+      {q:'What is 0.125 as a fraction?',a:'0.125 is 125/1000, which simplifies exactly to 1/8.'},
+      {q:'What do parentheses in the decimal mean?',a:'They mark digits that repeat forever. For example, 1/3 is 0.(3), and 1/6 is 0.1(6).'},
+      {q:'Can I enter 0.(3) as a decimal?',a:'No. The decimal input accepts finite decimal notation only. The fraction-to-decimal direction can display detected repeating cycles.'},
+      {q:'Does an ellipsis mean the decimal repeats?',a:'Not necessarily. It means the expansion was truncated at 200 fractional digits; termination or repetition can occur later.'}
+    ] }),
   T({ id: 'fraction-calculator', name: 'Fraction Calculator', icon: 'divide', engine: 'student', categories: ['student', 'math'],
-    related: ["gcd-lcm-calculator","cgpa-calculator","scientific-calculator","percentage-calculator","average-calculator","weighted-average-calculator"],
+    related: ["decimal-to-fraction","gcd-lcm-calculator","cgpa-calculator","scientific-calculator","percentage-calculator","average-calculator"],
     blurb: 'Add, subtract, multiply and divide fractions — simplified.',
     description: 'Calculate with fractions and mixed numbers. Results are simplified automatically and shown as a fraction, mixed number and decimal, with the worked steps.',
     keywords: ['fraction', 'mixed number', 'simplify', 'lcd', 'numerator', 'denominator'],
