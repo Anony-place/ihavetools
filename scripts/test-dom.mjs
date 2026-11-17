@@ -2318,6 +2318,14 @@ await domTest('student calculators reject fractional or missing inputs and clear
  app=await loadToolPage('cgpa-calculator','student'); click(btnByLabel(app,'Calculate SGPA')); assert.match(app.textContent,/SGPA \/ weighted GPA/); const rows=app.querySelectorAll('.file-list .file-row'); rows[0].querySelector('input').value=''; fire(rows[0].querySelector('input'),'input'); assert.doesNotMatch(app.textContent,/SGPA \/ weighted GPA/); click(btnByLabel(app,'Calculate SGPA')); assert.match(app.textContent,/Subject 1: enter a valid/);
  app=await loadToolPage('time-duration-calculator','student'); const numbers=app.querySelectorAll('input[type=number]'); numbers[1].value='60'; click(btnByLabel(app,'Calculate total')); assert.match(statusText(document),/0–59/); numbers[1].value='59'; fire(numbers[1],'input'); click(btnByLabel(app,'Calculate total')); assert.match(app.textContent,/00:59:00/); numbers[1].value='1'; fire(numbers[1],'input'); assert.doesNotMatch(app.textContent,/00:59:00/);
 });
+await domTest('image planning tools calculate, switch modes and clear stale results', async () => {
+ let app=await loadToolPage('aspect-ratio-calculator','math'); let inputs=app.querySelectorAll('input'); inputs[2].value='1280'; click(btnByLabel(app,'Calculate aspect ratio')); assert.match(app.textContent,/16:9/); assert.match(app.textContent,/1280 × 720/);
+ inputs[0].value='0'; fire(inputs[0],'input'); assert.equal(app.querySelector('.stat-card'),null); click(btnByLabel(app,'Calculate aspect ratio')); assert.match(statusText(document),/whole number/);
+ app=await loadToolPage('pixels-to-inches-converter','math'); inputs=app.querySelectorAll('input'); click(btnByLabel(app,'Convert pixels and inches')); assert.match(app.textContent,/25.4/);
+ const direction=app.querySelector('select'); direction.value='inches'; fire(direction,'change'); assert.equal(app.querySelector('.stat-card'),null); inputs[0].value='10'; click(btnByLabel(app,'Convert pixels and inches')); assert.match(app.textContent,/3,?000/);
+ inputs[1].value='0'; fire(inputs[1],'input'); click(btnByLabel(app,'Convert pixels and inches')); assert.match(statusText(document),/PPI/);
+});
+
 await domTest('math results are invalidated after changing input', async () => {
  for (const [id,initial,label] of [['average-calculator','1,2,3','Calculate'],['gcd-lcm-calculator','12,18','Calculate GCD'],['weighted-average-calculator','80,3\n90,2','Calculate weighted']]) {const app=await loadToolPage(id,'math'), inp=app.querySelector('textarea,input[type=text]'); inp.value=initial; click(btnByLabel(app,label)); assert.ok(app.querySelector('.stat-card')); inp.value='4'; fire(inp,'input'); assert.equal(app.querySelector('.stat-card'),null);}
 });
