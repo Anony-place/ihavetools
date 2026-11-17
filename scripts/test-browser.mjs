@@ -700,6 +700,14 @@ try {
   await page.getByRole('button',{name:'×',exact:true}).click(); await page.getByRole('button',{name:'Calculate',exact:true}).click();
   assert.match(await page.locator('#tool-app').innerText(),/1\/1/); assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'fraction calculator mobile accessibility');
+  await go('decimal-to-fraction');
+  const convOut=page.getByRole('region',{name:'Conversion result output'});
+  await page.getByRole('button',{name:'Convert decimal to fraction'}).click(); assert.match(await convOut.innerText(),/1\/8/);
+  await page.getByLabel('Fraction',{exact:true}).fill('1/6'); await page.getByRole('button',{name:'Convert fraction to decimal'}).click();
+  assert.match(await convOut.innerText(),/0\.1\(6\)/); assert.match(await page.locator('#tool-app .status-line').innerText(),/repeating/);
+  await page.getByLabel('Decimal',{exact:true}).fill('9'.repeat(100)); await page.getByRole('button',{name:'Convert decimal to fraction'}).click();
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'new converter mobile overflow');
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'decimal converter mobile accessibility');
   await page.setViewportSize({width:1280,height:800});
   await go('uuid-generator');
   assert.equal(await page.locator('.file-row').count(), 5);

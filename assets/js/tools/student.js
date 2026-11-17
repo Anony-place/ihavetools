@@ -185,6 +185,47 @@ export function fractionCalc(aText, op, bText) {
   return { result: `${simp.n}/${simp.d}`, mixed, decimal: simp.n / simp.d, unsimplified };
 }
 
+/* Exact base-10 conversion; all inputs and long-division work are bounded. */
+function gcdBig(a, b) {
+  a = a < 0n ? -a : a;
+  while (b) [a, b] = [b, a % b];
+  return a;
+}
+export function decimalToFraction(text) {
+  const value = String(text).trim();
+  if (value.length > 102 || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(value)) throw new Error('Enter a finite decimal using digits and a decimal point (up to 100 digits).');
+  const unsigned = value.replace(/^[+-]/, ''), [whole = '', fraction = ''] = unsigned.split('.');
+  if (whole.length + fraction.length > 100) throw new Error('Enter at most 100 digits.');
+  const denominator = 10n ** BigInt(fraction.length);
+  let numerator = BigInt((whole || '0') + fraction);
+  if (value.startsWith('-')) numerator = -numerator;
+  const divisor = gcdBig(numerator, denominator);
+  return { numerator: String(numerator / divisor), denominator: String(denominator / divisor), originalNumerator: String(numerator), originalDenominator: String(denominator) };
+}
+export function fractionToDecimal(text) {
+  const value = String(text).trim();
+  if (value.length > 205) throw new Error('Enter at most 100 digits for each integer.');
+  const match = /^([+-]?\d{1,100})\s*\/\s*(\d{1,100})$/.exec(value);
+  if (!match) throw new Error('Enter a fraction such as -7/8 with at most 100 digits per integer and a positive denominator.');
+  let numerator = BigInt(match[1]), denominator = BigInt(match[2]);
+  if (denominator === 0n) throw new Error('The denominator cannot be zero.');
+  const negative = numerator < 0n; if (negative) numerator = -numerator;
+  const whole = numerator / denominator; let remainder = numerator % denominator;
+  const prefix = (negative ? '-' : '') + String(whole);
+  if (!remainder) return { text: prefix, type: 'terminating' };
+  const seen = new Map(), digits = [];
+  while (remainder && !seen.has(remainder) && digits.length < 200) {
+    seen.set(remainder, digits.length);
+    remainder *= 10n; digits.push(String(remainder / denominator)); remainder %= denominator;
+  }
+  if (!remainder) return { text: `${prefix}.${digits.join('')}`, type: 'terminating' };
+  if (seen.has(remainder)) {
+    const start = seen.get(remainder);
+    return { text: `${prefix}.${digits.slice(0,start).join('')}(${digits.slice(start).join('')})`, type: 'repeating' };
+  }
+  return { text: `${prefix}.${digits.join('')}…`, type: 'truncated' };
+}
+
 /* ═══════════════════════════ Time durations ═══════════════════════════ */
 export function durationTotal(rows, op) {
   if (!Array.isArray(rows) || rows.length < 1 || rows.length > 1000 || !Array.isArray(op) || op.length !== rows.length - 1 || op.some(o => o !== '+' && o !== '-')) throw new Error('Enter 1–1,000 duration rows with valid + or − operators.');
@@ -324,6 +365,29 @@ const defs = {
     inp.addEventListener('input', () => { grid.replaceChildren(); status.set('Expression changed. Calculate again.', 'info'); });
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); show(inp.value); } });
     function historyWrap(el) { return h('div', { class: 'result-panel result-body', style: 'padding:8px 14px;max-height:220px' }, el); }
+  },
+
+  'decimal-to-fraction'(root) {
+    const decimal = input({ type: 'text', inputmode: 'decimal', value: '0.125', placeholder: 'e.g. -2.75' });
+    const fraction = input({ type: 'text', value: '1/3', placeholder: 'e.g. -7/8' });
+    const out = resultPanel({ label: 'Conversion result' });
+    const status = statusLine('Enter a finite decimal or a fraction, then choose its conversion.');
+    const runDecimal = () => {
+      try { const r = decimalToFraction(decimal.value); out.set(`${r.numerator}/${r.denominator}\n\nBefore simplification: ${r.originalNumerator}/${r.originalDenominator}`); status.set('Exact fraction, simplified.', 'success'); }
+      catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+    };
+    const runFraction = () => {
+      try { const r = fractionToDecimal(fraction.value); out.set(r.text); status.set(r.type === 'repeating' ? 'Exact repeating decimal: parentheses enclose the repeating digits.' : r.type === 'truncated' ? 'Truncated after 200 fractional digits, not rounded; the expansion may terminate or repeat later.' : 'Exact terminating decimal.', 'success'); }
+      catch (e) { out.placeholder(); status.set(e.message, 'error'); }
+    };
+    const invalidate = () => { out.placeholder(); status.set('Input changed. Convert again.', 'info'); };
+    [decimal, fraction].forEach(el => el.addEventListener('input', invalidate));
+    root.append(
+      field({label:'Decimal', control:decimal, hint:'Finite decimal, up to 100 digits; no scientific or repeating notation.'}),
+      actionsRow(btn({label:'Convert decimal to fraction', icon:'repeat', onClick:runDecimal})),
+      field({label:'Fraction', control:fraction, hint:'Signed integer numerator / positive integer denominator, up to 100 digits each.'}),
+      actionsRow(btn({label:'Convert fraction to decimal', icon:'repeat', onClick:runFraction})),
+      status, h('br'), out.panel);
   },
 
   'fraction-calculator'(root) {

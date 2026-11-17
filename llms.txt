@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 133 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 134 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -92,6 +92,7 @@
 - [URL Parser](https://i-have-tools.vercel.app/tools/url-parser/): Break any URL into protocol, host, path and query params.
 - [Keyword Density & Frequency Checker](https://i-have-tools.vercel.app/tools/keyword-density-checker/): Count keyword frequency and density for words and phrases.
 - [Scientific Calculator](https://i-have-tools.vercel.app/tools/scientific-calculator/): Full expression calculator with functions, history and keyboard support.
+- [Decimal to Fraction Converter](https://i-have-tools.vercel.app/tools/decimal-to-fraction/): Convert finite decimals to simplified fractions and fractions to decimals.
 - [Fraction Calculator](https://i-have-tools.vercel.app/tools/fraction-calculator/): Add, subtract, multiply and divide fractions — simplified.
 - [Time Duration Calculator](https://i-have-tools.vercel.app/tools/time-duration-calculator/): Add or subtract durations like 2h 45m + 30m.
 - [Average Calculator](https://i-have-tools.vercel.app/tools/average-calculator/): Mean, median, modes and standard deviation from a list of numbers.

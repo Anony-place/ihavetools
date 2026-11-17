@@ -1260,6 +1260,18 @@ await test('robots crawl tester: specific group and longest pattern win', () => 
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf').allowed, false, 'wildcard plus end anchor matches a PDF path');
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf/extra').allowed, true, 'the $ anchor prevents matching a longer path');
 });
+await test('decimal and fraction converter uses exact bounded arithmetic', () => {
+ assert.deepEqual(stu.decimalToFraction('0.125'),{numerator:'1',denominator:'8',originalNumerator:'125',originalDenominator:'1000'});
+ assert.equal(stu.decimalToFraction('-2.75').numerator,'-11'); assert.equal(stu.decimalToFraction('-0.000').denominator,'1');
+ assert.equal(stu.decimalToFraction('.00000000000000000001').denominator,'100000000000000000000');
+ for(const x of ['1e-3','0.(3)','', '1'.repeat(101)]) assert.throws(()=>stu.decimalToFraction(x));
+ assert.deepEqual(stu.fractionToDecimal('-3/8'),{text:'-0.375',type:'terminating'});
+ assert.deepEqual(stu.fractionToDecimal('1/6'),{text:'0.1(6)',type:'repeating'});
+ assert.deepEqual(stu.fractionToDecimal('4/2'),{text:'2',type:'terminating'});
+ const r=stu.fractionToDecimal('1/1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003'); assert.equal(r.type,'truncated'); assert.ok(r.text.endsWith('…'));
+ for(const x of ['1/0','1/-2','1 1/2','1/'.concat('1'.repeat(101))]) assert.throws(()=>stu.fractionToDecimal(x));
+ const t=registry.getTool('decimal-to-fraction'); assert.ok(t.guide.length>=3 && t.faqs.length>=4); assert.ok(registry.searchTools('decimal to fraction',20).some(x=>x.id===t.id));
+});
 await test('scientific tangent poles and nearby degree angles', () => {
  for (const n of [90,-90,270,-270,450]) assert.throws(()=>stu.evaluate(`tan(${n})`,{degrees:true}),/undefined/);
  assert.ok(Number.isFinite(stu.evaluate('tan(89.999999)',{degrees:true})));
@@ -2232,8 +2244,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 133);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 111);
+  assert.equal(registry.tools.length, 134);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 112);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
