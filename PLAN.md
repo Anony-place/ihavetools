@@ -11,6 +11,26 @@
 
 ---
 
+## Calendar date arithmetic and reuse — plan (2026-10-31)
+
+[timeanddate](https://www.timeanddate.com/date/dateadd.html) supports combined
+calendar durations, a Today shortcut and repeating calculations. This indicates
+features to assess, not measured demand. The supplied GSC export chronology
+remains unverified. Our date tool currently rejects a valid Gregorian result if
+that local date was skipped by the browser timezone, solely because it also
+tries to create a Unix timestamp.
+
+1. Separate Gregorian date arithmetic from local timestamp conversion; show a
+   valid calendar result even for skipped local dates, explicitly marking Unix
+   time unavailable. Preserve existing Date-returning public functions.
+2. Add Today, copy ISO and reuse-result shortcuts; invalidate outputs after
+   edits, document non-invertible clamping, time-zone and privacy limitations.
+3. Test skipped local dates in Pacific/Apia, leap/month-end, date limits,
+   repeat and copy interactions, DST, browser accessibility and full CI. One
+   PR, merge only on success and verify production; no ranking claims.
+
+---
+
 ## Attendance and time-converter usability audit — plan (2026-10-31)
 
 The supplied Search Console export is labelled 2026-11-17, later than the

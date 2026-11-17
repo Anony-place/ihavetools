@@ -5,6 +5,7 @@
 // =============================================================================
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { JSDOM } from 'jsdom';
 
 // Provide browser globals the engines use (DOMParser) when running in Node.
@@ -241,6 +242,15 @@ await test('JSON tree preserves raw numbers, duplicates and escaping with bounds
   assert.throws(() => dev.jsonTree('['.repeat(65) + '0' + ']'.repeat(65)), /64 levels/);
   assert.throws(() => dev.jsonTree('[' + '0,'.repeat(3000) + '0]'), /3,000/);
   assert.throws(() => dev.jsonTree(' '.repeat(250001)), /250,000/);
+});
+await test('date arithmetic returns valid skipped local dates independently of timezone', () => {
+ const code = `import {dateAddISO,dateAddDurationISO,dateAdd} from './assets/js/tools/datetime.js'; const a=dateAddISO('2011-12-29',1,'days','add'); const b=dateAddDurationISO('2011-12-29',{years:0,months:0,weeks:0,days:1},'add'); let legacy; try { dateAdd('2011-12-29',1,'days','add'); legacy='accepted'; } catch { legacy='skipped'; } console.log(JSON.stringify({a,b,legacy}));`;
+ const value=JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',code],{encoding:'utf8',env:{...process.env,TZ:'Pacific/Apia'}}));
+ assert.deepEqual(value,{a:'2011-12-30',b:'2011-12-30',legacy:'skipped'});
+ assert.equal(dt.dateAddISO('2024-01-31',1,'months','add'),'2024-02-29');
+ assert.equal(dt.dateAddISO('2024-02-29',1,'months','add'),'2024-03-29');
+ assert.equal(dt.dateAddISO('2024-01-31',2,'months','add'),'2024-03-31');
+ assert.throws(()=>dt.dateAddISO('2100-12-31',1,'days','add'),/outside/);
 });
 await test('combined calendar durations use ordered clamped arithmetic', () => {
  const iso = d => dt.localDateISO(d);

@@ -1271,17 +1271,18 @@ export const tools = [
     related:['iso-week-calculator','business-day-calculator','date-difference','age-calculator','time-zone-converter','work-hours-calculator'],
     blurb:'Add or subtract days, weeks, months or years from a date.', description:'Add or subtract calendar days, weeks, months or years, individually or combined, with month-end clamping.',
     keywords:['add days','subtract days','date math','deadline','due date'], aliases:['add days to date','date plus days','deadline calculator'], popularity:64, added:'2026-09-14',
-    steps:'Pick a start date.|Enter a positive whole amount, unit and direction.|Read the resulting date and weekday.',
+    steps:'Pick a start date.|Enter a positive whole amount, unit and direction.|Read the date and weekday; copy the ISO date or reuse it as the next start date.',
     faqs:[
       {q:'How are month-end dates handled?',a:'When the target month lacks the original day, the result is clamped to its final day. January 31 plus one month is February 28 or 29.'},
       {q:'Can I use fractional or negative amounts?',a:'No. Enter a positive whole number and choose Add or Subtract. The supported amount is 1 to 100,000 and dates must remain in 1900–2100.'},
       {q:'How are combined durations calculated?',a:'The chosen direction applies to every component. Years are applied first, then months, with month-end clamping at each step; weeks and days follow. Changing the order can change the result.'},
       {q:'Does adding one year preserve February 29?',a:'If the target year is not a leap year, February 29 is clamped to February 28.'},
-      {q:'What does Unix seconds mean here?',a:'It represents the browser’s local start of that date, not UTC midnight. Time-zone rules can shift or skip local midnight; if an entire local date is skipped, the tool reports an error.'}
+      {q:'What does Unix seconds mean here?',a:'It represents the browser’s local start of that date, not UTC midnight. Time-zone rules can shift local midnight. If an entire local date was skipped, the calendar date remains available but Unix seconds are unavailable.'}
     ],guide:[
       {h:'Calendar rather than business days',p:'Adding days or weeks moves through every calendar date, including weekends and holidays. For working days with manual holidays, use the Business Day Calculator.'},
+      {h:'Copy and continue',p:'Use Today to set the start to the current date in your browser’s local time zone. After calculating, copy the ISO date or use it as the start of a new calculation. Repeated month operations can differ from a single multi-month operation because each step clamps separately. Copying places the date on your clipboard.'},
       {h:'Month-end example',p:'31 January 2024 plus one month is 29 February 2024, because February has 29 days that year. The same calculation in 2023 ends on 28 February.'},
-      {h:'Check the convention',list:['Enter a positive whole number and select the direction.', 'Month and year operations clamp once to the target month; adding and then subtracting may not recover the original date.', 'Input and result dates must be between 1900 and 2100. Unix seconds use the browser’s local midnight.']}
+      {h:'Check the convention',list:['Enter a positive whole number and select the direction.', 'Month and year operations clamp once to the target month; adding and then subtracting may not recover the original date.', 'Input and result dates must be between 1900 and 2100. Unix seconds use the browser’s local start of day, which may be shifted or unavailable by local time-zone rules.']}
     ] }),
   T({ id: 'time-zone-converter', name: 'Time Zone Converter', icon: 'globe', engine: 'datetime', categories: ['datetime', 'developer'],
     blurb: 'Convert a time between browser-supported time zones.',
