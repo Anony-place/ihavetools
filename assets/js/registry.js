@@ -1057,11 +1057,11 @@ export const tools = [
     ] }),
   T({ id: 'robots-txt-generator', name: 'Robots.txt Generator', icon: 'robot', engine: 'webseo', categories: ['web-seo'],
     blurb: 'Create, preset and test robots.txt rules before you publish.',
-    description: 'Create a robots.txt from custom user-agent rules or starting presets, add your sitemap, and simulate rules for a crawler and URL before downloading. Actual crawler behavior may differ.',
+    description: 'Create a robots.txt from custom user-agent rules or starting presets, add your sitemaps, and simulate rules for a crawler and URL before downloading. Actual crawler behavior may differ.',
     keywords: ['robots.txt generator', 'create robots txt online', 'robots.txt', 'robots file generator', 'robots.txt tester', 'crawl', 'disallow', 'seo'],
     aliases: ['robots txt maker', 'robots.txt tester', 'robots file generator', 'disallow generator'],
     popularity: 66, added: '2026-06-11',
-    steps: 'Start from a preset or add your own user-agent, Allow and Disallow rules; edit them as needed.|Optionally add your sitemap URL and crawl-delay, then generate the file.|Test important URLs against the rules and download robots.txt to your site root.',
+    steps: 'Start from a preset or add your own user-agent, Allow and Disallow rules; edit them as needed.|Optionally add sitemap URLs and crawl-delay, then generate the file.|Test important URLs against the rules and download robots.txt to your site root.',
     related: ['sitemap-generator', 'meta-tag-generator', 'keyword-density-checker', 'url-parser', 'open-graph-preview', 'slug-generator'],
     faqs: [
       { q: 'Does Disallow remove a page from Google?', a: 'Not reliably. Robots.txt controls crawling, not indexing: a blocked URL discovered from links can still appear in results without its content being crawled. To keep a public page out of search, allow crawling and use a noindex tag/header so the crawler can see it. For genuinely private material, use authentication — robots.txt is public and is not a security control.' },
@@ -1071,7 +1071,7 @@ export const tools = [
     ],
     guide: [
       { h: 'How a compliant crawler chooses a rule',
-        p: 'Rules are grouped under User-agent lines. A crawler prefers a group naming its own product token over the `*` wildcard group; rules from less-specific groups are not merged just because they look relevant. It then compares the URL path (including query string) with that group’s Allow and Disallow patterns. The local tester uses saved rules, not unsaved form edits or the live file. It approximates longest-match behaviour and supports `*` as a wildcard plus a trailing `$` to anchor the end of a path; encoding and crawler handling can differ.' },
+        p: 'Rules are grouped under User-agent lines. A crawler prefers a group naming its own product token over the `*` wildcard group; rules from less-specific groups are not merged just because they look relevant. It then compares the URL path (including query string) with that group’s Allow and Disallow patterns. The local tester uses saved rules, not unsaved form edits or the live file. It approximates longest-match behaviour and supports `*` as a wildcard plus a trailing `$` to anchor the end of a path; URL fragments are omitted; encoding and crawler handling can differ.' },
       { h: 'Useful starting patterns',
         table: { head: ['Goal', 'Example rule', 'What happens'], rows: [
           ['Allow everything', 'User-agent: *\nDisallow:', 'No path is blocked by robots.txt.'],
@@ -1083,7 +1083,7 @@ export const tools = [
         'Treating robots.txt as secrecy: anyone can read it, and listing a sensitive path can advertise that path. Protect the resource itself.',
         'Copying a staging-site “Disallow: /” to production. Test the home page and a key landing page before every publish.',
         'Blocking CSS, JavaScript or images a page needs for rendering; a crawler may then see a broken or misleading page.',
-        'Using a relative Sitemap value. Give the complete absolute URL, for example https://example.com/sitemap.xml.',
+        'Using a relative Sitemap value. Give complete absolute URLs, one per sitemap or sitemap index; up to 20 are supported here.',
         'Expecting Crawl-delay to control Googlebot. Google does not support that directive, although some other crawlers may honour it.',
         'Trying to remove an indexed page with Disallow alone. Use noindex or proper access control as described in the FAQs.',
       ] },

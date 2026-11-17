@@ -272,11 +272,13 @@ export function keywordFrequencyCsv(terms = []) {
 }
 
 /* ═══════════════════════════ Robots.txt builder ═══════════════════════════ */
-export function buildRobots(rules, { sitemap = '', crawlDelay = null } = {}) {
+export function buildRobots(rules, { sitemap = '', sitemaps = [], crawlDelay = null } = {}) {
   const lines = [];
   if (rules.length > 500 || rules.reduce((n, rule) => n + (rule.disallow || []).length + (rule.allow || []).length, 0) > 10000) throw new Error('At most 500 crawler groups and 10,000 paths are supported.');
   if (crawlDelay != null && crawlDelay !== '' && (!/^\d+(?:\.\d+)?$/.test(String(crawlDelay)) || Number(crawlDelay) > 86400)) throw new Error('Crawl-delay must be a non-negative number of seconds, up to 86400.');
-  if (sitemap) validateWebUrl(sitemap, 'Sitemap URL');
+  if (!Array.isArray(sitemaps) || sitemaps.length + (sitemap ? 1 : 0) > 20) throw new Error('Enter at most 20 sitemap URLs.');
+  const sitemapUrls = [...(sitemap ? [sitemap] : []), ...sitemaps];
+  for (const url of sitemapUrls) validateWebUrl(url, 'Sitemap URL');
   for (const rule of rules) {
     if (!/^(?:\*|[A-Za-z][A-Za-z0-9_-]*)$/.test(rule.agent || '*')) throw new Error('User-agent must be * or a crawler token (letters, digits, hyphens and underscores).');
     for (const path of [...(rule.disallow || []), ...(rule.allow || [])]) {
@@ -295,7 +297,7 @@ export function buildRobots(rules, { sitemap = '', crawlDelay = null } = {}) {
     lines.push('');
   }
   if (!rules.length) lines.push('User-agent: *', 'Disallow:', '');
-  if (sitemap) lines.push(`Sitemap: ${sitemap}`);
+  for (const url of sitemapUrls) lines.push(`Sitemap: ${url}`);
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 
@@ -318,12 +320,14 @@ const robotsPath = (raw) => {
   const value = String(raw || '').trim();
   if (value.length > 8192) throw new Error('Test path must be no longer than 8,192 characters.');
   if (!value) throw new Error('Enter a URL or path to test.');
-  try {
-    const url = new URL(value);
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) {
+    let url;
+    try { url = new URL(value); } catch { throw new Error('Enter a valid HTTP(S) URL or path.'); }
+    if (!/^https?:$/.test(url.protocol) || !url.hostname || url.username || url.password) throw new Error('Enter an HTTP(S) URL without credentials or a path.');
     return `${url.pathname || '/'}${url.search || ''}`;
-  } catch {
-    return value.startsWith('/') ? value : `/${value}`;
   }
+  const path = value.split('#', 1)[0];
+  return path.startsWith('/') ? path : `/${path}`;
 };
 
 /**
@@ -355,8 +359,10 @@ export function testRobotsAccess(rules, userAgent, rawPath) {
     for (const candidate of candidates) {
       const pattern = String(candidate.pattern || '');
       if (!pattern || !robotsPatternMatches(pattern, path)) continue;
-      if (!winner || pattern.length > winner.pattern.length || (pattern.length === winner.pattern.length && candidate.type === 'Allow')) {
-        winner = { ...candidate, pattern };
+      // An unanchored trailing wildcard is equivalent to no wildcard (Google REP).
+      const specificity = pattern.replace(/\*+$/, '').length;
+      if (!winner || specificity > winner.specificity || (specificity === winner.specificity && candidate.type === 'Allow')) {
+        winner = { ...candidate, pattern, specificity };
       }
     }
   }
@@ -477,7 +483,12 @@ const defs = {
   'robots-txt-generator'(root) {
     const rows = h('div', { class: 'file-list' });
     const sitemap = input({ type: 'url', placeholder: 'https://example.com/sitemap.xml' });
+    const extraSitemaps = textarea({ rows: 3, placeholder: 'https://example.com/sitemap-products.xml\nhttps://example.com/sitemap-posts.xml' });
     const delay = input({ type: 'number', min: 0, placeholder: 'seconds (optional)' });
+    const options = () => {
+      if (extraSitemaps.value.length > 50000) throw new Error('Additional sitemap input must be at most 50,000 characters.');
+      return { sitemap: sitemap.value.trim(), sitemaps: extraSitemaps.value.split(/\r\n|\r|\n/).map(value => value.trim()).filter(Boolean), crawlDelay: delay.value };
+    };
     const out = resultPanel({ label: 'robots.txt', download: true, downloadName: 'robots.txt' });
     const testAgent = input({ type: 'text', value: 'Googlebot', placeholder: 'Googlebot, Bingbot, GPTBot…' });
     const testUrl = input({ type: 'text', value: '/private/', placeholder: '/private/ or https://example.com/private/' });
@@ -486,7 +497,7 @@ const defs = {
     let rules = [{ agent: '*', disallow: [], allow: [] }];
     const runTest = () => {
       try {
-        buildRobots(rules, { sitemap: sitemap.value.trim(), crawlDelay: delay.value });
+        buildRobots(rules, options());
         const r = testRobotsAccess(rules, testAgent.value, testUrl.value);
         testOut.set([
           r.allowed ? 'Allowed ✓' : 'Blocked ✕',
@@ -506,13 +517,13 @@ const defs = {
     };
     const build = () => {
       try {
-        const text = buildRobots(rules, { sitemap: sitemap.value.trim(), crawlDelay: delay.value });
+        const text = buildRobots(rules, options());
         out.set(text);
         status.set('Generated ✓ — place this file at the root of your domain.', 'success');
         runTest();
       } catch (e) { out.placeholder(); testOut.placeholder(); status.set(e.message, 'error'); }
     };
-    [sitemap, delay].forEach(el => el.addEventListener('input', build));
+    [sitemap, extraSitemaps, delay].forEach(el => el.addEventListener('input', build));
     [testAgent, testUrl].forEach(el => el.addEventListener('input', () => testOut.placeholder('Inputs changed. Run the test again.')));
     const addRule = (index = null) => {
       const agent = input({ type: 'text', placeholder: 'User-agent, e.g. * or Googlebot' });
@@ -528,7 +539,7 @@ const defs = {
             const candidate = [...rules];
             const updated = { agent: agent.value.trim() || '*', disallow: d, allow: a };
             if (index === null) candidate.push(updated); else candidate[index] = updated;
-            try { buildRobots(candidate, { sitemap: sitemap.value.trim(), crawlDelay: delay.value }); }
+            try { buildRobots(candidate, options()); }
             catch (e) { status.set(e.message, 'error'); return; }
             rules = candidate; render(); build(); formWrap.replaceChildren();
           } }),
@@ -553,6 +564,7 @@ const defs = {
       h('p', { class: 'hint', text: 'The AI preset requests common crawlers not to crawl; compliance and future crawler names vary. Robots.txt is not access control and cannot guarantee blocking AI training or indexing. Review presets before publishing.' }),
       rows, formWrap,
       h('div', { class: 'field-row', style: 'margin-top:14px' }, field({ label: 'Sitemap URL', control: sitemap }), field({ label: 'Crawl-delay', control: delay, hint: 'Not supported by Google' })),
+      field({ label: 'Additional sitemap URLs', control: extraSitemaps, hint: 'Optional: one absolute HTTP(S) URL per line; up to 20 total.' }),
       actionsRow(btn({ label: 'Generate', icon: 'settings', onClick: build })),
       status, h('br'), out.panel,
       h('h3', { text: 'Test a URL against these rules', style: 'margin:22px 0 10px' }),

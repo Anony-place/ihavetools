@@ -914,6 +914,10 @@ try {
   await page.getByRole('button',{name:'Generate sitemap'}).click();
   assert.match(await page.locator('#tool-app .status-line').innerText(),/valid date/);
   await go('robots-txt-generator');
+  await page.getByLabel('Additional sitemap URLs').fill('https://example.com/one.xml\nhttps://example.com/two.xml');
+  assert.match(await page.getByRole('region',{name:'robots.txt output'}).innerText(), /Sitemap: https:\/\/example.com\/two.xml/);
+  assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'robots sitemap accessibility');
+
   await page.getByRole('button',{name:'Edit * rule 1',exact:true}).click();
   await page.getByLabel('Disallow paths').fill('/private/');
   await page.getByRole('button',{name:'Save rule'}).click();

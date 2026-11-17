@@ -851,6 +851,17 @@ await domTest('robots tester refuses invalid output settings and identifies save
  const sitemap=app.querySelector('input[type=url]'); sitemap.value='javascript:alert(1)'; fire(sitemap,'input'); click(btnByLabel(app,'Test crawler access'));
  assert.match(statusText(document),/HTTP/); assert.doesNotMatch(app.querySelector('[aria-label="Crawl test result output"]').textContent,/Allowed|Blocked/);
 });
+await domTest('robots multiple sitemaps update and invalidate generated output', async () => {
+ const app=await loadToolPage('robots-txt-generator','webseo');
+ const main=app.querySelector('input[type=url]'), extra=app.querySelector('textarea');
+ main.value='https://example.com/sitemap.xml'; fire(main,'input');
+ extra.value='https://example.com/a.xml\nhttps://example.com/b.xml'; fire(extra,'input');
+ const output=app.querySelector('[aria-label="robots.txt output"]');
+ assert.match(output.textContent,/Sitemap: https:\/\/example.com\/a.xml/);
+ assert.match(output.textContent,/Sitemap: https:\/\/example.com\/b.xml/);
+ extra.value='javascript:alert(1)'; fire(extra,'input');
+ assert.doesNotMatch(output.textContent,/Sitemap: /); assert.match(statusText(document),/HTTP/);
+});
 await domTest('url-parser: components + decoded params', async () => {
   const app = await loadToolPage('url-parser', 'webseo');
   await new Promise((r) => setTimeout(r, 30));
