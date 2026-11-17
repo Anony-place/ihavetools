@@ -2328,6 +2328,14 @@ await domTest('percentage results clear on edit and GST presets are explicitly u
  fields[0].value='80'; fields[1].value='100'; click(btnByLabel(app,'Calculate change')); assert.match(app.textContent,/25%/); fields[1].value='90'; fire(fields[1],'input'); assert.equal(app.querySelectorAll('.stat-card').length,0); assert.doesNotMatch(app.textContent,/Formula:/);
  app=await loadToolPage('gst-calculator','calculators'); assert.ok([...app.querySelectorAll('option')].some(o=>o.value==='40')); assert.ok([...app.querySelectorAll('option')].some(o=>o.value==='0')); assert.match(app.textContent,/applicable rate yourself/);
 });
+await domTest('Date add result reuse and copy invalidation', async () => {
+ const app=await loadToolPage('date-add-calculator','datetime'); const start=app.querySelector('input[type=date]'); const amount=app.querySelector('input[type=number]'), unit=app.querySelector('select');
+ start.value='2024-01-31'; amount.value='1'; unit.value='months'; const copy=btnByLabel(app,'Copy ISO date'), reuse=btnByLabel(app,'Use result as start date');
+ assert.equal(copy.disabled,true); click(btnByLabel(app,'Calculate')); assert.match(app.textContent,/2024-02-29ISO/); assert.equal(copy.disabled,false);
+ click(reuse); assert.equal(start.value,'2024-02-29'); assert.equal(copy.disabled,true); assert.doesNotMatch(app.textContent,/2024-02-29ISO/);
+ click(btnByLabel(app,'Calculate')); assert.match(app.textContent,/2024-03-29ISO/); amount.value=''; fire(amount,'input'); assert.equal(reuse.disabled,true);
+ click(btnByLabel(app,'Calculate')); assert.match(statusText(document),/whole number/);
+});
 await domTest('combined date workflow and invalid robots rules remain editable', async () => {
  let app=await loadToolPage('date-add-calculator','datetime'); app.querySelector('input[type=date]').value='2024-01-31';
  const duration=app.querySelector('.date-combined'), values=duration.querySelectorAll('input'); values[1].value='1'; values[3].value='1'; click(btnByLabel(app,'Calculate combined duration')); assert.match(app.textContent,/2024-03-01ISO/);

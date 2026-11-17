@@ -2,7 +2,7 @@
 // iHaveTools — Date & Time tools: date-difference, date-add-calculator,
 // time-zone-converter (uses the browser's built-in IANA tz database via Intl)
 // =============================================================================
-import { h, field, input, textarea, select, switchChip, btn, actionsRow, statusLine, statsGrid, toast, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, btn, actionsRow, statusLine, statsGrid, toast, mountTool, copyButton } from '../ui.js';
 import { DAY_MS, parseCalendarDate, localDateISO, calendarSpan, isoWeek, addMonthsUTC, dateISO } from '../calendar.js';
 export { parseCalendarDate, localDateISO, isoWeek } from '../calendar.js';
 
@@ -59,7 +59,7 @@ export function dateDiff(startStr, endStr, includeEnd = false, weekend = 'sat_su
   const businessDays=totalDays-nonWorkingWeekdays-holidayCount;
   return {...span,totalDays,businessDays,weekendDays:nonWorkingWeekdays,holidayCount,weeks:fullWeeks,remainderDays:totalDays%7,hours:totalDays*24,minutes:totalDays*1440,reversed:a>b};
 }
-export function dateAdd(startStr, amount, unit, direction) {
+export function dateAddISO(startStr, amount, unit, direction) {
   const start=parseCalendarDate(startStr);
   if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 100000) throw new Error('Enter a whole number between 1 and 100,000.');
   if (!['add','sub'].includes(direction)) throw new Error('Choose add or subtract.');
@@ -71,13 +71,22 @@ export function dateAdd(startStr, amount, unit, direction) {
   else if (unit==='years') result=addMonthsUTC(start,n*12);
   else throw new Error('Unknown unit.');
   if (!Number.isFinite(result) || result < parseCalendarDate('1900-01-01') || result > parseCalendarDate('2100-12-31')) throw new Error('The result is outside the supported date range (1900–2100).');
-  const iso=dateISO(result), d=new Date(`${iso}T00:00:00`);
-  if (localDateISO(d)!==iso) throw new Error('This local calendar date does not exist in your time zone.');
+  return dateISO(result);
+}
+function localDateFromISO(iso) {
+  const d = new Date(`${iso}T00:00:00`);
+  if (!Number.isFinite(d.getTime()) || localDateISO(d) !== iso) return null;
   return d;
+}
+// Legacy API: returns a local Date only when the calendar date exists locally.
+export function dateAdd(startStr, amount, unit, direction) {
+  const date = localDateFromISO(dateAddISO(startStr, amount, unit, direction));
+  if (!date) throw new Error('This local calendar date does not exist in your time zone.');
+  return date;
 }
 
 // Apply years and months separately (clamping at each step), then weeks/days.
-export function dateAddDuration(startStr, duration, direction) {
+export function dateAddDurationISO(startStr, duration, direction) {
   let day = parseCalendarDate(startStr);
   if (!['add', 'sub'].includes(direction)) throw new Error('Choose add or subtract.');
   const values = ['years', 'months', 'weeks', 'days'].map(key => duration[key]);
@@ -91,8 +100,11 @@ export function dateAddDuration(startStr, duration, direction) {
   }
   day += sign * (values[2] * 7 + values[3]) * DAY_MS;
   if (!inRange(day)) throw new Error('The result is outside the supported date range (1900–2100).');
-  const iso = dateISO(day), date = new Date(`${iso}T00:00:00`);
-  if (localDateISO(date) !== iso) throw new Error('This local calendar date does not exist in your time zone.');
+  return dateISO(day);
+}
+export function dateAddDuration(startStr, duration, direction) {
+  const date = localDateFromISO(dateAddDurationISO(startStr, duration, direction));
+  if (!date) throw new Error('This local calendar date does not exist in your time zone.');
   return date;
 }
 
@@ -233,24 +245,31 @@ const defs = {
     const dir = select({ options: [{ v: 'add', t: 'Add (after)' }, { v: 'sub', t: 'Subtract (before)' }], value: 'add' });
     const grid = statsGrid();
     const status = statusLine('');
+    let resultISO = '';
+    const copy = copyButton(() => resultISO, {label:'Copy ISO date', small:false});
+    const reuse = btn({label:'Use result as start date', variant:'secondary', onClick:()=>{ if (!resultISO) return; start.value = resultISO; invalidate(); }});
+    copy.disabled = true; reuse.disabled = true;
     const durationInputs = Object.fromEntries(['years', 'months', 'weeks', 'days'].map(key => [key, input({ type: 'number', min: 0, max: 100000, step: 1, value: '0' })]));
     const run = (combined = false) => {
       try {
-        const d = combined
-          ? dateAddDuration(start.value, Object.fromEntries(Object.entries(durationInputs).map(([key, el]) => [key, el.value === '' ? NaN : Number(el.value)])), dir.value)
-          : dateAdd(start.value, amount.value === '' ? NaN : Number(amount.value), unit.value, dir.value);
+        const iso = combined
+          ? dateAddDurationISO(start.value, Object.fromEntries(Object.entries(durationInputs).map(([key, el]) => [key, el.value === '' ? NaN : Number(el.value)])), dir.value)
+          : dateAddISO(start.value, amount.value === '' ? NaN : Number(amount.value), unit.value, dir.value);
+        const utc = new Date(parseCalendarDate(iso)), local = localDateFromISO(iso);
+        resultISO = iso; copy.disabled = false; reuse.disabled = false;
         grid.set([
-          { label: 'Resulting date', value: d.toLocaleDateString(undefined, { dateStyle: 'full' }), kind: 'good' },
-          { label: 'ISO', value: localDateISO(d) },
-          { label: 'Weekday', value: d.toLocaleDateString(undefined, { weekday: 'long' }) },
-          { label: 'Unix (s)', value: String(Math.floor(d.getTime() / 1000)) },
+          { label: 'Resulting date', value: utc.toLocaleDateString(undefined, { dateStyle: 'full', timeZone: 'UTC' }), kind: 'good' },
+          { label: 'ISO', value: iso },
+          { label: 'Weekday', value: utc.toLocaleDateString(undefined, { weekday: 'long', timeZone: 'UTC' }) },
+          { label: 'Unix (s)', value: local ? String(Math.floor(local.getTime() / 1000)) : 'Unavailable (local date skipped)' },
         ]);
-        status.set(`${combined ? 'Applied years, months, weeks and days in that order. ' : ''}Month-end dates are clamped (Jan 31 + 1 month = Feb 28/29). Unix seconds represent the start of the resulting date in your browser’s local time zone, not UTC midnight.`, 'success');
-      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+        status.set(`${combined ? 'Applied years, months, weeks and days in that order. ' : ''}Month-end dates are clamped (Jan 31 + 1 month = Feb 28/29). Unix seconds use the browser’s local start of day, not UTC midnight; a skipped local date has no Unix value.`, 'success');
+      } catch (e) { resultISO = ''; copy.disabled = true; reuse.disabled = true; grid.replaceChildren(); status.set(e.message, 'error'); }
     };
-    const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
+    const invalidate = () => { resultISO = ''; copy.disabled = true; reuse.disabled = true; grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
     root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
     root.append(field({ label: 'Start date', control: start }),
+      actionsRow(btn({label:'Start: today',variant:'secondary',onClick:()=>{start.value=localDateISO(new Date()); invalidate();}})),
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Amount', control: amount }),
         field({ label: 'Unit', control: unit }),
@@ -259,7 +278,7 @@ const defs = {
       h('details', { class: 'date-combined' }, h('summary', { text: 'Add or subtract a combined duration' }),
         h('p', { class: 'hint', text: 'Uses the start date and direction above. Years, then months are applied and clamped separately, then weeks and days.' }),
         h('div', { class: 'field-row' }, ...Object.entries(durationInputs).map(([key, control]) => field({ label: key[0].toUpperCase() + key.slice(1), control }))),
-        actionsRow(btn({ label: 'Calculate combined duration', variant: 'secondary', onClick: () => run(true) }))), grid, status);
+        actionsRow(btn({ label: 'Calculate combined duration', variant: 'secondary', onClick: () => run(true) }))), grid, actionsRow(copy, reuse), status);
   },
 
   'time-zone-converter'(root) {

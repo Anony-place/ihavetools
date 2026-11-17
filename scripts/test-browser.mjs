@@ -327,6 +327,25 @@ try {
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'hash comparison mobile accessibility');
   console.log('✓ URL line conversion and trusted checksum comparison');
+  {
+    const dateContext = await browser.newContext({ viewport:{width:320,height:720}, timezoneId:'Pacific/Apia', serviceWorkers:'block', reducedMotion:'reduce' });
+    await dateContext.addInitScript(() => { window.__copied=''; Object.defineProperty(navigator,'clipboard',{value:{writeText:async text=>{window.__copied=text;}},configurable:true}); });
+    const datePage = await dateContext.newPage();
+    await datePage.goto(`${base}/tools/date-add-calculator/`);
+    await datePage.getByLabel('Start date').fill('2011-12-29');
+    await datePage.getByLabel('Amount',{exact:true}).fill('1');
+    await datePage.getByRole('button',{name:'Calculate',exact:true}).click();
+    assert.match(await datePage.locator('#tool-app').innerText(),/2011-12-30/);
+    assert.match(await datePage.locator('#tool-app').innerText(),/Unavailable \(local date skipped\)/);
+    await datePage.getByRole('button',{name:'Copy ISO date'}).click();
+    assert.equal(await datePage.evaluate(()=>window.__copied),'2011-12-30');
+    await datePage.getByRole('button',{name:'Use result as start date'}).click();
+    assert.equal(await datePage.getByLabel('Start date').inputValue(),'2011-12-30');
+    assert.equal(await datePage.getByRole('button',{name:'Use result as start date'}).isDisabled(),true);
+    assert.ok(await datePage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Date addition fits mobile');
+    assert.deepEqual((await new AxeBuilder({page:datePage}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'Date addition accessibility');
+    await dateContext.close();
+  }
   await go('attendance-calculator');
   await page.getByLabel('Remaining classes (optional)').fill('20');
   await page.getByLabel('Planned classes to attend (optional)').fill('16');
