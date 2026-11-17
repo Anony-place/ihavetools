@@ -332,7 +332,7 @@ const defs = {
     const op = segControl({ options: [{ v: '+', t: '+' }, { v: '-', t: '−' }, { v: '*', t: '×' }, { v: '/', t: '÷' }], value: '+', ariaLabel: 'Operation' });
     const grid = statsGrid();
     const status = statusLine('');
-    const steps = h('p', { class: 'hint' });
+    const steps = h('p', { class: 'hint', style: 'overflow-wrap:anywhere' });
     const run = () => {
       try {
         const r = fractionCalc(a.value, op.getValue(), b.value);
