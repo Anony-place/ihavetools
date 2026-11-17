@@ -2282,6 +2282,20 @@ await domTest('math results are invalidated after changing input', async () => {
  for (const [id,initial,label] of [['average-calculator','1,2,3','Calculate'],['gcd-lcm-calculator','12,18','Calculate GCD'],['weighted-average-calculator','80,3\n90,2','Calculate weighted']]) {const app=await loadToolPage(id,'math'), inp=app.querySelector('textarea,input[type=text]'); inp.value=initial; click(btnByLabel(app,label)); assert.ok(app.querySelector('.stat-card')); inp.value='4'; fire(inp,'input'); assert.equal(app.querySelector('.stat-card'),null);}
 });
 
+await domTest('Attendance future scenario and rounded target warning', async () => {
+ const app=await loadToolPage('attendance-calculator','student'); const n=app.querySelectorAll('input[type=number]');
+ n[3].value='20'; n[4].value='16'; click(btnByLabel(app,'Calculate attendance')); assert.match(app.textContent,/44 \/ 60 \(73\.33%\)/); assert.match(app.textContent,/Below target/);
+ n[4].value='17'; fire(n[4],'input'); assert.doesNotMatch(app.textContent,/Below target/); click(btnByLabel(app,'Calculate attendance')); assert.match(app.textContent,/Meets target/);
+ n[3].value=''; fire(n[3],'input'); click(btnByLabel(app,'Calculate attendance')); assert.match(statusText(document),/Enter remaining classes/);
+ n[0].value='200000000'; n[1].value='149999999'; n[3].value='0'; n[4].value='0'; click(btnByLabel(app,'Calculate attendance'));
+ assert.match(app.textContent,/75\.00%Current attendance/); assert.match(app.textContent,/Below target/); assert.match(app.textContent,/rounded for display/);
+});
+await domTest('Time converter explains averages and links calendar tools', async () => {
+ const app=await loadToolPage('time-converter','converters'); assert.match(app.textContent,/Months and years use Gregorian averages/);
+ assert.equal(app.querySelector('a[href="/tools/date-add-calculator/"]').textContent,'Add calendar dates');
+ assert.ok(app.querySelector('a[href="/tools/time-duration-calculator/"]'));
+ const n=app.querySelector('input[type=number]'), sels=app.querySelectorAll('select'); n.value='1'; sels[0].value='month (avg)'; sels[1].value='day'; fire(sels[1],'change'); assert.match(app.textContent,/30\.436875 day/);
+});
 await domTest('GSC pages: finite term, roman breakdown, editable robots rules', async () => {
  let app=await loadToolPage('attendance-calculator','student'); const nums=app.querySelectorAll('input[type=number]');
  nums[3].value='20'; click(btnByLabel(app,'Calculate attendance')); assert.match(app.textContent,/17 of 20/); assert.match(app.textContent,/3Can miss by term end/);

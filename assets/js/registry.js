@@ -719,9 +719,9 @@ export const tools = [
     keywords: ['time', 'seconds', 'minutes', 'hours', 'days', 'weeks', 'converter'],
     aliases: ['seconds to hours', 'time units', 'minutes to hours'],
     popularity: 68, added: '2026-06-09',
-    steps: 'Enter a value.|Pick the units you are converting from and to.|Read the precise result; swap units with one click.',
+    steps: 'Enter a value.|Pick the units you are converting from and to.|Read the rounded result and all-units table; swap units with one click.',
     faqs:[{"q":"How long is a month here?","a":"The average month is 30.436875 days: one twelfth of a 365.2425-day mean Gregorian year. Actual calendar months vary."},{"q":"Does a day always mean 24 hours?","a":"Here a day is defined as 86,400 seconds. Local calendar days may have a different elapsed length during daylight-saving changes."},{"q":"Can I calculate a date after a number of months?","a":"Use Date Add / Subtract for calendar dates and month-end rules. Average time-unit conversion is not calendar date arithmetic."}],
-    guide:[{"h":"Fixed and average units","p":"Minutes, hours, days and weeks use fixed second factors. Months, years, decades and centuries use the mean Gregorian year of 365.2425 days, not the exact length of a specific calendar period."},{"h":"Worked example","p":"Ninety minutes is 90 × 60 = 5,400 seconds, or 1.5 hours."},{"h":"When to use date tools instead","list":["Calendar months have 28, 29, 30 or 31 days.","A calendar date crossing a daylight-saving shift may not correspond to 24 elapsed hours per local day.","Use Date Difference or Date Add / Subtract when actual calendar dates matter."]}] }),
+    guide:[{"h":"Fixed and average units","p":"Minutes, hours, days and weeks use fixed second factors. Months, years, decades and centuries use the mean Gregorian year of 365.2425 days, not the exact length of a specific calendar period."},{"h":"Worked example","p":"Ninety minutes is 90 × 60 = 5,400 seconds, or 1.5 hours."},{"h":"When to use calendar or duration tools instead","list":["Calendar months have 28, 29, 30 or 31 days.","A calendar date crossing a daylight-saving shift may not correspond to 24 elapsed hours per local day.","Use Date Difference or Date Add / Subtract when actual calendar dates matter."]}] }),
   T({ id: 'speed-converter', name: 'Speed Converter', icon: 'gauge', engine: 'converters', categories: ['converters'],
     related: ["fuel-economy-converter","pressure-converter","fuel-cost-calculator","length-converter","temperature-converter","weight-converter"],
     blurb: 'km/h, mph, m/s, knots and more.',
@@ -2026,7 +2026,7 @@ export const tools = [
     keywords: ['attendance calculator', 'attendance percentage', 'how many classes can i miss', '75 attendance calculator', 'class attendance'],
     aliases: ['attendance percentage calculator', 'bunk calculator', 'classes needed for 75 percent attendance'],
     popularity: 90, added: '2026-11-03',
-    steps: 'Enter classes held so far and classes you attended.|Set your institution’s target — commonly 75%, but use your actual rule.|Optionally enter remaining classes to plan the end of the term.|Read your current percentage, recovery streak or immediate miss buffer, and any term-end plan.',
+    steps: 'Enter classes held so far and classes you attended.|Set your institution’s target — commonly 75%, but use your actual rule.|Optionally enter remaining classes and how many you plan to attend.|Review the current percentage, recovery streak, miss buffer and term-end scenario.',
     faqs: [
       { q: 'I have 28 of 40 classes. How do I reach 75%?', a: 'You are at 70%. Attend the next 8 classes in a row: 36 attended out of 48 held is exactly 75%. Missing one during the recovery makes the required streak longer because the denominator grows too.' },
       { q: 'Why can I miss only 2 classes at 32 out of 40?', a: 'At 32/40 you are at 80%. Missing 2 makes it 32/42 = 76.19%, still over 75%; missing a third makes it 32/43 = 74.42%, below target. The calculator counts whole future classes, not a rounded percentage.' },
@@ -2036,6 +2036,7 @@ export const tools = [
       { h: 'Every future class changes both sides of the fraction',
         p: 'Attendance is attended ÷ held × 100. A class you attend adds 1 to both numbers; a class you miss adds 1 only to “held”. To recover to a target T, the calculator solves (attended + x) ÷ (held + x) ≥ T for whole classes. That is why at 28/40, just “earning back the missing 5%” takes 8 straight classes, ending at 36/48 = 75%.' },
       { h: 'Plan for a fixed number of remaining classes', p: 'Enter the remaining classes to see the minimum you must attend by term end and the maximum you could miss, assuming every class has equal weight and the schedule remains unchanged. For 28 of 40 attended with 20 remaining at a 75% target, you need 17 of those 20; the final result is 45/60 = 75%. This end-of-term allowance is not the same as missing classes immediately while staying above target.' },
+      { h: 'Try a planned attendance scenario', p: 'With 28 of 40 classes attended, 20 remaining and a 75% target, planning to attend 16 ends at 44/60 or 73.33%, below target. Planning 17 ends at 45/60, exactly 75%. Displayed percentages are rounded to two decimals, but target decisions use the unrounded fraction. Attendance policies, approved leave, subject weights and institution rounding can differ.' },
       { h: 'Attendance situations at a 75% target',
         table: { head: ['Attended / held', 'Now', 'What the maths says'], rows: [
           ['28 / 40', '70%', 'Attend 8 in a row → 36/48 = 75%'],

@@ -266,6 +266,15 @@ export function attendanceTermPlan({ held, attended, targetPct, remaining }) {
     maxFinalPct: (attended + remaining) / (held + remaining) * 100 };
 }
 
+/** Compare a particular future-attendance scenario against the exact target. */
+export function attendanceScenario({ held, attended, targetPct, remaining, plannedAttend }) {
+  const term = attendanceTermPlan({ held, attended, targetPct, remaining });
+  if (!Number.isSafeInteger(plannedAttend) || plannedAttend < 0 || plannedAttend > remaining) throw new Error('Planned attendance must be a whole number between 0 and remaining classes.');
+  const finalAttended = attended + plannedAttend, finalHeld = held + remaining;
+  return { finalAttended, finalHeld, finalPct: finalAttended / finalHeld * 100,
+    meetsTarget: term.reachable && plannedAttend >= term.minimumAttend };
+}
+
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
   'scientific-calculator'(root) {
@@ -504,6 +513,7 @@ const defs = {
     const attended = input({ type: 'number', step: '1', min: 0, value: '28' });
     const target = input({ type: 'number', step: 'any', min: 1, max: 100, value: '75' });
     const remaining = input({type:'number', step:'1', min:0, max:1000000000, placeholder:'Optional'});
+    const planned = input({type:'number', step:'1', min:0, max:1000000000, placeholder:'Optional'});
     const grid = statsGrid();
     const status = statusLine('');
     const run = () => {
@@ -511,6 +521,8 @@ const defs = {
         const r = attendanceCalc({ held: held.value === '' ? NaN : Number(held.value), attended: attended.value === '' ? NaN : Number(attended.value), targetPct: target.value === '' ? NaN : Number(target.value) });
         const targetLabel = `${Number(target.value)}% target`;
         const term = remaining.value === '' ? null : attendanceTermPlan({held:Number(held.value), attended:Number(attended.value), targetPct:Number(target.value), remaining:Number(remaining.value)});
+        if (planned.value !== '' && remaining.value === '') throw new Error('Enter remaining classes to use a planned attendance scenario.');
+        const scenario = planned.value === '' ? null : attendanceScenario({held:Number(held.value), attended:Number(attended.value), targetPct:Number(target.value), remaining:Number(remaining.value), plannedAttend:Number(planned.value)});
         grid.set([
           { label: 'Current attendance', value: `${r.currentPct.toFixed(2)}%`, kind: r.classesNeeded || r.impossible ? 'bad' : 'good' },
           r.impossible
@@ -520,6 +532,7 @@ const defs = {
               : { label: 'Classes you can miss', value: String(r.classesCanMiss), kind: 'good' },
           { label: 'Attended / held', value: `${attended.value} / ${held.value}` },
           ...(term ? [term.reachable ? {label:'Attend in remaining classes', value:`${term.minimumAttend} of ${remaining.value}`, kind:'good'} : {label:'End-of-term target', value:'Not reachable', kind:'bad'}, {label:'Maximum final attendance', value:`${term.maxFinalPct.toFixed(2)}%`}, ...(term.reachable ? [{label:'Can miss by term end', value:String(term.canMiss)}] : [])] : []),
+          ...(scenario ? [{label:'Planned final attendance', value:`${scenario.finalAttended} / ${scenario.finalHeld} (${scenario.finalPct.toFixed(2)}%)`}, {label:'Planned result vs target', value:scenario.meetsTarget ? 'Meets target' : 'Below target', kind:scenario.meetsTarget ? 'good' : 'bad'}] : []),
         ]);
         status.set(r.impossible
           ? 'A missed class can never be removed from the denominator, so exactly 100% is no longer reachable. Attending every remaining class still gets you as close as possible.'
@@ -530,15 +543,18 @@ const defs = {
         if (term) status.set(`${status.textContent} ${term.reachable ? `With ${remaining.value} remaining, attend at least ${term.minimumAttend} by term end; you can miss at most ${term.canMiss}.` : `Even attending all ${remaining.value} remaining classes will not meet the target by term end.`} Assumes all classes count equally.`, term.reachable ? 'info' : 'warning');
       } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
     };
-    [held, attended, target, remaining].forEach(el => el.addEventListener('input', () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); }));
+    const clear = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
+    [held, attended, target, remaining, planned].forEach(el => { el.addEventListener('input', clear); el.addEventListener('change', clear); });
     root.append(
       h('div', { class: 'field-row' },
         field({ label: 'Classes held so far', control: held }),
         field({ label: 'Classes attended', control: attended }),
         field({ label: 'Target attendance %', control: target, hint: '1–100%, up to 6 decimal places.' }),
-        field({label:'Remaining classes (optional)', control:remaining, hint:'For end-of-term planning; all classes count equally.'})),
+        field({label:'Remaining classes (optional)', control:remaining, hint:'For end-of-term planning; all classes count equally.'}),
+        field({label:'Planned classes to attend (optional)', control:planned, hint:'Out of remaining classes; leave blank to skip.'})),
+      h('p', {class:'hint', text:'Percentages are rounded for display. Target decisions use the unrounded fraction; school rules, exemptions and rounding may differ.'}),
       actionsRow(btn({ label: 'Calculate attendance', icon: 'calendar', onClick: run })), grid, status);
-    shareState(root, [['held', held], ['attended', attended], ['target', target], ['remaining', remaining]], run);
+    shareState(root, [['held', held], ['attended', attended], ['target', target], ['remaining', remaining], ['planned', planned]], run);
   },
 };
 
