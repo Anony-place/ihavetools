@@ -515,6 +515,17 @@ await test('attendance answers match independent exact brute force for small cla
  }
 });
 
+await test('attendance scenario uses exact term thresholds and validates future plan', () => {
+  for (let held=1;held<=12;held++) for(let attended=0;attended<=held;attended++) for(let remaining=0;remaining<=6;remaining++) for(let plan=0;plan<=remaining;plan++) for(const targetPct of [25,50,75,100]) {
+    const r=stu.attendanceScenario({held,attended,remaining,plannedAttend:plan,targetPct});
+    assert.equal(r.meetsTarget,(attended+plan)*100 >= targetPct*(held+remaining));
+    assert.equal(r.finalHeld,held+remaining); assert.equal(r.finalAttended,attended+plan);
+  }
+  const near=stu.attendanceScenario({held:200000000,attended:149999999,remaining:0,plannedAttend:0,targetPct:75});
+  assert.equal(near.finalPct.toFixed(2),'75.00'); assert.equal(near.meetsTarget,false);
+  assert.throws(()=>stu.attendanceScenario({held:40,attended:28,remaining:20,plannedAttend:21,targetPct:75}),/between 0/);
+  assert.throws(()=>stu.attendanceScenario({held:40,attended:28,remaining:20,plannedAttend:2.5,targetPct:75}),/whole number/);
+});
 console.log('\n── Parser-based formatters ──');
 await test('HTML formatter preserves preformatted content and rejects unsafe minification',async()=>{
  const out=await dev.formatHtml('<pre>  keep\n   me</pre>');assert.ok(out.includes('  keep\n   me'));

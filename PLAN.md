@@ -11,6 +11,25 @@
 
 ---
 
+## Attendance and time-converter usability audit — plan (2026-10-31)
+
+The supplied Search Console export is labelled 2026-11-17, later than the
+session date, so treat its dates and rankings as unverified, not current demand.
+It identifies attendance and time-converter pages as candidates for usability
+review. [timeanddate](https://www.timeanddate.com/date/duration.html) separates
+calendar-date arithmetic from fixed time units; this is a feature signal only.
+
+1. Add an optional attendance scenario for a specified number of future
+   attendances within remaining classes, compare using exact target arithmetic,
+   and clarify displayed rounding versus eligibility and institution rules.
+2. Place time-unit average-month/year and DST limitations beside the converter,
+   link to date/time tools, and correct claims of exact displayed precision.
+3. Cover term-boundary/100%/zero remaining scenarios, legacy links, rounded
+   thresholds, unit conversion, mobile accessibility and full CI. Consolidate
+   in one PR; verify production only after checks pass, without ranking claims.
+
+---
+
 ## Compound growth planning — plan (2026-10-31)
 
 [Investor.gov](https://www.investor.gov/financial-tools-calculators/calculators/compound-interest-calculator)
