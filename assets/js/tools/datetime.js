@@ -25,23 +25,20 @@ function businessRules(weekend, holidays) {
   return (day) => !excluded.includes(new Date(day).getUTCDay()) && !holidayDays.has(day);
 }
 export function countBusinessDays(start, end, weekend = 'sat_sun', holidays = '', includeEnd = true) {
-  const first = parseCalendarDate(start), last = parseCalendarDate(end), isWorking = businessRules(weekend, holidays);
+  const first = parseCalendarDate(start), last = parseCalendarDate(end);
   if (last < first) throw new Error('End date must be on or after the start date.');
-  if (typeof includeEnd !== 'boolean') throw new Error('Choose whether to include the end date.');
-  const days = (last - first) / DAY_MS + (includeEnd ? 1 : 0);
-  if (days > 36600) throw new Error('Date range must be at most 36,600 days.');
-  let working = 0;
-  for (let i = 0; i < days; i++) if (isWorking(first + i * DAY_MS)) working++;
-  return { working, nonWorking: days - working, calendarDays: days };
+  const result = dateDiff(start, end, includeEnd, weekend, holidays);
+  return { working: result.businessDays, nonWorking: result.weekendDays + result.holidayCount, calendarDays: result.totalDays };
 }
 export function addBusinessDays(start, amount, weekend = 'sat_sun', holidays = '') {
   let day = parseCalendarDate(start); const isWorking = businessRules(weekend, holidays);
   if (!Number.isInteger(amount) || Math.abs(amount) > 10000) throw new Error('Working days must be a whole number between -10000 and 10000.');
   if (amount !== 0 && Array.isArray(weekend) && weekend.length === 7) throw new Error('At least one weekday must be a working day for a nonzero offset.');
-  let remaining = Math.abs(amount), steps = 0, direction = Math.sign(amount);
+  let remaining = Math.abs(amount), direction = Math.sign(amount);
+  const minDay = parseCalendarDate('1900-01-01'), maxDay = parseCalendarDate('2100-12-31');
   while (remaining) {
     day += direction * DAY_MS;
-    if (++steps > 36600 || day < parseCalendarDate('1900-01-01') || day > parseCalendarDate('2100-12-31')) throw new Error('The result is outside the supported date range.');
+    if (day < minDay || day > maxDay) throw new Error('The result is outside the supported date range.');
     if (isWorking(day)) remaining--;
   }
   return new Date(day).toISOString().slice(0, 10);
@@ -189,11 +186,16 @@ const defs = {
     const getWeekend=()=>weekend.value==='custom'?days.flatMap((el,i)=>el.querySelector('input').checked?[i]:[]):weekend.value;
     weekend.addEventListener('change',()=>{customWrap.hidden=weekend.value!=='custom';});
     const grid = statsGrid(), status = statusLine('Enter holidays manually; no holidays are automatically applied.');
-    const runCount = () => { try { const r = countBusinessDays(start.value, end.value, getWeekend(), holidays.value, includeEnd.querySelector('input').checked); grid.set([{ label: 'Working days', value: String(r.working), kind: 'good' }, { label: 'Non-working days', value: String(r.nonWorking) }, { label: 'Calendar days', value: String(r.calendarDays) }]); status.set(`Start date is included; end date is ${includeEnd.querySelector('input').checked?'included':'excluded'}. Non-working-day holidays are not subtracted twice. No holiday calendar is loaded automatically.`, 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
-    const runAdd = () => { try { if (!amount.value.trim()) throw new Error('Enter a whole number of working days.'); const result = addBusinessDays(start.value, Number(amount.value), getWeekend(), holidays.value); grid.set([{ label: 'Resulting date', value: result, kind: 'good' }, { label: 'Offset (working days)', value: amount.value }]); status.set('The start date is excluded for nonzero offsets; negative values subtract. Zero returns the start date. Verify the holiday list for your region.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
-    const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
+    let resultISO = '';
+    const copy = copyButton(() => resultISO, {label:'Copy deadline ISO date', small:false});
+    const reuse = btn({label:'Use deadline as start date', variant:'secondary', onClick:()=>{ if (!resultISO) return; start.value = resultISO; invalidate(); }});
+    const clearResult = () => { resultISO = ''; copy.disabled = true; reuse.disabled = true; };
+    clearResult();
+    const runCount = () => { clearResult(); try { const r = countBusinessDays(start.value, end.value, getWeekend(), holidays.value, includeEnd.querySelector('input').checked); grid.set([{ label: 'Working days', value: String(r.working), kind: 'good' }, { label: 'Non-working days', value: String(r.nonWorking) }, { label: 'Calendar days', value: String(r.calendarDays) }]); status.set(`Start date is included; end date is ${includeEnd.querySelector('input').checked?'included':'excluded'}. Non-working-day holidays are not subtracted twice. No holiday calendar is loaded automatically.`, 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    const runAdd = () => { clearResult(); try { if (!amount.value.trim()) throw new Error('Enter a whole number of working days.'); const result = addBusinessDays(start.value, Number(amount.value), getWeekend(), holidays.value); resultISO = result; copy.disabled = false; reuse.disabled = false; grid.set([{ label: 'Resulting date', value: result, kind: 'good' }, { label: 'Offset (working days)', value: amount.value }]); status.set('The start date is excluded for nonzero offsets; negative values subtract. Zero returns the start date. Verify the holiday list for your region.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
+    const invalidate = () => { clearResult(); grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
     root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
-    root.append(h('div', { class: 'field-row' }, field({ label: 'Start date', control: start }), field({ label: 'End date (for counting)', control: end }), field({ label: 'Weekend', control: weekend }), field({ label: 'Working days to add (negative to subtract)', control: amount })), customWrap, h('div',{class:'switch-row'},includeEnd), field({ label: 'Holidays (YYYY-MM-DD)', control: holidays, hint: 'Optional: up to 500 dates and 12,000 characters, separated by commas or new lines. No automatic holidays.' }), actionsRow(btn({ label: 'Count working days', icon: 'calendar', onClick: runCount }), btn({ label: 'Add / subtract working days', icon: 'calendar-plus', onClick: runAdd })), grid, status);
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Start date', control: start }), field({ label: 'End date (for counting)', control: end }), field({ label: 'Weekend', control: weekend }), field({ label: 'Working days to add (negative to subtract)', control: amount })), customWrap, h('div',{class:'switch-row'},includeEnd), field({ label: 'Holidays (YYYY-MM-DD)', control: holidays, hint: 'Optional: up to 500 dates and 12,000 characters, separated by commas or new lines. No automatic holidays.' }), actionsRow(btn({ label: 'Count working days', icon: 'calendar', onClick: runCount }), btn({ label: 'Add / subtract working days', icon: 'calendar-plus', onClick: runAdd })), actionsRow(copy, reuse), grid, status);
   },
 
   'date-difference'(root) {

@@ -1699,8 +1699,13 @@ await domTest('business day UI counts holiday and computes next working day', as
   const dates = app.querySelectorAll('input[type=date]'); dates[0].value='2026-11-06'; dates[1].value='2026-11-13';
   app.querySelector('textarea').value='2026-11-11';
   click(btnByLabel(app, 'Count working days')); assert.match(app.textContent,/5Working days/);
+  const copy=btnByLabel(app,'Copy deadline ISO date'), reuse=btnByLabel(app,'Use deadline as start date');
+  assert.equal(copy.disabled,true); assert.equal(reuse.disabled,true);
   click(btnByLabel(app, 'Add / subtract working days')); assert.match(app.textContent,/2026-11-16Resulting date/);
-  app.querySelector('textarea').value='2026-02-30'; click(btnByLabel(app, 'Count working days')); assert.match(app.textContent,/Invalid date/);
+  assert.equal(copy.disabled,false); assert.equal(reuse.disabled,false); click(reuse);
+  assert.equal(dates[0].value,'2026-11-16'); assert.equal(copy.disabled,true); assert.equal(reuse.disabled,true);
+  click(btnByLabel(app, 'Add / subtract working days')); click(btnByLabel(app, 'Count working days')); assert.equal(copy.disabled,true);
+  dates[0].value='2026-11-06'; app.querySelector('textarea').value='2026-02-30'; click(btnByLabel(app, 'Count working days')); assert.match(app.textContent,/Invalid date/);
 });
 await domTest('date difference displays 24 hours for one day', async () => {
   const app = await loadToolPage('date-difference', 'datetime'); const dates=app.querySelectorAll('input[type=date]');
