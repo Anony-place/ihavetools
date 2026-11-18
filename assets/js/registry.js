@@ -1261,6 +1261,38 @@ export const tools = [
       {h:'Worked example',p:'For 1, 2, 2, 3, 5 the sum is 13, mean 2.6, median 2, mode 2 and range 4. The squared deviations sum to 9.2: population variance is 1.84 and sample variance is 2.3.'},
       {h:'Choose the right denominator',list:['Population variance divides by n when the data describe the whole population.', 'Sample variance divides by n − 1 when estimating spread from a sample; one observation is insufficient.', 'Results use floating-point arithmetic and are rounded for display. Do not infer outliers from the sorted list alone.']}
     ] }),
+  T({ id:'circle-calculator', name:'Circle Calculator', icon:'calculator', engine:'math', categories:['math','student'],
+    related:['right-triangle-calculator','area-converter','length-converter','scientific-calculator','ratio-calculator','aspect-ratio-calculator'],
+    blurb:'Find circle area, circumference, radius, diameter, arc and sector.',
+    description:'Calculate circle radius, diameter, circumference and area from one known measurement, with optional arc length and sector area for a central angle.',
+    keywords:['circle calculator','circle area calculator','circumference calculator','radius diameter','arc length','sector area'], aliases:['area of a circle','circumference of circle','circle radius calculator'], popularity:78, added:'2026-10-31',
+    steps:'Choose radius, diameter, circumference or area and enter its positive value.|Optionally enter a central angle from 0 to 360 degrees.|Calculate the circle measurements and optional arc and sector.',
+    guide:[
+      {h:'Circle formulas',p:'For radius r, diameter is 2r, circumference is 2πr and area is πr². If you know the diameter, divide it by two. From circumference, divide by 2π; from area, take the square root of area ÷ π.'},
+      {h:'Example and units',p:'A circle with radius 7 cm has diameter 14 cm, circumference about 43.9823 cm and area about 153.9380 cm². Use a consistent length unit throughout; the area is expressed in that unit squared.'},
+      {h:'Arc and sector',list:['For a central angle θ in degrees, arc length is circumference × θ ÷ 360 and sector area is circle area × θ ÷ 360.', 'The optional angle is between 0° and 360°, inclusive. A 90° sector is one quarter of the circle.', 'Known values must be positive and at most 1,000,000, with up to six decimal places. Results use floating-point arithmetic and are rounded for display.']}
+    ], faqs:[
+      {q:'How do I calculate a circle’s area?',a:'Multiply π by the radius squared. With radius 7, the area is 49π, approximately 153.938 square units.'},
+      {q:'How do I find the circumference from diameter?',a:'Multiply the diameter by π. For diameter 14, the circumference is 14π, approximately 43.982 length units.'},
+      {q:'How do I calculate a sector area?',a:'Multiply the circle area by the central angle in degrees divided by 360.'},
+      {q:'Does this convert between units?',a:'No. Use one consistent length unit; area results use the corresponding square unit. Use the length or area converter separately if needed.'}
+    ] }),
+  T({ id:'right-triangle-calculator', name:'Right Triangle Calculator', icon:'calculator', engine:'math', categories:['math','student'],
+    related:['circle-calculator','scientific-calculator','length-converter','area-converter','ratio-calculator','fraction-calculator'],
+    blurb:'Solve a right triangle from two sides using the Pythagorean theorem.',
+    description:'Find a right triangle’s missing side, area, perimeter and acute angles from two legs or one leg and the hypotenuse.',
+    keywords:['right triangle calculator','pythagorean theorem calculator','hypotenuse calculator','missing leg','right angled triangle'], aliases:['pythagoras calculator','pythagorean theorem calculator','hypotenuse calculator'], popularity:78, added:'2026-10-31',
+    steps:'Choose two legs or a leg and the hypotenuse.|Enter the first leg and the selected second side using the same length unit.|Calculate the missing side, area, perimeter and angles.',
+    guide:[
+      {h:'Pythagorean theorem',p:'For a right triangle with perpendicular legs a and b and hypotenuse c, a² + b² = c². From two legs calculate c = √(a² + b²). From a leg and hypotenuse calculate the other leg with √(c² − a²).'},
+      {h:'Worked example',p:'Legs 3 and 4 give hypotenuse 5, area 6 square units and perimeter 12 length units. The angle opposite leg 3 is approximately 36.8699° and the angle opposite leg 4 is approximately 53.1301°.'},
+      {h:'Assumptions and limits',list:['The hypotenuse must be strictly longer than either leg. Inputs must be positive, at most 1,000,000 and have at most six decimal places.', 'This solver assumes a 90° angle; it does not check arbitrary three-sided triangles or accept an angle as input.', 'Use the same length unit for both inputs; area uses square units. Floating-point arithmetic and displayed rounding can affect results, especially for very similar sides.']}
+    ], faqs:[
+      {q:'How do I find a hypotenuse?',a:'Square each leg, add the results and take the square root. Legs 3 and 4 give √(9 + 16) = 5.'},
+      {q:'How do I find a missing leg?',a:'Subtract the square of the known leg from the square of the hypotenuse and take the square root. The hypotenuse must be larger than the known leg.'},
+      {q:'Can a hypotenuse equal a leg?',a:'No. In a non-degenerate right triangle the hypotenuse is strictly longer than either leg.'},
+      {q:'Can I solve a triangle that is not right-angled?',a:'No. This tool assumes the angle between the two legs is 90°.'}
+    ] }),
   T({ id:'download-time-calculator', name:'Download Time Calculator', icon:'clock', engine:'planning', categories:['converters','developer'],
     related:['data-storage-converter','speed-converter','time-converter','uncompressed-image-size-calculator','image-compressor','bulk-image-resizer'],
     blurb:'Estimate download or upload time from file size and connection speed.',
@@ -1326,7 +1358,7 @@ export const tools = [
       {q:'Will this tell me the physical size on any screen?',a:'No. Screen scaling, CSS reference pixels and physical device density can differ from the entered PPI.'}
     ] }),
   T({ id: 'ratio-calculator', name: 'Ratio Calculator', icon: 'ratio', engine: 'math', categories: ['math'],
-    related:['aspect-ratio-calculator','decimal-to-fraction','average-calculator','gcd-lcm-calculator','percentage-calculator','fraction-calculator'],
+    related:['right-triangle-calculator','circle-calculator','aspect-ratio-calculator','decimal-to-fraction','gcd-lcm-calculator','fraction-calculator'],
     blurb: 'Simplify ratios and solve for the missing value.', description: 'Reduce positive decimal ratios exactly and solve proportions like a:b = c:x, with decimal results.',
     keywords: ['ratio', 'proportion', 'simplify ratio', 'equivalent ratio', 'scale'], aliases: ['simplify ratio', 'proportion calculator', 'aspect ratio math'], popularity: 66, added: '2026-06-13',
     steps: 'Enter positive a and b.|Optionally enter c in a:b = c:x.|Read the simplified ratio and the calculated x.',

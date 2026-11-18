@@ -72,6 +72,12 @@ try {
     assert.ok((await page.locator('#tool-app').innerText()).includes(result),`${id} result`);
     assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);
   }
+  await page.setViewportSize({width:320,height:844});
+  for (const [id,button,result] of [['circle-calculator','Calculate circle','153.938'],['right-triangle-calculator','Calculate right triangle','Hypotenuse']]) {
+    await go(id); await page.getByRole('button',{name:button,exact:true}).click();
+    assert.ok((await page.locator('#tool-app').textContent()).includes(result), `${id} result`);
+    assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);
+  }
   // Discovery: mobile header search, keyboard selection, dismiss and fallback links.
   await page.setViewportSize({ width: 320, height: 844 });
   await go('pdf-merge');

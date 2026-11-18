@@ -130,7 +130,56 @@ export function pixelsInches(value, ppi, direction) {
   throw new Error('Choose a conversion direction.');
 }
 
+export function circleGeometry(kind, value, angle = '') {
+  const n = positiveDecimal(value, 'Known measurement', 1000000);
+  let radius;
+  if (kind === 'radius') radius = n;
+  else if (kind === 'diameter') radius = n / 2;
+  else if (kind === 'circumference') radius = n / (2 * Math.PI);
+  else if (kind === 'area') radius = Math.sqrt(n / Math.PI);
+  else throw new Error('Choose a valid known measurement.');
+  const circumference = 2 * Math.PI * radius, area = Math.PI * radius * radius;
+  let sector = null;
+  if (String(angle).trim() !== '') {
+    const text = String(angle).trim();
+    if (text.length > 24 || !/^(?:\d+(?:\.\d{1,6})?|\.\d{1,6})$/.test(text) || Number(text) > 360) throw new Error('Central angle must be between 0 and 360 degrees, with at most six decimal places.');
+    const fraction = Number(text) / 360;
+    sector = { angle: Number(text), arc: circumference * fraction, area: area * fraction };
+  }
+  return { radius, diameter: 2 * radius, circumference, area, sector };
+}
+export function rightTriangle(mode, first, second) {
+  const a = positiveDecimal(first, 'First leg', 1000000), other = positiveDecimal(second, 'Second measurement', 1000000);
+  let b, c;
+  if (mode === 'legs') { b = other; c = Math.hypot(a, b); }
+  else if (mode === 'leg-hypotenuse') {
+    c = other;
+    if (c <= a) throw new Error('The hypotenuse must be greater than the known leg.');
+    b = Math.sqrt(c - a) * Math.sqrt(c + a);
+  } else throw new Error('Choose a valid pair of sides.');
+  return { a, b, c, area: a * b / 2, perimeter: a + b + c,
+    angleA: Math.atan2(a, b) * 180 / Math.PI, angleB: Math.atan2(b, a) * 180 / Math.PI };
+}
+
 const defs = {
+  'circle-calculator'(root) {
+    const kind=select({options:[{v:'radius',t:'Radius'},{v:'diameter',t:'Diameter'},{v:'circumference',t:'Circumference'},{v:'area',t:'Area'}],value:'radius'}), value=input({type:'text',inputmode:'decimal',value:'7'}),angle=input({type:'text',inputmode:'decimal',placeholder:'Optional (0–360)'}),grid=statsGrid(),status=statusLine('');
+    const run=()=>{try {const r=circleGeometry(kind.value,value.value,angle.value);
+      grid.set([{label:'Radius (length units)',value:display(r.radius),kind:'good'},{label:'Diameter (length units)',value:display(r.diameter)},{label:'Circumference (length units)',value:display(r.circumference)},{label:'Area (square units)',value:display(r.area)}, ...(r.sector ? [{label:'Arc length (length units)',value:display(r.sector.arc)},{label:'Sector area (square units)',value:display(r.sector.area)}] : [])]);
+      status.set('Use one consistent length unit; areas use its square. Results use floating-point arithmetic and are rounded for display.', 'info');
+    }catch(e){grid.replaceChildren();status.set(e.message,'error');}};
+    const invalidate=()=>{grid.replaceChildren();status.set('Input changed. Calculate again.','info');};root.addEventListener('input',invalidate);root.addEventListener('change',invalidate);
+    root.append(h('div',{class:'field-row'},field({label:'Known measurement',control:kind}),field({label:'Measurement value',control:value}),field({label:'Central angle in degrees (optional)',control:angle})),h('p',{class:'hint',text:'Enter a positive measurement up to 1,000,000. Angle 0–360° is optional and gives the corresponding arc and sector.'}),actionsRow(btn({label:'Calculate circle',icon:'calculator',onClick:run})),grid,status);
+  },
+  'right-triangle-calculator'(root) {
+    const mode=select({options:[{v:'legs',t:'Two legs'},{v:'leg-hypotenuse',t:'A leg and hypotenuse'}],value:'legs'}), first=input({type:'text',inputmode:'decimal',value:'3'}),second=input({type:'text',inputmode:'decimal',value:'4'}),grid=statsGrid(),status=statusLine('');
+    const run=()=>{try {const r=rightTriangle(mode.value,first.value,second.value);
+      grid.set([{label:'Leg a (length units)',value:display(r.a)},{label:'Leg b (length units)',value:display(r.b)},{label:'Hypotenuse c (length units)',value:display(r.c),kind:'good'},{label:'Area (square units)',value:display(r.area)},{label:'Perimeter (length units)',value:display(r.perimeter)},{label:'Angle opposite leg a (degrees)',value:display(r.angleA)},{label:'Angle opposite leg b (degrees)',value:display(r.angleB)}]);
+      status.set('Assumes a right triangle and consistent length units. Results use floating-point arithmetic and are rounded for display.', 'info');
+    }catch(e){grid.replaceChildren();status.set(e.message,'error');}};
+    const invalidate=()=>{grid.replaceChildren();status.set('Input changed. Calculate again.','info');};root.addEventListener('input',invalidate);root.addEventListener('change',invalidate);
+    root.append(h('div',{class:'field-row'},field({label:'Known sides',control:mode}),field({label:'First leg a',control:first}),field({label:'Second leg b or hypotenuse c',control:second})),h('p',{class:'hint',text:'Enter two positive lengths in the same unit, each up to 1,000,000. Choose which side the second value represents; the hypotenuse must be longest.'}),actionsRow(btn({label:'Calculate right triangle',icon:'calculator',onClick:run})),grid,status);
+  },
   'aspect-ratio-calculator'(root) {
     const width=input({type:'number',step:1,min:1,max:1000000000,value:'1920'}), height=input({type:'number',step:1,min:1,max:1000000000,value:'1080'}), target=input({type:'number',step:1,min:1,max:1000000000,placeholder:'Optional'});
     const axis=select({options:[{v:'width',t:'New width'},{v:'height',t:'New height'}],value:'width'}), grid=statsGrid(), status=statusLine('');
