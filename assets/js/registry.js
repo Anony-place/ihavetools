@@ -733,6 +733,7 @@ export const tools = [
     faqs:[{"q":"How many km/h is one mph?","a":"One international mile per hour is exactly 1.609344 kilometres per hour."},{"q":"How many km/h is one knot?","a":"One knot is exactly one nautical mile per hour, or 1.852 km/h."},{"q":"Is the speed of sound always the same?","a":"No. This converter uses a fixed approximation of 340.29 m/s for Mach at sea level; the speed of sound depends on conditions such as temperature."}],
     guide:[{"h":"Speed units","p":"Speed describes distance per unit of time. International miles and nautical miles have defined lengths, so mph and knots can be converted to km/h by fixed factors."},{"h":"Worked example","p":"100 km/h is approximately 62.1371 mph, using 1 mph = 1.609344 km/h."},{"h":"Mach is condition-dependent","list":["The Mach unit shown is a fixed 340.29 m/s approximation, not a live atmospheric model.","Temperature and medium affect the speed of sound.","Results are floating-point values rounded for display."]}] }),
   T({ id: 'data-storage-converter', name: 'Data Storage Converter', icon: 'database', engine: 'converters', categories: ['converters'],
+    related:['download-time-calculator','uncompressed-image-size-calculator','speed-converter','time-converter','image-compressor','length-converter'],
     blurb: 'Bytes, KB, MB, GB, TB — decimal and binary (KiB, MiB, GiB).',
     description: 'Convert bits, bytes, KB, MB, GB and TB in decimal units, plus KiB, MiB, GiB and TiB in binary units — with every equivalent shown in one table.',
     keywords: ['data storage converter', 'data converter', 'storage', 'bytes', 'kb', 'mb', 'gb', 'tb', 'kib', 'mib', 'gib', 'converter'],
@@ -917,7 +918,7 @@ export const tools = [
       { q: 'What happens if a file fails?', a: 'The result table identifies each failure. The ZIP contains only successful files, with numbered filenames to avoid collisions. Keep the originals and verify the output before deleting anything.' },
     ] }),
   T({ id: 'image-resizer', name: 'Image Resizer', icon: 'crop', engine: 'image', categories: ['image'],
-    related: ['aspect-ratio-calculator','pixels-to-inches-converter','bulk-image-resizer','image-compressor','image-converter','image-cropper'],
+    related: ['aspect-ratio-calculator','pixels-to-inches-converter','uncompressed-image-size-calculator','bulk-image-resizer','image-compressor','image-cropper'],
     blurb: 'Resize images to exact pixels, keeping the aspect ratio.',
     description: 'Resize images to exact dimensions with aspect-ratio lock, percentage scaling and high-quality smoothing. Choose the output format too.',
     keywords: ['resize image', 'image size', 'dimensions', 'scale', 'pixels', 'thumbnail'],
@@ -1259,6 +1260,38 @@ export const tools = [
       {h:'Center and spread',p:'Mean is the sum divided by count. Median is the middle sorted value (or the mean of the two middle values). Modes are the most frequent values when at least one repeats. Range is maximum minus minimum.'},
       {h:'Worked example',p:'For 1, 2, 2, 3, 5 the sum is 13, mean 2.6, median 2, mode 2 and range 4. The squared deviations sum to 9.2: population variance is 1.84 and sample variance is 2.3.'},
       {h:'Choose the right denominator',list:['Population variance divides by n when the data describe the whole population.', 'Sample variance divides by n − 1 when estimating spread from a sample; one observation is insufficient.', 'Results use floating-point arithmetic and are rounded for display. Do not infer outliers from the sorted list alone.']}
+    ] }),
+  T({ id:'download-time-calculator', name:'Download Time Calculator', icon:'clock', engine:'planning', categories:['converters','developer'],
+    related:['data-storage-converter','speed-converter','time-converter','uncompressed-image-size-calculator','image-compressor','bulk-image-resizer'],
+    blurb:'Estimate download or upload time from file size and connection speed.',
+    description:'Estimate file transfer time from a file size, connection speed and assumed effective throughput, or calculate the speed needed to meet a deadline.',
+    keywords:['download time calculator','upload time calculator','file transfer time','download speed','Mbps','GB','GiB'], aliases:['file transfer calculator','upload time calculator'], popularity:73, added:'2026-10-31',
+    steps:'Enter the file size and select a decimal or binary byte unit.|Enter download or upload speed in Mbps and an assumed effective throughput.|Optionally enter a target time in minutes, then calculate.',
+    guide:[
+      {h:'Calculate transfer time',p:'Convert the file size to bytes and multiply by 8 for bits. Divide by the connection speed in bits per second. For 1 GB at 100 Mbps, the ideal time is 80 seconds: 1 GB is 1 billion bytes, and 100 Mbps is 100 million bits per second.'},
+      {h:'Account for throughput',p:'Set the percentage of the advertised or measured speed that you expect this transfer to achieve. At 90% effective throughput, the same 1 GB transfer at 100 Mbps takes about 88.89 seconds. This is a scenario, not a measured speed or guaranteed overhead.'},
+      {h:'Deadline and units',list:['Enter an optional target in minutes to estimate the nominal Mbps needed at the chosen effective throughput.', 'MB, GB and TB use powers of 1000; MiB, GiB and TiB use powers of 1024. Check how your device labels its file sizes.', 'Speeds use decimal Mbps (bits per second), not MB/s (bytes per second). Use the upload rate when estimating an upload.', 'Real throughput fluctuates with server, network congestion, protocol overhead and other activity. The calculation assumes constant speed; displayed results are rounded and use floating-point arithmetic.']}
+    ], faqs:[
+      {q:'How long does 1 GB take at 100 Mbps?',a:'Ideally 80 seconds. At 90% effective throughput the estimate is about 88.89 seconds; actual time can differ.'},
+      {q:'Is 100 Mbps the same as 100 MB/s?',a:'No. There are 8 bits in a byte: 100 Mbps is at most 12.5 MB/s before any reduction in throughput.'},
+      {q:'Can I use this for uploads?',a:'Yes. Enter the upload speed rather than the download speed; they can differ substantially.'},
+      {q:'Does this measure my connection or guarantee the result?',a:'No. It uses your entered speed and assumed effective percentage; actual throughput can vary.'}
+    ] }),
+  T({ id:'uncompressed-image-size-calculator', name:'Uncompressed Image Size Calculator', icon:'image', engine:'planning', categories:['image','calculators'],
+    related:['aspect-ratio-calculator','pixels-to-inches-converter','image-resizer','image-compressor','data-storage-converter','download-time-calculator'],
+    blurb:'Calculate ideal uncompressed pixel-data size from dimensions and bit depth.',
+    description:'Calculate theoretical tightly packed image pixel data in bytes, MB and MiB using width, height, channels and bits per channel.',
+    keywords:['uncompressed image size calculator','raw image size','pixel data size','image bit depth','bitmap size calculator'], aliases:['bitmap size calculator','image storage calculator'], popularity:65, added:'2026-10-31',
+    steps:'Enter width and height in pixels.|Select the channel count and enter bits per channel.|Calculate the ideal packed pixel-data size in bytes, MB and MiB.',
+    guide:[
+      {h:'Calculate packed pixel data',p:'Multiply width × height × channels × bits per channel to get bits. Divide by 8 and round up to a whole byte for the minimum tightly packed stream. For 1920 × 1080, RGB and 8 bits per channel, this is 6,220,800 bytes, or 6.2208 MB.'},
+      {h:'Channels and bit depth',p:'RGB uses three channels; RGBA adds an alpha channel. Bits per channel describes each channel, so 8-bit RGB has 24 bits per pixel. The calculator treats channels as having equal depth and no padding.'},
+      {h:'Not an encoded file size',list:['This is an ideal packed pixel-data estimate, not a prediction of JPEG, PNG, WebP, TIFF, camera RAW, or any particular file format.', 'Headers, metadata, row padding, alignment, compression, subsampling, palettes or memory layout can change actual file and memory sizes.', 'Width and height are whole pixels from 1 to 1 million; choose 1–4 channels and 1–32 whole bits per channel. Decimal MB is 1,000,000 bytes; MiB is 1,048,576 bytes.']}
+    ], faqs:[
+      {q:'How large is a 1920 × 1080 8-bit RGB image?',a:'The ideal tightly packed pixel data is 6,220,800 bytes, or 6.2208 MB, before headers, padding or compression.'},
+      {q:'Does this predict a JPEG or PNG file size?',a:'No. Encoded size depends on image content, format and settings; this calculator does not model compression or file headers.'},
+      {q:'What is the difference between bit depth per channel and per pixel?',a:'Multiply the per-channel depth by the number of equal-depth channels. For example, 8-bit RGB uses 24 bits per pixel.'},
+      {q:'Why might an uncompressed file be larger than the result?',a:'Headers, metadata, row padding and alignment can add bytes. Actual layout varies by format.'}
     ] }),
   T({ id:'aspect-ratio-calculator', name:'Aspect Ratio Calculator', icon:'ratio', engine:'math', categories:['math','image'],
     blurb:'Find an image aspect ratio and calculate proportional pixel dimensions.',

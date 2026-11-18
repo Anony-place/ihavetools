@@ -384,7 +384,7 @@ function buildTool(t) {
   const related = relatedTools(t, 6);
   const faqs = faqsFor(t);
   const privacy = privacyFor(t);
-  const groupName = { developer: 'developer', text: 'text', calculators: 'calculators', converters: 'converters', security: 'security', image: 'image', color: 'color', webseo: 'webseo', student: 'student', math: 'math', datetime: 'datetime', data: 'data', misc: 'misc', pdf: 'pdf', audio: 'audio' }[t.engine] || t.categories[0];
+  const groupName = { developer: 'developer', text: 'text', calculators: 'calculators', converters: 'converters', security: 'security', image: 'image', color: 'color', webseo: 'webseo', student: 'student', math: 'math', planning: 'planning', datetime: 'datetime', data: 'data', misc: 'misc', pdf: 'pdf', audio: 'audio' }[t.engine] || t.categories[0];
   const content = `
 ${breadcrumb([[cat.name, `/categories/${cat.id}/`], [t.name]])}
 <div class="container">

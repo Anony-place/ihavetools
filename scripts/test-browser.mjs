@@ -65,6 +65,13 @@ try {
     assert.ok(size.scroll <= size.viewport + 1, `${tool.id} desktop overflow: ${JSON.stringify(size)}`);
   }
   console.log(`✓ ${tools.length} full-width desktop workspaces without overflow`);
+  // Exercise the new workflows and their accessible controls at narrow width.
+  await page.setViewportSize({width:320,height:844});
+  for (const [id, button, result] of [['download-time-calculator','Calculate transfer time','80'],['uncompressed-image-size-calculator','Calculate image data size','6,220,800']]) {
+    await go(id); await page.getByRole('button',{name:button,exact:true}).click();
+    assert.ok((await page.locator('#tool-app').innerText()).includes(result),`${id} result`);
+    assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);
+  }
   // Discovery: mobile header search, keyboard selection, dismiss and fallback links.
   await page.setViewportSize({ width: 320, height: 844 });
   await go('pdf-merge');

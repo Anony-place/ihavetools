@@ -11,6 +11,28 @@
 
 ---
 
+## Transfer and image storage planning — consolidated batch (2026-10-31)
+
+Research: [download time example](https://calculatorpeak.com/calculators/download-time-calculator/)
+and [image-size estimator](https://image-file-size.utils.com/) show distinct
+user workflows, not measured search volume. Existing data storage converter
+converts units without a transfer scenario; image resizer/compressor operates on
+files and does not predict a raw bitmap's theoretical storage.
+
+1. Build one upload/download time planner using explicit decimal and binary byte
+   units, decimal network speeds, and user-selected effective throughput; include
+   theoretical vs adjusted time and a target deadline estimate.
+2. Build an uncompressed image pixel-data calculator using explicit channels and
+   bits per channel; distinguish ideal packed data from real file sizes and
+   compression, padding, metadata and memory layout.
+3. Provide genuinely useful examples, caveats and contextual links without
+   inventing search demand. Validate boundaries, invalid inputs, UI invalidation,
+   accessibility, search/sitemap and desktop/mobile. One PR; merge only after
+   checks pass and verify deployment. Compare attributable Search Console data
+   later when a trustworthy baseline is available.
+
+---
+
 ## New image-planning tools — consolidated growth batch (2026-10-31)
 
 Research: [aspect ratio example](https://trevorfox.com/tools/calculators/aspect-ratio/)
