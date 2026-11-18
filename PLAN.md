@@ -11,6 +11,26 @@
 
 ---
 
+## Geometry learning and measurement — consolidated batch (2026-10-31)
+
+Research: [circle calculator](https://www.omnicalculator.com/math/circle)
+and [right triangle calculator](https://www.mytrigcalculator.com/) demonstrate
+separate common geometry workflows; competitor features do not establish search
+demand. Catalogue has area/length unit conversion but no shape solver.
+
+1. Add a circle calculator from radius, diameter, circumference or area, with
+   optional central angle for sector area and arc length. Clarify shared units,
+   rounding, and angle range.
+2. Add a right-triangle/Pythagorean calculator from two legs or a leg and
+   hypotenuse, with area, perimeter and angles; reject impossible triangles.
+   One focused page covers synonymous queries rather than duplicate pages.
+3. Add practical examples, internal links, distinct metadata, tests for invalid
+   and boundary inputs, UI changes, mobile and accessibility. Run full local
+   checks, one PR, CI and production verification. Demand and search uplift are
+   not verified; a comparable GSC baseline remains open.
+
+---
+
 ## Transfer and image storage planning — consolidated batch (2026-10-31)
 
 Research: [download time example](https://calculatorpeak.com/calculators/download-time-calculator/)

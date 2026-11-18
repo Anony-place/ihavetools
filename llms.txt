@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 138 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 140 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -96,6 +96,8 @@
 - [Fraction Calculator](https://i-have-tools.vercel.app/tools/fraction-calculator/): Add, subtract, multiply and divide fractions — simplified.
 - [Time Duration Calculator](https://i-have-tools.vercel.app/tools/time-duration-calculator/): Add or subtract durations like 2h 45m + 30m.
 - [Average Calculator](https://i-have-tools.vercel.app/tools/average-calculator/): Mean, median, modes and standard deviation from a list of numbers.
+- [Circle Calculator](https://i-have-tools.vercel.app/tools/circle-calculator/): Find circle area, circumference, radius, diameter, arc and sector.
+- [Right Triangle Calculator](https://i-have-tools.vercel.app/tools/right-triangle-calculator/): Solve a right triangle from two sides using the Pythagorean theorem.
 - [Download Time Calculator](https://i-have-tools.vercel.app/tools/download-time-calculator/): Estimate download or upload time from file size and connection speed.
 - [Uncompressed Image Size Calculator](https://i-have-tools.vercel.app/tools/uncompressed-image-size-calculator/): Calculate ideal uncompressed pixel-data size from dimensions and bit depth.
 - [Aspect Ratio Calculator](https://i-have-tools.vercel.app/tools/aspect-ratio-calculator/): Find an image aspect ratio and calculate proportional pixel dimensions.

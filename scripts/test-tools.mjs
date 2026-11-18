@@ -1260,6 +1260,18 @@ await test('robots crawl tester: specific group and longest pattern win', () => 
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf').allowed, false, 'wildcard plus end anchor matches a PDF path');
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf/extra').allowed, true, 'the $ anchor prevents matching a longer path');
 });
+await test('circle and right triangle solvers handle modes and boundaries', () => {
+ for(const [mode,v] of [['radius','7'],['diameter','14'],['circumference',String(14*Math.PI)],['area',String(49*Math.PI)]]) {
+   // Input supports up to six decimal places, including for irrational-derived values.
+   const input=Number(v).toFixed(6); const r=math.circleGeometry(mode,input,'90'); assert.ok(Math.abs(r.radius-7)<1e-6); assert.ok(Math.abs(r.sector.arc-r.circumference/4)<1e-10); assert.ok(Math.abs(r.sector.area-r.area/4)<1e-10);
+ }
+ assert.equal(math.circleGeometry('radius','1','0').sector.area,0); assert.equal(math.circleGeometry('radius','1','360').sector.arc,2*Math.PI); assert.equal(math.circleGeometry('radius','1').sector,null);
+ for(const args of [['wrong','1'],['radius','0'],['area','1000001'],['radius','1','361'],['radius','1','-1'],['radius','1','abc']]) assert.throws(()=>math.circleGeometry(...args));
+ const t=math.rightTriangle('legs','3','4'); assert.equal(t.c,5); assert.equal(t.area,6); assert.equal(t.perimeter,12); assert.ok(Math.abs(t.angleA+t.angleB-90)<1e-12);
+ assert.ok(Math.abs(math.rightTriangle('leg-hypotenuse','3','5').b-4)<1e-12); assert.ok(math.rightTriangle('leg-hypotenuse','999999.999999','1000000').b>0);
+ for(const args of [['legs','0','1'],['leg-hypotenuse','5','5'],['leg-hypotenuse','6','5'],['wrong','3','4'],['legs','1000001','1']]) assert.throws(()=>math.rightTriangle(...args));
+ for(const id of ['circle-calculator','right-triangle-calculator']) {const t=registry.getTool(id); assert.ok(t.guide.length>=3 && t.faqs.length>=4); assert.ok(registry.searchTools(t.name,20).some(x=>x.id===id));}
+});
 await test('transfer and image storage estimates use explicit conventions', async () => {
  const p=await import('../assets/js/tools/planning.js');
  const ideal=p.transferEstimate('1','GB','100','100'); assert.equal(ideal.idealSeconds,80); assert.equal(ideal.seconds,80); assert.equal(ideal.effectiveMBps,12.5);
@@ -2267,8 +2279,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 138);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 116);
+  assert.equal(registry.tools.length, 140);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 118);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
