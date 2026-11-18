@@ -1260,6 +1260,17 @@ await test('robots crawl tester: specific group and longest pattern win', () => 
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf').allowed, false, 'wildcard plus end anchor matches a PDF path');
   assert.equal(seo.testRobotsAccess(rules, 'Bingbot', '/docs/report.pdf/extra').allowed, true, 'the $ anchor prevents matching a longer path');
 });
+await test('transfer and image storage estimates use explicit conventions', async () => {
+ const p=await import('../assets/js/tools/planning.js');
+ const ideal=p.transferEstimate('1','GB','100','100'); assert.equal(ideal.idealSeconds,80); assert.equal(ideal.seconds,80); assert.equal(ideal.effectiveMBps,12.5);
+ const adjusted=p.transferEstimate('1','GB','100','90','2'); assert.ok(Math.abs(adjusted.seconds-800/9)<1e-10); assert.ok(Math.abs(adjusted.requiredMbps-74.074074074)<1e-8);
+ assert.equal(p.transferEstimate('1','GiB','100','100').seconds, 85.89934592);
+ for (const args of [['0','GB','100','100'],['1','fake','1','100'],['1','GB','0','100'],['1','GB','100','0'],['1','GB','100','101'],['1','GB','100','100','0'],['1e3','GB','100','100']]) assert.throws(()=>p.transferEstimate(...args));
+ assert.deepEqual(p.imageStorage('1920','1080','3','8'),{pixels:2073600,bitsPerPixel:24,bits:49766400,packedBytes:6220800});
+ assert.equal(p.imageStorage('1','1','1','1').packedBytes,1); assert.equal(p.imageStorage('1000000','1000000','4','32').bits,128000000000000);
+ for(const args of [['0','1','1','1'],['1.5','1','1','1'],['1000001','1','1','1'],['1','1','5','8'],['1','1','3','33']]) assert.throws(()=>p.imageStorage(...args));
+ for(const id of ['download-time-calculator','uncompressed-image-size-calculator']) { const tool=registry.getTool(id); assert.ok(tool.guide.length>=3 && tool.faqs.length>=4); assert.ok(registry.searchTools(tool.name,20).some(x=>x.id===id)); }
+});
 await test('aspect ratio and print sizing are accurate and bounded', () => {
  assert.deepEqual(math.aspectDimensions('1920','1080','1280','width'),{ratio:'16:9',scaled:{width:1280,height:720,rounded:false}});
  assert.deepEqual(math.aspectDimensions('3','2','2','width').scaled,{width:2,height:1,rounded:true});
@@ -2256,8 +2267,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 136);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 114);
+  assert.equal(registry.tools.length, 138);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 116);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
