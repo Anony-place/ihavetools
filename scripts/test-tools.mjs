@@ -39,6 +39,14 @@ const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
 
+await test('creator tools: subtitles, bitrate and timestamp links', () => {
+ const srt='1\n00:00:01,000 --> 00:00:03,000\nHello!\n\n2\n00:00:04,000 --> 00:00:05,000\nWorld';
+ const vtt=audio.convertSimpleSubtitles(srt,'srt','vtt','1.5'); assert.equal(vtt.count,2); assert.match(vtt.text,/00:00:02\.500 --> 00:00:04\.500/); assert.equal(audio.convertSimpleSubtitles(vtt.text,'vtt','srt','-1.5').text,srt+'\n');
+ for (const bad of ['WEBVTT\n\nNOTE foo\nhello','WEBVTT\n\n00:01.000 --> 00:02.000 line:0\nhello','WEBVTT\n\n00:01.000 --> 00:02.000\n<b>hello</b>']) assert.throws(()=>audio.convertSimpleSubtitles(bad,'vtt','srt','0'));
+ assert.throws(()=>audio.convertSimpleSubtitles(srt,'srt','vtt','-1.001'),/before zero/); assert.throws(()=>audio.convertSimpleSubtitles(srt,'srt','vtt','0.0001'),/Offset/);
+ const r=audio.videoBitratePlan({mode:'size',seconds:600,videoMbps:10,audioKbps:128}); assert.equal(r.sizeMB,759.6); const b=audio.videoBitratePlan({mode:'bitrate',seconds:600,targetMB:750,audioKbps:128}); assert.ok(Math.abs(b.videoMbps-9.872)<1e-12); assert.throws(()=>audio.videoBitratePlan({mode:'bitrate',seconds:600,targetMB:1,audioKbps:128}),/Audio alone/);
+ assert.equal(seo.youtubeTimestampLink('https://youtu.be/dQw4w9WgXcQ?list=abc','1:30'),'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90s'); assert.equal(seo.youtubeTimestampLink('dQw4w9WgXcQ','1:02:03').split('t=')[1],'3723s'); assert.throws(()=>seo.youtubeTimestampLink('https://evil.example/dQw4w9WgXcQ','0')); assert.throws(()=>seo.youtubeTimestampLink('dQw4w9WgXcQ','1:60'));
+});
 await test('JSON Pointer resolves exact tokens, escaped keys and root', () => {
   const doc = '  {"a/b":{"~key":[9007199254740993, 1e+999, "\\u0041"]}, "":null, "01":true}  ';
   assert.equal(dev.jsonPointerLookup(doc, '/a~1b/~0key/0'), '9007199254740993');
@@ -2306,8 +2314,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 141);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 119);
+  assert.equal(registry.tools.length, 144);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 122);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

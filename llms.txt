@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 141 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 144 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -36,6 +36,9 @@
 - [HTML Formatter](https://i-have-tools.vercel.app/tools/html-formatter/): Indent messy HTML into clean, readable markup.
 - [CSS Formatter](https://i-have-tools.vercel.app/tools/css-formatter/): Beautify or minify CSS with a real tokenizer.
 - [JavaScript Formatter](https://i-have-tools.vercel.app/tools/js-formatter/): Format JavaScript using a parser-based formatter.
+- [Subtitle Converter & Time Shifter](https://i-have-tools.vercel.app/tools/subtitle-converter/): Convert simple SRT and WebVTT subtitles and shift their timing.
+- [Video Bitrate Calculator](https://i-have-tools.vercel.app/tools/video-bitrate-calculator/): Estimate video file size or bitrate budget with audio included.
+- [YouTube Timestamp Link Generator](https://i-have-tools.vercel.app/tools/youtube-timestamp-link/): Create a YouTube link that starts at a chosen time.
 - [Extract Audio from Video](https://i-have-tools.vercel.app/tools/extract-audio/): Extract supported video audio in your browser and save it as WAV.
 - [MP4 Inspector](https://i-have-tools.vercel.app/tools/mp4-inspector/): Inspect supported MP4 boxes and available track metadata.
 - [Tone Generator](https://i-have-tools.vercel.app/tools/tone-generator/): Play or download pure tones — sine, square, sawtooth, triangle.

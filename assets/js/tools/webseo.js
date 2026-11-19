@@ -147,6 +147,13 @@ export function extractYouTubeId(raw) {
   }
   throw new Error('No video ID found. Use a youtube.com/watch, youtu.be, Shorts or embed link — or paste the 11-character video ID.');
 }
+export function youtubeTimestampLink(raw, time) {
+  const id=extractYouTubeId(raw), input=String(time).trim();
+  if(!/^(?:\d{1,7}|\d{1,4}:[0-5]\d(?::[0-5]\d)?)$/.test(input)) throw new Error('Enter whole seconds, M:SS or H:MM:SS.');
+  const parts=input.split(':').map(Number), seconds=parts.reduce((sum,n)=>sum*60+n,0);
+  if(seconds>9999999) throw new Error('Time must not exceed 9,999,999 seconds.');
+  return `https://www.youtube.com/watch?v=${id}&t=${seconds}s`;
+}
 export const YT_THUMB_SIZES = [
   { key: 'maxresdefault', label: 'Maximum (1280 × 720)', w: 1280 },
   { key: 'sddefault', label: 'SD (640 × 480)', w: 640 },
@@ -799,6 +806,13 @@ const defs = {
           status.set('CSV download requested. Check that your browser saved it.', 'info');
         } })),
       grid, out, status);
+  },
+
+  'youtube-timestamp-link'(root) {
+    const url=input({type:'text',placeholder:'YouTube URL or 11-character video ID'}), time=input({type:'text',value:'0',placeholder:'90, 1:30 or 0:01:30'}),out=resultPanel({label:'Timestamp link'}),status=statusLine('');
+    const changed=()=>{out.placeholder();status.set('Input changed. Generate again.');}; url.addEventListener('input',changed);time.addEventListener('input',changed);
+    const run=()=>{try{out.set(youtubeTimestampLink(url.value,time.value));status.set('Link built locally; the video and timestamp have not been checked. Existing playlist and other parameters are not retained.','info');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    root.append(field({label:'YouTube video URL or ID',control:url}),field({label:'Start time',control:time,hint:'Whole seconds, M:SS or H:MM:SS; max 9,999,999 seconds.'}),actionsRow(btn({label:'Build timestamp link',onClick:run}),btn({label:'Clear',variant:'ghost',onClick:()=>{url.value='';time.value='0';out.placeholder();status.set('Cleared.');}})),status,out.panel);
   },
 
   'youtube-thumbnail-downloader'(root) {

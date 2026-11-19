@@ -7,8 +7,8 @@
 //     audio tracks) and a hand-written ISO-BMFF/MP4 box parser — no uploads.
 // =============================================================================
 import {
-  h, field, input, segControl, btn, actionsRow, statusLine, statsGrid, table,
-  toast, copyText, privacyNote, mountTool, dropzone, readFile, fmtBytes, downloadBlob,
+  h, field, input, textarea, select, resultPanel, segControl, btn, actionsRow, statusLine, statsGrid, table,
+  toast, copyText, downloadText, privacyNote, mountTool, dropzone, readFile, fmtBytes, downloadBlob,
 } from '../ui.js';
 
 /* ═══════════════════════════ Pure audio helpers ═══════════════════════════ */
@@ -201,8 +201,62 @@ async function decodeAudio(file, status) {
   } finally { ctx.close().catch(() => {}); }
 }
 
+// Deliberately narrow plain-text subtitle subset: reject rather than silently
+// discard WebVTT settings, metadata or markup during conversion.
+export function convertSimpleSubtitles(raw, source, target, offsetText) {
+  if (!['srt','vtt'].includes(source) || !['srt','vtt'].includes(target)) throw new Error('Choose SRT or WebVTT formats.');
+  raw=String(raw); if(raw.length>1000000) throw new Error('Subtitle text exceeds 1,000,000 characters.');
+  const offset=String(offsetText).trim();
+  if (!/^[+-]?\d{1,6}(?:\.\d{1,3})?$/.test(offset)) throw new Error('Offset must be seconds with at most 3 decimal places, up to 999999 seconds.');
+  const shift=Math.round(Number(offset)*1000), normalized=raw.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').trim();
+  let blocks=normalized.split(/\n[ \t]*\n/);
+  if(source==='vtt') { if(blocks.shift()!=='WEBVTT') throw new Error('WebVTT must start with a plain WEBVTT header; metadata is not supported.'); }
+  if(!blocks.length || blocks.length>10000 || !blocks[0]) throw new Error('Enter 1–10,000 subtitle cues.');
+  let previous=-1;
+  const readTime=(t)=>{const m=source==='srt' ? /^(\d{2,4}):([0-5]\d):([0-5]\d),(\d{3})$/.exec(t) : /^(?:(\d{2,4}):)?([0-5]\d):([0-5]\d)\.(\d{3})$/.exec(t); if(!m) throw new Error(`Invalid ${source.toUpperCase()} timestamp: ${t}.`); return ((Number(m[1]||0)*60+Number(m[2]))*60+Number(m[3]))*1000+Number(m[4]);};
+  const format=(ms)=>{const h=Math.floor(ms/3600000);if(h>9999) throw new Error('Shifted timestamp exceeds 9999 hours.'); const m=Math.floor(ms/60000)%60, sec=Math.floor(ms/1000)%60, milli=ms%1000;return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}${target==='srt'?',':'.'}${String(milli).padStart(3,'0')}`;};
+  const cues=blocks.map((block,i)=>{const lines=block.split('\n'); let ident=null;
+    if(!lines[0].includes('-->')) ident=lines.shift();
+    if(source==='srt' && !/^\d+$/.test(ident||'')) throw new Error(`Cue ${i+1}: SRT needs a numeric cue identifier.`);
+    if(source==='vtt' && ident && (/^(NOTE|STYLE|REGION)(?:[ \t]|$)/.test(ident) || ident.includes('-->'))) throw new Error('WebVTT metadata blocks are not supported.');
+    const match=/^(\S+) +--> +(\S+)$/.exec(lines.shift()||''); if(!match) throw new Error(`Cue ${i+1}: invalid timing or unsupported cue settings.`);
+    const start=readTime(match[1]), end=readTime(match[2]);
+    if(end<=start) throw new Error(`Cue ${i+1}: end must be after start.`);
+    if((source==='vtt' || target==='vtt') && start<previous) throw new Error(`Cue ${i+1}: WebVTT cue starts must be in order.`);
+    previous=start;
+    if(!lines.length || lines.some(line=>!line.trim() || /[<>]|-->/.test(line))) throw new Error(`Cue ${i+1}: plain text only; markup or empty cue text is not supported.`);
+    if(start+shift<0) throw new Error(`Cue ${i+1}: shift would place a timestamp before zero; choose a smaller offset.`);
+    return `${target==='srt'?`${i+1}\n`:''}${format(start+shift)} --> ${format(end+shift)}\n${lines.join('\n')}`;
+  });
+  return {text:(target==='vtt'?'WEBVTT\n\n':'')+cues.join('\n\n')+'\n',count:cues.length};
+}
+
+export function videoBitratePlan({seconds, audioKbps, videoMbps, targetMB, mode}) {
+  for(const [name,value,min,max] of [['Duration',seconds,0.001,3600000],['Audio bitrate',audioKbps,0,100000], ...(mode==='size'?[['Video bitrate',videoMbps,0,100000]]:[['Target size',targetMB,0.001,100000000]])])
+    if(!Number.isFinite(value)||value<min||value>max) throw new Error(`${name} must be between ${min} and ${max}.`);
+  if(!['size','bitrate'].includes(mode)) throw new Error('Choose a calculation mode.');
+  const video=mode==='size'?videoMbps:(targetMB*8/seconds-audioKbps/1000);
+  if(video<0) throw new Error('Audio alone exceeds the target size; increase the size or reduce audio bitrate.');
+  return { videoMbps:video, audioKbps, seconds, sizeMB:(video+audioKbps/1000)*seconds/8, videoMB:video*seconds/8, audioMB:audioKbps*seconds/8000 };
+}
+
 /* ═══════════════════════════ Tool definitions ═══════════════════════════ */
 const defs = {
+  'subtitle-converter'(root) {
+    const text=textarea({rows:12,placeholder:'1\n00:00:01,000 --> 00:00:03,000\nHello!'}), source=select({options:[{v:'srt',t:'SRT'},{v:'vtt',t:'WebVTT'}],value:'srt'}), target=select({options:[{v:'vtt',t:'WebVTT'},{v:'srt',t:'SRT'}],value:'vtt'}), offset=input({type:'text',value:'0',inputmode:'decimal'}), out=resultPanel({label:'Converted subtitles'}), status=statusLine('');
+    const clear=()=>{out.placeholder();status.set('Input changed. Convert again.');};
+    for(const el of [text,source,target,offset]) el.addEventListener(el.tagName==='SELECT'?'change':'input',clear);
+    const run=()=>{try{const r=convertSimpleSubtitles(text.value,source.value,target.value,offset.value);out.set(r.text);status.set(`${r.count} cues converted. Copy or download the .${target.value} file. Review in your player.`, 'success');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    root.append(field({label:'Subtitle text',control:text,hint:'Paste plain-text SRT or WebVTT. No styles, cue settings or metadata; max 1,000,000 characters.'}),h('div',{class:'field-row'},field({label:'Input format',control:source}),field({label:'Output format',control:target}),field({label:'Shift seconds',control:offset,hint:'Positive delays; negative advances. Up to 3 decimals.'})),actionsRow(btn({label:'Convert subtitles',onClick:run}),btn({label:'Download subtitles',variant:'secondary',onClick:()=>{if(!out.text){status.set('Convert subtitles before downloading.','error');return;} downloadText(out.text,`subtitles.${target.value}`);}}),btn({label:'Clear',variant:'ghost',onClick:()=>{text.value='';out.placeholder();status.set('Cleared.');}})),status,out.panel);
+  },
+  'video-bitrate-calculator'(root) {
+    const mode=select({options:[{v:'size',t:'Estimate file size'},{v:'bitrate',t:'Find video bitrate for target size'}],value:'size'}), duration=input({type:'number',min:'0.001',max:'3600000',step:'any',value:'600'}), audio=input({type:'number',min:'0',max:'100000',step:'any',value:'128'}), video=input({type:'number',min:'0',max:'100000',step:'any',value:'10'}), size=input({type:'number',min:'0.001',max:'100000000',step:'any',value:'750'}), videoField=field({label:'Video bitrate (Mbps)',control:video}), sizeField=field({label:'Target file size (decimal MB)',control:size}), out=resultPanel({label:'Bitrate estimate'}),status=statusLine('');
+    const update=()=>{videoField.hidden=mode.value!=='size';sizeField.hidden=mode.value!=='bitrate';out.placeholder();status.set('Inputs changed. Calculate again.');};
+    mode.addEventListener('change',update);for(const el of [duration,audio,video,size])el.addEventListener('input',update);
+    const run=()=>{try{const num=(el)=>el.value.trim()===''?NaN:Number(el.value);const r=videoBitratePlan({mode:mode.value,seconds:num(duration),audioKbps:num(audio),videoMbps:num(video),targetMB:num(size)}); const f=n=>Number(n.toPrecision(9)).toLocaleString('en-US',{maximumFractionDigits:8});out.set(`Estimated total: ${f(r.sizeMB)} MB (${f(r.sizeMB*1000000/1073741824)} GiB)\nVideo bitrate: ${f(r.videoMbps)} Mbps\nVideo data: ${f(r.videoMB)} MB\nAudio data: ${f(r.audioMB)} MB`);status.set('Ideal estimate only: container overhead and variable bitrate can change the final size. Leave headroom.', 'info');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    root.append(h('div',{class:'field-row'},field({label:'Calculation',control:mode}),field({label:'Duration (seconds)',control:duration}),field({label:'Audio bitrate (kbps)',control:audio}),videoField,sizeField),actionsRow(btn({label:'Calculate estimate',onClick:run})),status,out.panel);update();
+  },
+
   /* ---------- Tone generator ---------- */
   'tone-generator'(root) {
     let wave = 'sine', revision = 0, ctx = null, activeSource = null;

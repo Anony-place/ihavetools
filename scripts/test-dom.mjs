@@ -174,6 +174,11 @@ await domTest('UUID v7 is opt-in and settings invalidate old values', async () =
 await domTest('UUID decoder handles input and clears stale results', async () => {
  const app=await loadToolPage('uuid-decoder','developer'), value=app.querySelector('input'); value.value='01941f297c0071238123456789abcdef'; click(btnByLabel(app,'Inspect UUID')); assert.match(resultText(document),/2025-01-01T00:00:00\.000Z/); assert.match(resultText(document),/Version field: 7/); value.value='no'; fire(value,'input'); assert.doesNotMatch(resultText(document),/2025/); click(btnByLabel(app,'Inspect UUID')); assert.match(statusText(document),/32 hexadecimal/); click(btnByLabel(app,'Clear')); assert.equal(value.value,'');
 });
+await domTest('creator tools: interaction and stale output', async () => {
+ let app=await loadToolPage('subtitle-converter','audio'), text=app.querySelector('textarea'); text.value='1\n00:00:01,000 --> 00:00:03,000\nHi';click(btnByLabel(app,'Convert subtitles'));assert.match(resultText(document),/WEBVTT/);text.value='bad';fire(text,'input');assert.doesNotMatch(resultText(document),/WEBVTT/);click(btnByLabel(app,'Convert subtitles'));assert.match(statusText(document),/SRT needs|invalid timing/);
+ app=await loadToolPage('video-bitrate-calculator','audio');click(btnByLabel(app,'Calculate estimate'));assert.match(resultText(document),/759\.6 MB/);const mode=app.querySelector('select');mode.value='bitrate';fire(mode,'change');click(btnByLabel(app,'Calculate estimate'));assert.match(resultText(document),/9\.872 Mbps/);
+ app=await loadToolPage('youtube-timestamp-link','webseo');const inputs=app.querySelectorAll('input');inputs[0].value='dQw4w9WgXcQ';inputs[1].value='1:30';click(btnByLabel(app,'Build timestamp link'));assert.match(resultText(document),/t=90s/);inputs[1].value='bad';fire(inputs[1],'input');assert.doesNotMatch(resultText(document),/90s/);click(btnByLabel(app,'Build timestamp link'));assert.match(statusText(document),/whole seconds/);
+});
 await domTest('uuid-generator: generates on load with copy buttons', async () => {
   const app = await loadToolPage('uuid-generator', 'developer');
   const rows = app.querySelectorAll('.file-row');
