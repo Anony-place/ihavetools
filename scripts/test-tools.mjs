@@ -45,6 +45,7 @@ await test('data viewer, TypeScript inference and PDF metadata', async () => {
  let view=data.csvViewerPage('name,code\r\n"A, B",001\r\nBee,002',{query:'a, b'}); assert.deepEqual(view.rows,[['A, B','001']]);assert.equal(view.total,2);assert.throws(()=>data.csvViewerPage('a,a\n1,2'),/Duplicate/);assert.throws(()=>data.csvViewerPage('a,b\n1'),/different number/);
  view=data.csvViewerPage('x\n'+Array.from({length:85},(_,i)=>String(i)).join('\n'),{page:2});assert.equal(view.rows.length,5);assert.equal(view.pages,3);
  const {PDFDocument}=await import('pdf-lib');const doc=await PDFDocument.create();doc.addPage();doc.setTitle('Example');doc.setAuthor('Ada');const bytes=await doc.save();const loaded=await PDFDocument.load(bytes,{updateMetadata:false});const info=pdf.inspectPdfInfo(loaded,'sample.pdf',bytes.length);assert.match(info,/Title: Example/);assert.match(info,/Author: Ada/);assert.match(info,/Pages: 1/);assert.match(info,/Subject: Not present or unreadable/);
+ doc.setTitle('Title\nAuthor: forged\u202e\\x'); const escaped=pdf.inspectPdfInfo(doc,'file\nname.pdf',10);assert.ok(escaped.includes('Title: Title\\u000aAuthor: forged\\u202e\\\\x'));assert.ok(escaped.includes('File: file\\u000aname.pdf'));assert.doesNotMatch(escaped,/\nAuthor: forged/);
 });
 await test('student math: exact counting, primes, and quadratic discriminants', () => {
  let q=math.quadraticRoots('1','-5','6');assert.equal(q.discriminant,'1');assert.deepEqual(q.roots.map(x=>x.real).sort(),[2,3]);assert.equal(q.vertexY,-0.25);

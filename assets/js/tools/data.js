@@ -228,8 +228,8 @@ export function prettyJsonBounded(value) {
 
 // Import is intentionally separate from conversion: JSONL has two directions.
 // A revision invalidates pending reads when users edit, change options or leave.
-function localDataImport({ inp, out, status, revision, accept, title, extensions }) {
-  const zone = dropzone({ accept, title, sub: 'UTF-8 text only, up to 4 MiB and 1,000,000 characters. Read locally.',
+function localDataImport({ inp, out, status, revision, accept, title, extensions, maxChars = MAX_TEXT }) {
+  const zone = dropzone({ accept, title, sub: `UTF-8 text only, up to 4 MiB and ${maxChars.toLocaleString('en-US')} characters. Read locally.`,
     onReject: () => { revision.value++; zone.clear(); out.placeholder(); status.set('Selection rejected. Existing input was kept; choose a file up to 4 MiB.', 'error'); },
     onFiles: async files => {
       zone.clear(); const token = ++revision.value; out.placeholder();
@@ -242,7 +242,7 @@ function localDataImport({ inp, out, status, revision, accept, title, extensions
         if (token !== revision.value) return;
         let text;
         try { text = new TextDecoder('utf-8', { fatal: true }).decode(bytes); } catch { throw new Error('File is not valid UTF-8 text.'); }
-        if (text.length > MAX_TEXT) throw new Error('File exceeds 1,000,000 characters.');
+        if (text.length > maxChars) throw new Error(`File exceeds ${maxChars.toLocaleString('en-US')} characters.`);
         inp.value = text; status.set('File loaded locally. Choose a conversion action.', 'success');
       } catch (e) { if (token === revision.value) { out.placeholder(); status.set(`${e.message} Existing input was kept.`, 'error'); } }
     } });
@@ -270,7 +270,9 @@ export function jsonToTypeScript(raw) {
 }
 /** CSV viewer keeps all field values as strings and bounds its rendered page. */
 export function csvViewerPage(raw, {delimiter=',',headerRow=true,query='',page=0}={}) {
-  const parsed=parseCsv(raw,{delimiter,headerRow});
+  return csvViewerParsedPage(parseCsv(raw,{delimiter,headerRow}), {query,page});
+}
+function csvViewerParsedPage(parsed, {query='',page=0}={}) {
   if(String(query).length>1000)throw new Error('Filter exceeds 1,000 characters.');
   if(!Number.isSafeInteger(page)||page<0)throw new Error('Invalid page.');
   const term=String(query).toLowerCase(), filtered=term?parsed.rows.filter(row=>row.some(cell=>cell.toLowerCase().includes(term))):parsed.rows;
@@ -284,16 +286,16 @@ const defs = {
     const text=textarea({rows:10,value:'{"name":"Ada","scores":[1,2],"active":true}'}),out=resultPanel({label:'TypeScript type',download:true,downloadName:'types.ts',downloadMime:'text/plain;charset=utf-8'}),status=statusLine('');let revision={value:0};
     const invalidate=()=>{revision.value++;out.placeholder();status.set('Input changed. Generate again.');};text.addEventListener('input',invalidate);window.addEventListener('pagehide',()=>revision.value++);
     const run=()=>{revision.value++;try{out.set(jsonToTypeScript(text.value));status.set('Generated a starting type from this sample. Review it against the actual API contract.','success');}catch(e){out.placeholder();status.set(e.message,'error');}};
-    root.append(field({label:'JSON sample',control:text,hint:'At most 300,000 characters, 10,000 values and 30 nesting levels.'}),localDataImport({inp:text,out,status,revision,accept:'.json,application/json',title:'Choose a JSON file',extensions:/\.json$/i}),actionsRow(btn({label:'Generate TypeScript',onClick:run})),status,out.panel);
+    root.append(field({label:'JSON sample',control:text,hint:'At most 300,000 characters, 10,000 values and 30 nesting levels.'}),localDataImport({inp:text,out,status,revision,accept:'.json,application/json',title:'Choose a JSON file',extensions:/\.json$/i,maxChars:300000}),actionsRow(btn({label:'Generate TypeScript',onClick:run})),status,out.panel);
   },
   'csv-viewer'(root) {
-    const text=textarea({rows:8,value:'name,code,city\nAda,001,"London, UK"\nGrace,002,New York'}),delimiter=select({value:',',options:[{v:',',t:'Comma'},{v:';',t:'Semicolon'},{v:'\t',t:'Tab'},{v:'|',t:'Pipe'}]}),header=select({value:'yes',options:[{v:'yes',t:'First row is header'},{v:'no',t:'No header row'}]}),query=input({type:'text',placeholder:'Optional literal filter'}),status=statusLine(''),result=h('div',{});let page=0,ready=false,revision={value:0};
-    const clear=()=>{revision.value++;page=0;ready=false;result.replaceChildren();status.set('Input or options changed. Open table again.');}; for(const el of [text,delimiter,header])el.addEventListener(el.tagName==='SELECT'?'change':'input',clear);window.addEventListener('pagehide',()=>revision.value++);
-    const render=()=>{try{const r=csvViewerPage(text.value,{delimiter:delimiter.value,headerRow:header.value==='yes',query:query.value,page});page=r.page;result.replaceChildren(table({headers:r.headers,rows:r.rows}));status.set(`${r.matches} matching rows of ${r.total}. Page ${r.page+1} of ${r.pages}; up to ${r.pageSize} rows shown.`, 'info');prev.disabled=r.page===0;next.disabled=r.page+1>=r.pages;ready=true;}catch(e){ready=false;result.replaceChildren();prev.disabled=true;next.disabled=true;status.set(e.message,'error');}};
+    const text=textarea({rows:8,value:'name,code,city\nAda,001,"London, UK"\nGrace,002,New York'}),delimiter=select({value:',',options:[{v:',',t:'Comma'},{v:';',t:'Semicolon'},{v:'\t',t:'Tab'},{v:'|',t:'Pipe'}]}),header=select({value:'yes',options:[{v:'yes',t:'First row is header'},{v:'no',t:'No header row'}]}),query=input({type:'text',placeholder:'Optional literal filter'}),status=statusLine(''),result=h('div',{});let page=0,parsed=null,revision={value:0};
+    const clear=()=>{revision.value++;page=0;parsed=null;result.replaceChildren();prev.disabled=true;next.disabled=true;status.set('Input or options changed. Open table again.');}; for(const el of [text,delimiter,header])el.addEventListener(el.tagName==='SELECT'?'change':'input',clear);window.addEventListener('pagehide',()=>revision.value++);
+    const render=()=>{try{const r=csvViewerParsedPage(parsed,{query:query.value,page});page=r.page;result.replaceChildren(table({headers:r.headers,rows:r.rows}));status.set(`${r.matches} matching rows of ${r.total}. Page ${r.page+1} of ${r.pages}; up to ${r.pageSize} rows shown.`, 'info');prev.disabled=r.page===0;next.disabled=r.page+1>=r.pages;}catch(e){result.replaceChildren();prev.disabled=true;next.disabled=true;status.set(e.message,'error');}};
     const prev=btn({label:'Previous page',variant:'secondary',disabled:true,onClick:()=>{page--;render();}}),next=btn({label:'Next page',variant:'secondary',disabled:true,onClick:()=>{page++;render();}});
-    query.addEventListener('input',()=>{page=0;if(ready)render();});
-    const adapter={placeholder:()=>{result.replaceChildren();ready=false;prev.disabled=true;next.disabled=true;}};
-    root.append(field({label:'CSV input',control:text,hint:'Maximum 1,000,000 characters, 10,000 rows and 256 columns.'}),localDataImport({inp:text,out:adapter,status,revision,accept:'.csv,.tsv,.txt,text/plain,text/csv',title:'Choose a CSV or TSV file',extensions:/\.(?:csv|tsv|txt)$/i}),h('div',{class:'field-row'},field({label:'Delimiter',control:delimiter}),field({label:'Header mode',control:header}),field({label:'Filter rows',control:query,hint:'Case-insensitive literal substring in any field.'})),actionsRow(btn({label:'Open table',onClick:()=>{revision.value++;page=0;render();}}),prev,next),status,result);
+    query.addEventListener('input',()=>{page=0;if(parsed)render();});
+    const adapter={placeholder:()=>{result.replaceChildren();parsed=null;prev.disabled=true;next.disabled=true;}};
+    root.append(field({label:'CSV input',control:text,hint:'Maximum 1,000,000 characters, 10,000 rows and 256 columns.'}),localDataImport({inp:text,out:adapter,status,revision,accept:'.csv,.tsv,.txt,text/plain,text/csv',title:'Choose a CSV or TSV file',extensions:/\.(?:csv|tsv|txt)$/i}),h('div',{class:'field-row'},field({label:'Delimiter',control:delimiter}),field({label:'Header mode',control:header}),field({label:'Filter rows',control:query,hint:'Case-insensitive literal substring in any field.'})),actionsRow(btn({label:'Open table',onClick:()=>{revision.value++;page=0;try{parsed=parseCsv(text.value,{delimiter:delimiter.value,headerRow:header.value==='yes'});render();}catch(e){parsed=null;result.replaceChildren();prev.disabled=true;next.disabled=true;status.set(e.message,'error');}}}),prev,next),status,result);
   },
 
   'csv-to-json'(root) {

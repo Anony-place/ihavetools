@@ -232,7 +232,7 @@ function moveRow(e, dir) {
 /** Read only selected PDF Info fields. No conclusions about provenance or privacy. */
 export function inspectPdfInfo(doc, filename, size) {
   const fields=[['File',()=>filename],['Bytes',()=>String(size)],['Pages',()=>String(doc.getPageCount())],['Title',()=>doc.getTitle()],['Author',()=>doc.getAuthor()],['Subject',()=>doc.getSubject()],['Keywords',()=>doc.getKeywords()],['Creator',()=>doc.getCreator()],['Producer',()=>doc.getProducer()],['Creation date',()=>doc.getCreationDate()],['Modification date',()=>doc.getModificationDate()]];
-  return fields.map(([label,get])=>{let value;try{value=get();if(value instanceof Date)value=Number.isNaN(value.getTime())?'Unreadable date':value.toISOString();else value=value==null?'Not present or unreadable':String(value);}catch{value='Unreadable';}if(value.length>10000)value=value.slice(0,10000)+' … [truncated]';return `${label}: ${value}`;}).join('\n');
+  return fields.map(([label,get])=>{let value;try{value=get();if(value instanceof Date)value=Number.isNaN(value.getTime())?'Unreadable date':value.toISOString();else value=value==null?'Not present or unreadable':String(value);}catch{value='Unreadable';}if(value.length>10000)value=value.slice(0,10000)+' … [truncated]';value=value.replace(/[\\\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/g, c => c === '\\' ? '\\\\' : `\\u${c.charCodeAt(0).toString(16).padStart(4,'0')}`);return `${label}: ${value}`;}).join('\n');
 }
 
 const defs = {
