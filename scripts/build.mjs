@@ -95,14 +95,14 @@ const THEME_INIT = `<script>(function(){try{var t=localStorage.getItem('iht-them
    adds behaviour (theme values, toggles) to these elements. */
 function headerHtml(home, withSearch = false) {
   const searchHtml = withSearch ? `<a class="icon-btn mobile-search-launch" href="${ROOT_PREFIX}#all-tools" aria-label="Search tools" aria-expanded="false" aria-controls="header-search-box">${icon('search')}</a><div id="header-search-box" class="search-box header-search" role="search"><span class="search-glyph">${icon('search')}</span><label class="sr-only" for="global-search">Search tools</label><input id="global-search" type="search" placeholder="Search ${tools.length} tools… (Ctrl K)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-results"><ul class="search-results" id="search-results" role="listbox" aria-label="Matching tools" hidden></ul><span class="sr-only search-status" role="status" aria-live="polite"></span></div>` : (home ? '' : `<a class="btn btn-secondary btn-sm hide-sm" href="${ROOT_PREFIX}" aria-label="Search all tools" style="gap:7px"><span style="display:inline-flex">${icon('search')}</span>Search</a>`);
-  const drop = `<details class="nav-drop"><summary>Categories <span style="display:inline-flex;width:14px">${icon('arrow-down')}</span></summary><div class="dropdown-panel">${categories.map((c) => `<a href="${ROOT_PREFIX}categories/${c.id}/"><span style="display:inline-flex">${icon(c.icon)}</span>${esc(c.name)}<span class="dd-count">${toolsByCategory(c.id).length}</span></a>`).join('')}</div></details>`;
+  const drop = `<details class="nav-drop"><summary>Categories <span style="display:inline-flex;width:14px">${icon('arrow-down')}</span></summary><div class="dropdown-panel">${categories.map((c) => `<a href="${ROOT_PREFIX}categories/${c.id}/"><span style="display:inline-flex">${icon(c.icon)}</span>${esc(c.name)} <span class="dd-count" aria-label="${toolsByCategory(c.id).length} tools">${toolsByCategory(c.id).length}</span></a>`).join('')}</div></details>`;
   const popular6 = tools.slice().sort((a, b) => b.popularity - a.popularity).slice(0, 6);
   // Mobile menu links are text-only: 22 fewer icon references per page.
   const mobileList = (items, hrefFn) => `<ul>${items.map((x) => `<li><a href="${hrefFn(x)}">${esc(x.name)}</a></li>`).join('')}</ul>`;
   return `<header class="site-header">
   <div class="container header-inner">
     <a class="brand" href="${ROOT_PREFIX}">${brandMark('brand-mark')}iHaveTools</a>
-    <nav class="main-nav" aria-label="Primary">${drop}<a href="${ROOT_PREFIX}#all-tools">All tools</a><a href="${ROOT_PREFIX}about/">About</a></nav>
+    <nav class="main-nav" aria-label="Primary">${drop} <a href="${ROOT_PREFIX}#all-tools">All tools</a> <a href="${ROOT_PREFIX}about/">About</a></nav>
     <div class="header-actions">${searchHtml}<button class="icon-btn theme-toggle" type="button" aria-label="Switch to dark theme">${icon('moon')}</button><button class="nav-toggle" type="button" aria-expanded="false" aria-label="Open menu">${icon('menu')}</button></div>
   </div>
   <nav class="mobile-nav" aria-label="Mobile menu"><h3>Quick links</h3>${mobileList(popular6, (t) => `${ROOT_PREFIX}tools/${t.id}/`)}<h3>Categories</h3>${mobileList(categories, (c) => `${ROOT_PREFIX}categories/${c.id}/`)}</nav>
@@ -167,7 +167,7 @@ ${content}
     </div>
     <div class="footer-bottom">
       <span>© <span id="footer-year">2026</span> iHaveTools. All tools are free and run client-side.</span>
-      <span><a href="${ROOT_PREFIX}about/">About</a> · <a href="${ROOT_PREFIX}privacy-policy/">Privacy Policy</a> · <a href="${ROOT_PREFIX}terms/">Terms</a></span>
+      <span><a href="${ROOT_PREFIX}about/">About</a> · <a href="${ROOT_PREFIX}privacy-policy/">Privacy Policy</a> · <a href="${ROOT_PREFIX}terms/">Terms</a> · <a href="https://github.com/Anony-place/ihavetools">GitHub</a></span>
       <span>Built for speed, privacy and everyday usefulness. <button class="install-app" type="button" hidden>Install app</button></span>
     </div>
   </div>
@@ -188,7 +188,7 @@ function toolCard(t) {
   <span class="tool-icon">${icon(t.icon)}</span>
   <h3>${esc(t.name)}</h3>
   <p>${esc(t.blurb)}</p>
-  <span class="card-meta"><span>${esc(cat?.name || '')}</span><span class="go">Open →</span></span>
+  <span class="card-meta"><span>${esc(cat?.name || '')}</span> <span class="go">Open →</span></span>
 </a><button type="button" class="fav-toggle" data-fav-toggle="${t.id}" aria-pressed="false" aria-label="Save ${esc(t.name)} to favourites" title="Save to favourites">${icon('star')}</button></div>`;
 }
 function categoryCard(c) {
@@ -265,7 +265,7 @@ function buildHome() {
 <section class="section tint" id="categories">
   <div class="container">
     <div class="section-head">
-      <div><h2>Browse by category</h2><p class="section-sub">${categories.length} categories, every one fully stocked with working tools.</p></div>
+      <div><h2>Browse by category</h2><p class="section-sub">${categories.length} categories. Some tools appear in more than one category; category counts are not unique totals.</p></div>
     </div>
     <div class="card-grid cols-3">${categories.map(categoryCard).join('')}</div>
   </div>
@@ -535,7 +535,7 @@ ${body}
     <section><h2>Acceptable use</h2>
     <p>Please do not use the site to break the law or to infringe anyone's rights (for example, processing material you have no right to copy), and do not attempt to disrupt the site or its hosting.</p></section>
     <section><h2>Open source</h2>
-    <p>The site's source code is published under the MIT License in our public repository. Third-party components (such as pdf-lib) retain their own licences. The iHaveTools name and branding are not part of the code licence.</p></section>
+    <p>The site's source code is published under the MIT License in our <a href="https://github.com/Anony-place/ihavetools">public GitHub repository</a>. Third-party components (such as pdf-lib) retain their own licences. The iHaveTools name and branding are not part of the code licence.</p></section>
     <section><h2>Changes</h2>
     <p>These terms may be updated; the current version will always be on this page with its date. Continuing to use the site after a change means you accept the updated terms. See also the <a href="/privacy-policy/">Privacy Policy</a>.</p></section>`,
     },

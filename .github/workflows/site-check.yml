@@ -26,6 +26,10 @@ jobs:
       - name: Build site from registry
         run: node scripts/build.mjs
 
+      - name: Verify generated files are committed
+        if: github.event_name == 'pull_request'
+        run: git diff --exit-code
+
       - name: Engine tests
         run: node scripts/test-tools.mjs
 

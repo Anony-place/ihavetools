@@ -729,6 +729,16 @@ try {
   await page.getByRole('button', { name: 'Generate', exact: true }).click();
   assert.match(await page.locator('#tool-app .status-line').innerText(), /whole number/);
   assert.equal(await page.locator('.file-row').count(), 0);
+  await page.locator('#tool-app input[type=number]').fill('3');
+  await page.getByLabel('UUID version').selectOption('v7');
+  assert.equal(await page.locator('.file-row').count(),0);
+  await page.getByRole('button',{name:'Generate',exact:true}).click();
+  assert.equal(await page.locator('.file-row').count(),3);
+  assert.match(await page.locator('.file-row code').first().textContent(),/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  await page.setViewportSize({width:320,height:844});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'UUID mobile overflow');
+  assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'UUID v7 accessibility');
+  await page.setViewportSize({width:1280,height:800});
   console.log('✓ scientific default angle and UUID validation');
   await go('income-tax-calculator');
   assert.match(await page.locator('#tool-app').innerText(),/does not model Tax Year 2026/);

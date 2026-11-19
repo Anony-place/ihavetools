@@ -27,7 +27,7 @@
 - [JSON Minifier](https://i-have-tools.vercel.app/tools/json-minifier/): Strip whitespace from JSON and see how many bytes you saved.
 - [Base64 Encoder & Decoder](https://i-have-tools.vercel.app/tools/base64-encoder/): Unicode-safe Base64 encoding and decoding, with URL-safe output.
 - [URL Encoder & Decoder](https://i-have-tools.vercel.app/tools/url-encoder/): Percent-encode or decode text and whole URLs, correctly.
-- [UUID Generator](https://i-have-tools.vercel.app/tools/uuid-generator/): Bulk-generate RFC 4122 v4 UUIDs with cryptographic randomness.
+- [UUID Generator](https://i-have-tools.vercel.app/tools/uuid-generator/): Generate RFC 9562 v4 and v7 UUIDs locally with cryptographic randomness.
 - [Timestamp Converter](https://i-have-tools.vercel.app/tools/timestamp-converter/): Convert Unix timestamps to dates and back, in UTC and local time.
 - [Hash Generator](https://i-have-tools.vercel.app/tools/hash-generator/): SHA-1, SHA-256, SHA-384 and SHA-512 hashes via Web Crypto.
 - [Regex Tester](https://i-have-tools.vercel.app/tools/regex-tester/): Test regular expressions live with match highlighting and groups.

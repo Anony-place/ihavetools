@@ -360,6 +360,21 @@ export function uuidv4(rng) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+// RFC 9562 §5.7: 48-bit Unix milliseconds + 74 CSPRNG bits.
+// Random bits are not a counter; same-millisecond IDs are not monotonic.
+export function uuidv7(rng, timestamp = Date.now()) {
+  if (!Number.isSafeInteger(timestamp) || timestamp < 0 || timestamp > 0xffffffffffff) throw new Error('The system clock is outside the UUID v7 timestamp range.');
+  const c = rng || globalThis.crypto;
+  if (!c?.getRandomValues) throw new Error('Your browser does not provide a cryptographic random source (crypto.getRandomValues). Please use a modern browser.');
+  const b = c.getRandomValues(new Uint8Array(16));
+  let time = BigInt(timestamp);
+  for (let i = 5; i >= 0; i--) { b[i] = Number(time & 255n); time >>= 8n; }
+  b[6] = (b[6] & 0x0f) | 0x70;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const hex = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+
 /* ═══════════════════════════ Number bases ═══════════════════════════
    BigInt throughout, so values far beyond Number.MAX_SAFE_INTEGER
    (64-bit hashes, memory addresses) convert exactly. */
@@ -993,6 +1008,7 @@ const defs = {
 
   'uuid-generator'(root) {
     const count = input({ type: 'number', min: 1, max: 500, step: 1, value: '5' });
+    const version = select({ options: [{v:'v4',t:'Version 4 — random'}, {v:'v7',t:'Version 7 — timestamp + random'}], value:'v4' });
     const upper = switchChip({ label: 'Uppercase' });
     const noDash = switchChip({ label: 'Remove dashes' });
     const status = statusLine('Ready.');
@@ -1009,13 +1025,14 @@ const defs = {
         const n = Number(count.value);
         if (!count.value.trim() || !Number.isInteger(n) || n < 1 || n > 500) throw new Error('Count must be a whole number between 1 and 500.');
         current = Array.from({ length: n }, () => {
-          let u = uuidv4();
+          if (!['v4','v7'].includes(version.value)) throw new Error('Choose a supported UUID version.');
+          let u = version.value === 'v7' ? uuidv7() : uuidv4();
           if (noDash.querySelector('input').checked) u = u.replace(/-/g, '');
           if (upper.querySelector('input').checked) u = u.toUpperCase();
           return u;
         });
         render();
-        status.set(`${n} UUID${n === 1 ? '' : 's'} generated with crypto.getRandomValues ✓`, 'success');
+        status.set(`${n} UUID ${version.value} value${n === 1 ? '' : 's'} generated with crypto.getRandomValues ✓`, 'success');
       } catch (e) { current = []; render(); status.set(e.message, 'error'); }
     };
     const invalidate = () => { current = []; render(); status.set('Settings changed. Generate new UUIDs.', 'info'); };
@@ -1023,7 +1040,9 @@ const defs = {
     root.append(
       h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'How many', control: count, hint: '1–500' }),
+        field({ label: 'UUID version', control: version }),
         field({ label: 'Format', control: h('div', { class: 'switch-row' }, upper, noDash) })),
+      h('p', {class:'hint', text:'Version 7 embeds your device’s current Unix time in milliseconds. IDs generated in the same millisecond are randomly ordered, not guaranteed monotonic. Do not use UUIDs as authorization.'}),
       actionsRow(
         btn({ label: 'Generate', icon: 'fingerprint', onClick: gen }),
         btn({ label: 'Copy all', variant: 'secondary', icon: 'copy', onClick: async () => { if (!current.length) { toast('Generate some UUIDs first', 'error'); return; } const { copyText } = await import('../ui.js'); (await copyText(current.join('\n'))) ? toast('All UUIDs copied', 'success') : toast('Copy failed', 'error'); } }),
