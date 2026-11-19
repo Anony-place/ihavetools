@@ -105,6 +105,10 @@ try {
     assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${id} output overflow`);
   }
+  for(const id of ['csv-viewer','json-to-typescript','pdf-metadata-viewer']) {await go(id); assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);}
+  await go('csv-viewer'); await page.getByRole('button',{name:'Open table'}).click(); assert.match(await page.locator('#tool-app table').textContent(),/001/); await page.getByLabel('Filter rows').fill('Grace'); assert.doesNotMatch(await page.locator('#tool-app table').textContent(),/Ada/);
+  await go('json-to-typescript'); await page.getByRole('button',{name:'Generate TypeScript'}).click(); assert.match(await page.locator('#tool-app').textContent(),/Array<number>/);
+  await go('pdf-metadata-viewer'); const metadataDoc=await PDFDocument.create(); metadataDoc.addPage();metadataDoc.setTitle('Browser test');metadataDoc.setAuthor('Example Author'); const metadataBytes=await metadataDoc.save();await page.locator('#tool-app input[type=file]').setInputFiles({name:'test.pdf',mimeType:'application/pdf',buffer:Buffer.from(metadataBytes)}); await page.getByText('Title: Browser test',{exact:false}).waitFor();assert.match(await page.locator('#tool-app').textContent(),/Author: Example Author/);await page.getByRole('button',{name:'Clear PDF'}).click();assert.doesNotMatch(await page.locator('#tool-app').textContent(),/Example Author/);
   // Discovery: mobile header search, keyboard selection, dismiss and fallback links.
   await page.setViewportSize({ width: 320, height: 844 });
   await go('pdf-merge');
@@ -683,6 +687,11 @@ try {
   assert.equal(await page.locator('#tool-app').evaluate(el => [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'null')), false);
   assert.ok((await page.locator('#tool-app iframe').boundingBox()).height >= 500, 'preview has ample desktop height');
   const htmlCode = page.locator('#tool-app textarea');
+  // Settle the initial frame and pause live updates so an older navigation cannot
+  // satisfy the reset load listener before the reset's own srcdoc has loaded.
+  await page.frameLocator('#tool-app iframe').getByRole('heading', { name: 'Hello, world!' }).waitFor();
+  await page.frameLocator('#tool-app iframe').locator('body').evaluate(() => document.readyState === 'complete' ? undefined : new Promise(resolve => window.addEventListener('load', resolve, {once:true})));
+  await page.locator('#tool-app label.switch').filter({hasText:'Live preview'}).click();
   await page.locator('#tool-app label.switch').filter({hasText:'Tab inserts spaces'}).click();
   await htmlCode.fill('abcd'); await htmlCode.evaluate(el => el.setSelectionRange(1, 3)); await htmlCode.press('Tab');
   assert.equal(await htmlCode.inputValue(), 'a  d');

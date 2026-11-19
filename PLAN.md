@@ -11,6 +11,30 @@
 
 ---
 
+## Data and document workflow batch — plan (2026-10-31)
+
+Existing CSV ↔ JSON tools are converters, not an interactive CSV viewer;
+PDF organizer does not report document metadata; no JSON-to-TypeScript tool is
+registered. Competitors show [CSV viewing](https://csvfile.tools/viewer),
+[JSON type inference](https://www.nullpath.site/tools/json-to-typescript/) and
+[PDF metadata inspection](https://metaremove.com/en/pdf-metadata-viewer) as
+useful features, but these listings do not establish search demand.
+
+1. CSV viewer with pasted or locally imported UTF-8, explicit delimiter/header,
+   quote-aware parser, literal row filter and paginated bounded rendering. Keep
+   values as text; reject ragged rows and duplicate headers via existing parser.
+2. JSON sample → TypeScript type alias: preserve JSON property names safely,
+   infer all array items as unions, unknown[] for empty arrays, explicit sample
+   limits and no claims of full schema or runtime validation. Reject invalid or
+   duplicate-key JSON and bound complexity and output.
+3. PDF document-info viewer with locally read pdf-lib, no metadata rewriting,
+   and an honest scope: missing fields do not prove privacy, author or dates;
+   XMP, embedded data and provenance not inspected. Reject encrypted files.
+4. Add examples, privacy/limitations and related routes; engine, DOM, browser,
+   mobile and accessibility tests; full build, one PR and deployment verify.
+
+---
+
 ## Student math expansion — research and plan (2026-10-31)
 
 Catalogue comparison: average calculator already includes variance and standard

@@ -249,8 +249,53 @@ function localDataImport({ inp, out, status, revision, accept, title, extensions
   return zone;
 }
 
+/** Infer compile-time scaffolding from one bounded JSON sample, not a schema. */
+export function jsonToTypeScript(raw) {
+  if(typeof raw!=='string'||raw.length>300000)throw new Error('JSON input must be at most 300,000 characters.');
+  const data=parseConversionJson(raw);let nodes=0,work=0;
+  const infer=(value,depth)=>{
+    if(++nodes>10000||depth>30)throw new Error('Sample exceeds 10,000 values or 30 nesting levels.');
+    let output;
+    if(value===null)output='null';
+    else if(Array.isArray(value)) {
+      if(!value.length)output='unknown[]';
+      else {const types=new Set();for(const item of value){types.add(infer(item,depth+1));if(types.size>200)throw new Error('Array has more than 200 distinct inferred types.');}output=`Array<${[...types].join(' | ')}>`;}
+    } else if(typeof value==='object') {
+      const keys=Object.keys(value);output=keys.length ? `{ ${keys.map(key=>`${JSON.stringify(key)}: ${infer(value[key],depth+1)};`).join(' ')} }` : 'Record<string, unknown>';
+    } else output=typeof value;
+    work+=output.length;if(output.length>200000||work>2000000)throw new Error('Inferred type exceeds the output complexity limit.');
+    return output;
+  };
+  return `export type Root = ${infer(data,0)};\n`;
+}
+/** CSV viewer keeps all field values as strings and bounds its rendered page. */
+export function csvViewerPage(raw, {delimiter=',',headerRow=true,query='',page=0}={}) {
+  const parsed=parseCsv(raw,{delimiter,headerRow});
+  if(String(query).length>1000)throw new Error('Filter exceeds 1,000 characters.');
+  if(!Number.isSafeInteger(page)||page<0)throw new Error('Invalid page.');
+  const term=String(query).toLowerCase(), filtered=term?parsed.rows.filter(row=>row.some(cell=>cell.toLowerCase().includes(term))):parsed.rows;
+  const pageSize=Math.max(1,Math.min(40,Math.floor(10000/parsed.headers.length))),pages=Math.max(1,Math.ceil(filtered.length/pageSize)),current=Math.min(page,pages-1);
+  return {headers:parsed.headers, rows:filtered.slice(current*pageSize,(current+1)*pageSize), total:parsed.rows.length, matches:filtered.length,page:current,pages,pageSize};
+}
+
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
+  'json-to-typescript'(root) {
+    const text=textarea({rows:10,value:'{"name":"Ada","scores":[1,2],"active":true}'}),out=resultPanel({label:'TypeScript type',download:true,downloadName:'types.ts',downloadMime:'text/plain;charset=utf-8'}),status=statusLine('');let revision={value:0};
+    const invalidate=()=>{revision.value++;out.placeholder();status.set('Input changed. Generate again.');};text.addEventListener('input',invalidate);window.addEventListener('pagehide',()=>revision.value++);
+    const run=()=>{revision.value++;try{out.set(jsonToTypeScript(text.value));status.set('Generated a starting type from this sample. Review it against the actual API contract.','success');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    root.append(field({label:'JSON sample',control:text,hint:'At most 300,000 characters, 10,000 values and 30 nesting levels.'}),localDataImport({inp:text,out,status,revision,accept:'.json,application/json',title:'Choose a JSON file',extensions:/\.json$/i}),actionsRow(btn({label:'Generate TypeScript',onClick:run})),status,out.panel);
+  },
+  'csv-viewer'(root) {
+    const text=textarea({rows:8,value:'name,code,city\nAda,001,"London, UK"\nGrace,002,New York'}),delimiter=select({value:',',options:[{v:',',t:'Comma'},{v:';',t:'Semicolon'},{v:'\t',t:'Tab'},{v:'|',t:'Pipe'}]}),header=select({value:'yes',options:[{v:'yes',t:'First row is header'},{v:'no',t:'No header row'}]}),query=input({type:'text',placeholder:'Optional literal filter'}),status=statusLine(''),result=h('div',{});let page=0,ready=false,revision={value:0};
+    const clear=()=>{revision.value++;page=0;ready=false;result.replaceChildren();status.set('Input or options changed. Open table again.');}; for(const el of [text,delimiter,header])el.addEventListener(el.tagName==='SELECT'?'change':'input',clear);window.addEventListener('pagehide',()=>revision.value++);
+    const render=()=>{try{const r=csvViewerPage(text.value,{delimiter:delimiter.value,headerRow:header.value==='yes',query:query.value,page});page=r.page;result.replaceChildren(table({headers:r.headers,rows:r.rows}));status.set(`${r.matches} matching rows of ${r.total}. Page ${r.page+1} of ${r.pages}; up to ${r.pageSize} rows shown.`, 'info');prev.disabled=r.page===0;next.disabled=r.page+1>=r.pages;ready=true;}catch(e){ready=false;result.replaceChildren();prev.disabled=true;next.disabled=true;status.set(e.message,'error');}};
+    const prev=btn({label:'Previous page',variant:'secondary',disabled:true,onClick:()=>{page--;render();}}),next=btn({label:'Next page',variant:'secondary',disabled:true,onClick:()=>{page++;render();}});
+    query.addEventListener('input',()=>{page=0;if(ready)render();});
+    const adapter={placeholder:()=>{result.replaceChildren();ready=false;prev.disabled=true;next.disabled=true;}};
+    root.append(field({label:'CSV input',control:text,hint:'Maximum 1,000,000 characters, 10,000 rows and 256 columns.'}),localDataImport({inp:text,out:adapter,status,revision,accept:'.csv,.tsv,.txt,text/plain,text/csv',title:'Choose a CSV or TSV file',extensions:/\.(?:csv|tsv|txt)$/i}),h('div',{class:'field-row'},field({label:'Delimiter',control:delimiter}),field({label:'Header mode',control:header}),field({label:'Filter rows',control:query,hint:'Case-insensitive literal substring in any field.'})),actionsRow(btn({label:'Open table',onClick:()=>{revision.value++;page=0;render();}}),prev,next),status,result);
+  },
+
   'csv-to-json'(root) {
     const inp = textarea({ rows: 10, value: 'name,role,city\nAda,engineer,"London"\nGrace,"Admiral, USN","New York"', placeholder: 'Paste CSV…' });
     const delim = select({ options: [{ v: ',', t: 'Comma ,' }, { v: ';', t: 'Semicolon ;' }, { v: '\t', t: 'Tab' }, { v: '|', t: 'Pipe |' }], value: ',' });

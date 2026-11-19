@@ -127,6 +127,15 @@
     <loc>https://i-have-tools.vercel.app/tools/slow-motion-calculator/</loc>
   </url>
   <url>
+    <loc>https://i-have-tools.vercel.app/tools/csv-viewer/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/json-to-typescript/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/pdf-metadata-viewer/</loc>
+  </url>
+  <url>
     <loc>https://i-have-tools.vercel.app/tools/extract-audio/</loc>
   </url>
   <url>
