@@ -160,6 +160,7 @@ export const tools = [
     steps: 'Paste text or encoded URLs.|Choose Component or Full URL, optionally converting each line independently.|Encode or decode, then copy or download the result.',
     guide: [{h:'Encoding modes and limits',p:"Component mode uses JavaScript encodeURIComponent and leaves ! ' ( ) * unescaped. Full URL mode uses encodeURI, preserving reserved separators; decoding uses the matching JavaScript functions. Neither validates a URL or implements application/x-www-form-urlencoded encoding. Plus-as-space is optional for decoding only. Line mode preserves blank lines and normalizes line breaks to LF; errors identify the line and no partial output is produced. Limit: 1,000,000 UTF-16 code units and 50,000 lines in line mode."}] }),
   T({ id: 'uuid-generator', name: 'UUID Generator', icon: 'fingerprint', engine: 'developer', categories: ['developer', 'security'],
+    related:['uuid-decoder','timestamp-converter','hash-generator','random-string-generator','url-encoder','json-formatter'],
     blurb: 'Generate RFC 9562 v4 and v7 UUIDs locally with cryptographic randomness.',
     description: 'Generate random UUID v4 or time-based UUID v7 locally using your browser’s cryptographic random number generator. Bulk copy, uppercase and no-dash formats supported.',
     keywords: ['uuid', 'guid', 'uuid v4', 'uuid v7', 'unique id', 'generator', 'random id'],
@@ -183,6 +184,22 @@ export const tools = [
       { q: 'Are these UUIDs really random?', a: 'UUID v4 has 122 random bits. UUID v7 has a millisecond timestamp and 74 random bits. Both use crypto.getRandomValues() and RFC 9562 layouts.' },
       { q: 'Is UUID v7 strictly increasing?', a: 'No. This generator uses random bits rather than a same-millisecond counter. Same-millisecond IDs are not creation-ordered, and device clock changes can move timestamps backwards.' },
       { q: 'Can a generated UUID collide with an existing one?', a: 'Collisions are possible, although v4’s 122 random bits make them unlikely for ordinary use. For v7, collision risk depends on the number generated per millisecond and random source. Check uniqueness where consequences matter.' },
+    ] }),
+  T({ id:'uuid-decoder', name:'UUID Decoder', icon:'search', engine:'developer', categories:['developer','security'],
+    related:['uuid-generator','timestamp-converter','number-base-converter','hash-generator','random-string-generator','jwt-decoder'],
+    blurb:'Inspect a UUID version, variant and v7 timestamp locally.',
+    description:'Inspect UUID structure in your browser: identify the version and variant, special nil and max values, and the timestamp field in UUID v7.',
+    keywords:['uuid decoder','uuid parser','uuid version checker','uuid v7 timestamp','uuid inspector'], aliases:['uuid version checker','uuid v7 decoder'], popularity:71, added:'2026-10-31',
+    steps:'Paste a UUID in standard hyphenated or 32-character hexadecimal form.|Click Inspect UUID.|Review the normalized value, variant and version, or the timestamp field for v7.',
+    guide:[
+      {h:'Inspect UUID structure',p:'A UUID is 128 bits, commonly displayed as hexadecimal in 8-4-4-4-12 groups. The variant determines how the version bits are interpreted. This tool reports the version field for the RFC 9562 variant and recognizes nil and max values separately.'},
+      {h:'Decode a version 7 timestamp',p:'In a v7 UUID the first 48 bits store Unix milliseconds. For example, 01890f3e-7b4c-7abc-8123-456789abcdef has a v7 timestamp field; the tool converts the field to UTC. It is a value embedded by the creator, not independent proof of the actual creation time.'},
+      {h:'Limits and privacy',list:['Accepts standard hyphen placement or 32 hex digits, case-insensitively; URN, braces and other forms are not supported.', 'Only v7 timestamp fields are decoded; v1 and v6 timestamps, node IDs and other version-specific data are not extracted.', 'Structural recognition does not prove randomness, uniqueness, authenticity or that a timestamp is accurate. Input is processed locally; a UUID can itself contain sensitive information.']}
+    ], faqs:[
+      {q:'Can a UUID reveal its version?',a:'For UUIDs with the RFC 9562 variant, the version field is in the first hex digit of the third group. This tool reports the field, including unassigned values.'},
+      {q:'What timestamp does UUID v7 contain?',a:'The first 48 bits contain Unix milliseconds. The value is supplied by the generator and does not independently verify the time an event occurred.'},
+      {q:'Does a valid format prove a UUID is unique or random?',a:'No. Format and version bits alone cannot establish uniqueness, randomness, authenticity or generator quality.'},
+      {q:'Can I decode a v1 or v6 timestamp?',a:'Not in this tool. It reports their version field but extracts a timestamp only for v7.'}
     ] }),
   T({ id: 'timestamp-converter', name: 'Timestamp Converter', icon: 'clock', engine: 'developer', categories: ['developer', 'datetime'],
     blurb: 'Convert Unix timestamps to dates and back, in UTC and local time.',
@@ -1070,11 +1087,12 @@ export const tools = [
       { q: 'Does Disallow remove a page from Google?', a: 'Not reliably. Robots.txt controls crawling, not indexing: a blocked URL discovered from links can still appear in results without its content being crawled. To keep a public page out of search, allow crawling and use a noindex tag/header so the crawler can see it. For genuinely private material, use authentication — robots.txt is public and is not a security control.' },
       { q: 'Which rule wins, Allow or Disallow?', a: 'The crawler first uses the most specific matching user-agent group instead of the wildcard group. Inside that group, the longest matching Allow/Disallow pattern normally wins; on an exact tie, the least restrictive result (Allow) is used. The tester above shows the winning rule for the current draft.' },
       { q: 'Where does robots.txt go?', a: 'At the root of the exact protocol and host it should govern — for example https://example.com/robots.txt. A file under /blog/robots.txt is ignored as a robots file, and www, non-www and subdomains are separate hosts.' },
-      { q: 'Will the AI-crawler preset block search engines?', a: 'It is designed not to: named AI training/data crawlers get Disallow: /, while the wildcard group remains open for ordinary crawlers. Only robots that choose to obey robots.txt will comply, so it is a preference signal, not access control.' },
+      { q: 'Will the AI-crawler preset block search engines?', a: 'The AI preset adds blocks only for missing named tokens and preserves your existing rules; existing groups may still allow paths. Google-Extended is separate from Google Search, and GPTBot and OAI-SearchBot are separate OpenAI controls. Other rules can still block search crawlers. Test your own draft; robots.txt is a request, not access control.' },
     ],
     guide: [
       { h: 'How a compliant crawler chooses a rule',
         p: 'Rules are grouped under User-agent lines. A crawler prefers a group naming its own product token over the `*` wildcard group; rules from less-specific groups are not merged just because they look relevant. It then compares the URL path (including query string) with that group’s Allow and Disallow patterns. The local tester uses saved rules, not unsaved form edits or the live file. It approximates longest-match behaviour and supports `*` as a wildcard plus a trailing `$` to anchor the end of a path; URL fragments are omitted; encoding and crawler handling can differ.' },
+      { h: 'Safe presets and AI controls', p: 'Allow everything, Block everything and WordPress defaults replace all saved groups only after confirmation. Save or cancel an open editor before changing presets. The AI preset adds missing named groups with Disallow: / and leaves existing groups unchanged, so review any skipped groups and their Allow rules. Google-Extended is a product-use control token separate from Google Search. GPTBot and OAI-SearchBot have separate roles. Policies and compliance can change; test the result and consult crawler documentation.' },
       { h: 'Useful starting patterns',
         table: { head: ['Goal', 'Example rule', 'What happens'], rows: [
           ['Allow everything', 'User-agent: *\nDisallow:', 'No path is blocked by robots.txt.'],

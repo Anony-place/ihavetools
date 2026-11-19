@@ -171,6 +171,9 @@ await domTest('UUID v7 is opt-in and settings invalidate old values', async () =
  assert.equal(app.querySelectorAll('.file-row').length,5); assert.match(app.querySelector('code').textContent,/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
  assert.match(app.textContent,/same millisecond/); assert.match(statusText(document),/UUID v7/);
 });
+await domTest('UUID decoder handles input and clears stale results', async () => {
+ const app=await loadToolPage('uuid-decoder','developer'), value=app.querySelector('input'); value.value='01941f297c0071238123456789abcdef'; click(btnByLabel(app,'Inspect UUID')); assert.match(resultText(document),/2025-01-01T00:00:00\.000Z/); assert.match(resultText(document),/Version field: 7/); value.value='no'; fire(value,'input'); assert.doesNotMatch(resultText(document),/2025/); click(btnByLabel(app,'Inspect UUID')); assert.match(statusText(document),/32 hexadecimal/); click(btnByLabel(app,'Clear')); assert.equal(value.value,'');
+});
 await domTest('uuid-generator: generates on load with copy buttons', async () => {
   const app = await loadToolPage('uuid-generator', 'developer');
   const rows = app.querySelectorAll('.file-row');
@@ -508,7 +511,7 @@ await domTest('batch-3 GSC upgrades compute in the real UIs', async () => {
   assert.ok(btnByLabel(app, 'Download CSV'), 'frequency results must be exportable');
 
   app = await loadToolPage('robots-txt-generator', 'webseo');
-  click(btnByLabel(app, 'Block everything'));
+  click(btnByLabel(app, 'Block everything')); click(btnByLabel(app, 'Confirm replace rules'));
   assert.match(app.textContent, /Blocked ✕/, 'blocking / must make the crawl tester report Blocked');
   assert.match(app.textContent, /User-agent: \*/, 'the generated robots.txt must remain visible');
   assert.ok(btnByLabel(app, 'Block AI training crawlers'), 'AI-crawler preset must be present');
@@ -857,6 +860,13 @@ await domTest('robots tester refuses invalid output settings and identifies save
  const app=await loadToolPage('robots-txt-generator','webseo'); assert.match(app.textContent,/Tests saved rules only/);
  const sitemap=app.querySelector('input[type=url]'); sitemap.value='javascript:alert(1)'; fire(sitemap,'input'); click(btnByLabel(app,'Test crawler access'));
  assert.match(statusText(document),/HTTP/); assert.doesNotMatch(app.querySelector('[aria-label="Crawl test result output"]').textContent,/Allowed|Blocked/);
+});
+await domTest('robots presets preserve saved groups and require replacement confirmation', async () => {
+ const app=await loadToolPage('robots-txt-generator','webseo'); const out=app.querySelector('[aria-label="robots.txt output"]');
+ click(app.querySelector('[aria-label="Edit * rule 1"]')); const dis=app.querySelector('input[placeholder^="/private/"]'); dis.value='/private/'; click(btnByLabel(app,'Save rule'));
+ click(btnByLabel(app,'Block AI training crawlers')); assert.match(out.textContent,/Disallow: \/private\//); assert.match(out.textContent,/User-agent: GPTBot/); assert.match(statusText(document),/Added 6 groups/);
+ click(btnByLabel(app,'Block AI training crawlers')); assert.match(statusText(document),/Existing groups left unchanged: GPTBot/); assert.equal((out.textContent.match(/User-agent: GPTBot/g)||[]).length,1);
+ click(btnByLabel(app,'Allow everything')); assert.match(out.textContent,/Disallow: \/private\//); click(btnByLabel(app,'Cancel preset')); assert.match(out.textContent,/Disallow: \/private\//); click(btnByLabel(app,'Allow everything')); click(btnByLabel(app,'Confirm replace rules')); assert.doesNotMatch(out.textContent,/GPTBot|\/private\//);
 });
 await domTest('robots multiple sitemaps update and invalidate generated output', async () => {
  const app=await loadToolPage('robots-txt-generator','webseo');
@@ -2369,7 +2379,7 @@ await domTest('GSC pages: finite term, roman breakdown, editable robots rules', 
  app=await loadToolPage('robots-txt-generator','webseo'); click(app.querySelector('[aria-label="Edit * rule 1"]'));
  let dis=app.querySelector('input[placeholder="/private/  (comma-separate multiple)"]'); dis.value='/private/'; click(btnByLabel(app,'Save rule')); assert.match(resultText(document),/Disallow: \/private\//); assert.equal(app.querySelectorAll('.file-list .file-row').length,1);
  click(app.querySelector('[aria-label="Edit * rule 1"]')); dis=app.querySelector('input[placeholder="/private/  (comma-separate multiple)"]'); dis.value='bad'; click(btnByLabel(app,'Save rule')); assert.match(statusText(document),/start with/); assert.ok(app.contains(dis)); assert.match(resultText(document),/Disallow: \/private\//);
- click(btnByLabel(app,'Allow everything')); assert.equal(app.querySelector('input[placeholder="/private/  (comma-separate multiple)"]'), null); assert.doesNotMatch(resultText(document),/Disallow: \/private\//);
+ click(btnByLabel(app,'Allow everything')); assert.ok(app.contains(dis)); assert.match(statusText(document),/Save or cancel/); click(btnByLabel(app,'Cancel')); click(btnByLabel(app,'Allow everything')); assert.match(resultText(document),/Disallow: \/private\//); click(btnByLabel(app,'Confirm replace rules')); assert.equal(app.querySelector('input[placeholder="/private/  (comma-separate multiple)"]'), null); assert.doesNotMatch(resultText(document),/Disallow: \/private\//);
 });
 await domTest('HTML preview runs, pauses, clears oversized code and handles unsupported sync', async () => {
  const app=await loadToolPage('html-live-preview','developer'), code=app.querySelector('textarea'), frame=app.querySelector('iframe'), live=app.querySelector('input[type=checkbox]');

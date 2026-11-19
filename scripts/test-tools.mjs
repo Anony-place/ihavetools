@@ -299,6 +299,18 @@ await test('UUID v7 RFC bit layout, timestamp and failure handling', () => {
  assert.throws(()=>dev.uuidv7({},1),/cryptographic/);
  const u=dev.uuidv7(undefined,1735689600000); assert.match(u,/^01941f29-7c00-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
 });
+await test('UUID inspector handles nil, max, variants and v7 timestamps', () => {
+ let r=dev.inspectUuid('01941F297C0071238123456789ABCDEF'); assert.equal(r.normalized,'01941f29-7c00-7123-8123-456789abcdef'); assert.equal(r.variant,'RFC 9562'); assert.equal(r.version,7); assert.equal(r.timestampMs,1735689600000); assert.equal(r.timestampIso,'2025-01-01T00:00:00.000Z');
+ assert.equal(dev.inspectUuid('0'.repeat(32)).special,'Nil'); assert.equal(dev.inspectUuid('f'.repeat(32)).special,'Max');
+ assert.equal(dev.inspectUuid('12345678-1234-4123-8123-123456789abc').version,4);
+ assert.equal(dev.inspectUuid('12345678-1234-4123-0123-123456789abc').variant,'NCS reserved');
+ assert.equal(dev.inspectUuid('12345678-1234-4123-c123-123456789abc').variant,'Microsoft reserved');
+ assert.equal(dev.inspectUuid('12345678-1234-4123-e123-123456789abc').variant,'Future reserved');
+ assert.equal(dev.inspectUuid('12345678-1234-f123-8123-123456789abc').version,15);
+ assert.equal(dev.inspectUuid('ffffffff-ffff-7000-8000-000000000000').timestampIso, '+010889-08-02T05:31:50.655Z');
+ for(const bad of ['', 'x'.repeat(32),'{12345678-1234-4123-8123-123456789abc}','123456781234-4123-8123-123456789abc']) assert.throws(()=>dev.inspectUuid(bad));
+ const tool=registry.getTool('uuid-decoder'); assert.ok(tool.guide.length>=3 && tool.faqs.length>=4); assert.ok(registry.searchTools('uuid decoder',20).some(t=>t.id===tool.id));
+});
 await test('bulk uniqueness (1000)', () => {
   const set = new Set(Array.from({ length: 1000 }, () => dev.uuidv4()));
   assert.equal(set.size, 1000);
@@ -1246,6 +1258,12 @@ await test('keyword custom exclusions, target independence and capped results', 
   const capped = seo.keywordDensity(words, {filterStop:false, limit:999});
   assert.equal(capped.matched, 510); assert.equal(capped.terms.length, 500);
   assert.throws(() => seo.keywordDensity('hello', {excluded:'x'.repeat(2001)}), /2,000/);
+});
+await test('AI robots groups preserve wildcard and existing named rules', () => {
+ const rules=[{agent:'*',disallow:['/private/'],allow:[]},{agent:'gptbot',disallow:['/special/'],allow:['/public/']}];
+ const r=seo.addAiTrainingRules(rules); assert.deepEqual(r.skipped,['GPTBot']); assert.equal(r.added.length,5); assert.deepEqual(r.rules.slice(0,2),rules);
+ assert.equal(seo.testRobotsAccess(r.rules,'Googlebot','/private/').allowed,false); assert.equal(seo.testRobotsAccess(r.rules,'ClaudeBot','/').allowed,false); assert.equal(seo.testRobotsAccess(r.rules,'GPTBot','/public/').allowed,true);
+ assert.deepEqual(seo.addAiTrainingRules(r.rules).added,[]); assert.throws(()=>seo.addAiTrainingRules(Array.from({length:500},(_,i)=>({agent:`Bot${i}`,allow:[],disallow:[]}))),/500/);
 });
 await test('robots.txt output shape', () => {
   const out = seo.buildRobots([{ agent: '*', disallow: ['/admin/'], allow: ['/admin/public'] }, { agent: 'Googlebot', disallow: [] }], { sitemap: 'https://x.y/sitemap.xml', crawlDelay: 2 });
@@ -2288,8 +2306,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 140);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 118);
+  assert.equal(registry.tools.length, 141);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 119);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
