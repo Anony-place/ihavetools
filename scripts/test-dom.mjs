@@ -179,6 +179,14 @@ await domTest('CSV viewer and TypeScript generator workflows', async () => {
  app=await loadToolPage('json-to-typescript','data');click(btnByLabel(app,'Generate TypeScript'));assert.match(resultText(document),/"scores": Array<number>/);const text=app.querySelector('textarea');text.value='{';fire(text,'input');assert.doesNotMatch(resultText(document),/scores/);click(btnByLabel(app,'Generate TypeScript'));assert.match(statusText(document),/Invalid JSON/);
  app=await loadToolPage('pdf-metadata-viewer','pdf');assert.ok(app.querySelector('input[type=file]'));click(btnByLabel(app,'Clear PDF'));assert.match(statusText(document),/Cleared/);
 });
+await domTest('CSV viewer recovers from filter errors and invalidates navigation', async () => {
+ const app=await loadToolPage('csv-viewer','data'), text=app.querySelector('textarea'), q=app.querySelector('input[placeholder="Optional literal filter"]');
+ text.value='name\n'+Array.from({length:85},(_,i)=>`row${i}`).join('\n');fire(text,'input');click(btnByLabel(app,'Open table'));
+ const next=btnByLabel(app,'Next page'), prev=btnByLabel(app,'Previous page');assert.equal(next.disabled,false);click(next);assert.equal(prev.disabled,false);
+ q.value='x'.repeat(1001);fire(q,'input');assert.match(statusText(document),/Filter exceeds/);assert.equal(next.disabled,true);
+ q.value='row1';fire(q,'input');assert.match(app.querySelector('table').textContent,/row1/);assert.match(statusText(document),/matching rows/);
+ q.value='';fire(q,'input');click(next);text.value='changed\nvalue';fire(text,'input');assert.equal(prev.disabled,true);assert.equal(next.disabled,true);assert.equal(app.querySelector('table'),null);
+});
 await domTest('student math tools solve and invalidate', async () => {
  let app=await loadToolPage('quadratic-equation-solver','math');click(btnByLabel(app,'Solve quadratic'));assert.match(resultText(document),/Two distinct real roots/);assert.match(resultText(document),/x1 ≈ 3/);const a=app.querySelector('input');a.value='0';fire(a,'input');assert.doesNotMatch(resultText(document),/x1/);click(btnByLabel(app,'Solve quadratic'));assert.match(statusText(document),/not be zero/);
  app=await loadToolPage('permutation-combination-calculator','math');click(btnByLabel(app,'Calculate counting'));assert.match(resultText(document),/C\(10, 3\) = 120/);assert.match(resultText(document),/P\(10, 3\) = 720/);

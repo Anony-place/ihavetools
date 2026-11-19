@@ -11,6 +11,20 @@
 
 ---
 
+## Final data/document reliability batch — plan (2026-10-31)
+
+Review the newly deployed workflows before adding more URLs: competitor feature
+lists are not evidence of demand. Correct CSV viewer invalidation, filter-error
+recovery and repeated parsing on pagination/filtering; retain bounded processing
+and local-only input. Align JSON-to-TypeScript file-import character limits with
+its actual generator. Escape control characters in PDF metadata output so an
+untrusted value cannot impersonate another output field. Add engine, DOM and
+real-browser regression tests for these cases, run full checks, then use one PR
+and verify Vercel production. No changes to the underlying source files or
+claims of full PDF privacy inspection.
+
+---
+
 ## Data and document workflow batch — plan (2026-10-31)
 
 Existing CSV ↔ JSON tools are converters, not an interactive CSV viewer;
