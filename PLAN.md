@@ -11,6 +11,34 @@
 
 ---
 
+## Creator-workflow research and new tools (2026-10-31)
+
+Catalog review: no YouTube video/audio link downloader; existing thumbnail
+finder is not one. Existing Extract Audio accepts a local video and exports WAV,
+not an MP3 or YouTube link. [YouTube Help](https://support.google.com/youtube/answer/56100?hl=en)
+documents downloading your own uploads in Studio and official offline viewing;
+[YouTube terms](https://www.youtube.com/static?template=terms) constrain downloads.
+An unauthenticated arbitrary-YouTube downloader would need a reliable compatible
+backend and a platform/rights review; do not build a fake frontend or promise it.
+
+Competitor research shows [subtitle shifting and conversion](https://converttotoolsonline.com/srt-vtt-subtitle-converter),
+[bitrate/size planning](https://calcbe.com/en/calculators/video-bitrate/) and
+shareable video timestamps are useful workflows, not proof of search volume.
+WebVTT contains metadata and settings ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebVTT_API/Web_Video_Text_Tracks_Format)); never silently discard unsupported structures.
+
+Build a single consolidated batch, up to ten not necessarily ten:
+1. Simple SRT ↔ WebVTT text converter and fixed-offset shifter: reject unsupported
+   metadata/settings, malformed files and negative shifts rather than silently
+   losing content; local paste, copy and download, explicit limits.
+2. Video bitrate/size planner with audio and overhead assumptions, decimal units,
+   target size mode and impossible-budget validation; not a video compressor.
+3. YouTube timestamp link builder from validated URL/ID and whole-second time;
+   no remote fetch, verify neither availability nor rights, and not a downloader.
+4. Independently test engines, DOM errors/stale output, SEO and accessibility,
+   full checks, one PR, CI, production verification. No indexing promises.
+
+---
+
 ## Audit follow-up: safe robots presets and UUID inspection (2026-10-31)
 
 Review of the audit and current implementation found the AI preset already

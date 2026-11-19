@@ -78,6 +78,17 @@ try {
     assert.ok((await page.locator('#tool-app').textContent()).includes(result), `${id} result`);
     assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);
   }
+  await go('subtitle-converter');
+  await page.getByLabel('Subtitle text').fill('1\n00:00:01,000 --> 00:00:03,000\nHello');
+  await page.getByRole('button',{name:'Convert subtitles'}).click();
+  assert.match(await page.locator('[aria-label="Converted subtitles output"]').textContent(),/WEBVTT/);
+  const subtitleDownload=page.waitForEvent('download'); await page.getByRole('button',{name:'Download subtitles'}).click(); assert.equal((await subtitleDownload).suggestedFilename(),'subtitles.vtt');
+  for(const id of ['subtitle-converter','video-bitrate-calculator','youtube-timestamp-link']) {
+    await go(id);
+    assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);
+  }
+  await go('video-bitrate-calculator'); await page.getByRole('button',{name:'Calculate estimate'}).click(); assert.match(await page.locator('#tool-app').textContent(),/759\.6 MB/);
+  await go('youtube-timestamp-link'); await page.getByLabel('YouTube video URL or ID').fill('dQw4w9WgXcQ'); await page.getByLabel('Start time').fill('1:30'); await page.getByRole('button',{name:'Build timestamp link'}).click(); assert.match(await page.locator('#tool-app').textContent(),/t=90s/);
   // Discovery: mobile header search, keyboard selection, dismiss and fallback links.
   await page.setViewportSize({ width: 320, height: 844 });
   await go('pdf-merge');
