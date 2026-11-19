@@ -687,6 +687,11 @@ try {
   assert.equal(await page.locator('#tool-app').evaluate(el => [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'null')), false);
   assert.ok((await page.locator('#tool-app iframe').boundingBox()).height >= 500, 'preview has ample desktop height');
   const htmlCode = page.locator('#tool-app textarea');
+  // Settle the initial frame and pause live updates so an older navigation cannot
+  // satisfy the reset load listener before the reset's own srcdoc has loaded.
+  await page.frameLocator('#tool-app iframe').getByRole('heading', { name: 'Hello, world!' }).waitFor();
+  await page.frameLocator('#tool-app iframe').locator('body').evaluate(() => document.readyState === 'complete' ? undefined : new Promise(resolve => window.addEventListener('load', resolve, {once:true})));
+  await page.locator('#tool-app label.switch').filter({hasText:'Live preview'}).click();
   await page.locator('#tool-app label.switch').filter({hasText:'Tab inserts spaces'}).click();
   await htmlCode.fill('abcd'); await htmlCode.evaluate(el => el.setSelectionRange(1, 3)); await htmlCode.press('Tab');
   assert.equal(await htmlCode.inputValue(), 'a  d');
