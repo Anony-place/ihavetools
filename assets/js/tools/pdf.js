@@ -3,7 +3,7 @@
 // Uses pdf-lib (vendored locally at /assets/vendor/pdf-lib.min.js, lazy-loaded
 // only when a PDF action runs). All processing happens in the browser.
 // =============================================================================
-import { h, field, input, select, switchChip, segControl, btn, actionsRow, statusLine, statsGrid, toast, readFile, downloadBlob, fmtBytes, dropzone, filePill, privacyNote, mountTool } from '../ui.js';
+import { h, field, input, select, switchChip, segControl, btn, actionsRow, resultPanel, statusLine, statsGrid, toast, readFile, downloadBlob, fmtBytes, dropzone, filePill, privacyNote, mountTool } from '../ui.js';
 
 /* ── pdf-lib lazy loader ── */
 let libPromise = null;
@@ -229,7 +229,25 @@ function moveRow(e, dir) {
   if (dir > 0 && row.nextElementSibling) parent.insertBefore(row.nextElementSibling, row);
 }
 
+/** Read only selected PDF Info fields. No conclusions about provenance or privacy. */
+export function inspectPdfInfo(doc, filename, size) {
+  const fields=[['File',()=>filename],['Bytes',()=>String(size)],['Pages',()=>String(doc.getPageCount())],['Title',()=>doc.getTitle()],['Author',()=>doc.getAuthor()],['Subject',()=>doc.getSubject()],['Keywords',()=>doc.getKeywords()],['Creator',()=>doc.getCreator()],['Producer',()=>doc.getProducer()],['Creation date',()=>doc.getCreationDate()],['Modification date',()=>doc.getModificationDate()]];
+  return fields.map(([label,get])=>{let value;try{value=get();if(value instanceof Date)value=Number.isNaN(value.getTime())?'Unreadable date':value.toISOString();else value=value==null?'Not present or unreadable':String(value);}catch{value='Unreadable';}if(value.length>10000)value=value.slice(0,10000)+' … [truncated]';return `${label}: ${value}`;}).join('\n');
+}
+
 const defs = {
+  'pdf-metadata-viewer'(root) {
+    const out=resultPanel({label:'PDF document info'}),status=statusLine('Choose a PDF to inspect.');let revision=0;
+    const reset=()=>{revision++;out.placeholder();}; window.addEventListener('pagehide',reset,{once:true});
+    const zone=dropzone({accept:'.pdf,application/pdf',title:'Choose a PDF file',sub:'One PDF, up to 20 MiB. Read locally.',onReject:()=>{reset();zone.clear();status.set('Choose a PDF no larger than 20 MiB.','error');},onFiles:async files=>{zone.clear();const token=++revision;out.placeholder();try{
+      const file=files[0];if(!file||!(/\.pdf$/i.test(file.name)||file.type==='application/pdf'))throw new Error('Choose a PDF file.');if(file.size>20*1024*1024)throw new Error('PDF exceeds 20 MiB.');status.set('Reading PDF locally…');
+      const lib=await loadPdfLib();if(token!==revision)return;const bytes=await readFile(file,'buffer');if(token!==revision)return;
+      const doc=await lib.PDFDocument.load(bytes,{updateMetadata:false,ignoreEncryption:false});if(token!==revision)return;
+      out.set(inspectPdfInfo(doc,file.name,file.size));status.set('Document Info only. XMP, attachments, comments and other hidden data are not inspected; metadata can be edited.','info');
+    }catch(e){if(token===revision){out.placeholder();status.set(`Could not inspect this PDF: ${e.message}. Encrypted or damaged PDFs may not be supported.`,'error');}}}});
+    root.append(zone,actionsRow(btn({label:'Clear PDF',variant:'ghost',onClick:()=>{reset();zone.clear();status.set('Cleared.');}})),status,out.panel,h('p',{class:'hint',text:'Document Info fields only; this is not a metadata remover, forensic inspection or authenticity check. Other metadata may remain unseen.'}));
+  },
+
   'pdf-to-image'(root) {
     // PDF.js 6.5.438, Apache-2.0. Module and worker are local, lazy-loaded.
     let file = null, doc = null, loading = null, rendering = null, revision = 0, job = 0, result = null, imageUrl = null;
