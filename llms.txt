@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 144 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 151 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -39,6 +39,13 @@
 - [Subtitle Converter & Time Shifter](https://i-have-tools.vercel.app/tools/subtitle-converter/): Convert simple SRT and WebVTT subtitles and shift their timing.
 - [Video Bitrate Calculator](https://i-have-tools.vercel.app/tools/video-bitrate-calculator/): Estimate video file size or bitrate budget with audio included.
 - [YouTube Timestamp Link Generator](https://i-have-tools.vercel.app/tools/youtube-timestamp-link/): Create a YouTube link that starts at a chosen time.
+- [Text Cleaner](https://i-have-tools.vercel.app/tools/text-cleaner/): Clean pasted text with explicit whitespace and line operations.
+- [Line Filter](https://i-have-tools.vercel.app/tools/line-filter/): Keep or remove lines containing literal text.
+- [Add Prefix and Suffix to Lines](https://i-have-tools.vercel.app/tools/line-prefix-suffix/): Add a prefix and suffix to each selected text line.
+- [List Comparison](https://i-have-tools.vercel.app/tools/list-comparison/): Find unique common items or items only in one list.
+- [Text to Hex Converter](https://i-have-tools.vercel.app/tools/text-hex-converter/): Convert UTF-8 text to hexadecimal bytes and back.
+- [HTML Entity Encoder & Decoder](https://i-have-tools.vercel.app/tools/html-entity-converter/): Encode five HTML-sensitive characters or decode supported references.
+- [Slow Motion Calculator](https://i-have-tools.vercel.app/tools/slow-motion-calculator/): Estimate conform duration for footage at a different frame rate.
 - [Extract Audio from Video](https://i-have-tools.vercel.app/tools/extract-audio/): Extract supported video audio in your browser and save it as WAV.
 - [MP4 Inspector](https://i-have-tools.vercel.app/tools/mp4-inspector/): Inspect supported MP4 boxes and available track metadata.
 - [Tone Generator](https://i-have-tools.vercel.app/tools/tone-generator/): Play or download pure tones — sine, square, sawtooth, triangle.

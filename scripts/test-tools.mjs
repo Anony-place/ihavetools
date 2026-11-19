@@ -39,6 +39,15 @@ const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
 
+await test('new text, encoding and frame-conform tools: boundaries and examples', () => {
+ assert.equal(text.cleanText('  hello   world \r\n\t  \r\nbye','spaces'),'hello world\n\nbye'); assert.equal(text.cleanText(' a\r\n \r\n b ','blank'),' a\n b '); assert.equal(text.cleanText(' a\n\n b ','join'),'a b'); assert.throws(()=>text.cleanText('x'.repeat(1000001),'trim'),/exceeds/);
+ assert.deepEqual(text.filterTextLines('Cat\ndog\ncat','cat','include',true),{text:'Cat\ncat',kept:2,total:3}); assert.equal(text.filterTextLines('a\nb','a','exclude').text,'b');assert.throws(()=>text.filterTextLines('a','','include'));
+ assert.equal(text.affixTextLines('a\n\nb','[',']'),'[a]\n\n[b]'); assert.equal(text.affixTextLines('a\n\nb','[',']',true),'[a]\n[]\n[b]');assert.throws(()=>text.affixTextLines('a\n'.repeat(1000),'x'.repeat(3000),''),/exceed/);
+ assert.equal(text.compareTextLists('apple\npear\napple','pear\nplum','both').text,'pear'); assert.equal(text.compareTextLists('Apple\npear','apple','a-only',true).text,'pear'); assert.equal(text.compareTextLists('a','a\nb','b-only').text,'b');
+ assert.equal(dev.utf8HexConvert('A😀','encode'),'41 f0 9f 98 80');assert.equal(dev.utf8HexConvert('41 f0 9f 98 80','decode'),'A😀');assert.equal(dev.utf8HexConvert('ef bb bf 41','decode'),'\ufeffA');assert.throws(()=>dev.utf8HexConvert('ff','decode'),/UTF-8/);assert.throws(()=>dev.utf8HexConvert('a','decode'),/byte pairs/);assert.throws(()=>dev.utf8HexConvert('\ud800','encode'),/surrogate/);
+ assert.equal(dev.htmlEntitiesConvert('<a & "x">','encode'),'&lt;a &amp; &quot;x&quot;&gt;'); assert.equal(dev.htmlEntitiesConvert('&amp;lt; &#x1F600; &copy;','decode'),'&lt; 😀 &copy;');assert.throws(()=>dev.htmlEntitiesConvert('&#xD800;','decode'),/Invalid/);
+ assert.deepEqual(audio.slowMotionPlan(10,120,24),{frames:1200,seconds:50,sourceSeconds:10,speedPercent:20,rounded:false});assert.equal(audio.slowMotionPlan(0.1,24,24).frames,2); assert.throws(()=>audio.slowMotionPlan(0,24,24)); assert.throws(()=>audio.slowMotionPlan(0.001,1,24),/at least one/);
+});
 await test('creator tools: subtitles, bitrate and timestamp links', () => {
  const srt='1\n00:00:01,000 --> 00:00:03,000\nHello!\n\n2\n00:00:04,000 --> 00:00:05,000\nWorld';
  const vtt=audio.convertSimpleSubtitles(srt,'srt','vtt','1.5'); assert.equal(vtt.count,2); assert.match(vtt.text,/00:00:02\.500 --> 00:00:04\.500/); assert.equal(audio.convertSimpleSubtitles(vtt.text,'vtt','srt','-1.5').text,srt+'\n');
@@ -2314,8 +2323,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 144);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 122);
+  assert.equal(registry.tools.length, 151);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 129);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

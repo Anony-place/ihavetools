@@ -240,8 +240,21 @@ export function videoBitratePlan({seconds, audioKbps, videoMbps, targetMB, mode}
   return { videoMbps:video, audioKbps, seconds, sizeMB:(video+audioKbps/1000)*seconds/8, videoMB:video*seconds/8, audioMB:audioKbps*seconds/8000 };
 }
 
+export function slowMotionPlan(seconds, captureFps, playbackFps) {
+  for(const [label,n,min,max] of [['Duration',seconds,0.001,360000],['Capture FPS',captureFps,0.001,1000],['Playback FPS',playbackFps,0.001,1000]]) if(!Number.isFinite(n)||n<min||n>max)throw new Error(`${label} must be between ${min} and ${max}.`);
+  const exactFrames=seconds*captureFps, frames=Math.round(exactFrames); if(frames<1)throw new Error('Duration and capture FPS must represent at least one whole frame.');
+  return {frames,seconds:frames/playbackFps,sourceSeconds:frames/captureFps,speedPercent:playbackFps/captureFps*100,rounded:Math.abs(exactFrames-frames)>1e-8};
+}
+
 /* ═══════════════════════════ Tool definitions ═══════════════════════════ */
 const defs = {
+  'slow-motion-calculator'(root) {
+    const duration=input({type:'number',min:'0.001',max:'360000',step:'any',value:'10'}),capture=input({type:'number',min:'0.001',max:'1000',step:'any',value:'120'}),playback=input({type:'number',min:'0.001',max:'1000',step:'any',value:'24'}),out=resultPanel({label:'Conform estimate'}),status=statusLine('');
+    const change=()=>{out.placeholder();status.set('Inputs changed. Calculate again.');}; for(const el of [duration,capture,playback])el.addEventListener('input',change);
+    const run=()=>{try{const number=el=>el.value.trim()===''?NaN:Number(el.value);const r=slowMotionPlan(number(duration),number(capture),number(playback)),fmt=n=>Number(n.toPrecision(10)).toLocaleString('en-US',{maximumFractionDigits:6});out.set(`Frames: ${r.frames.toLocaleString('en-US')}\nConformed duration: ${fmt(r.seconds)} seconds\nEffective source duration: ${fmt(r.sourceSeconds)} seconds\nPlayback speed: ${fmt(r.speedPercent)}%`);status.set(`${r.rounded?'Frame count rounded to the nearest whole frame. ':'Exact whole-frame count. '}Assumes every frame is retained and played at a constant target rate.`, 'info');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    root.append(h('div',{class:'field-row'},field({label:'Recorded duration (seconds)',control:duration}),field({label:'Capture frame rate (fps)',control:capture}),field({label:'Playback frame rate (fps)',control:playback})),actionsRow(btn({label:'Calculate slow motion',onClick:run})),status,out.panel);
+  },
+
   'subtitle-converter'(root) {
     const text=textarea({rows:12,placeholder:'1\n00:00:01,000 --> 00:00:03,000\nHello!'}), source=select({options:[{v:'srt',t:'SRT'},{v:'vtt',t:'WebVTT'}],value:'srt'}), target=select({options:[{v:'vtt',t:'WebVTT'},{v:'srt',t:'SRT'}],value:'vtt'}), offset=input({type:'text',value:'0',inputmode:'decimal'}), out=resultPanel({label:'Converted subtitles'}), status=statusLine('');
     const clear=()=>{out.placeholder();status.set('Input changed. Convert again.');};

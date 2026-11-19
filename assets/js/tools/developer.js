@@ -597,7 +597,41 @@ export function jsonCompareReport(changes) {
     ...(lines.length ? lines : ['No structural differences.'])].join('\n');
 }
 
+export function utf8HexConvert(raw,mode) {
+  const text=String(raw); if(text.length>1000000) throw new Error('Input exceeds 1,000,000 UTF-16 code units.');
+  if(mode==='encode') { // TextEncoder replaces unpaired surrogates; reject to avoid silent data changes.
+    if(/(?:[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF])/.test(text)) throw new Error('Text contains an unpaired surrogate.');
+    return [...new TextEncoder().encode(text)].map(n=>n.toString(16).padStart(2,'0')).join(' ');
+  }
+  if(mode!=='decode') throw new Error('Choose encode or decode.');
+  const compact=text.replace(/[ \t\r\n]/g,''); if(!/^(?:[a-fA-F0-9]{2})*$/.test(compact)) throw new Error('Enter complete hexadecimal byte pairs, optionally separated by spaces.');
+  const bytes=new Uint8Array(compact.length/2);for(let i=0;i<bytes.length;i++)bytes[i]=parseInt(compact.slice(i*2,i*2+2),16);
+  try {return new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);}catch{throw new Error('Bytes are not valid UTF-8.');}
+}
+export function htmlEntitiesConvert(raw,mode) {
+  const text=String(raw);if(text.length>1000000)throw new Error('Input exceeds 1,000,000 UTF-16 code units.');
+  const encoded={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+  if(mode==='encode')return text.replace(/[&<>"']/g,ch=>encoded[ch]);
+  if(mode!=='decode')throw new Error('Choose encode or decode.');
+  const named={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'"};
+  return text.replace(/&(#(?:[xX][0-9a-fA-F]+|[0-9]+)|[a-zA-Z]+);/g,(all,code)=>{
+    if(code[0]!=='#')return Object.hasOwn(named,code)?named[code]:all;
+    const num=code[1]?.toLowerCase()==='x'?parseInt(code.slice(2),16):parseInt(code.slice(1),10);
+    if(!Number.isInteger(num)||num===0||num>0x10ffff||(num>=0xd800&&num<=0xdfff))throw new Error('Invalid numeric Unicode reference.');
+    return String.fromCodePoint(num);
+  });
+}
+function encodingTool(root,{label,convert,hint}) {
+  const text=textarea({rows:10,placeholder:'Enter text here…'}),mode=select({value:'encode',options:[{v:'encode',t:'Encode'},{v:'decode',t:'Decode'}]}),out=resultPanel({label:'Result',download:true,downloadName:'result.txt'}),status=statusLine('');
+  const invalidate=()=>{out.placeholder();status.set('Input changed. Convert again.');}; text.addEventListener('input',invalidate);mode.addEventListener('change',invalidate);
+  const run=()=>{try{out.set(convert(text.value,mode.value));status.set('Converted locally. Copy or download the result.','success');}catch(e){out.placeholder();status.set(e.message,'error');}};
+  root.append(field({label,control:text,hint}),field({label:'Operation',control:mode}),actionsRow(btn({label:'Convert',onClick:run}),btn({label:'Clear',variant:'ghost',onClick:()=>{text.value='';out.placeholder();status.set('Cleared.');}})),status,out.panel);
+}
+
 const defs = {
+  'text-hex-converter'(root) {encodingTool(root,{label:'Text or hex bytes',convert:utf8HexConvert,hint:'UTF-8 text ↔ hexadecimal byte pairs; max 1,000,000 UTF-16 code units. Invalid UTF-8 is rejected.'});},
+  'html-entity-converter'(root) {encodingTool(root,{label:'Text or HTML entities',convert:htmlEntitiesConvert,hint:'Encodes five HTML-sensitive characters; decodes amp, lt, gt, quot, apos and numeric references. Not a sanitizer.'});},
+
   'html-live-preview'(root) {
     const starter = `<!doctype html>
 <html lang="en">

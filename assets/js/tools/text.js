@@ -319,7 +319,58 @@ export function morseToText(code) {
 }
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
+const NEW_TEXT_LIMIT = 1000000;
+function boundedText(value) { const s=String(value); if(s.length>NEW_TEXT_LIMIT) throw new Error('Input exceeds 1,000,000 UTF-16 code units.'); return s; }
+export function cleanText(raw, mode) {
+  const s=boundedText(raw).replace(/\r\n?/g,'\n');
+  switch(mode) {
+    case 'trim': return s.split('\n').map(line=>line.trim()).join('\n');
+    case 'spaces': return s.split('\n').map(line=>line.replace(/[ \t]+/g,' ').trim()).join('\n');
+    case 'blank': return s.split('\n').filter(line=>line.trim()).join('\n');
+    case 'join': return s.split('\n').map(line=>line.trim()).filter(Boolean).join(' ');
+    default: throw new Error('Choose a cleaning operation.');
+  }
+}
+export function filterTextLines(raw, needle, mode, insensitive=false) {
+  const s=boundedText(raw), term=boundedText(needle);
+  if(!term || /[\r\n]/.test(term)) throw new Error('Enter a non-empty search term without line breaks.');
+  if(!['include','exclude'].includes(mode)) throw new Error('Choose include or exclude.');
+  const find=insensitive?term.toLowerCase():term;
+  const lines=s.replace(/\r\n?/g,'\n').split('\n');
+  const kept=lines.filter(line=>(insensitive?line.toLowerCase():line).includes(find)===(mode==='include'));
+  return {text:kept.join('\n'), kept:kept.length, total:lines.length};
+}
+export function affixTextLines(raw, prefix, suffix, includeBlank=false) {
+  const s=boundedText(raw), p=boundedText(prefix), q=boundedText(suffix);
+  if(/[\r\n]/.test(p+q)) throw new Error('Prefix and suffix cannot contain line breaks.');
+  const lines=s.replace(/\r\n?/g,'\n').split('\n');
+  // Check projected output before allocation to avoid amplification.
+  const selected=includeBlank?lines.length:lines.filter(l=>l.trim()).length;
+  if(s.length+selected*(p.length+q.length)>2000000) throw new Error('Result would exceed 2,000,000 characters.');
+  return lines.map(line=>includeBlank||line.trim()?p+line+q:line).join('\n');
+}
+export function compareTextLists(a, b, mode, insensitive=false) {
+  const read=raw=>{const rows=boundedText(raw).replace(/\r\n?/g,'\n').split('\n').filter(x=>x.trim());const set=new Map(); for(const line of rows){const k=insensitive?line.toLowerCase():line;if(!set.has(k))set.set(k,line);}return set;};
+  const x=read(a),y=read(b); if(!['both','a-only','b-only'].includes(mode)) throw new Error('Choose a comparison.');
+  const [first, second]=mode==='b-only'?[y,x]:[x,y];
+  const output=[...first].filter(([k])=>mode==='both'?second.has(k):!second.has(k)).map(([,v])=>v);
+  return {text:output.join('\n'), count:output.length, uniqueA:x.size,uniqueB:y.size};
+}
+function textToolShell(root,{label,makeControls,run}) {
+  const primary=textarea({rows:10,placeholder:'Paste your text here…'}), out=resultPanel({label:'Result',download:true,downloadName:'result.txt'}), status=statusLine('');
+  const controls=makeControls();
+  const invalidate=()=>{out.placeholder();status.set('Input changed. Run again.');};
+  for(const el of [primary,...controls.elements]) el.addEventListener(el.tagName==='SELECT'||el.type==='checkbox'?'change':'input',invalidate);
+  const execute=()=>{try{const r=run(primary.value,controls);out.set(r.text);status.set(r.status || 'Done. Copy or download the result.','success');}catch(e){out.placeholder();status.set(e.message,'error');}};
+  root.append(field({label,control:primary,hint:'Maximum 1,000,000 UTF-16 code units; line endings are normalized to LF.'}),...controls.fields,actionsRow(btn({label:'Run tool',onClick:execute}),btn({label:'Clear',variant:'ghost',onClick:()=>{primary.value='';for(const el of controls.elements) if(el.tagName==='TEXTAREA' || (el.tagName==='INPUT' && el.type==='text')) el.value='';out.placeholder();status.set('Cleared.');}})),status,out.panel);
+}
+
 const defs = {
+  'text-cleaner'(root) { textToolShell(root,{label:'Text',makeControls:()=>{const mode=select({value:'spaces',options:[{v:'spaces',t:'Trim lines and collapse spaces/tabs'},{v:'trim',t:'Trim each line'},{v:'blank',t:'Remove blank lines'},{v:'join',t:'Join nonblank lines with spaces'}]});return {mode,elements:[mode],fields:[field({label:'Cleaning operation',control:mode})]};},run:(s,c)=>({text:cleanText(s,c.mode.value)})}); },
+  'line-filter'(root) { textToolShell(root,{label:'Lines',makeControls:()=>{const term=input({type:'text',placeholder:'Literal text'}),mode=select({value:'include',options:[{v:'include',t:'Keep matching lines'},{v:'exclude',t:'Remove matching lines'}]}),fold=select({value:'no',options:[{v:'no',t:'Case sensitive'},{v:'yes',t:'Ignore case'}]});return {term,mode,fold,elements:[term,mode,fold],fields:[field({label:'Find literal text',control:term}),field({label:'Action',control:mode}),field({label:'Case matching',control:fold})]};},run:(s,c)=>{const r=filterTextLines(s,c.term.value,c.mode.value,c.fold.value==='yes');return {text:r.text,status:`Kept ${r.kept} of ${r.total} lines.`};}}); },
+  'line-prefix-suffix'(root) { textToolShell(root,{label:'Lines',makeControls:()=>{const prefix=input({type:'text',placeholder:'Optional prefix'}),suffix=input({type:'text',placeholder:'Optional suffix'}),blank=select({value:'no',options:[{v:'no',t:'Leave blank lines unchanged'},{v:'yes',t:'Include blank lines'}]});return {prefix,suffix,blank,elements:[prefix,suffix,blank],fields:[field({label:'Prefix',control:prefix}),field({label:'Suffix',control:suffix}),field({label:'Blank lines',control:blank})]};},run:(s,c)=>({text:affixTextLines(s,c.prefix.value,c.suffix.value,c.blank.value==='yes')})}); },
+  'list-comparison'(root) { textToolShell(root,{label:'List A — one item per line',makeControls:()=>{const other=textarea({rows:8,placeholder:'Paste list B…'}),mode=select({value:'both',options:[{v:'both',t:'Items in both lists'},{v:'a-only',t:'Only in list A'},{v:'b-only',t:'Only in list B'}]}),fold=select({value:'no',options:[{v:'no',t:'Case sensitive'},{v:'yes',t:'Ignore case'}]});return {other,mode,fold,elements:[other,mode,fold],fields:[field({label:'List B — one item per line',control:other,hint:'Maximum 1,000,000 UTF-16 code units.'}),field({label:'Show',control:mode}),field({label:'Case matching',control:fold})]};},run:(s,c)=>{const r=compareTextLists(s,c.other.value,c.mode.value,c.fold.value==='yes');return {text:r.text,status:`${r.count} unique items; A has ${r.uniqueA}, B has ${r.uniqueB}.`};}}); },
+
   'word-counter'(root) {
     const inp = textarea({ rows: 12, mono: false, placeholder: 'Type or paste your text here — statistics update live…' });
     const file = input({type:'file', accept:'.txt,.md,text/plain,text/markdown'});
