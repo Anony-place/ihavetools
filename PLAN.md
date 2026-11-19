@@ -11,6 +11,30 @@
 
 ---
 
+## Audit follow-up: safe robots presets and UUID inspection (2026-10-31)
+
+Review of the audit and current implementation found the AI preset already
+exists but silently replaces custom groups, and Google-Extended is a control
+token, not simply another crawler. GPTBot and OAI-SearchBot have independent
+roles ([OpenAI](https://developers.openai.com/api/docs/bots)); Google-Extended
+is separate from Google Search ([Google](https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers)).
+Actual policies change; robots is not access control or a guarantee.
+
+1. Make replacement presets explicit and confirmation-based; do not discard an
+   unsaved editor. Add AI groups without overwriting existing matching groups;
+   identify skipped names and explain that existing Allow rules may override a
+   root Disallow. Preserve wildcard rules, sitemaps and test settings.
+2. Add a distinct UUID inspector for canonical or compact hex, reporting variant,
+   version, nil/max and v7 timestamp only. Do not claim authenticity, randomness,
+   creation time, monotonicity or v1/v6 timestamp parsing. Keep input local.
+   Competitor [UUID decoder](https://www.apivoid.com/tools/uuid-decoder/)
+   is a feature signal, not proof of search demand.
+3. Test presets, collisions, user edits, URL simulation and UUID boundary
+   vectors, mobile/accessibility, metadata and sitemap. One PR and production
+   verification after CI. Current indexing and traffic impact remain unverified.
+
+---
+
 ## User-provided platform audit — consolidated verification and remediation (2026-10-31)
 
 The 11-page supplied PDF proposes fixes for indexing, build consistency, DOM

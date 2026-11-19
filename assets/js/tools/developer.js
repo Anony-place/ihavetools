@@ -375,6 +375,21 @@ export function uuidv7(rng, timestamp = Date.now()) {
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
+/** Parse syntax and expose only supported fields; never infer authenticity. */
+export function inspectUuid(value) {
+  const text = String(value).trim();
+  if (!/^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.test(text)) throw new Error('Enter a UUID as 32 hexadecimal digits, with standard hyphens or no hyphens.');
+  const hex = text.replace(/-/g,'').toLowerCase();
+  const normalized = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+  const special = /^0{32}$/.test(hex) ? 'Nil' : /^f{32}$/.test(hex) ? 'Max' : null;
+  const nibble = parseInt(hex[16], 16);
+  const variant = nibble < 8 ? 'NCS reserved' : nibble < 12 ? 'RFC 9562' : nibble < 14 ? 'Microsoft reserved' : 'Future reserved';
+  const version = !special && variant === 'RFC 9562' ? parseInt(hex[12],16) : null;
+  const timestampMs = version === 7 ? Number.parseInt(hex.slice(0,12),16) : null;
+  return { normalized, special, variant: special ? null : variant, version, timestampMs,
+    timestampIso: timestampMs === null ? null : new Date(timestampMs).toISOString() };
+}
+
 /* ═══════════════════════════ Number bases ═══════════════════════════
    BigInt throughout, so values far beyond Number.MAX_SAFE_INTEGER
    (64-bit hashes, memory addresses) convert exactly. */
@@ -1049,6 +1064,18 @@ const defs = {
       ),
       status, listWrap);
     gen();
+  },
+
+  'uuid-decoder'(root) {
+    const value=input({type:'text',inputmode:'text',placeholder:'e.g. 01890f3e-7b4c-7abc-8123-456789abcdef',maxlength:100}),out=resultPanel({label:'UUID inspection'}),status=statusLine('');
+    const run=()=>{try {const r=inspectUuid(value.value), rows=[`Normalized: ${r.normalized}`];
+      if(r.special) rows.push(`Special value: ${r.special} UUID (all ${r.special === 'Nil' ? 'zero' : 'one'} bits)`);
+      else { rows.push(`Variant: ${r.variant}`); if(r.version!==null) rows.push(`Version field: ${r.version}${r.version < 1 || r.version > 8 ? ' (unassigned or unknown)' : ''}`); else rows.push('Version: not interpreted for this variant'); }
+      if(r.timestampMs!==null) rows.push(`v7 timestamp (Unix milliseconds): ${r.timestampMs}`,`v7 timestamp (UTC): ${r.timestampIso}`);
+      out.set(rows.join('\n')); status.set('Structure only: this does not verify origin, uniqueness, randomness or actual creation time.', 'info');
+    }catch(e){out.placeholder();status.set(e.message,'error');}};
+    value.addEventListener('input',()=>{out.placeholder();status.set('Input changed. Inspect again.','info');});
+    root.append(field({label:'UUID',control:value,hint:'Use 32 hexadecimal digits with standard hyphens or no hyphens. Input stays in this browser.'}),actionsRow(btn({label:'Inspect UUID',icon:'search',onClick:run}),btn({label:'Clear',variant:'ghost',onClick:()=>{value.value='';out.placeholder();status.set('Cleared.','info');}})),status,h('br'),out.panel);
   },
 
   'timestamp-converter'(root) {

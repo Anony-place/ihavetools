@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 140 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 141 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -28,6 +28,7 @@
 - [Base64 Encoder & Decoder](https://i-have-tools.vercel.app/tools/base64-encoder/): Unicode-safe Base64 encoding and decoding, with URL-safe output.
 - [URL Encoder & Decoder](https://i-have-tools.vercel.app/tools/url-encoder/): Percent-encode or decode text and whole URLs, correctly.
 - [UUID Generator](https://i-have-tools.vercel.app/tools/uuid-generator/): Generate RFC 9562 v4 and v7 UUIDs locally with cryptographic randomness.
+- [UUID Decoder](https://i-have-tools.vercel.app/tools/uuid-decoder/): Inspect a UUID version, variant and v7 timestamp locally.
 - [Timestamp Converter](https://i-have-tools.vercel.app/tools/timestamp-converter/): Convert Unix timestamps to dates and back, in UTC and local time.
 - [Hash Generator](https://i-have-tools.vercel.app/tools/hash-generator/): SHA-1, SHA-256, SHA-384 and SHA-512 hashes via Web Crypto.
 - [Regex Tester](https://i-have-tools.vercel.app/tools/regex-tester/): Test regular expressions live with match highlighting and groups.

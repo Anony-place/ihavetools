@@ -301,6 +301,18 @@ export function buildRobots(rules, { sitemap = '', sitemaps = [], crawlDelay = n
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 
+// Add groups only for missing exact tokens. Existing groups may contain more
+// specific Allow rules, so never claim they are blocked without user review.
+export function addAiTrainingRules(rules) {
+  const agents = ['GPTBot', 'ClaudeBot', 'CCBot', 'Google-Extended', 'Applebot-Extended', 'Meta-ExternalAgent'];
+  const present = new Set(rules.map(r => String(r.agent || '*').toLowerCase()));
+  const added = agents.filter(agent => !present.has(agent.toLowerCase()));
+  const skipped = agents.filter(agent => present.has(agent.toLowerCase()));
+  const next = [...rules, ...added.map(agent => ({agent, disallow:['/'], allow:[]}))];
+  buildRobots(next);
+  return {rules:next, added, skipped};
+}
+
 const robotsPatternMatches = (pattern, path) => {
   const anchored = pattern.endsWith('$');
   const parts = (anchored ? pattern.slice(0, -1) : pattern).split('*');
@@ -513,7 +525,7 @@ const defs = {
         h('span', { class: 'hint', text: `Disallow: ${r.disallow.length || 'none'} · Allow: ${r.allow.length || 'none'}` }),
         h('span', { class: 'fr-actions' },
           h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Edit ${r.agent} rule ${i + 1}`, onclick: () => addRule(i) }, 'Edit'),
-          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Remove ${r.agent} rule ${i + 1}`, onclick: () => { rules.splice(i, 1); if (!rules.length) rules = [{ agent: '*', disallow: [], allow: [] }]; formWrap.replaceChildren(); render(); build(); } }, 'Remove')))));
+          h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Remove ${r.agent} rule ${i + 1}`, onclick: () => { if (formWrap.childElementCount) { status.set('Save or cancel the open rule editor first.', 'error'); return; } confirmWrap.replaceChildren(); rules.splice(i, 1); if (!rules.length) rules = [{ agent: '*', disallow: [], allow: [] }]; formWrap.replaceChildren(); render(); build(); } }, 'Remove')))));
     };
     const build = () => {
       try {
@@ -526,6 +538,8 @@ const defs = {
     [sitemap, extraSitemaps, delay].forEach(el => el.addEventListener('input', build));
     [testAgent, testUrl].forEach(el => el.addEventListener('input', () => testOut.placeholder('Inputs changed. Run the test again.')));
     const addRule = (index = null) => {
+      if (formWrap.childElementCount) { status.set('Save or cancel the open rule editor first.', 'error'); return; }
+      confirmWrap.replaceChildren();
       const agent = input({ type: 'text', placeholder: 'User-agent, e.g. * or Googlebot' });
       const dis = input({ type: 'text', placeholder: '/private/  (comma-separate multiple)' });
       const allow = input({ type: 'text', placeholder: '/public/  (optional)' });
@@ -546,23 +560,34 @@ const defs = {
           btn({ label: 'Cancel', variant: 'ghost', onClick: () => formWrap.replaceChildren() })));
       formWrap.replaceChildren(form);
     };
-    const formWrap = h('div', {});
-    const setRules = (next) => { rules = next; formWrap.replaceChildren(); render(); build(); };
-    const aiTrainingAgents = ['GPTBot', 'ClaudeBot', 'CCBot', 'Google-Extended', 'Applebot-Extended', 'Meta-ExternalAgent'];
+    const formWrap = h('div', {}), confirmWrap = h('div', {role:'region', 'aria-label':'Confirm preset replacement'});
+    const requestReplace = (next, name) => {
+      if (formWrap.childElementCount) { status.set('Save or cancel the open rule editor first.', 'error'); return; }
+      confirmWrap.replaceChildren(h('p', {class:'hint', text:`${name} will replace all saved crawler groups. Sitemap settings remain unchanged. Confirm to continue.`}), actionsRow(
+        btn({label:'Confirm replace rules',variant:'secondary',onClick:()=>{
+          try { buildRobots(next,options()); rules=next; confirmWrap.replaceChildren(); render(); build(); }
+          catch(e) { status.set(e.message,'error'); }
+        }}),btn({label:'Cancel preset',variant:'ghost',onClick:()=>confirmWrap.replaceChildren()})));
+    };
+    const addAiRules = () => {
+      if (formWrap.childElementCount) { status.set('Save or cancel the open rule editor first.', 'error'); return; }
+      try {
+        const r=addAiTrainingRules(rules); buildRobots(r.rules,options());
+        rules=r.rules; confirmWrap.replaceChildren(); render(); build();
+        status.set(`Added ${r.added.length} groups. ${r.skipped.length ? `Existing groups left unchanged: ${r.skipped.join(', ')}. Review their Allow rules.` : 'No existing named groups were changed.'} Test before publishing.`, 'info');
+      } catch(e) { status.set(e.message,'error'); }
+    };
     root.append(
       actionsRow(
         btn({ label: 'Add rule', icon: 'robot', onClick: () => addRule() }),
-        btn({ label: 'Allow everything', variant: 'secondary', onClick: () => setRules([{ agent: '*', disallow: [], allow: [] }]) }),
-        btn({ label: 'Block everything', variant: 'secondary', onClick: () => setRules([{ agent: '*', disallow: ['/'], allow: [] }]) })),
+        btn({ label: 'Allow everything', variant: 'secondary', onClick: () => requestReplace([{ agent: '*', disallow: [], allow: [] }], 'Allow everything') }),
+        btn({ label: 'Block everything', variant: 'secondary', onClick: () => requestReplace([{ agent: '*', disallow: ['/'], allow: [] }], 'Block everything') })),
       h('h3', { text: 'Starting presets', style: 'margin:18px 0 10px' }),
       actionsRow(
-        btn({ label: 'WordPress defaults', variant: 'secondary', icon: 'settings', onClick: () => setRules([{ agent: '*', disallow: ['/wp-admin/'], allow: ['/wp-admin/admin-ajax.php'] }]) }),
-        btn({ label: 'Block AI training crawlers', variant: 'secondary', icon: 'robot', onClick: () => setRules([
-          { agent: '*', disallow: [], allow: [] },
-          ...aiTrainingAgents.map((agent) => ({ agent, disallow: ['/'], allow: [] })),
-        ]) })),
-      h('p', { class: 'hint', text: 'The AI preset requests common crawlers not to crawl; compliance and future crawler names vary. Robots.txt is not access control and cannot guarantee blocking AI training or indexing. Review presets before publishing.' }),
-      rows, formWrap,
+        btn({ label: 'WordPress defaults', variant: 'secondary', icon: 'settings', onClick: () => requestReplace([{ agent: '*', disallow: ['/wp-admin/'], allow: ['/wp-admin/admin-ajax.php'] }], 'WordPress defaults') }),
+        btn({ label: 'Block AI training crawlers', variant: 'secondary', icon: 'robot', onClick: addAiRules })),
+      h('p', { class: 'hint', text: 'AI preset adds root-disallow groups only for missing tokens; existing groups are not changed and may still allow paths. Google-Extended is a product-use control token, separate from Google Search. OAI-SearchBot has a separate search role. Crawler policies change and compliance varies; robots.txt is not access control or a guarantee. Review and test every group before publishing.' }),
+      confirmWrap, rows, formWrap,
       h('div', { class: 'field-row', style: 'margin-top:14px' }, field({ label: 'Sitemap URL', control: sitemap }), field({ label: 'Crawl-delay', control: delay, hint: 'Not supported by Google' })),
       field({ label: 'Additional sitemap URLs', control: extraSitemaps, hint: 'Optional: one absolute HTTP(S) URL per line; up to 20 total.' }),
       actionsRow(btn({ label: 'Generate', icon: 'settings', onClick: build })),
