@@ -89,6 +89,17 @@ try {
   }
   await go('video-bitrate-calculator'); await page.getByRole('button',{name:'Calculate estimate'}).click(); assert.match(await page.locator('#tool-app').textContent(),/759\.6 MB/);
   await go('youtube-timestamp-link'); await page.getByLabel('YouTube video URL or ID').fill('dQw4w9WgXcQ'); await page.getByLabel('Start time').fill('1:30'); await page.getByRole('button',{name:'Build timestamp link'}).click(); assert.match(await page.locator('#tool-app').textContent(),/t=90s/);
+  for (const id of ['text-cleaner','line-filter','line-prefix-suffix','list-comparison','text-hex-converter','html-entity-converter','slow-motion-calculator']) {
+    await go(id);
+    assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);
+  }
+  await go('text-cleaner'); await page.getByLabel('Text',{exact:true}).fill('  hello    world  '); await page.getByRole('button',{name:'Run tool'}).click(); assert.match(await page.locator('[aria-label="Result output"]').textContent(),/hello world/);
+  await go('line-filter'); await page.getByLabel('Lines',{exact:true}).fill('cat\ndog'); await page.getByLabel('Find literal text').fill('cat'); await page.getByRole('button',{name:'Run tool'}).click(); assert.equal(await page.locator('[aria-label="Result output"]').textContent(),'cat');
+  await go('line-prefix-suffix'); await page.getByLabel('Lines',{exact:true}).fill('one\ntwo'); await page.getByLabel('Prefix').fill('> '); await page.getByRole('button',{name:'Run tool'}).click(); assert.equal(await page.locator('[aria-label="Result output"]').textContent(),'> one\n> two');
+  await go('list-comparison'); await page.getByLabel('List A — one item per line').fill('a\nb'); await page.getByLabel('List B — one item per line').fill('b\nc'); await page.getByRole('button',{name:'Run tool'}).click(); assert.equal(await page.locator('[aria-label="Result output"]').textContent(),'b');
+  await go('text-hex-converter'); await page.getByLabel('Text or hex bytes').fill('A😀'); await page.getByRole('button',{name:'Convert',exact:true}).click(); assert.equal(await page.locator('[aria-label="Result output"]').textContent(),'41 f0 9f 98 80');
+  await go('html-entity-converter'); await page.getByLabel('Text or HTML entities').fill('<b>'); await page.getByRole('button',{name:'Convert',exact:true}).click(); assert.equal(await page.locator('[aria-label="Result output"]').textContent(),'&lt;b&gt;');
+  await go('slow-motion-calculator'); await page.getByRole('button',{name:'Calculate slow motion'}).click(); assert.match(await page.locator('#tool-app').textContent(),/50 seconds/);
   // Discovery: mobile header search, keyboard selection, dismiss and fallback links.
   await page.setViewportSize({ width: 320, height: 844 });
   await go('pdf-merge');

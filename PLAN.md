@@ -11,6 +11,37 @@
 
 ---
 
+## Seven additional real tools — research and consolidated plan (2026-10-31)
+
+The user asked for up to ten new tools; the last batch delivered three, so this
+batch targets seven additional, independently usable tools, not aliases of
+existing capabilities. Existing Base64 already handles files; Hash Generator
+already hashes files and compares expected checksums; Text Diff compares ordered
+lines. Do not duplicate these as new tools. Competitor feature research: [Text
+Mechanic](https://textmechanic.com/) has cleanup, line filters, prefix/suffix and
+list comparisons; [ConvertJSON](https://www.convertjson.io/encoders) covers hex
+bytes and HTML encoding; [Postproduction](https://postproduction.com/) shows
+frame-rate and slow-motion workflows. These are feature signals, not verified
+search demand, and more URLs alone do not guarantee ranking.
+
+1. Text Cleaner: explicitly selectable whitespace/blank-line/join operations.
+2. Line Filter: include or exclude lines by literal text, optional case folding.
+3. Add Prefix & Suffix: apply per-line text, optional blank-line inclusion.
+4. List Comparison: unique intersection and directional differences, distinct
+   from ordered text diff; retain original order and disclose duplicate handling.
+5. UTF-8 Text ↔ Hex: byte-based conversion, strict invalid UTF-8, bounded input.
+6. HTML Entity Encoder/Decoder: exact five HTML-sensitive escapes and strict
+   decimal/hex numeric references; not a sanitizer or all named entities.
+7. Slow Motion Calculator: fixed frame-count conform and estimated duration,
+   rounded frame count, user-supplied fps; no SMPTE/drop-frame or actual edit.
+
+All tools need actual usable UI, examples, copy/download where suitable,
+explicit input limits and privacy disclosures, pure/DOM/browser/mobile/axe tests,
+build drift check, one PR, CI and production verification. No demand or ranking
+claims without GSC/page-filtered evidence.
+
+---
+
 ## Creator-workflow research and new tools (2026-10-31)
 
 Catalog review: no YouTube video/audio link downloader; existing thumbnail

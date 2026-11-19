@@ -106,6 +106,27 @@
     <loc>https://i-have-tools.vercel.app/tools/youtube-timestamp-link/</loc>
   </url>
   <url>
+    <loc>https://i-have-tools.vercel.app/tools/text-cleaner/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/line-filter/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/line-prefix-suffix/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/list-comparison/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/text-hex-converter/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/html-entity-converter/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/slow-motion-calculator/</loc>
+  </url>
+  <url>
     <loc>https://i-have-tools.vercel.app/tools/extract-audio/</loc>
   </url>
   <url>
