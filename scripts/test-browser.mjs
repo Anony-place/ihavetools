@@ -100,6 +100,11 @@ try {
   await go('text-hex-converter'); await page.getByLabel('Text or hex bytes').fill('A😀'); await page.getByRole('button',{name:'Convert',exact:true}).click(); assert.equal(await page.locator('[aria-label="Result output"]').textContent(),'41 f0 9f 98 80');
   await go('html-entity-converter'); await page.getByLabel('Text or HTML entities').fill('<b>'); await page.getByRole('button',{name:'Convert',exact:true}).click(); assert.equal(await page.locator('[aria-label="Result output"]').textContent(),'&lt;b&gt;');
   await go('slow-motion-calculator'); await page.getByRole('button',{name:'Calculate slow motion'}).click(); assert.match(await page.locator('#tool-app').textContent(),/50 seconds/);
+  for(const [id,button,expected] of [['quadratic-equation-solver','Solve quadratic','Two distinct real roots'],['permutation-combination-calculator','Calculate counting','C(10, 3) = 120'],['prime-factorization-calculator','Analyze number','Positive divisors (24)']]) {
+    await go(id); await page.getByRole('button',{name:button,exact:true}).click(); assert.ok((await page.locator('#tool-app').textContent()).includes(expected),id);
+    assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${id} output overflow`);
+  }
   // Discovery: mobile header search, keyboard selection, dismiss and fallback links.
   await page.setViewportSize({ width: 320, height: 844 });
   await go('pdf-merge');

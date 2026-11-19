@@ -1,5 +1,5 @@
 // Math tools — bounded inputs and explicit calculation conventions.
-import { h, field, input, textarea, select, btn, actionsRow, statusLine, statsGrid, table, mountTool } from '../ui.js';
+import { h, field, input, textarea, select, btn, actionsRow, resultPanel, statusLine, statsGrid, table, mountTool } from '../ui.js';
 
 const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 const display = (n) => n !== 0 && (Math.abs(n) < 1e-7 || Math.abs(n) >= 1e15)
@@ -161,7 +161,67 @@ export function rightTriangle(mode, first, second) {
     angleA: Math.atan2(a, b) * 180 / Math.PI, angleB: Math.atan2(b, a) * 180 / Math.PI };
 }
 
+// All coefficients share a scale of 10^6, so the discriminant sign is exact.
+function quadraticCoefficient(value, label) {
+  const s=String(value).trim();
+  if(s.length>25 || !/^[+-]?(?:\d+(?:\.\d{1,6})?|\.\d{1,6})$/.test(s)) throw new Error(`${label} must be a decimal with at most 6 fractional digits.`);
+  const neg=s[0]==='-', unsigned=s.replace(/^[+-]/,''), [whole,frac='']=unsigned.split('.');
+  let scaled=BigInt(whole||'0')*1000000n+BigInt(frac.padEnd(6,'0')); if(neg)scaled=-scaled;
+  if(scaled>1000000000000000n||scaled< -1000000000000000n) throw new Error(`${label} must be between -1 billion and 1 billion.`);
+  return scaled;
+}
+function scaledDecimal(n,places) { const neg=n<0n; if(neg)n=-n; const factor=10n**BigInt(places);const rest=(n%factor).toString().padStart(places,'0').replace(/0+$/,'');return `${neg?'-':''}${n/factor}${rest?'.'+rest:''}`; }
+export function quadraticRoots(a,b,c) {
+  const A=quadraticCoefficient(a,'a'),B=quadraticCoefficient(b,'b'),C=quadraticCoefficient(c,'c');
+  if(A===0n)throw new Error('Coefficient a must not be zero; otherwise the equation is not quadratic.');
+  const d=B*B-4n*A*C,an=Number(A),bn=Number(B),cn=Number(C),vertexX=-bn/(2*an),vertexY=-Number(d)/(4*an*1000000);
+  let roots,kind;
+  if(d===0n){kind='Repeated real root';roots=[{real:vertexX,imag:0}];}
+  else if(d>0n){kind='Two distinct real roots';const square=Math.sqrt(Number(d));const q=-0.5*(bn+(bn>=0?square:-square)); roots=[{real:q/an,imag:0},{real:cn/q,imag:0}];}
+  else {kind='Two complex conjugate roots';const imaginary=Math.sqrt(Number(-d))/(2*Math.abs(an));roots=[{real:vertexX,imag:imaginary},{real:vertexX,imag:-imaginary}];}
+  return {kind,discriminant:scaledDecimal(d,12),roots,vertexX,vertexY};
+}
+function boundedWhole(value,label,max) {
+  const s=String(value).trim();if(!/^\d{1,10}$/.test(s)) throw new Error(`${label} must be a whole number from 0 to ${max}.`);
+  const n=Number(s);if(n>max)throw new Error(`${label} must be a whole number from 0 to ${max}.`);return n;
+}
+export function countingResults(nValue,rValue) {
+  const n=boundedWhole(nValue,'n',500),r=boundedWhole(rValue,'r',500);if(r>n)throw new Error('r cannot exceed n when choosing without replacement.');
+  let factorial=1n,permutation=1n,combination=1n;
+  for(let i=2;i<=n;i++)factorial*=BigInt(i);
+  for(let i=0;i<r;i++)permutation*=BigInt(n-i);
+  const k=Math.min(r,n-r);for(let i=1;i<=k;i++)combination=combination*BigInt(n-k+i)/BigInt(i);
+  return {n,r,factorial,permutation,combination};
+}
+export function primeAnalysis(value) {
+  const n=boundedWhole(value,'Number',1000000000); if(n<1)throw new Error('Number must be between 1 and 1,000,000,000.');
+  const factors=primeFactors(n), powers=[];
+  for(const factor of factors){const last=powers[powers.length-1];if(last?.prime===factor)last.exponent++;else powers.push({prime:factor,exponent:1});}
+  let divisors=[1];for(const {prime,exponent} of powers){const base=[...divisors];let power=1;for(let e=1;e<=exponent;e++){power*=prime;for(const item of base)divisors.push(item*power);}}
+  divisors.sort((a,b)=>a-b);
+  return {n,factors,powers,divisors,classification:n===1?'Neither prime nor composite':factors.length===1?'Prime':'Composite'};
+}
+
 const defs = {
+  'quadratic-equation-solver'(root) {
+    const a=input({type:'text',inputmode:'decimal',value:'1'}),b=input({type:'text',inputmode:'decimal',value:'-5'}),c=input({type:'text',inputmode:'decimal',value:'6'}),out=resultPanel({label:'Quadratic solution'}),status=statusLine('');
+    const run=()=>{try{const r=quadraticRoots(a.value,b.value,c.value);const roots=r.roots.map((x,i)=>`x${i+1} ≈ ${display(x.real)}${x.imag?` ${x.imag<0?'−':'+'} ${display(Math.abs(x.imag))}i`:''}`).join('\n');out.set(`Discriminant b² − 4ac = ${r.discriminant} (exact)\n${r.kind}\n${roots}\nVertex ≈ (${display(r.vertexX)}, ${display(r.vertexY)})`);status.set('Discriminant is exact for entered decimals; roots and vertex use floating point and are rounded for display.','info');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    for(const el of [a,b,c])el.addEventListener('input',()=>{out.placeholder();status.set('Input changed. Solve again.');});
+    root.append(h('p',{class:'hint',text:'Solve ax² + bx + c = 0. Enter decimal coefficients with up to 6 fractional digits, each between −1 billion and 1 billion; a cannot be zero.'}),h('div',{class:'field-row'},field({label:'Coefficient a',control:a}),field({label:'Coefficient b',control:b}),field({label:'Coefficient c',control:c})),actionsRow(btn({label:'Solve quadratic',onClick:run})),status,out.panel);
+  },
+  'permutation-combination-calculator'(root) {
+    const n=input({type:'text',inputmode:'numeric',value:'10'}),r=input({type:'text',inputmode:'numeric',value:'3'}),out=resultPanel({label:'Counting results'}),status=statusLine('');
+    const run=()=>{try{const x=countingResults(n.value,r.value);out.set(`Combination C(${x.n}, ${x.r}) = ${x.combination}\nPermutation P(${x.n}, ${x.r}) = ${x.permutation}\nFactorial ${x.n}! = ${x.factorial}`);status.set('Exact integers. Selections are from distinct items without replacement.','success');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    for(const el of [n,r])el.addEventListener('input',()=>{out.placeholder();status.set('Input changed. Calculate again.');});
+    root.append(h('div',{class:'field-row'},field({label:'Total distinct items n',control:n}),field({label:'Items chosen r',control:r})),h('p',{class:'hint',text:'Use whole numbers 0–500 with r ≤ n; assumes no replacement.'}),actionsRow(btn({label:'Calculate counting',onClick:run})),status,out.panel);
+  },
+  'prime-factorization-calculator'(root) {
+    const n=input({type:'text',inputmode:'numeric',value:'360'}),out=resultPanel({label:'Prime analysis'}),status=statusLine('');
+    const run=()=>{try{const r=primeAnalysis(n.value),factorization=r.powers.map(p=>p.exponent===1?String(p.prime):`${p.prime}^${p.exponent}`).join(' × ')||'1 (no prime factors)';out.set(`${r.n}: ${r.classification}\nPrime factorization: ${factorization}\nPositive divisors (${r.divisors.length}): ${r.divisors.join(', ')}`);status.set('Divisors and prime factors are exact for this bounded whole number.','success');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    n.addEventListener('input',()=>{out.placeholder();status.set('Input changed. Calculate again.');});
+    root.append(field({label:'Positive whole number',control:n,hint:'Enter an integer from 1 to 1,000,000,000.'}),actionsRow(btn({label:'Analyze number',onClick:run})),status,out.panel);
+  },
+
   'circle-calculator'(root) {
     const kind=select({options:[{v:'radius',t:'Radius'},{v:'diameter',t:'Diameter'},{v:'circumference',t:'Circumference'},{v:'area',t:'Area'}],value:'radius'}), value=input({type:'text',inputmode:'decimal',value:'7'}),angle=input({type:'text',inputmode:'decimal',placeholder:'Optional (0–360)'}),grid=statsGrid(),status=statusLine('');
     const run=()=>{try {const r=circleGeometry(kind.value,value.value,angle.value);

@@ -11,6 +11,28 @@
 
 ---
 
+## Student math expansion — research and plan (2026-10-31)
+
+Catalogue comparison: average calculator already includes variance and standard
+deviation; GCD/LCM already has multi-number prime factors. Do not create thin
+aliases. Research shows useful separate workflows for [quadratic roots](https://stemcalculators.app/calculators/math-algebra/equations/quadratic-equation-solver),
+[combinations and permutations](https://solvecalc.online/tools/combination-permutation)
+and [prime analysis with divisors](https://alltools.dev/tools/math/prime-factorization/).
+Competitor features are not measured search demand. GSC evidence for these
+new pages and any indexing or ranking impact is not yet available.
+
+1. Quadratic solver with bounded decimal coefficients, exact BigInt discriminant
+   sign, numerically stable real-root calculation and complex roots, showing
+   equations and rounded output. No implicit equation parser or graph.
+2. Exact BigInt combinations, permutations and factorial through n=500; clearly
+   distinguish ordered versus unordered and no replacement, including zero cases.
+3. Positive-integer prime factor and divisor explorer through 1 billion: 1 is
+   neither prime nor composite; list all positive divisors in order.
+4. Add static guides and related links, engine/DOM and real-browser tests,
+   mobile/accessibility coverage, run complete checks and deploy one PR.
+
+---
+
 ## Seven additional real tools — research and consolidated plan (2026-10-31)
 
 The user asked for up to ten new tools; the last batch delivered three, so this

@@ -39,6 +39,13 @@ const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
 
+await test('student math: exact counting, primes, and quadratic discriminants', () => {
+ let q=math.quadraticRoots('1','-5','6');assert.equal(q.discriminant,'1');assert.deepEqual(q.roots.map(x=>x.real).sort(),[2,3]);assert.equal(q.vertexY,-0.25);
+ q=math.quadraticRoots('1','2','1');assert.equal(q.kind,'Repeated real root');assert.equal(q.roots[0].real,-1);q=math.quadraticRoots('1','0','1');assert.equal(q.kind,'Two complex conjugate roots');assert.equal(q.roots[0].imag,1);assert.equal(q.roots[1].imag,-1);
+ q=math.quadraticRoots('0.000001','1000000000','0.000001'); assert.ok(Math.abs(q.roots[1].real+1e-15)<1e-29);assert.throws(()=>math.quadraticRoots('0','1','1'),/not be zero/);assert.throws(()=>math.quadraticRoots('1e3','1','1'),/decimal/);
+ assert.equal(math.countingResults('10','3').combination,120n);assert.equal(math.countingResults('10','3').permutation,720n);assert.equal(math.countingResults('0','0').factorial,1n);assert.equal(math.countingResults('500','0').combination,1n);assert.throws(()=>math.countingResults('3','4'),/exceed/);assert.throws(()=>math.countingResults('501','1'));
+ let p=math.primeAnalysis('360');assert.equal(p.classification,'Composite');assert.equal(p.divisors.length,24);assert.deepEqual(p.powers,[{prime:2,exponent:3},{prime:3,exponent:2},{prime:5,exponent:1}]);assert.deepEqual(math.primeAnalysis('1').divisors,[1]);assert.equal(math.primeAnalysis('1').classification,'Neither prime nor composite');assert.equal(math.primeAnalysis('999999937').classification,'Prime');assert.throws(()=>math.primeAnalysis('0'));assert.throws(()=>math.primeAnalysis('1000000001'));
+});
 await test('new text, encoding and frame-conform tools: boundaries and examples', () => {
  assert.equal(text.cleanText('  hello   world \r\n\t  \r\nbye','spaces'),'hello world\n\nbye'); assert.equal(text.cleanText(' a\r\n \r\n b ','blank'),' a\n b '); assert.equal(text.cleanText(' a\n\n b ','join'),'a b'); assert.throws(()=>text.cleanText('x'.repeat(1000001),'trim'),/exceeds/);
  assert.deepEqual(text.filterTextLines('Cat\ndog\ncat','cat','include',true),{text:'Cat\ncat',kept:2,total:3}); assert.equal(text.filterTextLines('a\nb','a','exclude').text,'b');assert.throws(()=>text.filterTextLines('a','','include'));
@@ -2323,8 +2330,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 151);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 129);
+  assert.equal(registry.tools.length, 154);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 132);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
