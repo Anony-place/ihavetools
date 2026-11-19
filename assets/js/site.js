@@ -272,7 +272,7 @@ function personalCard(entry) {
     h('a', { class: 'tool-card', href: `/tools/${entry.id}/` },
       h('span', { class: 'tool-icon', html: icon(entry.icon) }),
       h('h3', { text: entry.name }),
-      h('span', { class: 'card-meta' }, h('span', { text: entry.c }), h('span', { class: 'go', text: 'Open →' }))),
+      h('span', { class: 'card-meta' }, h('span', { text: entry.c }), ' ', h('span', { class: 'go', text: 'Open →' }))),
     h('button', { type: 'button', class: 'fav-toggle', dataset: { favToggle: entry.id }, 'aria-pressed': 'false', 'aria-label': `Save ${entry.name} to favourites`, html: icon('star') }));
 }
 

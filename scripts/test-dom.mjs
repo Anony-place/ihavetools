@@ -164,6 +164,13 @@ await domTest('shared output buttons use real icons and report failed download r
  const original=URL.createObjectURL;try{URL.createObjectURL=()=>{throw new Error('blocked');};click(download);await new Promise(r=>setTimeout(r,0));assert.match(document.querySelector('.toast-container')?.textContent||'',/Download failed/);}finally{URL.createObjectURL=original;}
 });
 
+await domTest('UUID v7 is opt-in and settings invalidate old values', async () => {
+ const pointer=await loadToolPage('json-pointer-lookup','data'); assert.equal(btnByLabel(pointer,'Copy link with inputs'),undefined);
+ const app=await loadToolPage('uuid-generator','developer'), version=app.querySelector('select'); assert.equal(version.value,'v4');
+ version.value='v7'; fire(version,'change'); assert.equal(app.querySelectorAll('.file-row').length,0); click(btnByLabel(app,'Generate'));
+ assert.equal(app.querySelectorAll('.file-row').length,5); assert.match(app.querySelector('code').textContent,/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+ assert.match(app.textContent,/same millisecond/); assert.match(statusText(document),/UUID v7/);
+});
 await domTest('uuid-generator: generates on load with copy buttons', async () => {
   const app = await loadToolPage('uuid-generator', 'developer');
   const rows = app.querySelectorAll('.file-row');

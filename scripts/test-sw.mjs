@@ -45,6 +45,7 @@ await lifecycle('install');
 await lifecycle('activate');
 assert.ok(stores.has('unrelated-app')); assert.ok(!stores.has('iht-v2')); assert.ok(!stores.has('iht-v3-pages'));
 assert.match(await (await request('/tools/example/')).text(), /network:/);
+assert.equal(lastFetchOptions.cache, 'no-cache', 'navigations must revalidate the HTTP cache');
 assert.match(await (await request('/tools/example/?secret=private')).text(), /network:/);
 assert.match(await (await request('/tools/fragment/#iht=income%3Dsecret')).text(), /network:.*fragment\/$/);
 assert.equal([...stores.values()].some((s) => [...s.keys()].some((k) => k.includes('secret'))), false);

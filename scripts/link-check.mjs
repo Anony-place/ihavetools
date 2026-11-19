@@ -38,6 +38,24 @@ function walk(dir, ext, out = []) {
 const htmlFiles = walk(ROOT, '.html').filter((f) => !f.includes('node_modules'));
 const rel = (f) => '/' + relative(ROOT, f).replace(/\\/g, '/');
 
+test('generated pages share inventory, readable navigation, and no fixed UUID output', () => {
+ const uuid = new JSDOM(readFileSync(join(ROOT,'tools/uuid-generator/index.html'),'utf8')).window.document;
+ assert.equal(uuid.querySelector('#tool-app').children.length, 0, 'UUID output must be generated in the browser');
+ const terms = readFileSync(join(ROOT,'terms/index.html'),'utf8'); assert.match(terms,/https:\/\/github\.com\/Anony-place\/ihavetools/);
+ for (const f of htmlFiles.filter(f => !['/offline.html','/assets/html-preview.html'].includes(rel(f)))) {
+   const doc = new JSDOM(readFileSync(f,'utf8')).window.document;
+   assert.match(doc.querySelector('.footer-brand p').textContent, new RegExp(`\\b${tools.length} tools\\b`), rel(f));
+   for (const cat of categories) {
+     const a=doc.querySelector(`.dropdown-panel a[href="/categories/${cat.id}/"]`);
+     assert.ok(a,`${rel(f)} ${cat.id}`); const count=tools.filter(t=>t.categories.includes(cat.id)).length;
+     assert.equal(a.querySelector('.dd-count').textContent,String(count));
+     assert.equal(a.querySelector('.dd-count').getAttribute('aria-label'),`${count} tools`);
+     assert.ok(a.textContent.includes(`${cat.name} ${count}`), `${rel(f)} ${cat.id} text spacing`);
+   }
+   for (const meta of doc.querySelectorAll('.tool-card .card-meta')) assert.match(meta.textContent,/\sOpen →$/,rel(f));
+ }
+});
+
 console.log('\n── Internal links & assets ──');
 test('every internal href/src in every page resolves', () => {
   const dead = [];

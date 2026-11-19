@@ -32,7 +32,8 @@ self.addEventListener('fetch', (event) => {
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       try {
-        const response = await fetch(req);
+        // Revalidate HTTP cache as well as Cache Storage when online; offline fallback stays available.
+        const response = await fetch(req, { cache: 'no-cache' });
         // Do not persist query strings (which can contain user-provided inputs).
         if (!url.search && response.ok) await remember(PAGES, req, response.clone());
         return response;

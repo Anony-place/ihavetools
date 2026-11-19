@@ -11,6 +11,38 @@
 
 ---
 
+## User-provided platform audit — consolidated verification and remediation (2026-10-31)
+
+The 11-page supplied PDF proposes fixes for indexing, build consistency, DOM
+spacing, UUIDs, share links, security headers and authority. Its audit date and
+Search Console chronology are later than the session date; its "4 indexed"
+census, 97.4% unindexed and 57/100 score cannot be accepted as current facts
+without verified URL Inspection/coverage data. Category counts overlap by design;
+they must not be summed as distinct tools. Current static UUID page has an empty
+mount point: rendered UUIDs are created in the browser, not pre-rendered.
+JSON Pointer has no input-sharing control; existing optional calculator links use
+fragments with explicit disclosure, while old query links cannot be unlogged.
+
+1. Fix confirmed text-node spacing in shared navigation and tool cards, expose
+   meaningful category count labels, explain cross-category counting, and link
+   the actual public MIT repository on Terms and footer.
+2. Upgrade existing UUID generator with opt-in RFC 9562 v7 while retaining v4
+   default and local CSPRNG; clearly describe timestamp exposure, same-ms random
+   order, clock rollback and collision limitations. Test bit layout using a fixed
+   vector, invalid clock/crypto, UI switching and no UUIDs in static mount.
+3. Add a CI generated-site drift guard, tests of shared counts/spacing/canonical
+   links, and revalidate the browser HTTP cache for network-first navigations while preserving offline fallback. Verify actual live
+   canonical pages following CI and deploy. Do not assume this proves all cached
+   clients are synchronized or that indexing will improve.
+4. Avoid blindly applying suggested CSP (would break preview/iframes and remote
+   thumbnail workflows), indiscriminate FAQ schema or a paid custom domain.
+   Audit accessibility, privacy and real crawl/index data separately; no claim
+   of ranking, growth, or an exact indexed count without measurement.
+
+Reference: https://www.rfc-editor.org/rfc/rfc9562.html (obsoletes RFC 4122).
+
+---
+
 ## Geometry learning and measurement — consolidated batch (2026-10-31)
 
 Research: [circle calculator](https://www.omnicalculator.com/math/circle)

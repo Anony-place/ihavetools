@@ -290,6 +290,15 @@ await test('v4 format and version bits', () => {
   const u = dev.uuidv4();
   assert.match(u, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
 });
+await test('UUID v7 RFC bit layout, timestamp and failure handling', () => {
+ const rng={getRandomValues: b => {b.fill(255); return b;}};
+ assert.equal(dev.uuidv7(rng,0x0123456789ab),'01234567-89ab-7fff-bfff-ffffffffffff');
+ assert.equal(dev.uuidv7(rng,0),'00000000-0000-7fff-bfff-ffffffffffff');
+ assert.equal(dev.uuidv7(rng,0xffffffffffff),'ffffffff-ffff-7fff-bfff-ffffffffffff');
+ for(const ts of [-1,0x1000000000000,1.5,NaN]) assert.throws(()=>dev.uuidv7(rng,ts),/clock/);
+ assert.throws(()=>dev.uuidv7({},1),/cryptographic/);
+ const u=dev.uuidv7(undefined,1735689600000); assert.match(u,/^01941f29-7c00-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+});
 await test('bulk uniqueness (1000)', () => {
   const set = new Set(Array.from({ length: 1000 }, () => dev.uuidv4()));
   assert.equal(set.size, 1000);
