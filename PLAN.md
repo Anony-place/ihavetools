@@ -11,6 +11,25 @@
 
 ---
 
+## Student statistics batch — plan (2026-10-31)
+
+Catalogue review: average calculator already covers mean, median, mode and
+variance; final-grade calculator already handles weighted coursework and what-if
+scores, so do not duplicate them. Competitor features such as [quartiles](https://mycalculatorsonline.com/mathematics/statistics-calculator/)
+and [binomial probability](https://binomialcalc.com/) suggest useful workflows,
+not measured demand.
+
+1. Enhance existing average calculator with median-of-halves quartiles, IQR,
+   Tukey fences and bounded frequency/sorted previews; explicitly explain the
+   convention and that flagged observations are not proof of bad data.
+2. Add a binomial distribution calculator for independent fixed-probability
+   trials: exact, inclusive and exclusive tails, bounded n and robust recurrence,
+   endpoint and underflow handling, worked example and model caveats.
+3. Add engine, DOM and real-browser mobile/accessibility regressions; update
+   guides and related links; one PR and production verification.
+
+---
+
 ## Today: text editing and percentage workflow — plan (2026-10-31)
 
 Catalogue review: keyword frequency and duplicate line handling already exist;

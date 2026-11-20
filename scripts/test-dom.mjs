@@ -994,6 +994,10 @@ await domTest('gcd-lcm-calculator: GCD/LCM with prime factors', async () => {
 });
 
 console.log('\n── Batch-12 math UIs ──');
+await domTest('statistics quartiles and binomial UI handle limits and clear stale output',async()=>{
+ let app=await loadToolPage('average-calculator','math'),t=app.querySelector('textarea');t.value='1 2 2 3 5';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/1\.5Q1/);assert.match(app.textContent,/4Q3/);assert.match(app.textContent,/2\.5Interquartile range/);assert.match(app.textContent,/Frequency table/);t.value='9';click(btnByLabel(app,'Calculate'));assert.match(app.textContent,/Undefined \(need 2 values\)Q1/);
+ app=await loadToolPage('binomial-probability-calculator','math');click(btnByLabel(app,'Calculate probability'));assert.match(app.textContent,/0\.1171875Probability/);const select=app.querySelector('select');select.value='at-most';fire(select,'change');assert.doesNotMatch(app.textContent,/0\.1171875Probability/);click(btnByLabel(app,'Calculate probability'));assert.match(app.textContent,/0\.171875Probability/);const n=app.querySelector('input');n.value='-1';fire(n,'input');click(btnByLabel(app,'Calculate probability'));assert.match(statusText(document),/Trials/);assert.doesNotMatch(app.textContent,/ProbabilityPercentage/);
+});
 await domTest('average shows ties, sample spread, and clears errors',async()=>{
  const app=await loadToolPage('average-calculator','math'),inp=app.querySelector('textarea'); inp.value='1 2 2 3 3'; click(btnByLabel(app,'Calculate'));
  assert.match(app.textContent,/2, 3 ×2Mode/); assert.match(app.textContent,/0\.56Population variance/); assert.match(app.textContent,/0\.7Sample variance/);
