@@ -11,6 +11,20 @@
 
 ---
 
+## CSV column extraction batch — plan (2026-10-31)
+
+Existing CSV-to-JSON supports column positions, but no CSV-to-CSV selection.
+[Competitor column extraction](https://oneyfy.com/tools/csv-column-extractor/)
+suggests a practical workflow, not measured search demand. Add a local,
+quote-aware column extractor with order by 1-based positions, common delimiters,
+equal-width validation, preserved duplicate/blank header values and clear
+spreadsheet formula-injection warnings. Allow duplicate headers in the read-only CSV viewer without changing JSON conversion safeguards. Reuse parser limits and local import,
+document canonicalized quoting/newlines and no automatic formula sanitization,
+add engine/DOM/Chromium/accessibility tests, run full checks and security audit,
+then one PR and verify production after CI and preview pass.
+
+---
+
 ## Text workflow and extraction reliability batch — plan (2026-10-31)
 
 Competitor [line numbering](https://www.textwizard.tools/text-tools/text-manipulation-tools/line-numbering-tool) features suggest a useful workflow, not measured demand. Build a bounded local line-numbering tool with explicit blank-line, start, step and separator behavior, practical guide and tests. Audit the recently added URL extractor for invalid embedded schemes and document the matching boundaries; add regression coverage. Test build, DOM, real-browser interaction/accessibility, then one PR and production verification. No promise of search ranking.
