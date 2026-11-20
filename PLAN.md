@@ -11,6 +11,16 @@
 
 ---
 
+## CSV viewer workflow batch — plan (2026-10-31)
+
+Research: [CSV viewer workflows](https://toolsvale.com/csv-viewer/) suggest filtering, sorting and export, not measured search demand. [OWASP](https://owasp.org/www-community/attacks/CSV_Injection) warns spreadsheet formula behavior varies; quoting alone is not protection and no universal CSV sanitization works. Improve the existing CSV Viewer rather than adding a thin duplicate page:
+
+1. Add optional 1-based column-specific literal filtering and stable case-insensitive text sorting with an explicit original-order option. Never silently coerce values.
+2. Export all matching rows, not just the visible page, with original header values, chosen delimiter, bounded output and prominent warning that exports are not formula-sanitized. No-match behavior must be clear.
+3. Preserve pagination, prevent stale downloads on input/option/read errors and validate with engine, DOM, Chromium, accessibility and file-download tests. Run full checks, one PR, verify production.
+
+---
+
 ## CSV column extraction batch — plan (2026-10-31)
 
 Existing CSV-to-JSON supports column positions, but no CSV-to-CSV selection.

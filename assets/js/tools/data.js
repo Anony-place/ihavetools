@@ -63,7 +63,7 @@ export function parseCsv(text, { delimiter = ',', headerRow = true, headerNames 
     headers = headerRow ? rows[0].map((hd, k) => hd === '' ? `column_${k + 1}` : hd) : rows[0].map((_, k) => `column_${k + 1}`);
   }
   if (!allowDuplicateHeaders && new Set(headers).size !== headers.length) throw new Error('Duplicate column headers would overwrite data. Give every column a unique header.');
-  return { headers, rows: headerRow ? rows.slice(1) : rows };
+  return { headers, rows: headerRow ? rows.slice(1) : rows, sourceHeader: headerRow ? rows[0] : null };
 }
 
 // Optional full-width replacement names preserve even empty, comma-containing
@@ -274,22 +274,46 @@ export function extractCsvColumns(raw, {delimiter=',', positions=null}={}) {
   const selected=positions===null?headers.map((_,i)=>i+1):positions;
   if(!Array.isArray(selected)||!selected.length||selected.length>MAX_COLUMNS||selected.some(n=>!Number.isSafeInteger(n)||n<1||n>headers.length))throw new Error(`Choose column positions from 1 to ${headers.length}.`);
   if(new Set(selected).size!==selected.length)throw new Error('Duplicate column positions are not allowed.');
-  const cell=value=>/["\r\n]/.test(value)||value.includes(delimiter)?`"${value.replace(/"/g,'""')}"`:value;
-  let length=0;const lines=[];
-  for(const row of rows){const line=selected.map(n=>cell(row[n-1])).join(delimiter)||'""';length+=line.length+(lines.length?1:0);if(length>MAX_OUTPUT)throw new Error('Output exceeds 10,000,000 characters.');lines.push(line);}
-  return {text:lines.join('\n'),rowCount:rows.length,columnCount:selected.length};
+  return {text:serializeDelimitedRows(rows.map(row=>selected.map(n=>row[n-1])),delimiter),rowCount:rows.length,columnCount:selected.length};
 }
 
 /** CSV viewer keeps all field values as strings and bounds its rendered page. */
-export function csvViewerPage(raw, {delimiter=',',headerRow=true,query='',page=0}={}) {
-  return csvViewerParsedPage(parseCsv(raw,{delimiter,headerRow,allowDuplicateHeaders:true}), {query,page});
+export function csvViewerPage(raw, {delimiter=',',headerRow=true,query='',page=0,filterColumn=null,sortColumn=null,sortDirection='original'}={}) {
+  return csvViewerParsedPage(parseCsv(raw,{delimiter,headerRow,allowDuplicateHeaders:true}), {query,page,filterColumn,sortColumn,sortDirection});
 }
-function csvViewerParsedPage(parsed, {query='',page=0}={}) {
+function csvViewerFilteredRows(parsed, {query='',filterColumn=null,sortColumn=null,sortDirection='original'}={}) {
   if(String(query).length>1000)throw new Error('Filter exceeds 1,000 characters.');
+  const width=parsed.headers.length;
+  for(const [col,label] of [[filterColumn,'Filter'],[sortColumn,'Sort']]) if(col!==null&&(!Number.isSafeInteger(col)||col<1||col>width))throw new Error(`${label} column must be between 1 and ${width}.`);
+  if(!['original','asc','desc'].includes(sortDirection))throw new Error('Choose a valid sort order.');
+  if(sortDirection!=='original'&&sortColumn===null)throw new Error('Choose a sort column when sorting.');
+  const term=String(query).toLowerCase();
+  const rows=term?parsed.rows.filter(row=>filterColumn===null?row.some(cell=>cell.toLowerCase().includes(term)):row[filterColumn-1].toLowerCase().includes(term)):parsed.rows.slice();
+  if(sortDirection!=='original'){
+    const index=sortColumn-1,sign=sortDirection==='asc'?1:-1;
+    rows.sort((a,b)=>{const x=a[index].toLowerCase(),y=b[index].toLowerCase();return x<y?-sign:x>y?sign:0;});
+  }
+  return rows;
+}
+function csvViewerParsedPage(parsed, {page=0,...options}={}) {
   if(!Number.isSafeInteger(page)||page<0)throw new Error('Invalid page.');
-  const term=String(query).toLowerCase(), filtered=term?parsed.rows.filter(row=>row.some(cell=>cell.toLowerCase().includes(term))):parsed.rows;
+  const filtered=csvViewerFilteredRows(parsed,options);
   const pageSize=Math.max(1,Math.min(40,Math.floor(10000/parsed.headers.length))),pages=Math.max(1,Math.ceil(filtered.length/pageSize)),current=Math.min(page,pages-1);
   return {headers:parsed.headers, rows:filtered.slice(current*pageSize,(current+1)*pageSize), total:parsed.rows.length, matches:filtered.length,page:current,pages,pageSize};
+}
+/** Export the full filtered view, not the current page. Keep original header cells. */
+export function csvViewerExport(raw, {delimiter=',',headerRow=true,...options}={}) {
+  return csvViewerParsedExport(parseCsv(raw,{delimiter,headerRow,allowDuplicateHeaders:true}),delimiter,options);
+}
+function csvViewerParsedExport(parsed,delimiter,options) {
+  const rows=csvViewerFilteredRows(parsed,options);
+  if(!rows.length)throw new Error('No matching data rows to export.');
+  return serializeDelimitedRows(parsed.sourceHeader?[parsed.sourceHeader,...rows]:rows,delimiter);
+}
+function serializeDelimitedRows(rows,delimiter) {
+  let length=0;const lines=[];
+  for(const row of rows){const line=row.map(value=>/["\r\n]/.test(value)||value.includes(delimiter)?`"${value.replace(/"/g,'""')}"`:value).join(delimiter)||'""';length+=line.length+(lines.length?1:0);if(length>MAX_OUTPUT)throw new Error('Output exceeds 10,000,000 characters.');lines.push(line);}
+  return lines.join('\n');
 }
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
@@ -308,13 +332,16 @@ const defs = {
     root.append(field({label:'JSON sample',control:text,hint:'At most 300,000 characters, 10,000 values and 30 nesting levels.'}),localDataImport({inp:text,out,status,revision,accept:'.json,application/json',title:'Choose a JSON file',extensions:/\.json$/i,maxChars:300000}),actionsRow(btn({label:'Generate TypeScript',onClick:run})),status,out.panel);
   },
   'csv-viewer'(root) {
-    const text=textarea({rows:8,value:'name,code,city\nAda,001,"London, UK"\nGrace,002,New York'}),delimiter=select({value:',',options:[{v:',',t:'Comma'},{v:';',t:'Semicolon'},{v:'\t',t:'Tab'},{v:'|',t:'Pipe'}]}),header=select({value:'yes',options:[{v:'yes',t:'First row is header'},{v:'no',t:'No header row'}]}),query=input({type:'text',placeholder:'Optional literal filter'}),status=statusLine(''),result=h('div',{});let page=0,parsed=null,revision={value:0};
-    const clear=()=>{revision.value++;page=0;parsed=null;result.replaceChildren();prev.disabled=true;next.disabled=true;status.set('Input or options changed. Open table again.');}; for(const el of [text,delimiter,header])el.addEventListener(el.tagName==='SELECT'?'change':'input',clear);window.addEventListener('pagehide',()=>revision.value++);
-    const render=()=>{try{const r=csvViewerParsedPage(parsed,{query:query.value,page});page=r.page;result.replaceChildren(table({headers:r.headers,rows:r.rows}));status.set(`${r.matches} matching rows of ${r.total}. Page ${r.page+1} of ${r.pages}; up to ${r.pageSize} rows shown.`, 'info');prev.disabled=r.page===0;next.disabled=r.page+1>=r.pages;}catch(e){result.replaceChildren();prev.disabled=true;next.disabled=true;status.set(e.message,'error');}};
-    const prev=btn({label:'Previous page',variant:'secondary',disabled:true,onClick:()=>{page--;render();}}),next=btn({label:'Next page',variant:'secondary',disabled:true,onClick:()=>{page++;render();}});
-    query.addEventListener('input',()=>{page=0;if(parsed)render();});
-    const adapter={placeholder:()=>{result.replaceChildren();parsed=null;prev.disabled=true;next.disabled=true;}};
-    root.append(field({label:'CSV input',control:text,hint:'Maximum 1,000,000 characters, 10,000 rows and 256 columns.'}),localDataImport({inp:text,out:adapter,status,revision,accept:'.csv,.tsv,.txt,text/plain,text/csv',title:'Choose a CSV or TSV file',extensions:/\.(?:csv|tsv|txt)$/i}),h('div',{class:'field-row'},field({label:'Delimiter',control:delimiter}),field({label:'Header mode',control:header}),field({label:'Filter rows',control:query,hint:'Case-insensitive literal substring in any field.'})),actionsRow(btn({label:'Open table',onClick:()=>{revision.value++;page=0;try{parsed=parseCsv(text.value,{delimiter:delimiter.value,headerRow:header.value==='yes',allowDuplicateHeaders:true});render();}catch(e){parsed=null;result.replaceChildren();prev.disabled=true;next.disabled=true;status.set(e.message,'error');}}}),prev,next),status,result);
+    const text=textarea({rows:8,value:'name,code,city\nAda,001,"London, UK"\nGrace,002,New York'}),delimiter=select({value:',',options:[{v:',',t:'Comma'},{v:';',t:'Semicolon'},{v:'\t',t:'Tab'},{v:'|',t:'Pipe'}]}),header=select({value:'yes',options:[{v:'yes',t:'First row is header'},{v:'no',t:'No header row'}]}),query=input({type:'text',placeholder:'Optional literal filter'}),filterColumn=input({type:'number',min:'1',max:'256',step:'1',placeholder:'Blank = any column'}),sortColumn=input({type:'number',min:'1',max:'256',step:'1',placeholder:'Column position'}),sortDirection=select({value:'original',options:[{v:'original',t:'Original order'},{v:'asc',t:'Text ascending'},{v:'desc',t:'Text descending'}]}),status=statusLine(''),result=h('div',{});let page=0,parsed=null,revision={value:0};
+    const resetView=()=>{result.replaceChildren();prev.disabled=true;next.disabled=true;exportButton.disabled=true;};
+    const clear=()=>{revision.value++;page=0;parsed=null;resetView();status.set('Input or options changed. Open table again.');}; for(const el of [text,delimiter,header])el.addEventListener(el.tagName==='SELECT'?'change':'input',clear);window.addEventListener('pagehide',()=>revision.value++);
+    const number=el=>el.value.trim()===''?null:Number(el.value);
+    const options=()=>({query:query.value,filterColumn:number(filterColumn),sortColumn:number(sortColumn),sortDirection:sortDirection.value});
+    const render=()=>{try{const r=csvViewerParsedPage(parsed,{...options(),page});page=r.page;result.replaceChildren(table({headers:r.headers,rows:r.rows}));status.set(`${r.matches} matching rows of ${r.total}. Page ${r.page+1} of ${r.pages}; up to ${r.pageSize} rows shown.`, 'info');prev.disabled=r.page===0;next.disabled=r.page+1>=r.pages;exportButton.disabled=r.matches===0;}catch(e){resetView();status.set(e.message,'error');}};
+    const prev=btn({label:'Previous page',variant:'secondary',disabled:true,onClick:()=>{page--;render();}}),next=btn({label:'Next page',variant:'secondary',disabled:true,onClick:()=>{page++;render();}}),exportButton=btn({label:'Download filtered rows',variant:'secondary',disabled:true,onClick:()=>{try{if(!parsed)throw new Error('Open a table first.');const output=csvViewerParsedExport(parsed,delimiter.value,options());if(!downloadBlob(new Blob([output],{type:'text/plain;charset=utf-8'}),'filtered.csv'))throw new Error('Download was blocked by your browser.');status.set('Download requested. Values are not formula-sanitized; review before opening in spreadsheet software.','info');}catch(e){status.set(e.message,'error');}}});
+    for(const el of [query,filterColumn,sortColumn,sortDirection])el.addEventListener(el.tagName==='SELECT'?'change':'input',()=>{page=0;if(parsed)render();});
+    const adapter={placeholder:()=>{resetView();parsed=null;}};
+    root.append(field({label:'CSV input',control:text,hint:'Maximum 1,000,000 characters, 10,000 rows and 256 columns.'}),localDataImport({inp:text,out:adapter,status,revision,accept:'.csv,.tsv,.txt,text/plain,text/csv',title:'Choose a CSV or TSV file',extensions:/\.(?:csv|tsv|txt)$/i}),h('div',{class:'field-row'},field({label:'Delimiter',control:delimiter}),field({label:'Header mode',control:header}),field({label:'Filter rows',control:query,hint:'Case-insensitive literal substring.'}),field({label:'Filter column',control:filterColumn,hint:'Optional 1-based position; blank searches every column.'}),field({label:'Sort column',control:sortColumn,hint:'1-based position, required for sorting.'}),field({label:'Sort order',control:sortDirection,hint:'Text order, case-insensitive; no numeric or date conversion.'})),h('p',{class:'hint',text:'Export includes all matching rows, not only this page. Values are not formula-sanitized; spreadsheet software can execute untrusted formula-like cells even when quoted.'}),actionsRow(btn({label:'Open table',onClick:()=>{revision.value++;page=0;try{parsed=parseCsv(text.value,{delimiter:delimiter.value,headerRow:header.value==='yes',allowDuplicateHeaders:true});render();}catch(e){parsed=null;resetView();status.set(e.message,'error');}}}),prev,next,exportButton),status,result);
   },
 
   'csv-to-json'(root) {

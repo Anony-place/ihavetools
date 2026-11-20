@@ -39,6 +39,15 @@ const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
 
+await test('CSV viewer filters, stable sorts and exports full matching rows', () => {
+ const raw=',name,name\n1,Beta,"=x"\n2,alpha,"line\nbreak"\n3,ALPHA,other\n4,10,x\n5,2,x';
+ const opt={sortColumn:2,sortDirection:'asc'};let r=data.csvViewerPage(raw,opt);assert.deepEqual(r.rows.map(row=>row[0]),['4','5','2','3','1']);
+ r=data.csvViewerPage(raw,{query:'alpha',filterColumn:2,sortColumn:2,sortDirection:'desc'});assert.deepEqual(r.rows.map(row=>row[0]),['2','3']);
+ assert.equal(data.csvViewerExport(raw,{query:'alpha',filterColumn:2,sortColumn:2,sortDirection:'desc'}),',name,name\n2,alpha,"line\nbreak"\n3,ALPHA,other');
+ assert.equal(data.csvViewerExport(raw,{query:'=x'}),',name,name\n1,Beta,=x');assert.equal(data.csvViewerExport('b;2\na;10',{delimiter:';',headerRow:false,sortColumn:1,sortDirection:'asc'}),'a;10\nb;2');
+ assert.throws(()=>data.csvViewerExport(raw,{query:'missing'}),/No matching/);assert.throws(()=>data.csvViewerPage(raw,{sortDirection:'asc'}),/Choose a sort column/);assert.throws(()=>data.csvViewerPage(raw,{filterColumn:4}),/Filter column/);assert.throws(()=>data.csvViewerPage(raw,{sortColumn:0}),/Sort column/);
+ const many='h\n'+Array.from({length:85},(_,i)=>String(i)).join('\n');assert.equal(data.csvViewerPage(many).rows.length,40);assert.equal(data.csvViewerExport(many).split('\n').length,86);
+});
 await test('CSV column selection and duplicate viewer headers', () => {
  const source='name,name,code\n"Ada, A",X,001\n"a\nline",Y,002';
  const r=data.extractCsvColumns(source,{positions:[3,1]});assert.equal(r.text,'code,name\n001,"Ada, A"\n002,"a\nline"');assert.equal(r.rowCount,3);assert.deepEqual(data.parseCsv(r.text,{headerRow:false}).rows,[['code','name'],['001','Ada, A'],['002','a\nline']]);
