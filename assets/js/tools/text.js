@@ -321,6 +321,15 @@ export function morseToText(code) {
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const NEW_TEXT_LIMIT = 1000000;
 function boundedText(value) { const s=String(value); if(s.length>NEW_TEXT_LIMIT) throw new Error('Input exceeds 1,000,000 UTF-16 code units.'); return s; }
+/** Exact UTF-16 substring replacement; preflight output before allocating. */
+export function replaceLiteral(raw, find, replacement) {
+  const source=boundedText(raw), term=boundedText(find), value=boundedText(replacement);
+  if(!term) throw new Error('Enter non-empty text to find.');
+  let count=0, pos=0, match;
+  while((match=source.indexOf(term,pos))!==-1) { count++; pos=match+term.length; }
+  if(source.length+count*(value.length-term.length)>2000000) throw new Error('Result would exceed 2,000,000 UTF-16 code units.');
+  return {text:source.split(term).join(value),count};
+}
 export function cleanText(raw, mode) {
   const s=boundedText(raw).replace(/\r\n?/g,'\n');
   switch(mode) {
@@ -366,6 +375,13 @@ function textToolShell(root,{label,makeControls,run}) {
 }
 
 const defs = {
+  'text-find-replace'(root) {
+    const source=textarea({rows:10,placeholder:'Paste your text here…'}),find=textarea({rows:3,placeholder:'Text to find…'}),replacement=textarea({rows:3,placeholder:'Replacement (leave empty to remove matches)…'}),out=resultPanel({label:'Replaced text',download:true,downloadName:'replaced-text.txt'}),status=statusLine('');
+    const invalidate=()=>{out.placeholder();status.set('Input changed. Replace again.');};
+    for(const el of [source,find,replacement]) el.addEventListener('input',invalidate);
+    const run=()=>{try{const r=replaceLiteral(source.value,find.value,replacement.value);out.set(r.text);status.set(`${r.count} non-overlapping ${r.count===1?'match':'matches'} replaced.`, 'success');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    root.append(field({label:'Source text',control:source,hint:'Up to 1,000,000 UTF-16 code units per field. Textarea line endings use LF.'}),field({label:'Find literal text',control:find}),field({label:'Replace with',control:replacement}),actionsRow(btn({label:'Replace text',onClick:run}),btn({label:'Clear',variant:'ghost',onClick:()=>{source.value='';find.value='';replacement.value='';out.placeholder();status.set('Cleared.');}})),status,out.panel,privacyNote('Text is processed locally in your browser.'));
+  },
   'text-cleaner'(root) { textToolShell(root,{label:'Text',makeControls:()=>{const mode=select({value:'spaces',options:[{v:'spaces',t:'Trim lines and collapse spaces/tabs'},{v:'trim',t:'Trim each line'},{v:'blank',t:'Remove blank lines'},{v:'join',t:'Join nonblank lines with spaces'}]});return {mode,elements:[mode],fields:[field({label:'Cleaning operation',control:mode})]};},run:(s,c)=>({text:cleanText(s,c.mode.value)})}); },
   'line-filter'(root) { textToolShell(root,{label:'Lines',makeControls:()=>{const term=input({type:'text',placeholder:'Literal text'}),mode=select({value:'include',options:[{v:'include',t:'Keep matching lines'},{v:'exclude',t:'Remove matching lines'}]}),fold=select({value:'no',options:[{v:'no',t:'Case sensitive'},{v:'yes',t:'Ignore case'}]});return {term,mode,fold,elements:[term,mode,fold],fields:[field({label:'Find literal text',control:term}),field({label:'Action',control:mode}),field({label:'Case matching',control:fold})]};},run:(s,c)=>{const r=filterTextLines(s,c.term.value,c.mode.value,c.fold.value==='yes');return {text:r.text,status:`Kept ${r.kept} of ${r.total} lines.`};}}); },
   'line-prefix-suffix'(root) { textToolShell(root,{label:'Lines',makeControls:()=>{const prefix=input({type:'text',placeholder:'Optional prefix'}),suffix=input({type:'text',placeholder:'Optional suffix'}),blank=select({value:'no',options:[{v:'no',t:'Leave blank lines unchanged'},{v:'yes',t:'Include blank lines'}]});return {prefix,suffix,blank,elements:[prefix,suffix,blank],fields:[field({label:'Prefix',control:prefix}),field({label:'Suffix',control:suffix}),field({label:'Blank lines',control:blank})]};},run:(s,c)=>({text:affixTextLines(s,c.prefix.value,c.suffix.value,c.blank.value==='yes')})}); },

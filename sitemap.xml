@@ -166,6 +166,9 @@
     <loc>https://i-have-tools.vercel.app/tools/remove-duplicate-lines/</loc>
   </url>
   <url>
+    <loc>https://i-have-tools.vercel.app/tools/text-find-replace/</loc>
+  </url>
+  <url>
     <loc>https://i-have-tools.vercel.app/tools/text-sorter/</loc>
   </url>
   <url>
@@ -179,6 +182,9 @@
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/tools/percentage-calculator/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/reverse-percentage-calculator/</loc>
   </url>
   <url>
     <loc>https://i-have-tools.vercel.app/tools/percentage-change/</loc>

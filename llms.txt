@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 157 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 159 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -59,11 +59,13 @@
 - [Line Counter](https://i-have-tools.vercel.app/tools/line-counter/): Count total, empty and non-empty lines, and the longest line.
 - [Case Converter](https://i-have-tools.vercel.app/tools/case-converter/): UPPER, lower, Title, Sentence, camelCase, snake_case and more.
 - [Remove Duplicate Lines](https://i-have-tools.vercel.app/tools/remove-duplicate-lines/): Delete repeated lines — case-sensitive or not — keeping order.
+- [Text Find and Replace](https://i-have-tools.vercel.app/tools/text-find-replace/): Replace exact text or phrases locally, including line breaks.
 - [Text Sorter](https://i-have-tools.vercel.app/tools/text-sorter/): Sort lines A–Z, numerically, by length or naturally.
 - [Text Diff](https://i-have-tools.vercel.app/tools/text-diff/): Compare two texts line by line and see what changed.
 - [Slug Generator](https://i-have-tools.vercel.app/tools/slug-generator/): Turn any title into a clean, SEO-friendly URL slug.
 - [Lorem Ipsum Generator](https://i-have-tools.vercel.app/tools/lorem-ipsum-generator/): Generate placeholder paragraphs, sentences or words on demand.
 - [Percentage Calculator](https://i-have-tools.vercel.app/tools/percentage-calculator/): Three percentage calculations in one tool, with worked formulas.
+- [Reverse Percentage Calculator](https://i-have-tools.vercel.app/tools/reverse-percentage-calculator/): Find an original value before a known percentage increase or decrease.
 - [Percentage Change Calculator](https://i-have-tools.vercel.app/tools/percentage-change/): Calculate percentage increase or decrease between two numbers.
 - [Discount Calculator](https://i-have-tools.vercel.app/tools/discount-calculator/): Sale price and savings from a price and percent off.
 - [Age Calculator](https://i-have-tools.vercel.app/tools/age-calculator/): Exact age in years, months and days — plus the next birthday.
