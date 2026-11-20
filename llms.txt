@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 159 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 160 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -111,7 +111,8 @@
 - [Decimal to Fraction Converter](https://i-have-tools.vercel.app/tools/decimal-to-fraction/): Convert finite decimals to simplified fractions and fractions to decimals.
 - [Fraction Calculator](https://i-have-tools.vercel.app/tools/fraction-calculator/): Add, subtract, multiply and divide fractions — simplified.
 - [Time Duration Calculator](https://i-have-tools.vercel.app/tools/time-duration-calculator/): Add or subtract durations like 2h 45m + 30m.
-- [Average Calculator](https://i-have-tools.vercel.app/tools/average-calculator/): Mean, median, modes and standard deviation from a list of numbers.
+- [Average Calculator](https://i-have-tools.vercel.app/tools/average-calculator/): Mean, median, quartiles, modes and standard deviation from a list of numbers.
+- [Binomial Probability Calculator](https://i-have-tools.vercel.app/tools/binomial-probability-calculator/): Calculate exact and cumulative binomial probabilities.
 - [Circle Calculator](https://i-have-tools.vercel.app/tools/circle-calculator/): Find circle area, circumference, radius, diameter, arc and sector.
 - [Quadratic Equation Solver](https://i-have-tools.vercel.app/tools/quadratic-equation-solver/): Solve quadratic equations and inspect real or complex roots.
 - [Permutation and Combination Calculator](https://i-have-tools.vercel.app/tools/permutation-combination-calculator/): Calculate exact nCr, nPr and factorial for counting problems.

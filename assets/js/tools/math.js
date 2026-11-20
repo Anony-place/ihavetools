@@ -31,11 +31,40 @@ export function averageStats(values) {
     n++; const delta = v - mean; mean += delta / n; m2 += delta * (v - mean);
     counts.set(v, (counts.get(v) || 0) + 1);
   }
-  const median = n % 2 ? sorted[(n - 1) / 2] : sorted[n / 2 - 1] / 2 + sorted[n / 2] / 2;
+  const medianOf = (start, end) => { const length=end-start, mid=start+Math.floor(length/2); return length%2 ? sorted[mid] : sorted[mid-1]/2+sorted[mid]/2; };
+  const median = medianOf(0,n);
+  const q1 = n<2 ? null : medianOf(0,Math.floor(n/2));
+  const q3 = n<2 ? null : medianOf(Math.ceil(n/2),n);
+  const iqr = q1===null ? null : q3-q1, lowerFence=iqr===null ? null : q1-1.5*iqr, upperFence=iqr===null ? null : q3+1.5*iqr;
+  const outliers=iqr===null ? [] : sorted.filter(v=>v<lowerFence || v>upperFence);
+  const frequencies=[...counts].sort((a,b)=>a[0]-b[0]);
   const modeCount = Math.max(...counts.values());
   const modes = modeCount > 1 ? [...counts].filter(([, count]) => count === modeCount).map(([v]) => v).sort((a, b) => a - b) : [];
   const populationVariance = Math.max(0, m2 / n), sampleVariance = n > 1 ? Math.max(0, m2 / (n - 1)) : null;
-  return { sum, mean, median, count: n, mode: modes[0] ?? null, modes, modeCount, min: sorted[0], max: sorted[n - 1], range: sorted[n - 1] - sorted[0], sorted, populationVariance, sampleVariance, populationSD: Math.sqrt(populationVariance), sampleSD: sampleVariance === null ? null : Math.sqrt(sampleVariance) };
+  return { sum, mean, median, q1, q3, iqr, lowerFence, upperFence, outliers, frequencies, count: n, mode: modes[0] ?? null, modes, modeCount, min: sorted[0], max: sorted[n - 1], range: sorted[n - 1] - sorted[0], sorted, populationVariance, sampleVariance, populationSD: Math.sqrt(populationVariance), sampleSD: sampleVariance === null ? null : Math.sqrt(sampleVariance) };
+}
+/** Relative probabilities normalized around the mode to avoid endpoint underflow. */
+export function binomialProbability(n,p,k,mode) {
+  if(!Number.isInteger(n)||n<0||n>1000) throw new Error('Trials must be a whole number from 0 to 1,000.');
+  if(!Number.isFinite(p)||p<0||p>1) throw new Error('Success probability must be between 0 and 1.');
+  if(!Number.isInteger(k)||k<0||k>n) throw new Error('Successes must be a whole number from 0 to the number of trials.');
+  if(!['exact','at-most','at-least','less','more'].includes(mode)) throw new Error('Choose a valid event.');
+  const selected=i=>mode==='exact'?i===k:mode==='at-most'?i<=k:mode==='at-least'?i>=k:mode==='less'?i<k:i>k;
+  const low=mode==='exact'||mode==='at-least'?k:mode==='more'?k+1:0;
+  const high=mode==='exact'||mode==='at-most'?k:mode==='less'?k-1:n;
+  const values=new Float64Array(n+1);
+  if(p===0||p===1) values[p===0?0:n]=1;
+  else {
+    const center=Math.min(n,Math.floor((n+1)*p));values[center]=1;
+    for(let i=center;i<n;i++) values[i+1]=values[i]*(n-i)/(i+1)*(p/(1-p));
+    for(let i=center;i>0;i--) values[i-1]=values[i]*i/(n-i+1)*((1-p)/p);
+  }
+  // Compensated summation limits accumulated error; sum the requested tail
+  // directly, not 1 minus its complement, to retain small probabilities.
+  const sumWhere=predicate=>{let sum=0,c=0;for(let i=0;i<=n;i++)if(predicate(i)){const y=values[i]-c,t=sum+y;c=(t-sum)-y;sum=t;}return sum;};
+  const total=sumWhere(()=>true), probability=sumWhere(selected)/total;
+  const underflow=probability===0 && low<=high && p>0 && p<1;
+  return {probability,underflow,mean:n*p,variance:n*p*(1-p),low,high};
 }
 function gcd2(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; }
 function validateIntegers(nums) {
@@ -260,13 +289,23 @@ const defs = {
     const invalidate=()=>{grid.replaceChildren();status.set('Input changed. Convert again.','info');};root.addEventListener('input',invalidate);root.addEventListener('change',invalidate);
     root.append(h('div',{class:'field-row'},field({label:'Conversion direction',control:direction}),field({label:'Value (pixels or inches)',control:value}),field({label:'Pixels per inch (PPI)',control:ppi})),h('p',{class:'hint',text:'Enter whole pixels or a positive inch value, depending on direction. PPI is an assumed pixel density, not a guarantee of print quality or screen size.'}),actionsRow(btn({label:'Convert pixels and inches',icon:'repeat',onClick:run})),grid,status);
   },
+  'binomial-probability-calculator'(root) {
+    const trials=input({type:'number',min:0,max:1000,step:1,value:'10'}),p=input({type:'number',min:0,max:1,step:'any',value:'0.5'}),k=input({type:'number',min:0,max:1000,step:1,value:'3'}),mode=select({value:'exact',options:[{v:'exact',t:'Exactly k (X = k)'},{v:'at-most',t:'At most k (X ≤ k)'},{v:'at-least',t:'At least k (X ≥ k)'},{v:'less',t:'Less than k (X < k)'},{v:'more',t:'More than k (X > k)'}]}),grid=statsGrid(),status=statusLine(''),detail=h('p',{class:'hint'});
+    const invalidate=()=>{grid.replaceChildren();detail.textContent='';status.set('Inputs changed. Calculate again.');}; [trials,p,k].forEach(el=>el.addEventListener('input',invalidate));mode.addEventListener('change',invalidate);
+    const show=v=>v!==0 && (v<0.000001 || v>=1e12)?v.toExponential(6):Number(v.toPrecision(10)).toString();
+    const run=()=>{grid.replaceChildren();detail.textContent='';try{const n=trials.value===''?NaN:Number(trials.value),prob=p.value===''?NaN:Number(p.value),successes=k.value===''?NaN:Number(k.value),r=binomialProbability(n,prob,successes,mode.value); const shown=r.underflow?'Too small to represent':show(r.probability);grid.set([{label:'Probability',value:shown,kind:'good'},{label:'Percentage',value:r.underflow?'Too small to represent':`${show(r.probability*100)}%`},{label:'Expected successes',value:show(r.mean)},{label:'Variance',value:show(r.variance)}]);detail.textContent=r.low>r.high?'The selected event contains no possible counts.':`Included success counts: ${r.low} through ${r.high}. P(X = k) = C(n,k) × pᵏ × (1 − p)⁽ⁿ⁻ᵏ⁾.`;status.set(r.underflow?'Positive probability is too small for floating-point representation.':'Approximate floating-point result. Assumes independent trials with constant success probability.','info');}catch(e){status.set(e.message,'error');}};
+    root.append(h('div',{class:'field-row'},field({label:'Trials (n)',control:trials}),field({label:'Success probability (0–1)',control:p}),field({label:'Successes (k)',control:k}),field({label:'Event',control:mode})),actionsRow(btn({label:'Calculate probability',onClick:run})),grid,detail,status);
+  },
   'average-calculator'(root) {
     const inp = textarea({ rows: 4, placeholder: 'e.g. 1, 2, 2, 3, 5' }), grid = statsGrid(), status = statusLine(''), detail = h('div', {});
     const run = () => { try {
       const s = averageStats(parseNumbers(inp.value));
       const modes = s.modes.length ? `${s.modes.slice(0, 20).map(display).join(', ')}${s.modes.length > 20 ? ` … (${s.modes.length} modes)` : ''} ×${s.modeCount}` : 'None (all unique)';
       grid.set([{label:'Mean (average)',value:display(s.mean),kind:'good'},{label:'Median',value:display(s.median)},{label:'Mode(s)',value:modes},{label:'Sum',value:display(s.sum)},{label:'Count',value:String(s.count)},{label:'Min',value:display(s.min)},{label:'Max',value:display(s.max)},{label:'Range',value:display(s.range)},{label:'Population variance (÷ n)',value:display(s.populationVariance)},{label:'Population standard deviation',value:display(s.populationSD)},{label:'Sample variance (÷ n − 1)',value:s.sampleVariance === null ? 'Undefined (need 2 values)' : display(s.sampleVariance)},{label:'Sample standard deviation',value:s.sampleSD === null ? 'Undefined (need 2 values)' : display(s.sampleSD)}]);
-      detail.replaceChildren(table({ headers:['Sorted values'], rows:[[s.sorted.map(display).join('  ≤  ')]] }));
+      const q=s.q1===null ? 'Undefined (need 2 values)' : null;
+      grid.append(...statsGrid([{label:'Q1',value:q||display(s.q1)},{label:'Q3',value:q||display(s.q3)},{label:'Interquartile range',value:q||display(s.iqr)},{label:'Lower Tukey fence',value:q||display(s.lowerFence)},{label:'Upper Tukey fence',value:q||display(s.upperFence)},{label:'Values outside fences',value:q||String(s.outliers.length)}]).childNodes);
+      const sortedPreview=s.sorted.slice(0,100).map(display).join('  ≤  ')+(s.count>100?` … (first 100 of ${s.count})`:'');
+      detail.replaceChildren(h('h3',{text:'Sorted values (preview)'}),table({ headers:['Sorted values'], rows:[[sortedPreview]] }),h('h3',{text:'Frequency table (first 100 distinct values)'}),table({headers:['Value','Count'],rows:s.frequencies.slice(0,100).map(([v,c])=>[display(v),String(c)])}),h('p',{class:'hint',text:`${s.frequencies.length} distinct values; ${s.q1===null ? "fences are undefined with one value" : `${s.outliers.length} observations outside the Tukey fences`}. Quartiles use the median-of-halves method, excluding the overall median for odd counts.`}));
       status.set('Up to 10,000 values between −1 trillion and 1 trillion. Decimal results are rounded for display; floating-point precision is limited.', 'info');
     } catch(e) { grid.replaceChildren(); detail.replaceChildren(); status.set(e.message,'error'); } };
     root.addEventListener('input', () => { grid.replaceChildren(); detail.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); });

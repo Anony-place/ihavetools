@@ -39,6 +39,13 @@ const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
 
+await test('quartiles, Tukey fences and stable binomial tails', () => {
+ let s=math.averageStats([1,2,2,3,5]);assert.equal(s.q1,1.5);assert.equal(s.q3,4);assert.equal(s.iqr,2.5);assert.deepEqual(s.frequencies,[[1,1],[2,2],[3,1],[5,1]]);
+ s=math.averageStats([1,2,3,4]);assert.equal(s.q1,1.5);assert.equal(s.q3,3.5);assert.deepEqual(math.averageStats([1,1,1,1,1,10]).outliers,[10]);assert.equal(math.averageStats([1]).q1,null);
+ const b=(n,p,k,m)=>math.binomialProbability(n,p,k,m);for(const [mode,num] of [['exact',120],['at-most',176],['at-least',968],['less',56],['more',848]]) assert.ok(Math.abs(b(10,.5,3,mode).probability-num/1024)<1e-14,mode);
+ assert.equal(b(0,.5,0,'exact').probability,1);assert.equal(b(10,0,0,'exact').probability,1);assert.equal(b(10,1,9,'more').probability,1);assert.equal(b(10,1,10,'more').probability,0);assert.ok(b(1000,.5,0,'exact').probability>0);assert.equal(b(1000,.01,1000,'exact').underflow,true);
+ assert.throws(()=>b(1001,.5,3,'exact'),/Trials/);assert.throws(()=>b(10,1.1,3,'exact'),/probability/);assert.throws(()=>b(10,.5,11,'exact'),/Successes/);
+});
 await test('literal text replacement and reverse percentages', () => {
  assert.deepEqual(text.replaceLiteral('aaa\n$','aa','$&'),{text:'$&a\n$',count:1});
  assert.deepEqual(text.replaceLiteral('a\nb','\n','-'),{text:'a-b',count:1});
@@ -2352,8 +2359,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 159);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 137);
+  assert.equal(registry.tools.length, 160);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 138);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

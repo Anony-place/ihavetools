@@ -1330,21 +1330,30 @@ export const tools = [
 
   // ── Math ───────────────────────────────────────────────────────────────────
   T({ id: 'average-calculator', name: 'Average Calculator', icon: 'sigma', engine: 'math', categories: ['math', 'student'],
-    related: ['weighted-average-calculator','ratio-calculator','gcd-lcm-calculator','percentage-calculator','cgpa-calculator','final-grade-calculator'],
-    blurb: 'Mean, median, modes and standard deviation from a list of numbers.',
-    description: 'Calculate mean, median, tied modes, range, sample and population standard deviation and variance for a list of numbers.',
+    related: ['binomial-probability-calculator','weighted-average-calculator','ratio-calculator','gcd-lcm-calculator','percentage-calculator','final-grade-calculator'],
+    blurb: 'Mean, median, quartiles, modes and standard deviation from a list of numbers.',
+    description: 'Calculate mean, median, quartiles, IQR, tied modes, variance and standard deviation, with frequency and sorted previews.',
     keywords: ['average', 'mean', 'median', 'mode', 'range', 'standard deviation', 'variance', 'statistics', 'sum'], aliases: ['mean calculator', 'median calculator', 'mode calculator'], popularity: 77, added: '2026-06-13',
     steps: 'Enter numbers separated by commas, spaces, semicolons or newlines.|Click Calculate.|Review central values, spread and sorted data.',
     faqs: [
       {q:'What is the difference between sample and population standard deviation?',a:'Population variance divides squared deviations by n; sample variance divides by n − 1. The standard deviation is the square root of its variance. Sample variance is undefined for one value.'},
       {q:'Can there be more than one mode?',a:'Yes. The tool lists all values tied for the highest frequency when that frequency exceeds one; if all values are unique it reports no mode. The first 20 tied modes are shown.'},
       {q:'What are the input limits?',a:'Enter 1 to 10,000 values between −1 trillion and 1 trillion. Decimal and scientific notation are supported. Calculations use floating-point numbers and results are rounded for display.'},
-      {q:'Does the tool identify outliers automatically?',a:'No. It sorts values and displays their range, but does not classify outliers or compute quartiles.'}
+      {q:'How are quartiles and outliers calculated?',a:'Q1 and Q3 are medians of the lower and upper halves, excluding the overall median for odd counts. Values strictly outside Q1 − 1.5 × IQR or Q3 + 1.5 × IQR are flagged; other quartile methods can give different results. Flags do not prove errors.'}
     ], guide: [
       {h:'Center and spread',p:'Mean is the sum divided by count. Median is the middle sorted value (or the mean of the two middle values). Modes are the most frequent values when at least one repeats. Range is maximum minus minimum.'},
       {h:'Worked example',p:'For 1, 2, 2, 3, 5 the sum is 13, mean 2.6, median 2, mode 2 and range 4. The squared deviations sum to 9.2: population variance is 1.84 and sample variance is 2.3.'},
+      {h:'Quartiles, fences and previews',p:'Q1 and Q3 use the median of each half of the sorted data; when the count is odd, the overall median is excluded. For 1, 2, 2, 3, 5: Q1 = 1.5, Q3 = 4 and IQR = 2.5. Other quartile conventions differ. Tukey fences are Q1 − 1.5 × IQR and Q3 + 1.5 × IQR; values strictly beyond them are counted, not automatically errors. Quartiles and fences are undefined for one value. Sorted values and frequencies show only the first 100 entries or distinct values respectively; all inputs are included in the calculations.'},
       {h:'Choose the right denominator',list:['Population variance divides by n when the data describe the whole population.', 'Sample variance divides by n − 1 when estimating spread from a sample; one observation is insufficient.', 'Results use floating-point arithmetic and are rounded for display. Do not infer outliers from the sorted list alone.']}
     ] }),
+  T({id:'binomial-probability-calculator',name:'Binomial Probability Calculator',icon:'sigma',engine:'math',categories:['math','student'],
+    blurb:'Calculate exact and cumulative binomial probabilities.',
+    description:'Calculate exact, at-most, at-least, less-than or more-than binomial probabilities for independent trials with a fixed success chance.',
+    keywords:['binomial probability calculator','binomial distribution','exactly at least at most','bernoulli trials'],aliases:['binomial calculator','binomial distribution calculator'],popularity:72,added:'2026-10-31',
+    steps:'Enter the number of trials and the probability of success for each trial.|Enter a success count and choose the event.|Calculate the approximate probability and review the model assumptions.',
+    related:['average-calculator','permutation-combination-calculator','percentage-calculator','weighted-average-calculator','scientific-calculator','fraction-calculator'],
+    guide:[{h:'When the model applies',p:'A binomial model assumes a fixed number n of independent trials, two outcomes per trial, and the same success probability p on each trial. Sampling without replacement, changing probabilities or dependent events may violate these assumptions. The tool cannot verify whether your situation fits.'},{h:'Events and worked example',p:'Exactly k means X = k; at most and at least include k, while less than and more than exclude it. For 10 fair coin flips, exactly 3 heads has probability C(10,3) × 0.5³ × 0.5⁷ = 120/1024 ≈ 0.1171875, or 11.71875%. Expected successes are n × p and variance is n × p × (1 − p).'}, {h:'Limits and precision',p:'Use whole n from 0 to 1,000 and k from 0 to n, with p between 0 and 1. Results use normalized floating-point recurrence and are approximate; very small positive probabilities may be too small to represent. Endpoints p = 0 or 1 and empty events are handled separately. Calculations do not account for dependence, uncertainty in p or changing trial conditions.'}],
+    faqs:[{q:'What is the difference between at least and more than?',a:'At least k includes k, while more than k excludes it. At most includes k, while less than excludes it.'},{q:'Can I use it for drawing cards without replacement?',a:'Usually not: the trials are dependent and the chance changes. A hypergeometric model may be appropriate instead.'}] }),
   T({ id:'circle-calculator', name:'Circle Calculator', icon:'calculator', engine:'math', categories:['math','student'],
     related:['right-triangle-calculator','area-converter','length-converter','scientific-calculator','ratio-calculator','aspect-ratio-calculator'],
     blurb:'Find circle area, circumference, radius, diameter, arc and sector.',
