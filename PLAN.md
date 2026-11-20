@@ -11,6 +11,12 @@
 
 ---
 
+## Text workflow and extraction reliability batch — plan (2026-10-31)
+
+Competitor [line numbering](https://www.textwizard.tools/text-tools/text-manipulation-tools/line-numbering-tool) features suggest a useful workflow, not measured demand. Build a bounded local line-numbering tool with explicit blank-line, start, step and separator behavior, practical guide and tests. Audit the recently added URL extractor for invalid embedded schemes and document the matching boundaries; add regression coverage. Test build, DOM, real-browser interaction/accessibility, then one PR and production verification. No promise of search ranking.
+
+---
+
 ## Developer and text utility batch — plan (2026-10-31)
 
 The catalogue already has URL parsing, JSON formatting and text filtering, but
