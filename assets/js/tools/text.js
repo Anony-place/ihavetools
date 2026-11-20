@@ -365,10 +365,23 @@ export function compareTextLists(a, b, mode, insensitive=false) {
   const output=[...first].filter(([k])=>mode==='both'?second.has(k):!second.has(k)).map(([,v])=>v);
   return {text:output.join('\n'), count:output.length, uniqueA:x.size,uniqueB:y.size};
 }
+/** Number selected lines using bounded safe integers and bounded output. */
+export function numberTextLines(raw,start,step,separator,includeBlank=false) {
+  const source=boundedText(raw).replace(/\r\n?/g,'\n');
+  if(!Number.isSafeInteger(start)||start<0||start>1000000)throw new Error('Start must be a whole number from 0 to 1,000,000.');
+  if(!Number.isSafeInteger(step)||step<1||step>1000000)throw new Error('Step must be a whole number from 1 to 1,000,000.');
+  if(!['. ',': ',' - ','\t'].includes(separator))throw new Error('Choose a valid separator.');
+  if(!source)return {text:'',count:0};
+  const lines=source.split('\n');if(lines.length>100000)throw new Error('Input exceeds 100,000 lines.');
+  let count=0,length=source.length;
+  for(const line of lines)if(includeBlank||line.trim()) {const number=start+count*step;length+=String(number).length+separator.length;count++;}
+  if(length>2000000)throw new Error('Result would exceed 2,000,000 UTF-16 code units.');
+  let index=0;return {text:lines.map(line=>includeBlank||line.trim()?`${start+(index++)*step}${separator}${line}`:line).join('\n'),count};
+}
 /** Extract likely HTTP(S) URLs from text, not a parser for HTML or Markdown. */
 export function extractHttpUrls(raw,deduplicate=true) {
   const source=boundedText(raw), found=[],seen=new Set();let candidates=0;
-  for(const match of source.matchAll(/https?:\/\/[^\x00-\x20\x7f\s<>"'`]+/gi)) {
+  for(const match of source.matchAll(/(?<![a-zA-Z0-9+./@_-])https?:\/\/[^\x00-\x20\x7f\s<>"'`]+/gi)) {
     if(++candidates>10000)throw new Error('Input contains more than 10,000 URL candidates.');
     let value=match[0];const balance={')':0,']':0,'}':0},opens={'(':')','[':']','{':'}'};
     for(const ch of value){if(opens[ch])balance[opens[ch]]++;else if(Object.hasOwn(balance,ch))balance[ch]--;}
@@ -393,6 +406,7 @@ function textToolShell(root,{label,makeControls,run}) {
 }
 
 const defs = {
+  'line-numbering'(root) {textToolShell(root,{label:'Lines to number',makeControls:()=>{const start=input({type:'number',value:'1',min:'0',max:'1000000',step:'1'}),step=input({type:'number',value:'1',min:'1',max:'1000000',step:'1'}),separator=select({value:'. ',options:[{v:'. ',t:'Period and space'},{v:': ',t:'Colon and space'},{v:' - ',t:'Space, dash and space'},{v:'\t',t:'Tab'}]}),blank=select({value:'skip',options:[{v:'skip',t:'Skip blank lines'},{v:'include',t:'Number blank lines'}]});return {start,step,separator,blank,elements:[start,step,separator,blank],fields:[field({label:'Starting number',control:start,hint:'Whole number 0–1,000,000.'}),field({label:'Increment',control:step,hint:'Whole number 1–1,000,000.'}),field({label:'Separator',control:separator}),field({label:'Blank lines',control:blank})]};},run:(source,c)=>{const parse=el=>el.value.trim()===''?NaN:Number(el.value);const r=numberTextLines(source,parse(c.start),parse(c.step),c.separator.value,c.blank.value==='include');return {text:r.text,status:`Numbered ${r.count} lines locally.`};}});},
   'url-extractor'(root) {textToolShell(root,{label:'Source text',makeControls:()=>{const mode=select({value:'unique',options:[{v:'unique',t:'Remove exact duplicates'},{v:'all',t:'Keep all occurrences'}]});return {mode,elements:[mode],fields:[field({label:'Duplicates',control:mode})]};},run:(source,c)=>{const r=extractHttpUrls(source,c.mode.value==='unique');return {text:r.text,status:`Found ${r.count} URL${r.count===1?'':'s'} from ${r.candidates} candidates. Review the output before use.`};}});},
   'text-find-replace'(root) {
     const source=textarea({rows:10,placeholder:'Paste your text here…'}),find=textarea({rows:3,placeholder:'Text to find…'}),replacement=textarea({rows:3,placeholder:'Replacement (leave empty to remove matches)…'}),out=resultPanel({label:'Replaced text',download:true,downloadName:'replaced-text.txt'}),status=statusLine('');

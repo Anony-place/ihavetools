@@ -994,6 +994,10 @@ await domTest('gcd-lcm-calculator: GCD/LCM with prime factors', async () => {
 });
 
 console.log('\n── Batch-12 math UIs ──');
+await domTest('line numbering options and stale output',async()=>{
+ const app=await loadToolPage('line-numbering','text');const t=app.querySelector('textarea');t.value='a\n\nb';click(btnByLabel(app,'Run tool'));assert.equal(resultText(document),'1. a\n\n2. b');
+ const inputs=app.querySelectorAll('input[type=number]');inputs[0].value='10';fire(inputs[0],'input');assert.doesNotMatch(resultText(document),/1\. a/);inputs[1].value='2';click(btnByLabel(app,'Run tool'));assert.equal(resultText(document),'10. a\n\n12. b');inputs[1].value='';click(btnByLabel(app,'Run tool'));assert.match(statusText(document),/Step must/);
+});
 await domTest('JSON string converter and URL extractor clear stale results',async()=>{
  let app=await loadToolPage('json-string-escape','developer'),t=app.querySelector('textarea');t.value='A\nB';click(btnByLabel(app,'Convert'));assert.equal(resultText(document),'"A\\nB"');const mode=app.querySelector('select');mode.value='decode';fire(mode,'change');assert.doesNotMatch(resultText(document),/A/);t.value='{}';click(btnByLabel(app,'Convert'));assert.match(statusText(document),/string literal/);t.value='"ok"';click(btnByLabel(app,'Convert'));assert.equal(resultText(document),'ok');
  app=await loadToolPage('url-extractor','text');t=app.querySelector('textarea');t.value='Link https://example.com/a. https://example.com/a';click(btnByLabel(app,'Run tool'));assert.equal(resultText(document),'https://example.com/a');assert.match(statusText(document),/Found 1 URL/);t.value='';fire(t,'input');assert.doesNotMatch(resultText(document),/example/);

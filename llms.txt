@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 162 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 163 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -60,6 +60,7 @@
 - [Line Counter](https://i-have-tools.vercel.app/tools/line-counter/): Count total, empty and non-empty lines, and the longest line.
 - [Case Converter](https://i-have-tools.vercel.app/tools/case-converter/): UPPER, lower, Title, Sentence, camelCase, snake_case and more.
 - [Remove Duplicate Lines](https://i-have-tools.vercel.app/tools/remove-duplicate-lines/): Delete repeated lines — case-sensitive or not — keeping order.
+- [Line Numbering Tool](https://i-have-tools.vercel.app/tools/line-numbering/): Add sequential numbers to lines of text locally.
 - [URL Extractor](https://i-have-tools.vercel.app/tools/url-extractor/): Extract likely HTTP and HTTPS URLs from pasted text.
 - [Text Find and Replace](https://i-have-tools.vercel.app/tools/text-find-replace/): Replace exact text or phrases locally, including line breaks.
 - [Text Sorter](https://i-have-tools.vercel.app/tools/text-sorter/): Sort lines A–Z, numerically, by length or naturally.
