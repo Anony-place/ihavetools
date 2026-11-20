@@ -365,6 +365,24 @@ export function compareTextLists(a, b, mode, insensitive=false) {
   const output=[...first].filter(([k])=>mode==='both'?second.has(k):!second.has(k)).map(([,v])=>v);
   return {text:output.join('\n'), count:output.length, uniqueA:x.size,uniqueB:y.size};
 }
+/** Extract likely HTTP(S) URLs from text, not a parser for HTML or Markdown. */
+export function extractHttpUrls(raw,deduplicate=true) {
+  const source=boundedText(raw), found=[],seen=new Set();let candidates=0;
+  for(const match of source.matchAll(/https?:\/\/[^\x00-\x20\x7f\s<>"'`]+/gi)) {
+    if(++candidates>10000)throw new Error('Input contains more than 10,000 URL candidates.');
+    let value=match[0];const balance={')':0,']':0,'}':0},opens={'(':')','[':']','{':'}'};
+    for(const ch of value){if(opens[ch])balance[opens[ch]]++;else if(Object.hasOwn(balance,ch))balance[ch]--;}
+    while(value) {
+      const ch=value.at(-1);
+      if(/[.,;:!?]/.test(ch))value=value.slice(0,-1);
+      else if(Object.hasOwn(balance,ch)&&balance[ch]<0){balance[ch]++;value=value.slice(0,-1);}
+      else break;
+    }
+    try{const url=new URL(value);if(!['http:','https:'].includes(url.protocol)||!url.hostname)continue;}catch{continue;}
+    if(!deduplicate||!seen.has(value)){seen.add(value);found.push(value);}
+  }
+  return {text:found.join('\n'),count:found.length,candidates};
+}
 function textToolShell(root,{label,makeControls,run}) {
   const primary=textarea({rows:10,placeholder:'Paste your text here…'}), out=resultPanel({label:'Result',download:true,downloadName:'result.txt'}), status=statusLine('');
   const controls=makeControls();
@@ -375,6 +393,7 @@ function textToolShell(root,{label,makeControls,run}) {
 }
 
 const defs = {
+  'url-extractor'(root) {textToolShell(root,{label:'Source text',makeControls:()=>{const mode=select({value:'unique',options:[{v:'unique',t:'Remove exact duplicates'},{v:'all',t:'Keep all occurrences'}]});return {mode,elements:[mode],fields:[field({label:'Duplicates',control:mode})]};},run:(source,c)=>{const r=extractHttpUrls(source,c.mode.value==='unique');return {text:r.text,status:`Found ${r.count} URL${r.count===1?'':'s'} from ${r.candidates} candidates. Review the output before use.`};}});},
   'text-find-replace'(root) {
     const source=textarea({rows:10,placeholder:'Paste your text here…'}),find=textarea({rows:3,placeholder:'Text to find…'}),replacement=textarea({rows:3,placeholder:'Replacement (leave empty to remove matches)…'}),out=resultPanel({label:'Replaced text',download:true,downloadName:'replaced-text.txt'}),status=statusLine('');
     const invalidate=()=>{out.placeholder();status.set('Input changed. Replace again.');};

@@ -39,6 +39,13 @@ const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
 
+await test('JSON string literals and HTTP URL extraction', () => {
+ const source='Quote " slash \\ line\nemoji 😀';const encoded=dev.jsonStringConvert(source,'encode');assert.equal(JSON.parse(encoded),source);assert.equal(dev.jsonStringConvert(encoded,'decode'),source);
+ assert.equal(dev.jsonStringConvert('"\\uD83D\\uDE00"','decode'),'😀');assert.throws(()=>dev.jsonStringConvert('"\\uD800"','decode'),/unpaired surrogate/);assert.throws(()=>dev.jsonStringConvert('"\\q"','decode'),/valid JSON/);assert.throws(()=>dev.jsonStringConvert('{}','decode'),/string literal/);assert.throws(()=>dev.jsonStringConvert('\u0000'.repeat(400000),'encode'),/Result exceeds/);
+ let r=text.extractHttpUrls('See (https://example.com/a(b)), https://example.com/a(b) and http://EXAMPLE.org/path?x=1.');assert.equal(r.count,2);assert.equal(r.text,'https://example.com/a(b)\nhttp://EXAMPLE.org/path?x=1');
+ r=text.extractHttpUrls('https://example.com https://example.com',true);
+ assert.equal(r.count,1);assert.equal(text.extractHttpUrls('https://example.com https://example.com',false).count,2);assert.equal(text.extractHttpUrls('ftp://example.com and https://').count,0);assert.throws(()=>text.extractHttpUrls('http://a '.repeat(10001)),/10,000/);
+});
 await test('quartiles, Tukey fences and stable binomial tails', () => {
  let s=math.averageStats([1,2,2,3,5]);assert.equal(s.q1,1.5);assert.equal(s.q3,4);assert.equal(s.iqr,2.5);assert.deepEqual(s.frequencies,[[1,1],[2,2],[3,1],[5,1]]);
  s=math.averageStats([1,2,3,4]);assert.equal(s.q1,1.5);assert.equal(s.q3,3.5);assert.deepEqual(math.averageStats([1,1,1,1,1,10]).outliers,[10]);assert.equal(math.averageStats([1]).q1,null);
@@ -2359,8 +2366,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 160);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 138);
+  assert.equal(registry.tools.length, 162);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 140);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

@@ -11,6 +11,24 @@
 
 ---
 
+## Developer and text utility batch — plan (2026-10-31)
+
+The catalogue already has URL parsing, JSON formatting and text filtering, but
+not JSON string encoding or text URL extraction. Competitor feature references:
+[JSON escaping](https://www.devtoolsdaily.com/json/unescape/) and [text extraction](https://www.ddevtools.com/extract).
+These suggest workflows, not measured search demand or guaranteed ranking.
+
+1. JSON String Escape/Unescape: clearly distinguish one complete JSON string
+   literal from a whole JSON document; strict JSON parsing, bounded input/output,
+   Unicode and escaped control handling, local processing, and copy/download.
+2. HTTP(S) URL Extractor: identify candidate links from pasted plain text,
+   optionally deduplicate exact strings; avoid network requests and automatic
+   navigation; explain punctuation heuristics, non-HTML parsing and limits.
+3. Provide practical guides, related links, tests (engine, DOM, real Chromium,
+   mobile and accessibility), one PR and production verification.
+
+---
+
 ## Student statistics batch — plan (2026-10-31)
 
 Catalogue review: average calculator already covers mean, median, mode and

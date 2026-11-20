@@ -621,6 +621,20 @@ export function htmlEntitiesConvert(raw,mode) {
     return String.fromCodePoint(num);
   });
 }
+/** Encode plain text as one JSON string literal or decode exactly one literal. */
+export function jsonStringConvert(raw,mode) {
+  const text=String(raw);if(text.length>1000000)throw new Error('Input exceeds 1,000,000 UTF-16 code units.');
+  let value;
+  if(mode==='encode') value=JSON.stringify(text);
+  else if(mode==='decode') {
+    try{value=JSON.parse(text);}catch{throw new Error('Enter one valid JSON string literal, including double quotes.');}
+    if(typeof value!=='string')throw new Error('Enter a JSON string literal, not an object, array or other value.');
+  } else throw new Error('Choose encode or decode.');
+  const plain=mode==='encode'?text:value;
+  if(/(?:[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF])/.test(plain))throw new Error('Text contains an unpaired surrogate; it cannot be safely saved as UTF-8.');
+  if(value.length>2000000)throw new Error('Result exceeds 2,000,000 UTF-16 code units.');
+  return value;
+}
 function encodingTool(root,{label,convert,hint}) {
   const text=textarea({rows:10,placeholder:'Enter text here…'}),mode=select({value:'encode',options:[{v:'encode',t:'Encode'},{v:'decode',t:'Decode'}]}),out=resultPanel({label:'Result',download:true,downloadName:'result.txt'}),status=statusLine('');
   const invalidate=()=>{out.placeholder();status.set('Input changed. Convert again.');}; text.addEventListener('input',invalidate);mode.addEventListener('change',invalidate);
@@ -629,6 +643,7 @@ function encodingTool(root,{label,convert,hint}) {
 }
 
 const defs = {
+  'json-string-escape'(root) {encodingTool(root,{label:'Text or JSON string literal',convert:jsonStringConvert,hint:'Encode plain text as a quoted JSON string; decode requires one complete quoted JSON string literal.'});},
   'text-hex-converter'(root) {encodingTool(root,{label:'Text or hex bytes',convert:utf8HexConvert,hint:'UTF-8 text ↔ hexadecimal byte pairs; max 1,000,000 UTF-16 code units. Invalid UTF-8 is rejected.'});},
   'html-entity-converter'(root) {encodingTool(root,{label:'Text or HTML entities',convert:htmlEntitiesConvert,hint:'Encodes five HTML-sensitive characters; decodes amp, lt, gt, quot, apos and numeric references. Not a sanitizer.'});},
 
