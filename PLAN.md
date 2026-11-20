@@ -11,6 +11,27 @@
 
 ---
 
+## Today: text editing and percentage workflow — plan (2026-10-31)
+
+Catalogue review: keyword frequency and duplicate line handling already exist;
+percentage change is not reverse percentage. Competitor examples for [literal
+find/replace](https://www.wordcounttool.com/text-utilities) and [reverse percentage](https://www.calculator.net/percent-calculator.html)
+are feature signals, not measured search demand. Build one consolidated batch:
+
+1. Add a literal, case-sensitive text find-and-replace tool with multi-line
+   search/replacement, non-overlapping matches, bounded input/output, local
+   processing, count and copy/download. Explain that regex and case folding are
+   unsupported and retain line-ending semantics accurately.
+2. Add reverse percentage calculator to undo one known increase or decrease,
+   with bounded finite nonnegative amounts and rate, transparent formula,
+   singular 100% decrease validation and rounding/precision caveats.
+3. Fix stale-result handling and formula documentation in the existing
+   percentage calculator where errors/edits could leave previous answers.
+4. Add guides, relationships, unit, DOM, real-browser/mobile/accessibility
+   tests, then one PR, CI/preview and production verification.
+
+---
+
 ## Final data/document reliability batch — plan (2026-10-31)
 
 Review the newly deployed workflows before adding more URLs: competitor feature

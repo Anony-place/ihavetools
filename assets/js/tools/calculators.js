@@ -22,6 +22,16 @@ export function pctChange(from, to) {
   if (from === 0) throw new Error('Percentage change is undefined when the starting value is zero — use an absolute difference instead.');
   return ((to - from) / Math.abs(from)) * 100;
 }
+export function reversePercentage(finalValue, rate, direction) {
+  if (!Number.isFinite(finalValue) || finalValue < 0 || finalValue > 1e12) throw new Error('Final value must be between 0 and 1 trillion.');
+  if (!Number.isFinite(rate) || rate < 0 || rate > 1000) throw new Error('Rate must be between 0 and 1,000%.');
+  if (!['increase','decrease'].includes(direction)) throw new Error('Choose increase or decrease.');
+  if (direction === 'decrease' && rate >= 100) throw new Error('Decrease must be less than 100%; at 100% the original is not uniquely recoverable.');
+  const multiplier=direction==='increase' ? 1+rate/100 : (100-rate)/100;
+  const original=finalValue/multiplier;
+  if (!Number.isFinite(original) || original > 1e15) throw new Error('Original value exceeds the supported limit of 1 quadrillion.');
+  return {original,multiplier,difference:finalValue-original};
+}
 export function discountCalc(price, pcts, taxPct = 0) {
   let p = price;
   const steps = [];
@@ -627,6 +637,16 @@ const defs = {
     shareState(root,[['fixed',fixed],['price',price],['variable',variable]],run);
   },
 
+  'reverse-percentage-calculator'(root) {
+    const finalValue=input({type:'number',step:'any',min:0,max:1e12,value:'120'}), rate=input({type:'number',step:'any',min:0,max:1000,value:'20'}), direction=select({value:'increase',options:[{v:'increase',t:'After an increase'},{v:'decrease',t:'After a decrease'}]});
+    const grid=statsGrid(),formula=h('p',{class:'hint'}),status=statusLine('');
+    const invalidate=()=>{grid.replaceChildren();formula.textContent='';status.set('Inputs changed. Calculate again.');};
+    [finalValue,rate].forEach(el=>el.addEventListener('input',invalidate));direction.addEventListener('change',invalidate);
+    const show=n=>Number(n.toPrecision(12)).toString();
+    const run=()=>{grid.replaceChildren();formula.textContent='';try{const amount=num(finalValue),pct=num(rate),r=reversePercentage(amount,pct,direction.value);grid.set([{label:'Original value (approx.)',value:show(r.original),kind:'good'},{label:'Change (approx.)',value:show(r.difference)},{label:'Multiplier',value:show(r.multiplier)}]);formula.textContent=`Original = ${show(amount)} ÷ (1 ${direction.value==='increase'?'+':'−'} ${show(pct)} ÷ 100) ≈ ${show(r.original)}`;status.set('Approximate result; check rounding and the original terms.','success');}catch(e){status.set(e.message,'error');}};
+    root.append(h('div',{class:'field-row'},field({label:'Final value',control:finalValue}),field({label:'Change rate (%)',control:rate}),field({label:'Known change',control:direction})),actionsRow(btn({label:'Find original value',onClick:run})),grid,formula,status);
+  },
+
   'percentage-calculator'(root) {
     const mode = segControl({ options: [{ v: 'of', t: 'X% of Y' }, { v: 'what', t: 'X is what % of Y' }, { v: 'change', t: '% change' }], value: 'of', ariaLabel: 'Calculation type' });
     const labelA = h('label', { text: 'Percentage (X)', for: 'pa' });
@@ -645,7 +665,10 @@ const defs = {
       status.set('');
     };
     mode.querySelectorAll('button').forEach((bt) => bt.addEventListener('click', () => setTimeout(applyMode, 0)));
+    const clearResult = () => { grid.replaceChildren(); formula.textContent = ''; status.set('Inputs changed. Calculate again.'); };
+    [a,b].forEach(el => el.addEventListener('input', clearResult));
     const run = () => {
+      grid.replaceChildren(); formula.textContent = '';
       const x = num(a), y = num(b);
       if (!isFin(x) || !isFin(y)) { status.set('Enter both numbers.', 'warning'); grid.replaceChildren(); return; }
       const m = mode.getValue();

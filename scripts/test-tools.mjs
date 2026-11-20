@@ -39,6 +39,20 @@ const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
 
+await test('literal text replacement and reverse percentages', () => {
+ assert.deepEqual(text.replaceLiteral('aaa\n$','aa','$&'),{text:'$&a\n$',count:1});
+ assert.deepEqual(text.replaceLiteral('a\nb','\n','-'),{text:'a-b',count:1});
+ assert.deepEqual(text.replaceLiteral('aaaa','aa',''),{text:'',count:2});
+ assert.throws(()=>text.replaceLiteral('abc','','x'),/non-empty/);
+ assert.throws(()=>text.replaceLiteral('a'.repeat(1000000),'a','xxx'),/exceed/);
+ assert.equal(calc.reversePercentage(120,20,'increase').original,100);
+ assert.equal(calc.reversePercentage(80,20,'decrease').original,100);
+ assert.equal(calc.reversePercentage(0,0,'decrease').original,0);
+ assert.throws(()=>calc.reversePercentage(0,100,'decrease'),/not uniquely/);
+ assert.throws(()=>calc.reversePercentage(-1,20,'increase'),/Final value/);
+ assert.throws(()=>calc.reversePercentage(1e12,99.999999,'decrease'),/quadrillion/);
+ assert.throws(()=>calc.reversePercentage(1,10,'bad'),/Choose/);
+});
 await test('data viewer, TypeScript inference and PDF metadata', async () => {
  assert.equal(data.jsonToTypeScript('{"x":[1,"a",null],"empty":[],"weird-key":true}'),'export type Root = { "x": Array<number | string | null>; "empty": unknown[]; "weird-key": boolean; };\n');
  assert.match(data.jsonToTypeScript('[{"a":1},{"b":false}]'),/Array<\{ "a": number; \} \| \{ "b": boolean; \}>/);assert.throws(()=>data.jsonToTypeScript('{"x":1,"x":2}'),/Duplicate/);assert.throws(()=>data.jsonToTypeScript('['.repeat(32)+'0'+']'.repeat(32)),/nesting/);assert.throws(()=>data.jsonToTypeScript('1e999'),/safe numeric/);
@@ -2338,8 +2352,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 157);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 135);
+  assert.equal(registry.tools.length, 159);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 137);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);
