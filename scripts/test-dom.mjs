@@ -184,6 +184,11 @@ await domTest('CSV viewer and TypeScript generator workflows', async () => {
  app=await loadToolPage('json-to-typescript','data');click(btnByLabel(app,'Generate TypeScript'));assert.match(resultText(document),/"scores": Array<number>/);const text=app.querySelector('textarea');text.value='{';fire(text,'input');assert.doesNotMatch(resultText(document),/scores/);click(btnByLabel(app,'Generate TypeScript'));assert.match(statusText(document),/Invalid JSON/);
  app=await loadToolPage('pdf-metadata-viewer','pdf');assert.ok(app.querySelector('input[type=file]'));click(btnByLabel(app,'Clear PDF'));assert.match(statusText(document),/Cleared/);
 });
+await domTest('CSV viewer filter sort export state',async()=>{
+ const app=await loadToolPage('csv-viewer','data'),text=app.querySelector('textarea'),query=app.querySelector('input[placeholder="Optional literal filter"]'),filter=app.querySelector('input[placeholder="Blank = any column"]'),sort=app.querySelector('input[placeholder="Column position"]'),order=[...app.querySelectorAll('select')].find(x=>[...x.options].some(o=>o.value==='asc')),download=btnByLabel(app,'Download filtered rows');
+ text.value='id,name\n1,Beta\n2,alpha\n3,ALPHA';click(btnByLabel(app,'Open table'));assert.equal(download.disabled,false);sort.value='2';fire(sort,'input');order.value='asc';fire(order,'change');assert.match(app.querySelector('table').textContent,/2alpha3ALPHA1Beta/);
+ filter.value='1';fire(filter,'input');query.value='alpha';fire(query,'input');assert.equal(download.disabled,true);filter.value='2';fire(filter,'input');assert.equal(download.disabled,false);sort.value='4';fire(sort,'input');assert.equal(download.disabled,true);assert.match(statusText(document),/Sort column/);sort.value='2';fire(sort,'input');assert.equal(download.disabled,false);text.value='changed';fire(text,'input');assert.equal(download.disabled,true);
+});
 await domTest('CSV viewer recovers from filter errors and invalidates navigation', async () => {
  const app=await loadToolPage('csv-viewer','data'), text=app.querySelector('textarea'), q=app.querySelector('input[placeholder="Optional literal filter"]');
  text.value='name\n'+Array.from({length:85},(_,i)=>`row${i}`).join('\n');fire(text,'input');click(btnByLabel(app,'Open table'));
