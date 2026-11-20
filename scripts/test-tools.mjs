@@ -39,6 +39,13 @@ const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
 
+await test('CSV column selection and duplicate viewer headers', () => {
+ const source='name,name,code\n"Ada, A",X,001\n"a\nline",Y,002';
+ const r=data.extractCsvColumns(source,{positions:[3,1]});assert.equal(r.text,'code,name\n001,"Ada, A"\n002,"a\nline"');assert.equal(r.rowCount,3);assert.deepEqual(data.parseCsv(r.text,{headerRow:false}).rows,[['code','name'],['001','Ada, A'],['002','a\nline']]);
+ assert.equal(data.extractCsvColumns('a;b\n"";"=x"',{delimiter:';',positions:[1]}).text,'a\n""');assert.equal(data.extractCsvColumns('a,b\n1,2').text,'a,b\n1,2');
+ assert.throws(()=>data.extractCsvColumns('a,b\n1',{positions:[1]}),/different number/);assert.throws(()=>data.extractCsvColumns('a,b',{positions:[3]}),/1 to 2/);assert.throws(()=>data.extractCsvColumns('a,b',{positions:[1,1]}),/Duplicate/);assert.throws(()=>data.parseCsv('x,x\na,b'),/Duplicate/);
+ const v=data.csvViewerPage('x,x\na,b');assert.deepEqual(v.headers,['x','x']);assert.deepEqual(v.rows,[['a','b']]);
+});
 await test('number lines safely and reject embedded URL schemes', () => {
   assert.deepEqual(text.numberTextLines('apple\r\n\rpear\n',10,5,': ',false),{text:'10: apple\n\n15: pear\n',count:2});
   assert.deepEqual(text.numberTextLines('a\n',0,2,'. ',true),{text:'0. a\n2. ',count:2});
@@ -78,7 +85,7 @@ await test('literal text replacement and reverse percentages', () => {
 await test('data viewer, TypeScript inference and PDF metadata', async () => {
  assert.equal(data.jsonToTypeScript('{"x":[1,"a",null],"empty":[],"weird-key":true}'),'export type Root = { "x": Array<number | string | null>; "empty": unknown[]; "weird-key": boolean; };\n');
  assert.match(data.jsonToTypeScript('[{"a":1},{"b":false}]'),/Array<\{ "a": number; \} \| \{ "b": boolean; \}>/);assert.throws(()=>data.jsonToTypeScript('{"x":1,"x":2}'),/Duplicate/);assert.throws(()=>data.jsonToTypeScript('['.repeat(32)+'0'+']'.repeat(32)),/nesting/);assert.throws(()=>data.jsonToTypeScript('1e999'),/safe numeric/);
- let view=data.csvViewerPage('name,code\r\n"A, B",001\r\nBee,002',{query:'a, b'}); assert.deepEqual(view.rows,[['A, B','001']]);assert.equal(view.total,2);assert.throws(()=>data.csvViewerPage('a,a\n1,2'),/Duplicate/);assert.throws(()=>data.csvViewerPage('a,b\n1'),/different number/);
+ let view=data.csvViewerPage('name,code\r\n"A, B",001\r\nBee,002',{query:'a, b'}); assert.deepEqual(view.rows,[['A, B','001']]);assert.equal(view.total,2);assert.deepEqual(data.csvViewerPage('a,a\n1,2').headers,['a','a']);assert.throws(()=>data.csvViewerPage('a,b\n1'),/different number/);
  view=data.csvViewerPage('x\n'+Array.from({length:85},(_,i)=>String(i)).join('\n'),{page:2});assert.equal(view.rows.length,5);assert.equal(view.pages,3);
  const {PDFDocument}=await import('pdf-lib');const doc=await PDFDocument.create();doc.addPage();doc.setTitle('Example');doc.setAuthor('Ada');const bytes=await doc.save();const loaded=await PDFDocument.load(bytes,{updateMetadata:false});const info=pdf.inspectPdfInfo(loaded,'sample.pdf',bytes.length);assert.match(info,/Title: Example/);assert.match(info,/Author: Ada/);assert.match(info,/Pages: 1/);assert.match(info,/Subject: Not present or unreadable/);
  doc.setTitle('Title\nAuthor: forged\u202e\\x'); const escaped=pdf.inspectPdfInfo(doc,'file\nname.pdf',10);assert.ok(escaped.includes('Title: Title\\u000aAuthor: forged\\u202e\\\\x'));assert.ok(escaped.includes('File: file\\u000aname.pdf'));assert.doesNotMatch(escaped,/\nAuthor: forged/);
@@ -2374,8 +2381,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 163);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 141);
+  assert.equal(registry.tools.length, 164);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 142);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

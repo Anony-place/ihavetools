@@ -11,7 +11,7 @@ import { h, field, input, textarea, select, switchChip, btn, actionsRow, resultP
 const MAX_TEXT = 1_000_000, MAX_ROWS = 10_000, MAX_COLUMNS = 256, MAX_CELLS = 250_000, MAX_OUTPUT = 10_000_000;
 
 /* ═══════════════════════════ RFC 4180 CSV parser ═══════════════════════════ */
-export function parseCsv(text, { delimiter = ',', headerRow = true, headerNames = null } = {}) {
+export function parseCsv(text, { delimiter = ',', headerRow = true, headerNames = null, allowDuplicateHeaders = false } = {}) {
   if (text.length > MAX_TEXT) throw new Error('CSV input exceeds 1,000,000 characters.');
   if (text.startsWith('\uFEFF')) text = text.slice(1); // UTF-8 BOM, not a header character
   const rows = [];
@@ -62,7 +62,7 @@ export function parseCsv(text, { delimiter = ',', headerRow = true, headerNames 
   } else {
     headers = headerRow ? rows[0].map((hd, k) => hd === '' ? `column_${k + 1}` : hd) : rows[0].map((_, k) => `column_${k + 1}`);
   }
-  if (new Set(headers).size !== headers.length) throw new Error('Duplicate column headers would overwrite data. Give every column a unique header.');
+  if (!allowDuplicateHeaders && new Set(headers).size !== headers.length) throw new Error('Duplicate column headers would overwrite data. Give every column a unique header.');
   return { headers, rows: headerRow ? rows.slice(1) : rows };
 }
 
@@ -268,9 +268,21 @@ export function jsonToTypeScript(raw) {
   };
   return `export type Root = ${infer(data,0)};\n`;
 }
+/** Select and reorder delimited columns without interpreting the first row as keys. */
+export function extractCsvColumns(raw, {delimiter=',', positions=null}={}) {
+  const {headers,rows}=parseCsv(raw,{delimiter,headerRow:false});
+  const selected=positions===null?headers.map((_,i)=>i+1):positions;
+  if(!Array.isArray(selected)||!selected.length||selected.length>MAX_COLUMNS||selected.some(n=>!Number.isSafeInteger(n)||n<1||n>headers.length))throw new Error(`Choose column positions from 1 to ${headers.length}.`);
+  if(new Set(selected).size!==selected.length)throw new Error('Duplicate column positions are not allowed.');
+  const cell=value=>/["\r\n]/.test(value)||value.includes(delimiter)?`"${value.replace(/"/g,'""')}"`:value;
+  let length=0;const lines=[];
+  for(const row of rows){const line=selected.map(n=>cell(row[n-1])).join(delimiter)||'""';length+=line.length+(lines.length?1:0);if(length>MAX_OUTPUT)throw new Error('Output exceeds 10,000,000 characters.');lines.push(line);}
+  return {text:lines.join('\n'),rowCount:rows.length,columnCount:selected.length};
+}
+
 /** CSV viewer keeps all field values as strings and bounds its rendered page. */
 export function csvViewerPage(raw, {delimiter=',',headerRow=true,query='',page=0}={}) {
-  return csvViewerParsedPage(parseCsv(raw,{delimiter,headerRow}), {query,page});
+  return csvViewerParsedPage(parseCsv(raw,{delimiter,headerRow,allowDuplicateHeaders:true}), {query,page});
 }
 function csvViewerParsedPage(parsed, {query='',page=0}={}) {
   if(String(query).length>1000)throw new Error('Filter exceeds 1,000 characters.');
@@ -282,6 +294,13 @@ function csvViewerParsedPage(parsed, {query='',page=0}={}) {
 
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
+  'csv-column-extractor'(root) {
+    const text=textarea({rows:8,value:'name,city,code\nAda,"London, UK",001\nGrace,New York,002'}),delimiter=select({value:',',options:[{v:',',t:'Comma'},{v:';',t:'Semicolon'},{v:'\t',t:'Tab'},{v:'|',t:'Pipe'}]}),positions=input({type:'text',placeholder:'e.g. 3,1 (blank = all)'}),status=statusLine(''),out=resultPanel({label:'Extracted CSV',download:true,downloadName:'extracted.csv',downloadMime:'text/plain;charset=utf-8'}),revision={value:0};
+    const clear=()=>{revision.value++;out.placeholder();status.set('Input or options changed. Extract again.');};
+    for(const el of [text,delimiter,positions])el.addEventListener(el.tagName==='SELECT'?'change':'input',clear);window.addEventListener('pagehide',()=>revision.value++);
+    const run=()=>{revision.value++;try{const r=extractCsvColumns(text.value,{delimiter:delimiter.value,positions:parseCsvPositions(positions.value)});out.set(r.text);status.set(`Extracted ${r.columnCount} columns from ${r.rowCount} rows. Review spreadsheet formula risks before opening.`, 'success');}catch(e){out.placeholder();status.set(e.message,'error');}};
+    root.append(field({label:'CSV input',control:text,hint:'Up to 1,000,000 UTF-16 code units, 10,000 rows, 256 columns and 250,000 cells.'}),localDataImport({inp:text,out,status,revision,accept:'.csv,.tsv,.txt,text/plain,text/csv',title:'Choose a CSV or TSV file',extensions:/\.(?:csv|tsv|txt)$/i}),h('div',{class:'field-row'},field({label:'Delimiter',control:delimiter}),field({label:'Column positions',control:positions,hint:'1-based comma-separated positions in output order; blank selects all. First row is included unchanged as data.'})),h('p',{class:'hint',text:'Values are not sanitized. Spreadsheet programs may execute formula-like cells, even when quoted; review untrusted content before opening.'}),actionsRow(btn({label:'Extract columns',onClick:run})),status,out.panel);
+  },
   'json-to-typescript'(root) {
     const text=textarea({rows:10,value:'{"name":"Ada","scores":[1,2],"active":true}'}),out=resultPanel({label:'TypeScript type',download:true,downloadName:'types.ts',downloadMime:'text/plain;charset=utf-8'}),status=statusLine('');let revision={value:0};
     const invalidate=()=>{revision.value++;out.placeholder();status.set('Input changed. Generate again.');};text.addEventListener('input',invalidate);window.addEventListener('pagehide',()=>revision.value++);
@@ -295,7 +314,7 @@ const defs = {
     const prev=btn({label:'Previous page',variant:'secondary',disabled:true,onClick:()=>{page--;render();}}),next=btn({label:'Next page',variant:'secondary',disabled:true,onClick:()=>{page++;render();}});
     query.addEventListener('input',()=>{page=0;if(parsed)render();});
     const adapter={placeholder:()=>{result.replaceChildren();parsed=null;prev.disabled=true;next.disabled=true;}};
-    root.append(field({label:'CSV input',control:text,hint:'Maximum 1,000,000 characters, 10,000 rows and 256 columns.'}),localDataImport({inp:text,out:adapter,status,revision,accept:'.csv,.tsv,.txt,text/plain,text/csv',title:'Choose a CSV or TSV file',extensions:/\.(?:csv|tsv|txt)$/i}),h('div',{class:'field-row'},field({label:'Delimiter',control:delimiter}),field({label:'Header mode',control:header}),field({label:'Filter rows',control:query,hint:'Case-insensitive literal substring in any field.'})),actionsRow(btn({label:'Open table',onClick:()=>{revision.value++;page=0;try{parsed=parseCsv(text.value,{delimiter:delimiter.value,headerRow:header.value==='yes'});render();}catch(e){parsed=null;result.replaceChildren();prev.disabled=true;next.disabled=true;status.set(e.message,'error');}}}),prev,next),status,result);
+    root.append(field({label:'CSV input',control:text,hint:'Maximum 1,000,000 characters, 10,000 rows and 256 columns.'}),localDataImport({inp:text,out:adapter,status,revision,accept:'.csv,.tsv,.txt,text/plain,text/csv',title:'Choose a CSV or TSV file',extensions:/\.(?:csv|tsv|txt)$/i}),h('div',{class:'field-row'},field({label:'Delimiter',control:delimiter}),field({label:'Header mode',control:header}),field({label:'Filter rows',control:query,hint:'Case-insensitive literal substring in any field.'})),actionsRow(btn({label:'Open table',onClick:()=>{revision.value++;page=0;try{parsed=parseCsv(text.value,{delimiter:delimiter.value,headerRow:header.value==='yes',allowDuplicateHeaders:true});render();}catch(e){parsed=null;result.replaceChildren();prev.disabled=true;next.disabled=true;status.set(e.message,'error');}}}),prev,next),status,result);
   },
 
   'csv-to-json'(root) {

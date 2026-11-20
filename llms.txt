@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 163 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 164 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -47,6 +47,7 @@
 - [HTML Entity Encoder & Decoder](https://i-have-tools.vercel.app/tools/html-entity-converter/): Encode five HTML-sensitive characters or decode supported references.
 - [Slow Motion Calculator](https://i-have-tools.vercel.app/tools/slow-motion-calculator/): Estimate conform duration for footage at a different frame rate.
 - [JSON String Escape and Unescape](https://i-have-tools.vercel.app/tools/json-string-escape/): Encode text as a JSON string literal or decode one string.
+- [CSV Column Extractor](https://i-have-tools.vercel.app/tools/csv-column-extractor/): Select and reorder columns from CSV or delimited text.
 - [CSV Viewer](https://i-have-tools.vercel.app/tools/csv-viewer/): Open CSV or TSV text as a filterable, paginated table.
 - [JSON to TypeScript](https://i-have-tools.vercel.app/tools/json-to-typescript/): Infer a TypeScript type alias from a JSON sample.
 - [PDF Metadata Viewer](https://i-have-tools.vercel.app/tools/pdf-metadata-viewer/): Inspect basic PDF document info locally before sharing.
