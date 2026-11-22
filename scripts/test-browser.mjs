@@ -166,6 +166,16 @@ try {
   for(const box of geometry){assert.ok(box.count>30,'visible watermark ink');assert.ok(Math.abs((box.left+box.right)/2-box.width/2)<15,'centered rendered watermark');assert.ok(box.right-box.left>box.bottom-box.top,'watermark is horizontal');}
   await page.getByLabel('Watermark text').fill('नमस्ते');await page.getByRole('button',{name:'Export watermarked PDF'}).click();await page.locator('#tool-app .status-line').filter({hasText:/printable ASCII/}).waitFor();
   await page.setViewportSize({width:1280,height:800});
+  // Traffic batch: useful references and contextual links remain accessible on mobile and without JavaScript.
+  await page.setViewportSize({width:320,height:844});
+  for(const [id, heading] of [['roman-numeral-converter','Roman numeral reference'],['time-converter','Common time conversions'],['attendance-calculator','Compare recovery and miss buffers'],['robots-txt-generator','Example: test a blocked folder and an exception']]) {
+    await go(id);await page.getByRole('heading',{name:heading}).waitFor();
+    assert.deepEqual((await new AxeBuilder({page}).include('.tool-docs').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} guide accessibility`);
+    const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:innerWidth}));assert.ok(dims.scroll<=dims.viewport+1,`${id} guide overflows mobile`);
+  }
+  const noJsContext=await browser.newContext({javaScriptEnabled:false,viewport:{width:320,height:844}});
+  try {const noJs=await noJsContext.newPage();await noJs.goto(`${base}/tools/time-converter/`);const link=noJs.locator('.tool-docs').getByRole('link',{name:'Find the difference between calendar dates'});assert.equal(await link.getAttribute('href'),'/tools/date-difference/');await link.click();assert.match(noJs.url(),/\/tools\/date-difference\/$/);} finally {await noJsContext.close();}
+  await page.setViewportSize({width:1280,height:800});
   // Discovery: mobile header search, keyboard selection, dismiss and fallback links.
   await page.setViewportSize({ width: 320, height: 844 });
   await go('pdf-merge');

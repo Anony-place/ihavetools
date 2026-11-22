@@ -164,6 +164,17 @@ test('tool pages have steps, FAQ and privacy note', () => {
     assert.match(html, /Related tools/, `${t.id} missing related tools`);
   }
 });
+test('curated guide links are crawlable and references remain visible without scripts', () => {
+ for(const id of ['roman-numeral-converter','time-converter','attendance-calculator','robots-txt-generator']) {
+  const t=tools.find(x=>x.id===id), doc=new JSDOM(readFileSync(join(ROOT,'tools',id,'index.html'),'utf8')).window.document;
+  for(const item of t.guide.flatMap(block=>block.links||[])) {
+   const link=doc.querySelector(`.tool-docs a[href="/tools/${item.id}/"]`);assert.ok(link,`${id} missing guide link to ${item.id}`);assert.equal(link.textContent,item.text);
+  }
+ }
+ for(const [id,term] of [['roman-numeral-converter','MMMCMXCIX'],['time-converter','150 minutes'],['attendance-calculator','48/64 = 75%']]) {
+  const doc=new JSDOM(readFileSync(join(ROOT,'tools',id,'index.html'),'utf8')).window.document;assert.ok(doc.querySelector('.tool-docs').textContent.includes(term),`${id} missing example`);
+ }
+});
 test('tool FAQs reflect visible answers and omit generated alias padding', () => {
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   for (const t of tools) {

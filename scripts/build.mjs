@@ -71,6 +71,14 @@ function guideHtml(tool) {
     if (Array.isArray(b.list) && b.list.length) {
       parts.push(`<ul>${b.list.map((li) => `<li>${esc(li)}</li>`).join('')}</ul>`);
     }
+    if (b.links) {
+      if (!Array.isArray(b.links) || !b.links.length) throw new Error(`Invalid guide links for ${tool.id}`);
+      const links = b.links.map(link => {
+        if (!link || typeof link.text !== 'string' || !link.text.trim() || !tools.some(t => t.id === link.id) || link.id === tool.id) throw new Error(`Invalid guide link for ${tool.id}`);
+        return `<li><a href="/tools/${esc(link.id)}/">${esc(link.text)}</a></li>`;
+      });
+      parts.push(`<ul>${links.join('')}</ul>`);
+    }
     if (b.table && Array.isArray(b.table.head) && Array.isArray(b.table.rows)) {
       const head = b.table.head.map((c) => `<th scope="col">${esc(c)}</th>`).join('');
       const rows = b.table.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('');
