@@ -630,6 +630,10 @@ await test('attendance answers match independent exact brute force for small cla
  }
 });
 
+await test('attendance target comparisons respect exact immediate and term-end boundaries', () => {
+ const rows=stu.attendanceTargetComparison({held:40,attended:28,remaining:20});assert.deepEqual(rows.map(r=>r.targetPct),[75,80,85,90,100]);assert.equal(rows[0].current.classesNeeded,8);assert.equal(rows[0].term.minimumAttend,17);assert.equal(rows[0].term.canMiss,3);assert.equal(rows[1].term.minimumAttend,20);assert.equal(rows[2].term.reachable,false);assert.equal(rows[4].current.impossible,true);assert.equal(rows[4].term.reachable,false);
+ const perfect=stu.attendanceTargetComparison({held:40,attended:40,remaining:0});assert.equal(perfect[4].current.classesCanMiss,0);assert.equal(perfect[4].term.minimumAttend,0);assert.throws(()=>stu.attendanceTargetComparison({held:40,attended:41}),/between 0/);
+});
 await test('attendance scenario uses exact term thresholds and validates future plan', () => {
   for (let held=1;held<=12;held++) for(let attended=0;attended<=held;attended++) for(let remaining=0;remaining<=6;remaining++) for(let plan=0;plan<=remaining;plan++) for(const targetPct of [25,50,75,100]) {
     const r=stu.attendanceScenario({held,attended,remaining,plannedAttend:plan,targetPct});
