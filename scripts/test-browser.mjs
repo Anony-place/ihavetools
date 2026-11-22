@@ -488,6 +488,9 @@ try {
   const emiCsv=await readFile(await (await emiEvent).path(),'utf8');
   assert.match(emiCsv,/Month,Payment,Principal,Interest,Balance/);
   assert.match(emiCsv,/24,50\.00,50\.00,0\.00,0\.00/);
+  await page.getByLabel('Comparison annual rate %').fill('0');await page.getByLabel('Comparison tenure').fill('1');await page.getByRole('button',{name:'Calculate EMI'}).click();
+  const comparisonPanel=page.getByRole('region',{name:'EMI comparison report',exact:true});assert.match(await comparisonPanel.innerText(),/Scenario B: 0% annually, 12 months; EMI 100.00/);const comparisonDownloadWait=page.waitForEvent('download');await comparisonPanel.getByRole('button',{name:'Download'}).click();const comparisonDownload=await comparisonDownloadWait;assert.equal(comparisonDownload.suggestedFilename(),'emi-comparison.txt');assert.match(await readFile(await comparisonDownload.path(),'utf8'),/B minus A: monthly EMI \+50.00/);
+  await page.getByLabel('Comparison tenure').fill('');assert.doesNotMatch(await comparisonPanel.innerText(),/Scenario B/);await comparisonPanel.getByRole('button',{name:'Download'}).click();assert.match(await page.locator('body').innerText(),/Nothing to download yet/);await page.getByRole('button',{name:'Calculate EMI'}).click();assert.match(await page.locator('#tool-app').innerText(),/Enter both the comparison rate and tenure/);await page.getByLabel('Comparison annual rate %').fill('');
   await page.getByLabel('Annual interest rate %').fill('12');
   assert.equal(await page.getByRole('button',{name:'Download monthly CSV'}).count(),0);
   assert.doesNotMatch(await page.locator('#tool-app').innerText(),/Monthly EMI/);

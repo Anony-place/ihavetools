@@ -11,6 +11,16 @@
 
 ---
 
+## EMI scenario comparison and loan-model checks — plan (2026-10-31)
+
+Competitor [loan comparison and amortization workflows](https://excelguru.io/calculators/emi-calculator-with-amortization-schedule/) suggest a useful feature, not measured demand or a ranking guarantee. Improve the existing EMI calculator rather than add a duplicate page. Use the same principal for both scenarios to prevent misleading comparisons; never call an estimate a lender quote.
+
+1. Add an optional second fixed-rate/tenure scenario to the EMI calculator, respecting the selected tenure unit. Require both optional fields together; compare monthly EMI, total repayment and total interest, including signed differences, and make a copyable/downloadable report with both assumptions. Keep existing schedule and CSV explicitly baseline-only.
+2. Invalidate all comparison and schedule output on edits; do not silently omit an invalid comparison. Disclose independently rounded figures, excluded fees, insurance, rate changes and lender rules. Share links must include comparison inputs only with the existing opt-in privacy warning.
+3. Test zero rate, equal/different scenarios, invalid/missing inputs, short and long terms, schedule sums and amortization invariants. Add DOM, mobile Chromium, accessibility, downloaded-report and stale-data tests. Run complete checks/audit, one PR, merge only after CI and preview, verify production.
+
+---
+
 ## Working-day schedules and date reports — plan (2026-10-31)
 
 Research on [date duration workflows](https://simcalculo.com/en/date-duration-calculator/) highlights endpoint ambiguity; it does not establish demand or guarantee rankings. Improve existing tools rather than duplicate them. A business-day schedule should make exclusions auditable while retaining manual holidays and existing start-date semantics.

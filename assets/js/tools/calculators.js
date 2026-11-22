@@ -116,6 +116,12 @@ export function emiCalc(principal, annualRatePct, months) {
   }
   return { emi, total, totalInterest: total - principal, years, schedule };
 }
+/** Compare two fixed-rate loans with the same principal; deltas are B minus A. */
+export function compareEmiScenarios(principal, rateA, monthsA, rateB, monthsB) {
+  const a = emiCalc(principal, rateA, monthsA);
+  const b = emiCalc(principal, rateB, monthsB);
+  return { a, b, monthlyDifference: b.emi - a.emi, interestDifference: b.totalInterest - a.totalInterest, repaymentDifference: b.total - a.total };
+}
 export function tipCalc(bill, tipPct, people, { roundTip = false, roundTotal = false } = {}) {
   if (!Number.isFinite(bill) || bill < 0 || bill > 1e12) throw new Error('Bill amount must be between 0 and 1 trillion.');
   if (!(tipPct >= 0 && tipPct <= 500)) throw new Error('Tip percentage must be between 0 and 500.');
@@ -884,6 +890,9 @@ const defs = {
     const rate = input({ type: 'number', step: 'any', placeholder: 'e.g. 8.5', value: '8.5' });
     const years = input({ type: 'number', step: 'any', placeholder: 'e.g. 20', value: '20' });
     const monthsOnly = switchChip({ label: 'Tenure is in months' });
+    const compareRate = input({type:'number',step:'any',placeholder:'Optional'});
+    const compareTenure = input({type:'number',step:'any',placeholder:'Optional'});
+    const compareOut = resultPanel({label:'EMI comparison report',download:true,downloadName:'emi-comparison.txt',placeholder:'Enter both comparison fields and calculate to see a report.'});
     const grid = statsGrid();
     const status = statusLine('');
     const scheduleWrap = h('div', {});
@@ -898,11 +907,11 @@ const defs = {
       yearSelect.addEventListener('change', renderMonth);
       const csv = () => ['Month,Payment,Principal,Interest,Balance', ...r.schedule.map(row => [row.month, row.payment, row.principal, row.interest, row.balance].map((v, i) => i ? v.toFixed(2) : String(v)).join(','))].join('\r\n') + '\r\n';
       scheduleWrap.replaceChildren(
-        h('h3', { text: 'Year-by-year balance', style: 'margin:20px 0 10px' }),
+        h('h3', { text: 'Primary loan: year-by-year balance', style: 'margin:20px 0 10px' }),
         table({ headers: ['Year', 'Paid so far', 'Interest so far', 'Balance left'], rows: r.years.map(y => [`Y${y.year}`, money(y.paid), money(y.interestTotal), money(y.balance)]) }),
-        h('h3', { text: 'Monthly amortization', style: 'margin:20px 0 10px' }),
+        h('h3', { text: 'Primary loan: monthly amortization', style: 'margin:20px 0 10px' }),
         field({ label: 'Schedule year', control: yearSelect }), monthlyWrap,
-        h('p', { class: 'hint', text: 'CSV contains all months and loan amounts. Rows are rounded independently to two decimals, so displayed totals may not add exactly. Keep the file private.' }),
+        h('p', { class: 'hint', text: 'CSV contains all months for the primary loan and loan amounts. Rows are rounded independently to two decimals, so displayed totals may not add exactly. Keep the file private.' }),
         downloadButton(() => current === r ? csv() : '', 'emi-schedule.csv', { label: 'Download monthly CSV', mime: 'text/csv;charset=utf-8', small: false }));
       renderMonth();
     };
@@ -910,7 +919,22 @@ const defs = {
       const P = num(principal), R = num(rate);
       const n = num(years) * (monthsOnly.querySelector('input').checked ? 1 : 12);
       try {
-        const r = emiCalc(P, R, n); current = r;
+        const wantsComparison = compareRate.value.trim() !== '' || compareTenure.value.trim() !== '';
+        if (wantsComparison && (!compareRate.value.trim() || !compareTenure.value.trim())) throw new Error('Enter both the comparison rate and tenure, or leave both blank.');
+        const rateB = num(compareRate), nB = num(compareTenure) * (monthsOnly.querySelector('input').checked ? 1 : 12);
+        const comparison = wantsComparison ? compareEmiScenarios(P, R, n, rateB, nB) : null;
+        const r = comparison ? comparison.a : emiCalc(P, R, n); current = r;
+        if (comparison) {
+          const signed = value => `${value > 0 ? '+' : value < 0 ? '−' : ''}${money(Math.abs(value))}`;
+          compareOut.set([
+            'Fixed-rate EMI comparison (B minus A). Same loan amount; figures rounded independently.',
+            `Loan amount: ${money(P)}`,
+            `Scenario A: ${R}% annually, ${n} months; EMI ${money(r.emi)}; interest ${money(r.totalInterest)}; total ${money(r.total)}.`,
+            `Scenario B: ${rateB}% annually, ${nB} months; EMI ${money(comparison.b.emi)}; interest ${money(comparison.b.totalInterest)}; total ${money(comparison.b.total)}.`,
+            `B minus A: monthly EMI ${signed(comparison.monthlyDifference)}; total interest ${signed(comparison.interestDifference)}; total repayment ${signed(comparison.repaymentDifference)}.`,
+            'Monthly reducing balance; fixed rates. Fees, taxes, insurance, rate changes, prepayments and lender-specific rounding and day-count rules excluded. Not a lender quote.'
+          ].join('\n'));
+        } else compareOut.placeholder();
         grid.set([
           { label: 'Monthly EMI', value: money(r.emi), kind: 'good' },
           { label: 'Total interest', value: money(r.totalInterest), kind: 'warn' },
@@ -919,19 +943,22 @@ const defs = {
         ]);
         renderSchedule(r);
         status.set(`EMI ${money(r.emi)} per month for ${n} payments. Fixed rate and monthly reducing balance assumed; fees, taxes, rate changes and lender-specific rounding excluded.`, 'success');
-      } catch (e) { current = null; grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set(e.message, 'error'); }
+      } catch (e) { current = null; grid.replaceChildren(); scheduleWrap.replaceChildren(); compareOut.placeholder(); status.set(e.message, 'error'); }
     };
-    const invalidate = () => { current = null; grid.replaceChildren(); scheduleWrap.replaceChildren(); status.set('Inputs changed. Calculate again.', 'info'); };
-    [principal, rate, years, monthsOnly.querySelector('input')].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
+    const invalidate = () => { current = null; grid.replaceChildren(); scheduleWrap.replaceChildren(); compareOut.placeholder(); status.set('Inputs changed. Calculate again.', 'info'); };
+    [principal, rate, years, compareRate, compareTenure, monthsOnly.querySelector('input')].forEach(el => { el.addEventListener('input', invalidate); el.addEventListener('change', invalidate); });
     root.append(h('p', { class: 'hint', text: 'Estimate for a fixed-rate loan with monthly reducing-balance interest. Actual lender schedules, fees, rate changes and rounding can differ.' }),
       field({ label: 'Loan amount', control: principal }),
       h('div', { class: 'field-row' },
         field({ label: 'Annual interest rate %', control: rate }),
         field({ label: 'Tenure', control: years, hint: 'Years (or months if toggled below)' })),
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, monthsOnly),
-      actionsRow(btn({ label: 'Calculate EMI', icon: 'bank', onClick: run })), grid, scheduleWrap, status);
+      h('h3',{text:'Compare another loan scenario (optional)'}),
+      h('p',{class:'hint',text:'Uses the same loan amount and the same tenure unit selected above. Enter both fields or leave both blank. Comparison excludes fees and lender-specific terms.'}),
+      h('div',{class:'field-row'},field({label:'Comparison annual rate %',control:compareRate}),field({label:'Comparison tenure',control:compareTenure})),
+      actionsRow(btn({ label: 'Calculate EMI', icon: 'bank', onClick: run })), grid, compareOut.panel, scheduleWrap, status);
     shareState(root, [
-      ['amount', principal], ['rate', rate], ['tenure', years],
+      ['amount', principal], ['rate', rate], ['tenure', years], ['compareRate', compareRate], ['compareTenure', compareTenure],
       ['unit', { get: () => (monthsOnly.querySelector('input').checked ? 'months' : ''), set: (v) => { monthsOnly.querySelector('input').checked = v === 'months'; } }],
     ], run);
   },
