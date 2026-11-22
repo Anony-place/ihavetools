@@ -429,7 +429,7 @@ await domTest('emi-calculator: shows EMI and schedule', async () => {
   nums[0].value = '100000'; nums[1].value = '12'; nums[2].value = '1';
   click(btnByLabel(app, 'Calculate EMI'));
   assert.match(app.textContent, /Monthly EMI/);
-  assert.match(app.textContent, /Year-by-year balance/);
+  assert.match(app.textContent, /year-by-year balance/);
 });
 await domTest('Compound growth old share links retain end-of-month and years defaults', async () => {
   const app=await loadToolPage('compound-interest-calculator','calculators','?principal=0&rate=12&years=1&freq=12&contrib=100');
@@ -464,13 +464,20 @@ await domTest('Loan prepayment schedules navigate and invalidate on loan edits',
   const nums=app.querySelectorAll('input[type=number]'); nums[0].value='100000'; fire(nums[0],'input');
   assert.doesNotMatch(app.textContent,/Monthly repayment schedule|Interest saved/); assert.equal(btnByLabel(app,'Download schedules CSV'),undefined);
 });
+await domTest('EMI comparison uses a shared amount and invalidates reports', async () => {
+ const app=await loadToolPage('emi-calculator','calculators'), nums=app.querySelectorAll('input[type=number]'), out=app.querySelector('[aria-label="EMI comparison report output"]');
+ nums[0].value='1200';nums[1].value='0';nums[2].value='1';nums[3].value='0';nums[4].value='2';click(btnByLabel(app,'Calculate EMI'));assert.match(out.textContent,/Scenario A: 0% annually, 12 months; EMI 100.00/);assert.match(out.textContent,/Scenario B: 0% annually, 24 months; EMI 50.00/);assert.match(out.textContent,/monthly EMI −50.00/);
+ nums[4].value='';fire(nums[4],'input');assert.doesNotMatch(out.textContent,/Scenario A/);click(btnByLabel(app,'Calculate EMI'));assert.match(statusText(document),/Enter both the comparison rate and tenure/);assert.equal(btnByLabel(app,'Download monthly CSV'),undefined);
+ nums[4].value='2';fire(nums[4],'input');nums[3].value='-1';click(btnByLabel(app,'Calculate EMI'));assert.match(statusText(document),/interest rate/);assert.doesNotMatch(out.textContent,/Scenario B/);
+ nums[3].value='';nums[4].value='';click(btnByLabel(app,'Calculate EMI'));assert.match(app.textContent,/Monthly EMI/);assert.doesNotMatch(out.textContent,/Scenario A/);
+});
 await domTest('EMI monthly detail remains interactive and inputs invalidate exports', async () => {
   const app=await loadToolPage('emi-calculator','calculators');
   const nums=app.querySelectorAll('input[type=number]'); nums[0].value='1200'; nums[1].value='0'; nums[2].value='2';
-  click(btnByLabel(app,'Calculate EMI')); assert.match(app.textContent,/Monthly amortization/);
+  click(btnByLabel(app,'Calculate EMI')); assert.match(app.textContent,/monthly amortization/);
   const select=app.querySelector('select'); select.value='2'; fire(select,'change');
   assert.match(app.textContent,/Month/); assert.match(app.textContent,/24/); assert.ok(btnByLabel(app,'Download monthly CSV'));
-  nums[1].value='12'; fire(nums[1],'input'); assert.doesNotMatch(app.textContent,/Monthly amortization|Monthly EMI/); assert.equal(btnByLabel(app,'Download monthly CSV'),undefined);
+  nums[1].value='12'; fire(nums[1],'input'); assert.doesNotMatch(app.textContent,/monthly amortization|Monthly EMI/); assert.equal(btnByLabel(app,'Download monthly CSV'),undefined);
 });
 await domTest('sip-calculator: shows maturity and growth table', async () => {
   const app = await loadToolPage('sip-calculator', 'calculators');

@@ -1207,6 +1207,15 @@ await test('Roman lists and bounded charts validate all inputs atomically', () =
   assert.equal(conv.romanRange('1','200').length,200);
   for (const [a,b] of [['1','201'],['2','1'],['0','2'],['1','4000'],['1.0','2'],['1e2','200'],['','2']]) assert.throws(()=>conv.romanRange(a,b));
 });
+await test('EMI comparison, amortization identities and scenario bounds', () => {
+ let r=calc.compareEmiScenarios(1200,0,12,0,24); assert.equal(r.a.emi,100);assert.equal(r.b.emi,50);assert.equal(r.monthlyDifference,-50);assert.equal(r.interestDifference,0);assert.equal(r.repaymentDifference,0);
+ r=calc.compareEmiScenarios(100000,12,12,9,24);assert.ok(r.monthlyDifference<0);assert.ok(r.interestDifference>0);
+ for (const [p,rate,months] of [[100000,12,12],[1e6,8.5,240],[1200,0,12],[100,1e-8,1200]]) {
+  const loan=calc.emiCalc(p,rate,months), principal=loan.schedule.reduce((a,x)=>a+x.principal,0), interest=loan.schedule.reduce((a,x)=>a+x.interest,0);
+  assert.ok(Math.abs(principal-p)<Math.max(1e-7,p*1e-9));assert.ok(Math.abs(interest-loan.totalInterest)<Math.max(1e-7,loan.total*1e-9));assert.equal(loan.schedule.at(-1).balance,0);assert.ok(loan.schedule.every((row,i)=>row.balance>=0 && (i===0||row.balance<=loan.schedule[i-1].balance)));
+ }
+ for(const args of [[0,1,12,2,12],[100,1,12,-1,12],[100,1,12,2,1.5],[100,1,1201,2,12]]) assert.throws(()=>calc.compareEmiScenarios(...args));
+});
 await test('working date schedules honor holidays and direction without truncation', () => {
   assert.deepEqual(dt.workingDateSchedule('2024-02-28',3,'forward','sat_sun','2024-02-29'),['2024-03-01','2024-03-04','2024-03-05']);
   assert.deepEqual(dt.workingDateSchedule('2024-03-04',2,'backward','sat_sun','2024-03-01'),['2024-02-29','2024-02-28']);
