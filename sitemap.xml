@@ -139,6 +139,15 @@
     <loc>https://i-have-tools.vercel.app/tools/json-to-typescript/</loc>
   </url>
   <url>
+    <loc>https://i-have-tools.vercel.app/tools/pdf-text-extractor/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/pdf-text-watermark/</loc>
+  </url>
+  <url>
+    <loc>https://i-have-tools.vercel.app/tools/pdf-page-size-inspector/</loc>
+  </url>
+  <url>
     <loc>https://i-have-tools.vercel.app/tools/pdf-metadata-viewer/</loc>
   </url>
   <url>

@@ -47,6 +47,48 @@ export function parseRanges(text, pageCount, maxPages = Infinity) {
   if (!list.length) throw new Error('No pages selected.');
   return list;
 }
+/** Extract a bounded set of PDF.js text-layer pages without fetching external URLs.
+ * Text item order and whitespace are approximate; this is not OCR. */
+export async function extractPdfText(document, pages, isCurrent = () => true) {
+  if (!document || !Number.isInteger(document.numPages) || document.numPages < 1 || document.numPages > 1000) throw new Error('PDF must contain between 1 and 1,000 pages.');
+  if (!Array.isArray(pages) || !pages.length || pages.length > 50 || pages.some((n, i) => !Number.isInteger(n) || n < 1 || n > document.numPages || (i > 0 && n <= pages[i - 1]))) throw new Error('Select 1 to 50 distinct pages in ascending order.');
+  const maxChars = 1000000, maxItems = 200000;
+  let total = 0, items = 0;
+  const sections = [];
+  const current = () => { if (!isCurrent()) throw new Error('Extraction cancelled because the input changed.'); };
+  for (const pageNumber of pages) {
+    current();
+    const page = await document.getPage(pageNumber);
+    let reader;
+    try {
+      current();
+      reader = page.streamTextContent().getReader();
+      const parts = [];
+      for (;;) {
+        current();
+        const chunk = await reader.read();
+        current();
+        if (chunk.done) break;
+        if (!Array.isArray(chunk.value?.items)) throw new Error('Could not read PDF text items.');
+        for (const item of chunk.value.items) {
+          if (++items > maxItems) throw new Error('Text extraction exceeds the 200,000-item limit.');
+          if (typeof item.str !== 'string') continue;
+          const text = item.str + (item.hasEOL ? '\n' : '');
+          total += text.length;
+          if (total > maxChars) throw new Error('Extracted text exceeds the 1,000,000-character limit.');
+          parts.push(text);
+        }
+      }
+      sections.push({page: pageNumber, text: parts.join('')});
+    } finally {
+      if (reader) { try { await reader.cancel(); } catch {} }
+      page.cleanup();
+    }
+  }
+  current();
+  return sections;
+}
+
 /** Page numbers for rotation scopes refer to the original PDF. */
 export function pdfRotationTargets(scope, pageCount, ranges = '') {
   if (!Number.isSafeInteger(pageCount) || pageCount < 1) throw new Error('The PDF has no pages.');
@@ -206,6 +248,46 @@ export async function organizePdf(PDFLib, source, pages, numbering = null) {
   return out.save();
 }
 
+/** Report raw PDF boxes and UserUnit; dimensions are not assumed to be print dimensions. */
+export function inspectPdfPages(PDFLib, doc) {
+  const count = doc.getPageCount();
+  if (!Number.isInteger(count) || count < 1 || count > 1000) throw new Error('Page inspection supports PDFs with 1 to 1,000 pages.');
+  return doc.getPages().map((page, index) => {
+    const media = page.getMediaBox(), crop = page.getCropBox(), rotation = page.getRotation().angle;
+    const rawUnit = page.node.get(PDFLib.PDFName.of('UserUnit'));
+    const unit = rawUnit === undefined ? 1 : rawUnit instanceof PDFLib.PDFNumber ? rawUnit.asNumber() : null;
+    const validBox = box => [box.x,box.y,box.width,box.height].every(Number.isFinite) && box.width > 0 && box.height > 0;
+    const validUnit = Number.isFinite(unit) && unit > 0 && unit <= 75000;
+    const validRotation = Number.isFinite(rotation) && Number.isInteger(rotation) && rotation % 90 === 0;
+    const contained = validBox(media) && validBox(crop) && crop.x >= media.x && crop.y >= media.y && crop.x + crop.width <= media.x + media.width && crop.y + crop.height <= media.y + media.height;
+    return {page:index + 1, media, crop, rotation, userUnit:unit, interpretable: validUnit && validRotation && contained};
+  });
+}
+
+/** Add a centered horizontal watermark on selected pages, preserving the source document.
+ * Does not remove information, verify signatures or guarantee PDF feature preservation. */
+export async function watermarkPdf(PDFLib, doc, pages, options) {
+  const {text, size, opacity} = options || {};
+  if (typeof text !== 'string' || !/^[ -~]{1,100}$/.test(text) || !text.trim()) throw new Error('Enter 1 to 100 printable ASCII characters for the watermark.');
+  if (!Number.isInteger(size) || size < 8 || size > 144 || !Number.isFinite(opacity) || opacity < 0.1 || opacity > 1) throw new Error('Choose a whole font size from 8 to 144 and opacity from 0.1 to 1.');
+  const info = inspectPdfPages(PDFLib, doc);
+  if (!Array.isArray(pages) || !pages.length || pages.length > 100 || pages.some((n, i) => !Number.isInteger(n) || n < 1 || n > info.length || (i && n <= pages[i-1]))) throw new Error('Select 1 to 100 distinct pages in ascending order.');
+  const font = await doc.embedFont(PDFLib.StandardFonts.Helvetica);
+  const textWidth = font.widthOfTextAtSize(text, size), textHeight = font.heightAtSize(size, {descender:false});
+  const placements = pages.map(n => {
+    const {crop, rotation, userUnit, interpretable} = info[n - 1];
+    if (!interpretable || userUnit !== 1) throw new Error(`Page ${n} has unsupported geometry or UserUnit.`);
+    const angle = ((rotation % 360) + 360) % 360;
+    const width = angle % 180 ? crop.height : crop.width, height = angle % 180 ? crop.width : crop.height;
+    if (textWidth + 36 > width || textHeight + 36 > height) throw new Error(`Watermark is too large for page ${n}. Reduce the font size or text length.`);
+    const x = (width - textWidth) / 2, y = (height - textHeight) / 2;
+    const [px,py] = angle === 0 ? [x,y] : angle === 90 ? [crop.width-y,x] : angle === 180 ? [crop.width-x,crop.height-y] : [y,crop.height-x];
+    return {page:doc.getPage(n - 1), x:crop.x + px, y:crop.y + py, angle};
+  });
+  for (const place of placements) place.page.drawText(text, {x:place.x,y:place.y,size,font,opacity,rotate:PDFLib.degrees(place.angle),color:PDFLib.rgb(0,0,0)});
+  return doc.save();
+}
+
 /* ── shared UI bits ── */
 function makeZone(multiple, onFiles, label, onReject) {
   const zone = dropzone({ accept: 'application/pdf,.pdf', multiple, title: label || 'Choose a PDF or drop it here', sub: 'Processed locally with pdf-lib — never uploaded', onReject, onFiles: (files) => { onFiles(multiple ? files : files.slice(0, 1)); zone.querySelector('input[type=file]').value = ''; } });
@@ -236,6 +318,101 @@ export function inspectPdfInfo(doc, filename, size) {
 }
 
 const defs = {
+  'pdf-text-extractor'(root) {
+    let file=null, revision=0, task=null;
+    const status=statusLine('Choose a PDF to begin.');
+    const pages=input({type:'text',value:'1',placeholder:'e.g. 1-3, 7'});
+    const out=resultPanel({label:'Extracted PDF text',download:true,downloadName:'pdf-text.txt'});
+    const cancel=()=>{ revision++; out.placeholder(); if(task){try{Promise.resolve(task.destroy()).catch(()=>{});}catch{} task=null;} };
+    window.addEventListener('pagehide',cancel,{once:true});
+    pages.addEventListener('input',()=>{cancel();status.set('Page selection changed. Extract again.');});
+    const zone=dropzone({accept:'.pdf,application/pdf',title:'Choose a PDF file',sub:'One unencrypted PDF up to 20 MiB, processed locally.',onReject:()=>{cancel();file=null;zone.clear();status.set('Choose a PDF no larger than 20 MiB.','error');},onFiles:files=>{
+      cancel();zone.clear();const f=files[0];
+      if(!f || !(/\.pdf$/i.test(f.name)||f.type==='application/pdf') || f.size>20*1024*1024){file=null;status.set('Choose a PDF no larger than 20 MiB.','error');return;}
+      file=f;status.set(`PDF selected: ${f.name}. Choose pages and extract.`, 'info');
+    }});
+    const run=async()=>{
+      if(!file){status.set('Choose a PDF first.','warning');return;}
+      cancel(); const token=revision, chosen=file, selection=pages.value, current=()=>token===revision;
+      status.set('Extracting text locally…');
+      try{
+        if(selection.length>2000)throw new Error('Page selection exceeds 2,000 characters.');
+        const lib=await import('/assets/vendor/pdfjs.min.mjs');if(!current())return;
+        lib.GlobalWorkerOptions.workerSrc='/assets/vendor/pdfjs.worker.min.mjs';
+        const bytes=await readFile(chosen,'buffer');if(!current())return;
+        const loading=lib.getDocument({data:new Uint8Array(bytes),isEvalSupported:false,enableXfa:false,useSystemFonts:false,disableFontFace:true});task=loading;
+        const doc=await loading.promise;if(!current())return;
+        if(doc.numPages<1||doc.numPages>1000)throw new Error('PDF must contain between 1 and 1,000 pages.');
+        let selected;try{selected=parseRanges(selection,doc.numPages,50);}catch(e){throw new Error(e.message.replace('for ZIP output','for text extraction'));}
+        const result=await extractPdfText(doc,selected,current);if(!current())return;
+        const report=result.map(p=>`--- Page ${p.page} ---\n${p.text || '[No extractable text found]'}`).join('\n\n');
+        out.set(report);status.set('Text layer extracted. Scans need OCR; reading order and spacing may be inaccurate.','success');
+      }catch(e){if(current()){out.placeholder();status.set(/password/i.test(`${e.name} ${e.message}`)?'Password-protected PDFs are not supported.':`Could not extract text: ${e.message}`, 'error');}}
+      finally{if(current() && task){const finished=task;task=null;try{await finished.destroy();}catch{}}}
+    };
+    root.append(zone,field({label:'Pages to extract',control:pages,hint:'Enter up to 50 pages, for example 1-3, 7. Pages are reported in document order.'}),actionsRow(btn({label:'Extract text',onClick:run}),btn({label:'Clear PDF',variant:'ghost',onClick:()=>{cancel();file=null;zone.clear();status.set('Cleared.');}})),status,out.panel,h('p',{class:'hint',text:'Text layer only, not OCR. Scanned pages may have no text; columns, symbols, spacing and reading order can be wrong. Review the output.'}));
+  },
+
+  'pdf-text-watermark'(root) {
+    let file=null,revision=0;
+    const status=statusLine('Choose a PDF to begin.'),pages=input({type:'text',value:'1',placeholder:'e.g. 1-3, 7'}),text=input({type:'text',value:'DRAFT',maxlength:100}),size=input({type:'number',min:8,max:144,step:1,value:'36'}),opacity=input({type:'number',min:0.1,max:1,step:0.1,value:'0.5'});
+    const invalidate=()=>{revision++;};
+    window.addEventListener('pagehide',invalidate,{once:true});
+    for(const control of [pages,text,size,opacity])control.addEventListener('input',()=>{invalidate();status.set('Settings changed. Export again.');});
+    const zone=dropzone({accept:'.pdf,application/pdf',title:'Choose a PDF file',sub:'One unencrypted PDF up to 20 MiB, processed locally.',onReject:()=>{invalidate();file=null;zone.clear();status.set('Choose a PDF no larger than 20 MiB.','error');},onFiles:files=>{
+      invalidate();zone.clear();const f=files[0];
+      if(!f||!(/\.pdf$/i.test(f.name)||f.type==='application/pdf')||f.size>20*1024*1024){file=null;status.set('Choose a PDF no larger than 20 MiB.','error');return;}
+      file=f;status.set(`PDF selected: ${f.name}. Review the settings and export.`);
+    }});
+    const run=async()=>{
+      if(!file){status.set('Choose a PDF first.','warning');return;}
+      const token=++revision, chosen=file, selection=pages.value, options={text:text.value,size:size.value===''?NaN:Number(size.value),opacity:opacity.value===''?NaN:Number(opacity.value)},current=()=>token===revision;
+      status.set('Creating watermarked PDF locally…');
+      try{
+        if(selection.length>2000)throw new Error('Page selection exceeds 2,000 characters.');
+        const lib=await loadPdfLib();if(!current())return;
+        const bytes=await readFile(chosen,'buffer');if(!current())return;
+        const doc=await lib.PDFDocument.load(bytes,{updateMetadata:false,ignoreEncryption:false});if(!current())return;
+        let selected;try{selected=parseRanges(selection,doc.getPageCount(),100);}catch(e){throw new Error(e.message.replace('for ZIP output','for watermarking'));}
+        const output=await watermarkPdf(lib,doc,selected,options);if(!current())return;
+        const saved=downloadBlob(new Blob([output],{type:'application/pdf'}),`watermarked-${chosen.name.replace(/\.pdf$/i,'')}.pdf`);
+        status.set(saved?'Download requested. Review every exported page and retain the original.':'Could not request the download in this browser.',saved?'success':'error');
+      }catch(e){if(current())status.set(`Could not watermark this PDF: ${e.message}. Encrypted or damaged PDFs may not be supported.`, 'error');}
+    };
+    root.append(zone,field({label:'Pages to watermark',control:pages,hint:'Up to 100 pages, for example 1-3, 7.'}),field({label:'Watermark text',control:text,hint:'1–100 printable ASCII characters. Centered horizontally in black.'}),h('div',{class:'field-row'},field({label:'Font size (points)',control:size}),field({label:'Opacity',control:opacity,hint:'0.1 (faint) to 1 (opaque).'})),actionsRow(btn({label:'Export watermarked PDF',icon:'download',onClick:run}),btn({label:'Clear PDF',variant:'ghost',onClick:()=>{invalidate();file=null;zone.clear();status.set('Cleared.');}})),status,h('p',{class:'hint',text:'Watermarks are not redaction or access control. They may cover content. PDF edits can invalidate signatures or affect forms, bookmarks and other features. Review the exported PDF and keep the original.'}));
+  },
+
+  'pdf-page-size-inspector'(root) {
+    const out = resultPanel({label:'PDF page sizes',download:true,downloadName:'pdf-page-sizes.txt'}), status = statusLine('Choose a PDF to inspect.');
+    let revision = 0;
+    const reset = () => { revision++; out.placeholder(); };
+    window.addEventListener('pagehide',reset,{once:true});
+    const zone = dropzone({accept:'.pdf,application/pdf',title:'Choose a PDF file',sub:'One unencrypted PDF up to 20 MiB. Processed locally.',onReject:()=>{reset();zone.clear();status.set('Choose a PDF no larger than 20 MiB.','error');},onFiles:async files=>{
+      reset(); zone.clear(); const token=revision;
+      try {
+        const file=files[0];
+        if (!file || !(/\.pdf$/i.test(file.name) || file.type === 'application/pdf') || file.size > 20*1024*1024) throw new Error('Choose a PDF no larger than 20 MiB.');
+        status.set('Reading PDF locally…');
+        const lib=await loadPdfLib(); if (token!==revision) return;
+        const bytes=await readFile(file,'buffer'); if (token!==revision) return;
+        const doc=await lib.PDFDocument.load(bytes,{updateMetadata:false,ignoreEncryption:false}); if (token!==revision) return;
+        const pages=inspectPdfPages(lib,doc);
+        const num=n=>Number.isFinite(n) ? String(Math.round(n*1000)/1000) : 'unreadable';
+        const box=b=>`x=${num(b.x)}, y=${num(b.y)}, width=${num(b.width)}, height=${num(b.height)}`;
+        const lines=['PDF page geometry','Box values are raw PDF user-space units; 72 units/inch only when UserUnit is 1. Print scaling may change physical output.',''];
+        for (const p of pages) {
+          lines.push(`Page ${p.page}`,`  MediaBox: ${box(p.media)}`,`  CropBox: ${box(p.crop)}`,`  Rotation: ${num(p.rotation)} degrees`,`  UserUnit: ${p.userUnit === null ? 'unreadable' : num(p.userUnit)}`);
+          if (p.interpretable) {
+            const angle=((p.rotation%360)+360)%360, w=(angle%180?p.crop.height:p.crop.width)*p.userUnit, h=(angle%180?p.crop.width:p.crop.height)*p.userUnit;
+            lines.push(`  Visible crop size after rotation: ${num(w/72)} × ${num(h/72)} inches (${num(w*25.4/72)} × ${num(h*25.4/72)} mm), before print scaling`);
+          } else lines.push('  Physical size unavailable: unsupported or invalid geometry / UserUnit.');
+          lines.push('');
+        }
+        out.set(lines.join('\n')); status.set(`Inspected ${pages.length} pages. Print scaling may change output size.`, 'success');
+      } catch(e) { if(token===revision){out.placeholder(); status.set(`Could not inspect this PDF: ${e.message}. Encrypted or damaged PDFs may not be supported.`, 'error');} }
+    }});
+    root.append(zone,actionsRow(btn({label:'Clear PDF',variant:'ghost',onClick:()=>{reset();zone.clear();status.set('Cleared.');}})),status,out.panel,h('p',{class:'hint',text:'Shows page boxes, rotation and UserUnit; not a print preview. Does not modify the document. Encrypted and some malformed files are unsupported.'}));
+  },
   'pdf-metadata-viewer'(root) {
     const out=resultPanel({label:'PDF document info'}),status=statusLine('Choose a PDF to inspect.');let revision=0;
     const reset=()=>{revision++;out.placeholder();}; window.addEventListener('pagehide',reset,{once:true});

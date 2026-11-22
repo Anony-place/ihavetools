@@ -1392,6 +1392,34 @@ await domTest('JSON compare reports structural paths safely and rejects invalid 
   assert.match(app.textContent, /CHANGED pointer "\/b"/); assert.equal(app.querySelector('.result-body img'), null);
   b.value = '{'; click(btnByLabel(app, 'Compare JSON')); assert.match(app.textContent, /Right JSON is invalid/);
 });
+await domTest('PDF extractor mounts and guards missing files and clearing', async () => {
+ const app=await loadToolPage('pdf-text-extractor','pdf');click(btnByLabel(app,'Extract text'));assert.match(statusText(document),/Choose a PDF first/);
+ const pages=[...app.querySelectorAll('input')].find(el=>el.value==='1');pages.value='2';fire(pages,'input');assert.match(statusText(document),/Page selection changed/);
+ click(btnByLabel(app,'Clear PDF'));assert.match(statusText(document),/Cleared/);assert.doesNotMatch(resultText(document),/Page 2/);
+});
+await domTest('PDF watermark validates and cancels stale exports', async () => {
+ const lib=await import('pdf-lib');let resume;const originalURL=URL.createObjectURL;let downloads=0;
+ window.PDFLib={...lib,PDFDocument:{...lib.PDFDocument,load:(bytes,...args)=>new Promise(resolve=>{resume=()=>resolve(lib.PDFDocument.load(new Uint8Array(bytes),...args));})}};
+ URL.createObjectURL=()=>{downloads++;return 'blob:test';};
+ try{
+  const src=await lib.PDFDocument.create();src.addPage([500,700]);const app=await loadToolPage('pdf-text-watermark','pdf');
+  const e=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(e,'dataTransfer',{value:{files:[new File([await src.save()],'test.pdf',{type:'application/pdf'})]}});app.querySelector('.dropzone').dispatchEvent(e);
+  click(btnByLabel(app,'Export watermarked PDF'));await new Promise(r=>setTimeout(r,30));assert.equal(typeof resume,'function');
+  const text=[...app.querySelectorAll('input')].find(el=>el.value==='DRAFT');text.value='CHANGED';fire(text,'input');resume();await new Promise(r=>setTimeout(r,100));assert.equal(downloads,0);assert.match(statusText(document),/Settings changed/);
+  click(btnByLabel(app,'Export watermarked PDF'));await new Promise(r=>setTimeout(r,30));resume();await new Promise(r=>setTimeout(r,100));assert.equal(downloads,1);assert.match(statusText(document),/Download requested/);
+  click(btnByLabel(app,'Clear PDF'));click(btnByLabel(app,'Export watermarked PDF'));assert.match(statusText(document),/Choose a PDF first/);
+ }finally{URL.createObjectURL=originalURL;}
+});
+await domTest('PDF page size inspector reads real geometry and clears stale results', async () => {
+ const lib=await import('pdf-lib'); window.PDFLib={...lib,PDFDocument:{create:(...args)=>lib.PDFDocument.create(...args),load:(bytes,...args)=>lib.PDFDocument.load(new Uint8Array(bytes),...args)}};
+ const source=await lib.PDFDocument.create(); const page=source.addPage([612,792]);page.setCropBox(36,72,540,648);page.setRotation(lib.degrees(90));
+ const app=await loadToolPage('pdf-page-size-inspector','pdf');
+ const drop=file=>{const event=new window.Event('drop',{bubbles:true,cancelable:true});Object.defineProperty(event,'dataTransfer',{value:{files:[file]}});app.querySelector('.dropzone').dispatchEvent(event);};
+ drop(new File([await source.save()],'sample.pdf',{type:'application/pdf'}));await new Promise(r=>setTimeout(r,100));
+ assert.match(resultText(document),/MediaBox: x=0, y=0, width=612, height=792/);assert.match(resultText(document),/CropBox: x=36, y=72, width=540, height=648/);assert.match(resultText(document),/9 × 7.5 inches/);
+ click(btnByLabel(app,'Clear PDF'));assert.doesNotMatch(resultText(document),/MediaBox/);assert.match(statusText(document),/Cleared/);
+ drop(new File(['invalid'],'broken.pdf',{type:'application/pdf'}));await new Promise(r=>setTimeout(r,100));assert.match(statusText(document),/Could not inspect/);assert.doesNotMatch(resultText(document),/MediaBox/);
+});
 await domTest('PDF organizer accepts a drop, reorders, rotates, removes and exports actual PDF', async () => {
   const lib = await import('pdf-lib'); window.PDFLib = { ...lib, PDFDocument: { create: (...args) => lib.PDFDocument.create(...args), load: (bytes, ...args) => lib.PDFDocument.load(new Uint8Array(bytes), ...args) } };
   const src = await lib.PDFDocument.create(); src.addPage([100,200]); src.addPage([200,300]); src.addPage([300,400]);
