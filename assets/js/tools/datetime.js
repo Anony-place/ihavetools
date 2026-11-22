@@ -2,7 +2,7 @@
 // iHaveTools — Date & Time tools: date-difference, date-add-calculator,
 // time-zone-converter (uses the browser's built-in IANA tz database via Intl)
 // =============================================================================
-import { h, field, input, textarea, select, switchChip, btn, actionsRow, statusLine, statsGrid, toast, mountTool, copyButton } from '../ui.js';
+import { h, field, input, textarea, select, switchChip, btn, actionsRow, statusLine, statsGrid, resultPanel, toast, mountTool, copyButton } from '../ui.js';
 import { DAY_MS, parseCalendarDate, localDateISO, calendarSpan, isoWeek, addMonthsUTC, dateISO } from '../calendar.js';
 export { parseCalendarDate, localDateISO, isoWeek } from '../calendar.js';
 
@@ -42,6 +42,19 @@ export function addBusinessDays(start, amount, weekend = 'sat_sun', holidays = '
     if (isWorking(day)) remaining--;
   }
   return new Date(day).toISOString().slice(0, 10);
+}
+
+/** Sequential working dates, excluding the start; fail rather than truncate at bounds. */
+export function workingDateSchedule(start, count, direction, weekend = 'sat_sun', holidays = '') {
+  if (!Number.isInteger(count) || count < 1 || count > 31) throw new Error('Schedule length must be a whole number from 1 to 31.');
+  if (!['forward', 'backward'].includes(direction)) throw new Error('Choose a valid schedule direction.');
+  let cursor = start;
+  const dates = [];
+  for (let i = 0; i < count; i++) {
+    cursor = addBusinessDays(cursor, direction === 'forward' ? 1 : -1, weekend, holidays);
+    dates.push(cursor);
+  }
+  return dates;
 }
 
 export function dateDiff(startStr, endStr, includeEnd = false, weekend = 'sat_sun', holidays = '') {
@@ -193,9 +206,25 @@ const defs = {
     clearResult();
     const runCount = () => { clearResult(); try { const r = countBusinessDays(start.value, end.value, getWeekend(), holidays.value, includeEnd.querySelector('input').checked); grid.set([{ label: 'Working days', value: String(r.working), kind: 'good' }, { label: 'Non-working days', value: String(r.nonWorking) }, { label: 'Calendar days', value: String(r.calendarDays) }]); status.set(`Start date is included; end date is ${includeEnd.querySelector('input').checked?'included':'excluded'}. Non-working-day holidays are not subtracted twice. No holiday calendar is loaded automatically.`, 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
     const runAdd = () => { clearResult(); try { if (!amount.value.trim()) throw new Error('Enter a whole number of working days.'); const result = addBusinessDays(start.value, Number(amount.value), getWeekend(), holidays.value); resultISO = result; copy.disabled = false; reuse.disabled = false; grid.set([{ label: 'Resulting date', value: result, kind: 'good' }, { label: 'Offset (working days)', value: amount.value }]); status.set('The start date is excluded for nonzero offsets; negative values subtract. Zero returns the start date. Verify the holiday list for your region.', 'success'); } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); } };
-    const invalidate = () => { clearResult(); grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
+    const scheduleCount = input({type:'number',min:1,max:31,step:1,value:'10'});
+    const scheduleDirection = select({options:[{v:'forward',t:'Next working dates'},{v:'backward',t:'Previous working dates'}],value:'forward'});
+    const scheduleStatus = statusLine('');
+    const scheduleOut = resultPanel({label:'Working date schedule',download:true,downloadName:'working-dates.txt',placeholder:'Generate a schedule to see dates.'});
+    const runSchedule = () => {
+      try {
+        if (!scheduleCount.value.trim()) throw new Error('Schedule length must be a whole number from 1 to 31.');
+        const dates = workingDateSchedule(start.value, Number(scheduleCount.value), scheduleDirection.value, getWeekend(), holidays.value);
+        scheduleOut.set([`${scheduleDirection.value === 'forward' ? 'Next' : 'Previous'} working dates from ${start.value} (start excluded).`, `Non-working weekdays: ${getExcluded(getWeekend()).map(n=>['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n]).join(', ') || 'none'}.`, `Manual holiday dates supplied: ${parseHolidays(holidays.value).size}; holiday list not included. No holidays loaded automatically.`, ...dates.map((date, index) => `${index + 1}. ${date} (${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date(parseCalendarDate(date)).getUTCDay()]})`)].join('\n'));
+        scheduleStatus.set(`Generated ${dates.length} working dates. Verify your holiday calendar and deadline rules.`, 'success');
+      } catch (e) {scheduleOut.placeholder(); scheduleStatus.set(e.message,'error');}
+    };
+    const invalidate = () => { clearResult(); grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); scheduleOut.placeholder(); scheduleStatus.set('Input changed. Generate again.', 'info'); };
     root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
-    root.append(h('div', { class: 'field-row' }, field({ label: 'Start date', control: start }), field({ label: 'End date (for counting)', control: end }), field({ label: 'Weekend', control: weekend }), field({ label: 'Working days to add (negative to subtract)', control: amount })), customWrap, h('div',{class:'switch-row'},includeEnd), field({ label: 'Holidays (YYYY-MM-DD)', control: holidays, hint: 'Optional: up to 500 dates and 12,000 characters, separated by commas or new lines. No automatic holidays.' }), actionsRow(btn({ label: 'Count working days', icon: 'calendar', onClick: runCount }), btn({ label: 'Add / subtract working days', icon: 'calendar-plus', onClick: runAdd })), actionsRow(copy, reuse), grid, status);
+    root.append(h('div', { class: 'field-row' }, field({ label: 'Start date', control: start }), field({ label: 'End date (for counting)', control: end }), field({ label: 'Weekend', control: weekend }), field({ label: 'Working days to add (negative to subtract)', control: amount })), customWrap, h('div',{class:'switch-row'},includeEnd), field({ label: 'Holidays (YYYY-MM-DD)', control: holidays, hint: 'Optional: up to 500 dates and 12,000 characters, separated by commas or new lines. No automatic holidays.' }), actionsRow(btn({ label: 'Count working days', icon: 'calendar', onClick: runCount }), btn({ label: 'Add / subtract working days', icon: 'calendar-plus', onClick: runAdd })), actionsRow(copy, reuse), grid, status,
+      h('h2',{text:'Working date schedule'}),
+      h('p',{class:'hint',text:'Uses the start date, non-working weekdays and manual holidays above. The start is excluded; dates are listed in the selected direction.'}),
+      h('div',{class:'field-row'},field({label:'Number of working dates',control:scheduleCount}),field({label:'Schedule direction',control:scheduleDirection})),
+      actionsRow(btn({label:'Generate working dates',onClick:runSchedule})),scheduleStatus,scheduleOut.panel);
   },
 
   'date-difference'(root) {
@@ -212,6 +241,7 @@ const defs = {
     const holidays = textarea({rows:3, placeholder:'YYYY-MM-DD, one date per line (optional)'});
     const grid = statsGrid();
     const status = statusLine('');
+    const report = resultPanel({label:'Date difference report',download:true,downloadName:'date-difference.txt',placeholder:'Calculate a difference to create a report.'});
     const run = () => {
       try {
         const r = dateDiff(start.value, end.value, includeEnd.querySelector('input').checked, getWeekend(), holidays.value);
@@ -224,10 +254,20 @@ const defs = {
           { label: 'Holidays excluded', value: r.holidayCount.toLocaleString() },
           { label: 'Hours', value: r.hours.toLocaleString() },
         ]);
+        report.set([
+          `Entered dates: ${start.value} to ${end.value}${r.reversed ? ' (reversed; earlier date counted first)' : ''}`,
+          `End date ${includeEnd.querySelector('input').checked ? 'included' : 'excluded'} in totals.`,
+          `Total days: ${r.totalDays}; weeks and days: ${r.weeks}w ${r.remainderDays}d.`,
+          `Calendar breakdown (end excluded): ${r.years}y ${r.months}m ${r.days}d.`,
+          `Working days: ${r.businessDays}; non-working weekdays: ${r.weekendDays}; holidays excluded: ${r.holidayCount}.`,
+          `Non-working weekdays: ${getExcluded(getWeekend()).map(n=>['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][n]).join(', ') || 'none'}.`,
+          `Hours: ${r.hours} (24 hours per calendar day; not elapsed time).`,
+          'Holidays are manually entered; none are loaded automatically. Holidays on non-working weekdays are not counted twice.'
+        ].join('\n'));
         status.set(`${r.reversed ? 'Dates were reversed; the earlier date is counted first. ' : ''}The calendar breakdown excludes the end date; the include-end switch affects day, week, weekday and hour totals only. Hours use 24 per calendar day, not DST-adjusted elapsed time. Holidays on non-working weekdays are not counted twice; no holidays are loaded automatically.`, 'info');
-      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+      } catch (e) { grid.replaceChildren(); report.placeholder(); status.set(e.message, 'error'); }
     };
-    const invalidate = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
+    const invalidate = () => { grid.replaceChildren(); report.placeholder(); status.set('Input changed. Calculate again.', 'info'); };
     root.addEventListener('input', invalidate); root.addEventListener('change', invalidate);
     root.append(h('div', { class: 'field-row', style: 'align-items:end' },
         field({ label: 'Start date', control: start }),
@@ -236,7 +276,7 @@ const defs = {
       h('div', { class: 'switch-row', style: 'margin-bottom:6px' }, includeEnd),
       h('div', {class:'field-row'}, field({label:'Non-working weekdays',control:weekend})), customWrap,
       field({label:'Holidays (YYYY-MM-DD)',control:holidays,hint:'Optional; up to 500 dates and 12,000 characters, separated by commas or new lines. No holidays are loaded automatically.'}),
-      actionsRow(btn({ label: 'Calculate difference', icon: 'calendar', onClick: run })), grid, status,
+      actionsRow(btn({ label: 'Calculate difference', icon: 'calendar', onClick: run })), grid, status, report.panel,
       h('p', { class: 'hint', text: 'Business days exclude the selected non-working weekdays and manually entered holidays. Check holidays for your region.' }));
   },
 

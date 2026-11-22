@@ -1207,6 +1207,15 @@ await test('Roman lists and bounded charts validate all inputs atomically', () =
   assert.equal(conv.romanRange('1','200').length,200);
   for (const [a,b] of [['1','201'],['2','1'],['0','2'],['1','4000'],['1.0','2'],['1e2','200'],['','2']]) assert.throws(()=>conv.romanRange(a,b));
 });
+await test('working date schedules honor holidays and direction without truncation', () => {
+  assert.deepEqual(dt.workingDateSchedule('2024-02-28',3,'forward','sat_sun','2024-02-29'),['2024-03-01','2024-03-04','2024-03-05']);
+  assert.deepEqual(dt.workingDateSchedule('2024-03-04',2,'backward','sat_sun','2024-03-01'),['2024-02-29','2024-02-28']);
+  assert.deepEqual(dt.workingDateSchedule('2024-01-01',2,'forward',[0,1,2,3,4,5]),['2024-01-06','2024-01-13']);
+  assert.equal(dt.workingDateSchedule('2024-01-01',31,'forward','none').length,31);
+  for (const n of [0,32,1.5,NaN]) assert.throws(()=>dt.workingDateSchedule('2024-01-01',n,'forward'),/1 to 31/);
+  assert.throws(()=>dt.workingDateSchedule('2024-01-01',1,'wrong'),/direction/);assert.throws(()=>dt.workingDateSchedule('2024-01-01',1,'forward',[0,1,2,3,4,5,6]),/At least one/);
+  assert.throws(()=>dt.workingDateSchedule('2100-12-30',2,'forward','none'),/outside/);assert.throws(()=>dt.workingDateSchedule('1900-01-01',1,'backward','none'),/outside/);
+});
 await test('number bases, roman numerals and morse code', () => {
   assert.equal(dev.convertBase('255', 10, 2), '11111111');
   assert.equal(dev.convertBase('255', 10, 16), 'ff');

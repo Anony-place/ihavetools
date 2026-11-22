@@ -11,6 +11,16 @@
 
 ---
 
+## Working-day schedules and date reports — plan (2026-10-31)
+
+Research on [date duration workflows](https://simcalculo.com/en/date-duration-calculator/) highlights endpoint ambiguity; it does not establish demand or guarantee rankings. Improve existing tools rather than duplicate them. A business-day schedule should make exclusions auditable while retaining manual holidays and existing start-date semantics.
+
+1. Add a bounded list of the next or previous 1–31 working dates to Business Day Calculator, starting strictly after/before the entered start. Use the same custom weekdays and manual holidays as deadline calculation. Explain limits, direction, no automatic holidays, and reject rather than silently truncate at date boundaries.
+2. Add a copyable, downloadable Date Difference report with the selected endpoint convention, date order and output assumptions; invalidate reports whenever inputs change. Existing calendar breakdown intentionally remains exclusive even in inclusive mode.
+3. Test engine edge cases, leap days, direction, holidays, date boundaries and non-working schedules; cover DOM, copy/download, mobile layout/accessibility in Chromium. Run full checks and security audit, one PR, merge only after CI and Vercel preview pass, verify production.
+
+---
+
 ## Roman numeral list and chart workflow — plan (2026-10-31)
 
 Improve the existing Roman Numeral Converter, not add duplicate pages. Competitor [batch and range workflows](https://foundthetool.com/converters/roman-numeral-converter/) suggest useful classroom and reference tasks, not evidence of demand or guaranteed rankings. Preserve strict canonical 1–3999 notation and existing date behavior.
