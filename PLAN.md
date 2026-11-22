@@ -11,6 +11,16 @@
 
 ---
 
+## Attendance and converter usability batch — plan (2026-10-31)
+
+Search Console sheets provided by the user show attendance and time converter impressions with few clicks, but exports carry dates beyond this session's stated date; confirm chronology before treating them as a current baseline. Unfiltered page/query reports do not establish attribution, demand or outcomes. Competitor [attendance planning](https://miniwebtool.com/attendance-percentage-calculator/) suggests comparing targets; the current tool already supports finite-term and scenario calculations. Avoid duplicating that work.
+
+1. Add a useful 75/80/85/90/100% comparison to the existing attendance tool with exact thresholds and clearly distinct immediate and term-end assumptions; handle unreachable and rounded-display cases.
+2. Improve all unit converters with an accessible named swap control and copying the displayed rounded result (including unit); never copy stale or invalid output. Clarify the time converter guide and its average-calendar assumptions.
+3. Test engines, DOM, mobile Chromium/accessibility and clipboard behavior, rebuild, audit, one PR and verify production. No SEO outcome promises.
+
+---
+
 ## CSV viewer workflow batch — plan (2026-10-31)
 
 Research: [CSV viewer workflows](https://toolsvale.com/csv-viewer/) suggest filtering, sorting and export, not measured search demand. [OWASP](https://owasp.org/www-community/attacks/CSV_Injection) warns spreadsheet formula behavior varies; quoting alone is not protection and no universal CSV sanitization works. Improve the existing CSV Viewer rather than adding a thin duplicate page:

@@ -2,7 +2,7 @@
 // iHaveTools — Unit converters (shared engine)
 // length, weight, temperature, time, speed, data-storage, area, volume
 // =============================================================================
-import { h, field, input, select, segControl, btn, actionsRow, resultPanel, statusLine, table, fmtNumber, mountTool } from '../ui.js';
+import { h, field, input, select, segControl, btn, actionsRow, resultPanel, statusLine, table, fmtNumber, mountTool, copyButton } from '../ui.js';
 
 /* Engine: convert(value, from, to) via base-unit factors; temperature is special. */
 export const UNIT_SETS = {
@@ -178,6 +178,9 @@ function converterUI(root, setId, defaults) {
   const status = statusLine('');
   const out = resultPanel({ label: 'Result', copy: false, placeholder: 'Enter a value to convert.' });
   const allWrap = h('div', {});
+  let copyValue = '';
+  const copy = copyButton(() => copyValue, {label:'Copy result'});
+  copy.disabled = true; out.panel.querySelector('.result-head').append(copy);
   const render = () => {
     try {
       const raw = value.value.trim();
@@ -186,6 +189,7 @@ function converterUI(root, setId, defaults) {
       if (v === 0 && /[1-9]/.test(raw.split(/[eE]/)[0])) throw new Error('Input is too small to represent; enter a valid number within the supported range.');
       const result = convert(v, from.value, to.value, setId);
       const pretty = formatConversion(result, 8);
+      copyValue = `${pretty} ${to.value}`; copy.disabled = false;
       out.set(h('div', {},
         h('p', { style: 'font-size:1.5rem;font-weight:750;letter-spacing:-0.02em;margin:0 0 4px;font-variant-numeric:tabular-nums', text: `${pretty} ${to.value}` }),
         h('p', { class: 'hint', style: 'margin:0', text: `${formatConversion(v, 8)} ${from.value} = ${pretty} ${to.value}` })));
@@ -197,7 +201,7 @@ function converterUI(root, setId, defaults) {
           const r = convert(v, from.value, u, setId);
           return [u, formatConversion(r, 8)];
         }) }));
-    } catch (e) { out.placeholder(); allWrap.replaceChildren(); status.set(e.message, 'error'); }
+    } catch (e) { copyValue = ''; copy.disabled = true; out.placeholder(); allWrap.replaceChildren(); status.set(e.message, 'error'); }
   };
   const swap = () => { [from.value, to.value] = [to.value, from.value]; render(); };
   [value, from, to].forEach((el) => el.addEventListener('input', render));
@@ -207,7 +211,7 @@ function converterUI(root, setId, defaults) {
     field({ label: 'Value', control: value, hint: setId === 'fuel' ? 'Positive values only; finite magnitude 1e-100 to 1e100.' : 'Finite values: magnitude 1e-100 to 1e100, or zero.' }),
     h('div', { class: 'field-row', style: 'align-items:end' },
       field({ label: 'From', control: from }),
-      h('div', { class: 'field', style: 'max-width:56px;justify-content:flex-end' }, btn({ label: '⇄', variant: 'secondary', title: 'Swap units', onClick: swap })),
+      h('div', { class: 'field', style: 'justify-content:flex-end' }, btn({ label: 'Swap units', variant: 'secondary', onClick: swap })),
       field({ label: 'To', control: to })),
     actionsRow(btn({ label: 'Convert', icon: 'swap', onClick: render })),
     status, h('br'), out.panel, allWrap);

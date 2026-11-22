@@ -316,6 +316,13 @@ export function attendanceScenario({ held, attended, targetPct, remaining, plann
     meetsTarget: term.reachable && plannedAttend >= term.minimumAttend };
 }
 
+/** Compare fixed example thresholds without altering the user's chosen target. */
+export function attendanceTargetComparison({held,attended,remaining=null}={}) {
+  return [75,80,85,90,100].map(targetPct=>({targetPct,
+    current:attendanceCalc({held,attended,targetPct}),
+    term:remaining===null?null:attendanceTermPlan({held,attended,targetPct,remaining})}));
+}
+
 /* ═══════════════════════════ UI definitions ═══════════════════════════ */
 const defs = {
   'scientific-calculator'(root) {
@@ -582,6 +589,7 @@ const defs = {
     const planned = input({type:'number', step:'1', min:0, max:1000000000, placeholder:'Optional'});
     const grid = statsGrid();
     const status = statusLine('');
+    const comparison = h('div', {});
     const run = () => {
       try {
         const r = attendanceCalc({ held: held.value === '' ? NaN : Number(held.value), attended: attended.value === '' ? NaN : Number(attended.value), targetPct: target.value === '' ? NaN : Number(target.value) });
@@ -600,6 +608,8 @@ const defs = {
           ...(term ? [term.reachable ? {label:'Attend in remaining classes', value:`${term.minimumAttend} of ${remaining.value}`, kind:'good'} : {label:'End-of-term target', value:'Not reachable', kind:'bad'}, {label:'Maximum final attendance', value:`${term.maxFinalPct.toFixed(2)}%`}, ...(term.reachable ? [{label:'Can miss by term end', value:String(term.canMiss)}] : [])] : []),
           ...(scenario ? [{label:'Planned final attendance', value:`${scenario.finalAttended} / ${scenario.finalHeld} (${scenario.finalPct.toFixed(2)}%)`}, {label:'Planned result vs target', value:scenario.meetsTarget ? 'Meets target' : 'Below target', kind:scenario.meetsTarget ? 'good' : 'bad'}] : []),
         ]);
+        const compare = attendanceTargetComparison({held:Number(held.value),attended:Number(attended.value),remaining:remaining.value===''?null:Number(remaining.value)});
+        comparison.replaceChildren(h('h3',{text:'Compare common targets'}),h('p',{class:'hint',text:'Examples only; use your institution’s actual target. Immediate misses assume no classes are attended first; term-end allowance assumes the minimum required classes are attended.'}),table({headers:['Target','Next classes in a row / immediate misses',...(term?['Term-end plan']:[])],rows:compare.map(({targetPct,current,term:plan})=>[`${targetPct}%`,current.impossible?'Not reachable':current.classesNeeded?`Attend ${current.classesNeeded} in a row`:`May miss ${current.classesCanMiss} now`,...(term?[plan.reachable?`Attend ${plan.minimumAttend} of ${remaining.value}; may miss ${plan.canMiss}`:'Not reachable by term end']:[])])}));
         status.set(r.impossible
           ? 'A missed class can never be removed from the denominator, so exactly 100% is no longer reachable. Attending every remaining class still gets you as close as possible.'
           : r.classesNeeded
@@ -607,9 +617,9 @@ const defs = {
             : `You are at or above the target. Missing ${r.classesCanMiss} more class${r.classesCanMiss === 1 ? '' : 'es'} keeps you at or above it, assuming no other attendance rules apply.`,
         r.classesNeeded || r.impossible ? 'warning' : 'success');
         if (term) status.set(`${status.textContent} ${term.reachable ? `With ${remaining.value} remaining, attend at least ${term.minimumAttend} by term end; you can miss at most ${term.canMiss}.` : `Even attending all ${remaining.value} remaining classes will not meet the target by term end.`} Assumes all classes count equally.`, term.reachable ? 'info' : 'warning');
-      } catch (e) { grid.replaceChildren(); status.set(e.message, 'error'); }
+      } catch (e) { grid.replaceChildren(); comparison.replaceChildren(); status.set(e.message, 'error'); }
     };
-    const clear = () => { grid.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
+    const clear = () => { grid.replaceChildren(); comparison.replaceChildren(); status.set('Input changed. Calculate again.', 'info'); };
     [held, attended, target, remaining, planned].forEach(el => { el.addEventListener('input', clear); el.addEventListener('change', clear); });
     root.append(
       h('div', { class: 'field-row' },
@@ -619,7 +629,7 @@ const defs = {
         field({label:'Remaining classes (optional)', control:remaining, hint:'For end-of-term planning; all classes count equally.'}),
         field({label:'Planned classes to attend (optional)', control:planned, hint:'Out of remaining classes; leave blank to skip.'})),
       h('p', {class:'hint', text:'Percentages are rounded for display. Target decisions use the unrounded fraction; school rules, exemptions and rounding may differ.'}),
-      actionsRow(btn({ label: 'Calculate attendance', icon: 'calendar', onClick: run })), grid, status);
+      actionsRow(btn({ label: 'Calculate attendance', icon: 'calendar', onClick: run })), grid, status, comparison);
     shareState(root, [['held', held], ['attended', attended], ['target', target], ['remaining', remaining], ['planned', planned]], run);
   },
 };

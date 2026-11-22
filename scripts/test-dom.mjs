@@ -752,7 +752,7 @@ await domTest('temperature-converter: 37°C → 98.6°F', async () => {
 await domTest('fuel economy reciprocal, zero error, and unit swap',async()=>{
  const app=await loadToolPage('fuel-economy-converter','converters'); assert.match(app.textContent,/7\.84048611 litres\/100 km/);
  const value=app.querySelector('input[type=number]');value.value='0';fire(value,'input');assert.match(app.textContent,/greater than zero/);assert.doesNotMatch(app.textContent,/7\.84048611 litres/);
- value.value='10';fire(value,'input'); const selects=app.querySelectorAll('select');click(btnByLabel(app,'⇄'));assert.equal(selects[0].value,'litres/100 km (L/100 km)');assert.match(app.textContent,/23\.52145833 miles\/US gallon/);
+ value.value='10';fire(value,'input'); const selects=app.querySelectorAll('select');click(btnByLabel(app,'Swap units'));assert.equal(selects[0].value,'litres/100 km (L/100 km)');assert.match(app.textContent,/23\.52145833 miles\/US gallon/);
 });
 await domTest('pressure, energy and power converter default examples',async()=>{
  for(const [id,re] of [['pressure-converter',/14\.50377377 psi/],['energy-converter',/3\.6 megajoule/],['power-converter',/0\.74569987 kilowatt/]]) {const app=await loadToolPage(id,'converters');assert.match(app.textContent,re);}
@@ -2416,6 +2416,10 @@ await domTest('math results are invalidated after changing input', async () => {
  for (const [id,initial,label] of [['average-calculator','1,2,3','Calculate'],['gcd-lcm-calculator','12,18','Calculate GCD'],['weighted-average-calculator','80,3\n90,2','Calculate weighted']]) {const app=await loadToolPage(id,'math'), inp=app.querySelector('textarea,input[type=text]'); inp.value=initial; click(btnByLabel(app,label)); assert.ok(app.querySelector('.stat-card')); inp.value='4'; fire(inp,'input'); assert.equal(app.querySelector('.stat-card'),null);}
 });
 
+await domTest('attendance comparison and converter copy invalidation',async()=>{
+ let app=await loadToolPage('attendance-calculator','student');let nums=app.querySelectorAll('input[type=number]');nums[3].value='20';click(btnByLabel(app,'Calculate attendance'));assert.match(app.querySelector('table').textContent,/75%Attend 8 in a rowAttend 17 of 20; may miss 3/);assert.match(app.querySelector('table').textContent,/100%Not reachableNot reachable by term end/);nums[0].value='';fire(nums[0],'input');assert.equal(app.querySelector('table'),null);
+ app=await loadToolPage('time-converter','converters');let copy=btnByLabel(app,'Copy result'),value=app.querySelector('input[type=number]');assert.equal(copy.disabled,false);value.value='';fire(value,'input');assert.equal(copy.disabled,true);value.value='90';fire(value,'input');assert.equal(copy.disabled,false);assert.ok(btnByLabel(app,'Swap units'));
+});
 await domTest('Attendance future scenario and rounded target warning', async () => {
  const app=await loadToolPage('attendance-calculator','student'); const n=app.querySelectorAll('input[type=number]');
  n[3].value='20'; n[4].value='16'; click(btnByLabel(app,'Calculate attendance')); assert.match(app.textContent,/44 \/ 60 \(73\.33%\)/); assert.match(app.textContent,/Below target/);
