@@ -164,7 +164,7 @@ try {
     }await task.destroy();return result;
   },Array.from(waterBytes));
   for(const box of geometry){assert.ok(box.count>30,'visible watermark ink');assert.ok(Math.abs((box.left+box.right)/2-box.width/2)<15,'centered rendered watermark');assert.ok(box.right-box.left>box.bottom-box.top,'watermark is horizontal');}
-  await page.getByLabel('Watermark text').fill('नमस्ते');await page.getByRole('button',{name:'Export watermarked PDF'}).click();await page.getByText(/printable ASCII/).waitFor();
+  await page.getByLabel('Watermark text').fill('नमस्ते');await page.getByRole('button',{name:'Export watermarked PDF'}).click();await page.locator('#tool-app .status-line').getByText(/printable ASCII/).waitFor();
   await page.setViewportSize({width:1280,height:800});
   // Discovery: mobile header search, keyboard selection, dismiss and fallback links.
   await page.setViewportSize({ width: 320, height: 844 });
