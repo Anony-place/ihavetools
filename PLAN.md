@@ -11,15 +11,29 @@
 
 ---
 
+## Traffic batch 1 — useful search landing pages + measurement (active)
+
+The most recent accessible GSC exports in Drive are labelled 2026-11-22, with rows through 2026-11-19, after this session's stated 2026-10-31 date. Treat these as chronology-unverified, not as evidence of present clicks, indexing or query-to-page attribution. The only chart rows dated on or before Oct 31 show 0 clicks and 1 impression total; that tiny sample cannot prioritize individual pages. No verified page-filtered baseline is currently available. **No promise of rankings or traffic.**
+
+One substantive PR will:
+1. Strengthen four existing, useful landing pages rather than create doorway pages: Roman numeral conversion, time-unit conversion, attendance planning and robots rules. Add genuinely useful verified examples/reference tables and contextual, crawlable links between related workflows; make descriptions reflect real functionality and limits. Existing tools/guides are audited first; do not repeat them or claim query demand.
+2. Extend guide rendering to support explicitly curated, validated internal links with descriptive anchor text; test the generated HTML and valid destinations. Avoid inaccessible JavaScript-only navigation, keyword stuffing and fabricated modification dates.
+3. Add a local, read-only GSC page-export comparison utility: explicit equal-length, nonoverlapping dates and as-of date; page-level counts/CTR/position with absent rows identified as missing (not zero), clearly labeled page totals and selection bias, no guesses joining unfiltered queries to pages and no tracking or upload. Unit-test malformed CSV, bounds, dates, absent rows and real-like exports; never commit private exports.
+4. Run full local checks, audit, Chromium/mobile CI and preview; merge the one batch after checks pass and verify production. Once correctly dated page-filtered GSC exports are available, compare the same country/device/search filters and equal windows after an appropriate lag. Separate indexed-status checks from performance, and report uncertainty rather than causal or ranking claims.
+
+Research: [Google on people-first content](https://developers.google.com/search/docs/fundamentals/creating-helpful-content), [descriptive title links](https://developers.google.com/search/docs/appearance/title-link), [crawlable links](https://developers.google.com/search/docs/crawling-indexing/links-crawlable), and [Search Console](https://developers.google.com/search/docs/monitor-debug/search-console-start). Search results and competitor features are not search-volume estimates. PDF batch 1 was merged in PR #150 and its pages were production-verified; the historical status below predates that merge.
+
+---
+
 ## New mandatory operating rule and numbered roadmap (2026-10-31)
 
 **User correction:** Single-feature maintenance PRs are too small. First research actual user jobs, existing coverage and feasible constraints; write a numbered multi-item batch with explicit acceptance criteria; then implement the whole batch on the current branch in **one PR**. Do not open a PR for a single small feature or split a coherent batch into separate PRs. A genuinely urgent security/production incident may need an isolated fix, but ordinary iteration stays together. Do not pad scope with thin duplicate pages. Work may span multiple turns on the same active branch; do not pretend a partially completed batch is shipped.
 
-### Batch 1 — PDF document productivity (active; one PR)
+### Batch 1 — PDF document productivity (completed; PR #150)
 
 Research and gap review: 164 existing tools, including seven PDF-category tools. Merge, split, rotate, organize/number, images↔PDF and a limited Info viewer already exist; do not duplicate them. [PDF24](https://tools.pdf24.org/en/) lists text extraction and watermark workflows and explicitly processes online files on its own servers; local processing is a differentiator only where verified. [PDF.js](https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib-PDFPageProxy.html) exposes text extraction, while [pdf-lib](https://pdf-lib.js.org/) supports adding text. Competitor features are not proof of demand.
 
-**In progress (not release-ready):** All three initial UIs are implemented. Real PDF.js tests cover text-layer extraction, image-only pages, and watermark text positioning in all four rotations with cropped pages; DOM tests cover the inspector and watermark cancellation. The full local `npm run check` and production dependency audit pass. Real-browser mobile/axe, downloads and rendered-watermark tests are part of CI. A synthetic encrypted fixture is rejected by both engines. CI and preview must pass before merge, followed by production verification. Open the single complete-batch PR to run the required CI and preview; do not merge until the batch gate below is met.
+**Completed:** The three PDF workflows shipped in PR #150. Chromium CI covered mobile/accessibility, PDF extraction, downloaded files and rendered watermark placement; production deployment was promoted and the three public pages were verified. See PR #150 for the exact checks and limitations.
 
 **Scope and release gate (all required, or explicitly document a safety-driven deferral before opening the single PR):**
 1. New **PDF Text Extractor** for an unencrypted PDF: bounded selected pages, local PDF.js extraction with explicit text-layer-only/no-OCR and imperfect reading-order warnings, copy/download text, bounded work/output, cancellation on input/file changes, no live network content fetch.

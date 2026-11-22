@@ -2,3 +2,6 @@ node_modules/
 .DS_Store
 *.log
 .firebase
+
+# Local Search Console exports may contain private site data
+traffic-exports/

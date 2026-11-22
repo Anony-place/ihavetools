@@ -38,7 +38,28 @@ const audio = await import('../assets/js/tools/audio.js');
 const img = await import('../assets/js/tools/image.js');
 const pdf = await import('../assets/js/tools/pdf.js');
 const registry = await import('../assets/js/registry.js');
+const traffic = await import('./traffic-report.mjs');
 
+await test('search traffic report compares only valid page rows and equal completed windows', () => {
+ const a='Top pages,Clicks,Impressions,CTR,Position\nhttps://i-have-tools.vercel.app/tools/a/,4,"1,000",0.4%,12.5\nhttps://i-have-tools.vercel.app/tools/new/,0,2,0%,35\n';
+ const b='Top pages,Clicks,Impressions,CTR,Position\nhttps://i-have-tools.vercel.app/tools/a/,2,200,1%,15\nhttps://i-have-tools.vercel.app/tools/old/,1,10,10%,9\n';
+ const w=['2026-10-17:2026-10-30','2026-10-03:2026-10-16','2026-10-31','https://i-have-tools.vercel.app'];
+ const output=traffic.report(a,b,...w);assert.match(output,/4 \/ 1000 \/ 0\.40% \/ 12\.5/);assert.match(output,/2 \/ 200 \/ 1\.00% \/ 15/);assert.match(output,/Not in export \(unknown\)/);assert.doesNotMatch(output,/tools\/old/);assert.match(output,/not independently verified/);
+ assert.throws(()=>traffic.report(a,b,'2026-10-17:2026-11-01',w[1],w[2],w[3]),/after the stated as-of/);
+ assert.throws(()=>traffic.validateWindows('2026-10-16:2026-10-30',w[1],w[2]),/before the recent/);assert.throws(()=>traffic.validateWindows('2026-10-18:2026-10-30',w[1],w[2]),/equal length/);assert.throws(()=>traffic.validateWindows('2026-02-30:2026-03-01',w[1],w[2]),/Invalid calendar/);
+ for(const csv of ['Query,Clicks,Impressions,Position\nx,1,2,3','Top pages,Clicks,Impressions,Position\nhttps://evil.test/,1,2,3','Top pages,Clicks,Impressions,Position\nhttps://i-have-tools.vercel.app/?x=1,1,2,3','Top pages,Clicks,Impressions,Position\nhttps://i-have-tools.vercel.app/,3,2,3','Top pages,Clicks,Impressions,Position\nhttps://i-have-tools.vercel.app/,1,2,no','Top pages,Clicks,Impressions,Position\nhttps://i-have-tools.vercel.app/,1,2,3\nhttps://i-have-tools.vercel.app/,1,2,3']) assert.throws(()=>traffic.parsePages(csv,w[3]));
+ assert.equal(traffic.parsePages('Top pages,Clicks,Impressions,Position\nhttps://i-have-tools.vercel.app/,0,0,',w[3]).size,1);
+});
+await test('traffic landing-page reference tables match the calculator engines', () => {
+ const roman=registry.getTool('roman-numeral-converter').guide.find(x=>x.h==='Roman numeral reference').table.rows;
+ for (const row of roman) for(let i=0;i<4;i+=2) assert.equal(conv.toRoman(Number(row[i])),row[i+1]);
+ for(const [v,from,to,expected] of [[15,'minute','hour',0.25],[90,'minute','hour',1.5],[150,'minute','hour',2.5],[2.5,'day','hour',60],[48,'hour','day',2],[1,'week','hour',168]]) assert.equal(conv.convert(v,from,to,'time'),expected);
+ for(const [held,attended,target,need,miss] of [[40,24,75,24,0],[40,30,80,10,0],[40,32,75,0,2],[40,36,80,0,5]]) {const r=stu.attendanceCalc({held,attended,targetPct:target});assert.equal(r.classesNeeded,need);assert.equal(r.classesCanMiss,miss);}
+ const robots=[{agent:'*',disallow:['/draft/'],allow:['/draft/public/']}];assert.equal(seo.testRobotsAccess(robots,'ExampleBot','/draft/notes').allowed,false);assert.equal(seo.testRobotsAccess(robots,'ExampleBot','/draft/public/example').allowed,true);assert.equal(seo.testRobotsAccess(robots,'ExampleBot','/articles/example').allowed,true);
+ for(const id of ['roman-numeral-converter','time-converter','attendance-calculator','robots-txt-generator']){
+  const tool=registry.getTool(id);const links=tool.guide.flatMap(b=>b.links||[]);assert.ok(links.length>=3);for(const link of links){assert.ok(registry.getTool(link.id));assert.notEqual(link.id,id);assert.ok(link.text.length>12);}
+ }
+});
 await test('CSV viewer filters, stable sorts and exports full matching rows', () => {
  const raw=',name,name\n1,Beta,"=x"\n2,alpha,"line\nbreak"\n3,ALPHA,other\n4,10,x\n5,2,x';
  const opt={sortColumn:2,sortDirection:'asc'};let r=data.csvViewerPage(raw,opt);assert.deepEqual(r.rows.map(row=>row[0]),['4','5','2','3','1']);

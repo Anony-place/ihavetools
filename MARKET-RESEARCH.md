@@ -1,5 +1,11 @@
 # Market and competitor research — 2026-10-31
 
+## Organic traffic batch: evidence and constraints (2026-10-31)
+
+The Drive Search Console spreadsheet named `Performance-on-Search-2026-11-22` reports October 30 through November 19. Its export label and most rows are later than the session's stated date, so those later figures are not a verified current baseline. The chart's October 30–31 rows total one impression and zero clicks; this cannot identify page-level opportunities. A Pages-filtered query export, current comparable periods, indexing inspection and analytics attribution are not available here. No numerical demand, future traffic or rank uplift is asserted.
+
+This batch improves genuinely useful content and navigation on four existing pages as hypotheses, not as evidence-led ranking winners. Static reference examples are checked against the site engines; guide links are real HTML anchors. Google documents [people-first content](https://developers.google.com/search/docs/fundamentals/creating-helpful-content), [descriptive title links](https://developers.google.com/search/docs/appearance/title-link) and [crawlable, contextual links](https://developers.google.com/search/docs/crawling-indexing/links-crawlable), but none guarantees indexing or rankings. A local CSV comparison tool and `TRAFFIC-MEASUREMENT.md` set out a reproducible, privacy-preserving method for measuring page-level outcomes when valid exports exist. Do not infer page-query associations from separate unfiltered tables.
+
 ## Consolidated research for numbered batches (2026-10-31)
 
 Inventory checked directly from registry: 164 unique tools, 142 with authored guides; categories overlap. Existing PDF tools cover merge, split, rotate, organizer/page numbering, PDF↔image and limited Info inspection. Existing bulk resizer already supports compression, watermarking and naming. Existing developer category contains JSON syntax validation, compare, pointer, CSV conversions and regex testing. Avoid proposing those as new work.
