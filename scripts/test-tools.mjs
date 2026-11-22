@@ -1265,6 +1265,8 @@ await test('bounded PDF text extraction keeps pages, rejects excess and cancels 
  await assert.rejects(()=>pdf.extractPdfText(fake,[1],()=>false),/cancelled/);
  const big={numPages:1,async getPage(){return {streamTextContent(){return new ReadableStream({start(c){c.enqueue({items:[{str:'x'.repeat(1000001)}]});c.close();}});},cleanup(){}};}};
  await assert.rejects(()=>pdf.extractPdfText(big,[1]),/1,000,000/);
+ const manyItems={numPages:1,async getPage(){return {streamTextContent(){return new ReadableStream({start(c){c.enqueue({items:Array.from({length:200001},()=>({str:''}))});c.close();}});},cleanup(){}};}};await assert.rejects(()=>pdf.extractPdfText(manyItems,[1]),/200,000-item/);
+ await assert.rejects(()=>pdf.extractPdfText({...fake,numPages:1001},[1]),/1,000 pages/);
 });
 await test('EMI comparison, amortization identities and scenario bounds', () => {
  let r=calc.compareEmiScenarios(1200,0,12,0,24); assert.equal(r.a.emi,100);assert.equal(r.b.emi,50);assert.equal(r.monthlyDifference,-50);assert.equal(r.interestDifference,0);assert.equal(r.repaymentDifference,0);
