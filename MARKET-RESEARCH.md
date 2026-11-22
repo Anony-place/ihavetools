@@ -1,5 +1,20 @@
 # Market and competitor research — 2026-10-31
 
+## Consolidated research for numbered batches (2026-10-31)
+
+Inventory checked directly from registry: 164 unique tools, 142 with authored guides; categories overlap. Existing PDF tools cover merge, split, rotate, organizer/page numbering, PDF↔image and limited Info inspection. Existing bulk resizer already supports compression, watermarking and naming. Existing developer category contains JSON syntax validation, compare, pointer, CSV conversions and regex testing. Avoid proposing those as new work.
+
+| Evidence | Observation | Decision / caveat |
+|---|---|---|
+| [PDF24 official](https://tools.pdf24.org/en/) | Broad PDF workflow suite; online processing uses their servers, offline product is separate. | Batch 1 focuses on three distinct missing jobs: text-layer extraction, text watermark and page-size inspection; local bounded processing. No assumption of measured demand. |
+| [PDF.js API](https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib-PDFPageProxy.html) | `getTextContent`/stream API returns text items, not OCR or a guarantee of visual reading order. | Explicitly warn about scanned pages, columns, fonts and extraction limits; test actual files and cancellation. |
+| [pdf-lib](https://pdf-lib.js.org/) | Supports text drawing, PDF manipulation and standard fonts. | Watermark geometry, crop/rotation, character coverage, file features and signatures require careful validation; no security claims. |
+| [iLoveIMG official](https://www.iloveimg.com/resize-image) | Bulk dimension tasks are a normal workflow. | Batch 2 audit first: much already exists here; seek real gaps rather than clone. |
+| [JSON Editor Online](https://jsoneditoronline.org/features/) | Supports validation, schema validation, tree, conversion and comparisons. | Batch 3 investigate a safe, bounded, offline schema validator; no parity or demand claim. |
+| [Google Search Console](https://developers.google.com/search/docs/monitor-debug/search-console-start) | Performance and indexing are distinct and can be filtered/inspected. | No fabricated keyword volumes or SEO outcomes; use comparable page-filtered data only when chronology is reconciled. |
+
+Full scopes, ordering, risks and release criteria live in `PLAN.md`. Small changes are grouped into a complete substantive batch per PR, not shipped one at a time.
+
 ## What is and isn't measured
 The supplied Search Console export is labelled 2026-11-12 and its chart includes dates after the session date (2026-10-31). Its chronology needs verification before using it as current evidence. It reports impressions for this site, not overall market search volume; query and page totals are not automatically attributable to one another. No independent keyword-volume or Trends comparison was available in this pass. Therefore the ordering below is an implementation hypothesis, not a measured ranking of market demand.
 

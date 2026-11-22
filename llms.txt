@@ -1,6 +1,6 @@
 # iHaveTools
 
-> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 164 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
+> Free online tools for everyday work — calculators, text utilities, image tools, converters and developer helpers. Most processing happens in your browser. 167 tools, free, no sign-up. Most processing is local; optional calculator links contain inputs, YouTube thumbnails load from its CDN, and user code in the HTML preview may contact external services. See the Privacy Policy.
 
 ## Categories
 - [PDF & Documents tools](https://i-have-tools.vercel.app/categories/pdf/): Merge, split and work with PDF files directly in your browser. Files never leave your device.
@@ -50,6 +50,9 @@
 - [CSV Column Extractor](https://i-have-tools.vercel.app/tools/csv-column-extractor/): Select and reorder columns from CSV or delimited text.
 - [CSV Viewer](https://i-have-tools.vercel.app/tools/csv-viewer/): View, filter, sort and export delimited text locally.
 - [JSON to TypeScript](https://i-have-tools.vercel.app/tools/json-to-typescript/): Infer a TypeScript type alias from a JSON sample.
+- [PDF Text Extractor](https://i-have-tools.vercel.app/tools/pdf-text-extractor/): Extract a PDF’s text layer locally, page by page.
+- [PDF Text Watermark](https://i-have-tools.vercel.app/tools/pdf-text-watermark/): Add a centered text watermark to selected PDF pages locally.
+- [PDF Page Size Inspector](https://i-have-tools.vercel.app/tools/pdf-page-size-inspector/): Inspect PDF page boxes, rotation and dimensions locally.
 - [PDF Metadata Viewer](https://i-have-tools.vercel.app/tools/pdf-metadata-viewer/): Inspect basic PDF document info locally before sharing.
 - [Extract Audio from Video](https://i-have-tools.vercel.app/tools/extract-audio/): Extract supported video audio in your browser and save it as WAV.
 - [MP4 Inspector](https://i-have-tools.vercel.app/tools/mp4-inspector/): Inspect supported MP4 boxes and available track metadata.

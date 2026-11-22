@@ -1207,6 +1207,67 @@ await test('Roman lists and bounded charts validate all inputs atomically', () =
   assert.equal(conv.romanRange('1','200').length,200);
   for (const [a,b] of [['1','201'],['2','1'],['0','2'],['1','4000'],['1.0','2'],['1e2','200'],['','2']]) assert.throws(()=>conv.romanRange(a,b));
 });
+await test('PDF.js extracts real text layers and verifies watermark placement on rotated crops', async () => {
+ // PDF.js modern build needs these ECMAScript APIs; Node 22 lacks them. Browser support is separately tested.
+ const oldTry=Promise.try,oldHex=Uint8Array.prototype.toHex;
+ Promise.try ??= (fn,...args)=>new Promise(resolve=>resolve(fn(...args)));
+ Uint8Array.prototype.toHex ??= function(){return Array.from(this,n=>n.toString(16).padStart(2,'0')).join('');};
+ let task;
+ try {
+  const lib=await import('pdf-lib'), pdfjs=await import('../assets/vendor/pdfjs.min.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc=new URL('../assets/vendor/pdfjs.worker.min.mjs',import.meta.url).href;
+  const source=await lib.PDFDocument.create();
+  const png=await (await import('sharp')).default({create:{width:8,height:8,channels:3,background:'#fff'}}).png().toBuffer();
+  const image=await source.embedPng(png);
+  for(const angle of [0,90,180,270]){const p=source.addPage([600,800]);p.setCropBox(20,30,400,600);p.setRotation(lib.degrees(angle));}
+  source.getPage(0).drawText('Original text',{x:35,y:80,size:12});source.getPage(1).drawImage(image,{x:35,y:80,width:100,height:100});
+  const bytes=await pdf.watermarkPdf(lib,source,[1,2,3,4],{text:'DRAFT',size:36,opacity:0.5});
+  task=pdfjs.getDocument({data:bytes,disableFontFace:true,isEvalSupported:false,useSystemFonts:false});const doc=await task.promise;
+  const extracted=await pdf.extractPdfText(doc,[1,2]);assert.match(extracted[0].text,/Original text/);assert.match(extracted[1].text,/DRAFT/);assert.doesNotMatch(extracted[1].text,/Original/);
+  for(let n=1;n<=4;n++){
+   const p=await doc.getPage(n),viewport=p.getViewport({scale:1}),items=(await p.getTextContent()).items,mark=items.find(item=>item.str==='DRAFT');assert.ok(mark,`watermark on page ${n}`);
+   const t=pdfjs.Util.transform(viewport.transform,mark.transform);assert.ok(Math.abs(t[1])<0.001&&Math.abs(t[2])<0.001,'horizontal in rotated view');
+   assert.ok(Math.abs(t[4]+mark.width/2-viewport.width/2)<0.1,'centered horizontally in crop');assert.ok(Math.abs(t[5]-viewport.height/2)<20,'near vertical center');
+  }
+  await task.destroy();task=null;
+  const scanned=await lib.PDFDocument.create();const png2=await scanned.embedPng(png);scanned.addPage().drawImage(png2,{x:0,y:0,width:50,height:50});
+  task=pdfjs.getDocument({data:await scanned.save(),disableFontFace:true,isEvalSupported:false});const scannedDoc=await task.promise;assert.equal((await pdf.extractPdfText(scannedDoc,[1]))[0].text,'');
+  await task.destroy();task=null;const protectedBytes=readFileSync(new URL('./fixtures/password-protected.pdf',import.meta.url));
+  await assert.rejects(()=>lib.PDFDocument.load(protectedBytes,{ignoreEncryption:false}),/encrypt/i);
+  task=pdfjs.getDocument({data:new Uint8Array(protectedBytes),isEvalSupported:false});await assert.rejects(task.promise,e=>e.name==='PasswordException');
+ } finally {if(task)await task.destroy();if(oldTry===undefined)delete Promise.try;else Promise.try=oldTry;if(oldHex===undefined)delete Uint8Array.prototype.toHex;else Uint8Array.prototype.toHex=oldHex;}
+});
+
+await test('PDF extraction cancellation discards delayed text and cancels stream', async () => {
+ let resolveRead, cancelled=false, current=true;
+ const doc={numPages:1,async getPage(){return {streamTextContent(){return {getReader(){return {read(){return new Promise(resolve=>{resolveRead=resolve;});},async cancel(){cancelled=true;}};}};},cleanup(){}};}};
+ const job=pdf.extractPdfText(doc,[1],()=>current);await new Promise(resolve=>setTimeout(resolve,0));current=false;resolveRead({done:false,value:{items:[{str:'stale'}]}});
+ await assert.rejects(job,/cancelled/);assert.equal(cancelled,true);
+});
+await test('PDF page inspection and watermark preserve selected real pages', async () => {
+ const lib=await import('pdf-lib'); const doc=await lib.PDFDocument.create();
+ const p1=doc.addPage([600,800]); const p2=doc.addPage([500,700]); p2.setCropBox(20,30,400,600); p2.setRotation(lib.degrees(90));
+ const info=pdf.inspectPdfPages(lib,doc); assert.equal(info.length,2);assert.deepEqual(info[1].crop,{x:20,y:30,width:400,height:600});assert.equal(info[1].rotation,90);assert.equal(info[1].userUnit,1);assert.equal(info[1].interpretable,true);
+ const bytes=await pdf.watermarkPdf(lib,doc,[2],{text:'DRAFT',size:36,opacity:0.5}); const saved=await lib.PDFDocument.load(bytes,{updateMetadata:false});
+ assert.equal(saved.getPageCount(),2);assert.deepEqual(saved.getPage(1).getCropBox(),p2.getCropBox());assert.equal(saved.getPage(1).getRotation().angle,90);assert.equal(saved.getPage(0).node.Contents(),undefined);assert.ok(saved.getPage(1).node.Contents());
+ const another=await lib.PDFDocument.create(); const page=another.addPage([100,100]);
+ await assert.rejects(()=>pdf.watermarkPdf(lib,another,[1],{text:'बहुत',size:12,opacity:0.5}),/ASCII/);
+ await assert.rejects(()=>pdf.watermarkPdf(lib,another,[1],{text:'very long watermark',size:72,opacity:0.5}),/too large/);
+ assert.equal(page.node.Contents(),undefined);
+ page.node.set(lib.PDFName.of('UserUnit'),lib.PDFNumber.of(2));assert.equal(pdf.inspectPdfPages(lib,another)[0].userUnit,2);
+ await assert.rejects(()=>pdf.watermarkPdf(lib,another,[1],{text:'DRAFT',size:12,opacity:0.5}),/UserUnit/);
+ await assert.rejects(()=>pdf.watermarkPdf(lib,another,[1,1],{text:'DRAFT',size:12,opacity:0.5}),/distinct/);
+});
+await test('bounded PDF text extraction keeps pages, rejects excess and cancels stale work', async () => {
+ const fake = {numPages: 3, async getPage(n) { return {streamTextContent() {return new ReadableStream({start(controller){controller.enqueue({items:[{str:'Page '+n,hasEOL:true},{str:'text'}]});controller.close();}});},cleanup(){}}; }};
+ assert.deepEqual(await pdf.extractPdfText(fake,[1,3]),[{page:1,text:'Page 1\ntext'},{page:3,text:'Page 3\ntext'}]);
+ for(const pages of [[],[2,2],[2,1],[4],Array.from({length:51},(_,i)=>i+1)]) await assert.rejects(()=>pdf.extractPdfText(fake,pages),/1 to 50/);
+ await assert.rejects(()=>pdf.extractPdfText(fake,[1],()=>false),/cancelled/);
+ const big={numPages:1,async getPage(){return {streamTextContent(){return new ReadableStream({start(c){c.enqueue({items:[{str:'x'.repeat(1000001)}]});c.close();}});},cleanup(){}};}};
+ await assert.rejects(()=>pdf.extractPdfText(big,[1]),/1,000,000/);
+ const manyItems={numPages:1,async getPage(){return {streamTextContent(){return new ReadableStream({start(c){c.enqueue({items:Array.from({length:200001},()=>({str:''}))});c.close();}});},cleanup(){}};}};await assert.rejects(()=>pdf.extractPdfText(manyItems,[1]),/200,000-item/);
+ await assert.rejects(()=>pdf.extractPdfText({...fake,numPages:1001},[1]),/1,000 pages/);
+});
 await test('EMI comparison, amortization identities and scenario bounds', () => {
  let r=calc.compareEmiScenarios(1200,0,12,0,24); assert.equal(r.a.emi,100);assert.equal(r.b.emi,50);assert.equal(r.monthlyDifference,-50);assert.equal(r.interestDifference,0);assert.equal(r.repaymentDifference,0);
  r=calc.compareEmiScenarios(100000,12,12,9,24);assert.ok(r.monthlyDifference<0);assert.ok(r.interestDifference>0);
@@ -2430,8 +2491,8 @@ await test('merge two PDFs and split pages', async () => {
 
 console.log('\n── Batch-4 in-demand tools ──');
 await test('batch-4 catalogue remains present after expansion', () => {
-  assert.equal(registry.tools.length, 164);
-  assert.equal(registry.tools.filter((t) => t.guide).length, 142);
+  assert.equal(registry.tools.length, 167);
+  assert.equal(registry.tools.filter((t) => t.guide).length, 145);
   const inboundCount = (id) => registry.tools.filter((t) => registry.relatedTools(t, 6).some((r) => r.id === id)).length;
   for (const id of ['nps-calculator', 'epf-calculator', 'hra-calculator', 'cgpa-calculator', 'attendance-calculator', 'qr-code-scanner', 'spin-wheel', 'typing-speed-test']) {
     assert.ok(inboundCount(id) >= 3, `${id} needs at least three contextual related-tool sources, got ${inboundCount(id)}`);

@@ -131,6 +131,41 @@ try {
   await go('json-to-typescript'); await page.getByRole('button',{name:'Generate TypeScript'}).click(); assert.match(await page.locator('#tool-app').textContent(),/Array<number>/);
   const originalJson = await page.getByLabel('JSON sample').inputValue(); await page.getByLabel('Choose a JSON file').setInputFiles({name:'large.json',mimeType:'application/json',buffer:Buffer.from(' '.repeat(300001))}); await page.getByText(/File exceeds 300,000 characters/).waitFor(); assert.equal(await page.getByLabel('JSON sample').inputValue(),originalJson);
   await go('pdf-metadata-viewer'); const metadataDoc=await PDFDocument.create(); metadataDoc.addPage();metadataDoc.setTitle('Browser test');metadataDoc.setAuthor('Example Author'); const metadataBytes=await metadataDoc.save();await page.locator('#tool-app input[type=file]').setInputFiles({name:'test.pdf',mimeType:'application/pdf',buffer:Buffer.from(metadataBytes)}); await page.getByText('Title: Browser test',{exact:false}).waitFor();assert.match(await page.locator('#tool-app').textContent(),/Author: Example Author/);await page.getByRole('button',{name:'Clear PDF'}).click();assert.doesNotMatch(await page.locator('#tool-app').textContent(),/Example Author/);
+  // Batch 1 PDF workflows: real PDF.js text, actual exported PDF and mobile accessibility.
+  await page.setViewportSize({width:320,height:844});
+  for(const id of ['pdf-page-size-inspector','pdf-text-extractor','pdf-text-watermark']){
+    await go(id);assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],`${id} accessibility`);
+  }
+  const batchPdf=await PDFDocument.create();
+  for(const angle of [0,90,180,270]){const p=batchPdf.addPage([600,800]);p.setCropBox(20,30,400,600);p.setRotation(degrees(angle));}
+  batchPdf.getPage(0).drawText('Hello PDF',{x:45,y:80,size:12});
+  const batchBytes=Buffer.from(await batchPdf.save());
+  await go('pdf-page-size-inspector');await page.locator('#tool-app input[type=file]').setInputFiles({name:'batch.pdf',mimeType:'application/pdf',buffer:batchBytes});
+  await page.getByText('Page 4',{exact:false}).first().waitFor();assert.match(await page.locator('[aria-label="PDF page sizes output"]').textContent(),/CropBox: x=20, y=30, width=400, height=600/);
+  const sizesDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Download',exact:true}).click();assert.match(await readFile(await (await sizesDownload).path(),'utf8'),/Rotation: 270 degrees/);
+  await go('pdf-text-extractor');await page.locator('#tool-app input[type=file]').setInputFiles({name:'batch.pdf',mimeType:'application/pdf',buffer:batchBytes});await page.getByLabel('Pages to extract').fill('1-2');await page.getByRole('button',{name:'Extract text'}).click();
+  await page.getByText(/Text layer extracted/).waitFor();assert.match(await page.locator('[aria-label="Extracted PDF text output"]').textContent(),/Hello PDF[\s\S]*No extractable text found/);
+  const textDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Download',exact:true}).click();assert.match(await readFile(await (await textDownload).path(),'utf8'),/Hello PDF/);
+  await page.getByLabel('Pages to extract').fill('4');assert.doesNotMatch(await page.locator('[aria-label="Extracted PDF text output"]').textContent(),/Hello PDF/);
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'bad.pdf',mimeType:'application/pdf',buffer:Buffer.from('not a PDF')});await page.getByRole('button',{name:'Extract text'}).click();await page.getByText(/Could not extract text/).waitFor();
+  await page.locator('#tool-app input[type=file]').setInputFiles({name:'protected.pdf',mimeType:'application/pdf',buffer:await readFile(resolve(root,'scripts/fixtures/password-protected.pdf'))});await page.getByRole('button',{name:'Extract text'}).click();await page.getByText(/Password-protected PDFs are not supported/).waitFor();
+  await go('pdf-text-watermark');await page.locator('#tool-app input[type=file]').setInputFiles({name:'batch.pdf',mimeType:'application/pdf',buffer:batchBytes});await page.getByLabel('Pages to watermark').fill('1-4');await page.getByLabel('Opacity').fill('1');
+  const waterDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Export watermarked PDF'}).click();const waterBytes=await readFile(await (await waterDownload).path());const outputDoc=await PDFDocument.load(waterBytes);assert.equal(outputDoc.getPageCount(),4);
+  const geometry=await page.evaluate(async bytes=>{
+    const pdfjs=await import('/assets/vendor/pdfjs.min.mjs');pdfjs.GlobalWorkerOptions.workerSrc='/assets/vendor/pdfjs.worker.min.mjs';
+    const task=pdfjs.getDocument({data:new Uint8Array(bytes),isEvalSupported:false,useSystemFonts:true});const doc=await task.promise;const result=[];
+    for(let n=1;n<=4;n++){
+      const p=await doc.getPage(n),viewport=p.getViewport({scale:1}),canvas=document.createElement('canvas');canvas.width=viewport.width;canvas.height=viewport.height;
+      await p.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+      const image=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;let left=canvas.width,right=0,top=canvas.height,bottom=0,count=0;
+      // Restrict to the center to ignore original text in the fixture.
+      for(let y=Math.floor(canvas.height/2)-45;y<Math.floor(canvas.height/2)+45;y++)for(let x=0;x<canvas.width;x++){const k=(y*canvas.width+x)*4;if(image[k]<100&&image[k+1]<100&&image[k+2]<100){left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);count++;}}
+      result.push({width:canvas.width,height:canvas.height,left,right,top,bottom,count});
+    }await task.destroy();return result;
+  },Array.from(waterBytes));
+  for(const box of geometry){assert.ok(box.count>30,'visible watermark ink');assert.ok(Math.abs((box.left+box.right)/2-box.width/2)<15,'centered rendered watermark');assert.ok(box.right-box.left>box.bottom-box.top,'watermark is horizontal');}
+  await page.getByLabel('Watermark text').fill('नमस्ते');await page.getByRole('button',{name:'Export watermarked PDF'}).click();await page.locator('#tool-app .status-line').filter({hasText:/printable ASCII/}).waitFor();
+  await page.setViewportSize({width:1280,height:800});
   // Discovery: mobile header search, keyboard selection, dismiss and fallback links.
   await page.setViewportSize({ width: 320, height: 844 });
   await go('pdf-merge');

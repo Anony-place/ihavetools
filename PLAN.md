@@ -11,6 +11,33 @@
 
 ---
 
+## New mandatory operating rule and numbered roadmap (2026-10-31)
+
+**User correction:** Single-feature maintenance PRs are too small. First research actual user jobs, existing coverage and feasible constraints; write a numbered multi-item batch with explicit acceptance criteria; then implement the whole batch on the current branch in **one PR**. Do not open a PR for a single small feature or split a coherent batch into separate PRs. A genuinely urgent security/production incident may need an isolated fix, but ordinary iteration stays together. Do not pad scope with thin duplicate pages. Work may span multiple turns on the same active branch; do not pretend a partially completed batch is shipped.
+
+### Batch 1 — PDF document productivity (active; one PR)
+
+Research and gap review: 164 existing tools, including seven PDF-category tools. Merge, split, rotate, organize/number, images↔PDF and a limited Info viewer already exist; do not duplicate them. [PDF24](https://tools.pdf24.org/en/) lists text extraction and watermark workflows and explicitly processes online files on its own servers; local processing is a differentiator only where verified. [PDF.js](https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib-PDFPageProxy.html) exposes text extraction, while [pdf-lib](https://pdf-lib.js.org/) supports adding text. Competitor features are not proof of demand.
+
+**In progress (not release-ready):** All three initial UIs are implemented. Real PDF.js tests cover text-layer extraction, image-only pages, and watermark text positioning in all four rotations with cropped pages; DOM tests cover the inspector and watermark cancellation. The full local `npm run check` and production dependency audit pass. Real-browser mobile/axe, downloads and rendered-watermark tests are part of CI. A synthetic encrypted fixture is rejected by both engines. CI and preview must pass before merge, followed by production verification. Open the single complete-batch PR to run the required CI and preview; do not merge until the batch gate below is met.
+
+**Scope and release gate (all required, or explicitly document a safety-driven deferral before opening the single PR):**
+1. New **PDF Text Extractor** for an unencrypted PDF: bounded selected pages, local PDF.js extraction with explicit text-layer-only/no-OCR and imperfect reading-order warnings, copy/download text, bounded work/output, cancellation on input/file changes, no live network content fetch.
+2. New **PDF Text Watermark**: local, bounded, page-range controls, legible restricted text/font and honest placement/opacity behavior on rotated or cropped pages. Verify actual exports and reject unsupported geometry/characters rather than silently alter output. Explain that watermark is not access control or redaction, document features/signatures may change.
+3. New **PDF Page Size Inspector**: report per-page dimensions, media/crop boxes, rotation and units without claiming physical print size when UserUnit or geometry cannot be interpreted safely. Bounded list and report download; no modifications.
+4. Batch-wide quality: actionable examples and limitations, distinct metadata/related links and discoverability; real PDF fixtures including scanned/text, mixed page sizes, rotated/cropped, protected/corrupt, race cancellation and output verification; keyboard/mobile/axe and downloads, limits/memory checks, complete local suite, security audit, Chromium CI and Vercel preview. One PR, merge only when verified, check production. No claim of SEO results or document fidelity beyond tests.
+
+### Batch 2 — Bulk image workflow and privacy (planned, one PR)
+Audit current bulk resizer (already includes watermark, resize, compression and rename) before implementing. Prioritize batch crop/fit workflows and an accurate **limited** JPEG metadata-removal workflow only if format handling, orientation, color profiles, animations and unremoved metadata can be tested and disclosed. Add independent file/limit/error recovery and output review. Do not advertise lossless cleaning or universal metadata removal. Scope and acceptance will be finalized from findings before coding.
+
+### Batch 3 — Structured data productivity (planned, one PR)
+Research JSON Schema requirements and licensing/security, and evaluate a bounded offline schema validator plus complementary JSON/CSV usability gaps (existing formatter, tree viewer, compare, pointer and converters already exist). No remote `$ref` fetching, arbitrary code or unsupported-schema parity claims; assess safe regex/timeouts and bundled dependency footprint first. Add real conformance/security tests and distinct use cases, or defer unsafe components and replace them with researched alternatives. One cohesive PR after the full plan is finalized.
+
+### Measurement and prioritization
+GSC exports provided earlier include dates beyond the session's stated 2026-10-31; do not treat them as verified current data until chronology is reconciled. When valid page-filtered reports are available, use comparable windows and country/device breakdowns; avoid pairing unfiltered query/page totals. Google [Search Console guidance](https://developers.google.com/search/docs/monitor-debug/search-console-start) distinguishes performance and indexing reports. Build useful tools now rather than wait for GSC; measure later without promising rankings. No paid infrastructure is required.
+
+---
+
 ## EMI scenario comparison and loan-model checks — plan (2026-10-31)
 
 Competitor [loan comparison and amortization workflows](https://excelguru.io/calculators/emi-calculator-with-amortization-schedule/) suggest a useful feature, not measured demand or a ranking guarantee. Improve the existing EMI calculator rather than add a duplicate page. Use the same principal for both scenarios to prevent misleading comparisons; never call an estimate a lender quote.
