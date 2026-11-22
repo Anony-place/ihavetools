@@ -1197,6 +1197,16 @@ await test('QR codes round-trip through a real decoder (jsQR)', async () => {
   assert.throws(() => seo.makeQrModules(ctx.qrcode, ''), /Enter some text/);
   assert.throws(() => seo.makeQrModules(ctx.qrcode, 'x'.repeat(5000), 'H'), /too long/);
 });
+await test('Roman lists and bounded charts validate all inputs atomically', () => {
+  for (let n = 1; n <= 3999; n++) assert.equal(conv.fromRoman(conv.toRoman(n)), n);
+  assert.deepEqual(conv.romanBatch('1994\n\nxlix\r\n3999').map(x=>[x.line,x.number,x.roman]), [[1,1994,'MCMXCIV'],[3,49,'XLIX'],[4,3999,'MMMCMXCIX']]);
+  for (const text of ['0','4000','1.5','1e2','IIII','IC']) assert.throws(()=>conv.romanBatch('I\n'+text),/Line 2/);
+  assert.throws(()=>conv.romanBatch(''),/1 to 200/);assert.throws(()=>conv.romanBatch('I\n'.repeat(201)),/1 to 200/);assert.throws(()=>conv.romanBatch('I'.repeat(10001)),/10,000/);
+  assert.equal(conv.romanBatch('I\n'.repeat(200)).length,200);
+  assert.deepEqual(conv.romanRange('3998','3999'),[{number:3998,roman:'MMMCMXCVIII'},{number:3999,roman:'MMMCMXCIX'}]);
+  assert.equal(conv.romanRange('1','200').length,200);
+  for (const [a,b] of [['1','201'],['2','1'],['0','2'],['1','4000'],['1.0','2'],['1e2','200'],['','2']]) assert.throws(()=>conv.romanRange(a,b));
+});
 await test('number bases, roman numerals and morse code', () => {
   assert.equal(dev.convertBase('255', 10, 2), '11111111');
   assert.equal(dev.convertBase('255', 10, 16), 'ff');

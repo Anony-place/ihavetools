@@ -11,6 +11,16 @@
 
 ---
 
+## Roman numeral list and chart workflow — plan (2026-10-31)
+
+Improve the existing Roman Numeral Converter, not add duplicate pages. Competitor [batch and range workflows](https://foundthetool.com/converters/roman-numeral-converter/) suggest useful classroom and reference tasks, not evidence of demand or guaranteed rankings. Preserve strict canonical 1–3999 notation and existing date behavior.
+
+1. Convert mixed decimal/Roman lists locally, with physical line numbers, atomic validation, explicit 200-item and input-size limits, and copy/download report. Skip blank lines and clearly identify errors.
+2. Generate a bounded inclusive reference range with an explicit 200-row cap, validation, copy/download and stale-result invalidation. Document canonical notation, size limits and non-historical assumptions.
+3. Cover all 3999 round trips and boundaries, engine, DOM, mobile Chromium, accessibility and downloads. Rebuild, audit, run full checks, one PR, verify CI and preview, merge only if safe and verify production.
+
+---
+
 ## Robots draft batch-testing and safety — plan (2026-10-31)
 
 The provided Search Console export shows robots-generator impressions, but its dates need confirmation; unfiltered data and competitor [batch testing](https://quanticdata.io/tools/robots-txt-tester/) suggest workflows, not proven demand. The existing draft tester is approximate, does not fetch live files, and must not claim crawler parity. Implement bounded local batch testing of saved draft rules for one agent and multiple paths, showing each winning rule and clearly reporting invalid lines. Invalidate stale batch reports after changes and disclose draft-only, encoding and origin limits. Harden test inputs against control characters and excessive lengths. Test engines, UI, browser/mobile/accessibility, run full checks, one PR and production verification. Reference [Google robots documentation](https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec) without promising indexing or crawler behavior.
