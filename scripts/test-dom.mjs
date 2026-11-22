@@ -810,6 +810,10 @@ await domTest('unit converters reject numeric underflow instead of showing zero'
  v.value='1e-999';fire(v,'input');assert.match(app.textContent,/too small to represent/);assert.doesNotMatch(app.textContent,/Equal to…/);
  v.value='0e-999';fire(v,'input');assert.match(app.textContent,/Equal to…/);
 });
+await domTest('working schedule and date report clear stale output', async () => {
+ let app=await loadToolPage('business-day-calculator','datetime');let start=app.querySelector('input[type=date]'),holidays=app.querySelector('textarea'); start.value='2024-02-28';holidays.value='2024-02-29';fire(start,'input');const count=[...app.querySelectorAll('input[type=number]')][1];count.value='3';fire(count,'input');click(btnByLabel(app,'Generate working dates'));let out=app.querySelector('[aria-label="Working date schedule output"]');assert.match(out.textContent,/2024-03-01 \(Friday\)/);assert.doesNotMatch(out.textContent,/2024-02-29/);holidays.value='';fire(holidays,'input');assert.doesNotMatch(out.textContent,/2024-03-01/);start.value='2100-12-31';fire(start,'input');click(btnByLabel(app,'Generate working dates'));assert.match(app.textContent,/outside the supported date range/);
+ app=await loadToolPage('date-difference','datetime');let dates=app.querySelectorAll('input[type=date]');dates[0].value='2024-03-01';dates[1].value='2024-01-31';fire(dates[0],'input');click(btnByLabel(app,'Calculate difference'));out=app.querySelector('[aria-label="Date difference report output"]');assert.match(out.textContent,/reversed; earlier date counted first/);assert.match(out.textContent,/Calendar breakdown \(end excluded\): 0y 1m 1d/);dates[0].value='2024-03-02';fire(dates[0],'input');assert.doesNotMatch(out.textContent,/Calendar breakdown/);
+});
 await domTest('Roman list and chart report validation and stale invalidation', async () => {
  const app=await loadToolPage('roman-numeral-converter','converters');const list=app.querySelector('textarea');const result=app.querySelector('[aria-label="List conversion result output"]');
  list.value='1994\n\nxlix';fire(list,'input');click(btnByLabel(app,'Convert list'));assert.match(result.textContent,/Line 1: 1994 → MCMXCIV/);assert.match(result.textContent,/Line 3: xlix → 49/);
@@ -1732,8 +1736,8 @@ await domTest('date difference counts holidays, invalidates and rejects invalid 
  const app=await loadToolPage('date-difference','datetime'), dates=app.querySelectorAll('input[type=date]');
  dates[0].value='2024-01-01'; dates[1].value='2024-01-08'; const holidays=app.querySelector('textarea'); holidays.value='2024-01-01, 2024-01-06, 2024-01-01';
  click(btnByLabel(app,'Calculate difference')); assert.match(app.textContent,/4Business days/); assert.match(app.textContent,/1Holidays excluded/);
- const weekend=app.querySelector('select');weekend.value='none';fire(weekend,'change');assert.equal(app.querySelector('.result-body'),null);click(btnByLabel(app,'Calculate difference'));assert.match(app.textContent,/5Business days/);
- holidays.value='2024-02-30';fire(holidays,'input');click(btnByLabel(app,'Calculate difference'));assert.match(statusText(document),/Invalid date/);assert.equal(app.querySelector('.result-body'),null);
+ const weekend=app.querySelector('select');weekend.value='none';fire(weekend,'change');assert.equal(app.querySelectorAll('.stat-card').length,0);click(btnByLabel(app,'Calculate difference'));assert.match(app.textContent,/5Business days/);
+ holidays.value='2024-02-30';fire(holidays,'input');click(btnByLabel(app,'Calculate difference'));assert.match(statusText(document),/Invalid date/);assert.equal(app.querySelectorAll('.stat-card').length,0);
 });
 await domTest('date difference custom weekdays and date shortcuts invalidate results',async()=>{
  const app=await loadToolPage('date-difference','datetime'), dates=app.querySelectorAll('input[type=date]'), select=app.querySelector('select'), wrap=app.querySelector('fieldset');

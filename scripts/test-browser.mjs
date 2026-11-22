@@ -561,7 +561,7 @@ try {
   await page.locator('#tool-app label.switch').filter({hasText:'Include end date in range count'}).click();
   await page.getByRole('button',{name:'Count working days'}).click();
   assert.match(await page.locator('#tool-app').innerText(),/1\s*Working days/i);
-  assert.match(await page.locator('#tool-app .status-line').innerText(),/end date is excluded/);
+  assert.match(await page.locator('#tool-app .status-line').first().innerText(),/end date is excluded/);
   await page.getByRole('button',{name:'Add / subtract working days'}).click();
   const deadline = await page.locator('#tool-app .stat-card').first().innerText();
   const iso = deadline.match(/\d{4}-\d{2}-\d{2}/)[0];
@@ -986,6 +986,9 @@ try {
   await page.getByLabel('Target grade (%)').fill('90');assert.doesNotMatch(await page.locator('#tool-app .stats-grid').first().innerText(),/94\.00%/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'final grade mobile accessibility');
+  await go('business-day-calculator');await page.getByLabel('Start date',{exact:true}).fill('2024-02-28');await page.getByLabel('Holidays (YYYY-MM-DD)').fill('2024-02-29');await page.getByLabel('Number of working dates').fill('3');await page.getByRole('button',{name:'Generate working dates'}).click();
+  const schedulePanel=page.getByRole('region',{name:'Working date schedule',exact:true});assert.match(await schedulePanel.innerText(),/2024-03-01 \(Friday\)/);const scheduleDownloadWait=page.waitForEvent('download');await schedulePanel.getByRole('button',{name:'Download'}).click();const scheduleDownload=await scheduleDownloadWait;assert.equal(scheduleDownload.suggestedFilename(),'working-dates.txt');assert.match(await readFile(await scheduleDownload.path(),'utf8'),/2024-03-04/);await page.getByLabel('Schedule direction').selectOption('backward');assert.doesNotMatch(await schedulePanel.innerText(),/2024-03-04/);await page.getByRole('button',{name:'Generate working dates'}).click();assert.match(await schedulePanel.innerText(),/2024-02-27/);assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'business schedule mobile accessibility');
+  await go('date-difference');await page.getByLabel('Start date',{exact:true}).fill('2024-03-01');await page.getByLabel('End date',{exact:true}).fill('2024-01-31');await page.getByRole('button',{name:'Calculate difference'}).click();const dateReport=page.getByRole('region',{name:'Date difference report',exact:true});assert.match(await dateReport.innerText(),/reversed; earlier date counted first/);assert.match(await dateReport.innerText(),/Calendar breakdown \(end excluded\): 0y 1m 1d/);await page.getByLabel('End date',{exact:true}).fill('2024-02-01');assert.doesNotMatch(await dateReport.innerText(),/Calendar breakdown/);assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'date report mobile accessibility');
   await go('roman-numeral-converter');
   await page.getByLabel('Value',{exact:true}).fill('1994');
   assert.match(await page.locator('#tool-app').innerText(),/M = 1000 \+ CM = 900 \+ XC = 90 \+ IV = 4/);
