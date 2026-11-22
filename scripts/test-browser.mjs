@@ -998,6 +998,11 @@ try {
   await page.getByLabel('Date conversion direction').selectOption('to-date');await page.getByLabel('Roman date',{exact:true}).fill('II / XXIX / MMXXIV');await page.getByRole('button',{name:'Convert date'}).click();
   assert.match(await page.locator('#tool-app .result-body').nth(1).innerText(),/2024-02-29/);
   await page.getByLabel('Roman date',{exact:true}).fill('II / XXIX / MCM');await page.getByRole('button',{name:'Convert date'}).click();assert.match(await page.locator('#tool-app').innerText(),/valid Gregorian date/);
+  await page.getByLabel('Numbers or Roman numerals').fill('1994\nxlix'); await page.getByRole('button',{name:'Convert list'}).click();
+  const listPanel=page.getByRole('region',{name:'List conversion result',exact:true}); assert.match(await listPanel.innerText(),/Line 2: xlix → 49/);
+  const romanDownloadWait=page.waitForEvent('download');await listPanel.getByRole('button',{name:'Download'}).click();const romanDownload=await romanDownloadWait;assert.equal(romanDownload.suggestedFilename(),'roman-list.txt');assert.match(await readFile(await romanDownload.path(),'utf8'),/1994 → MCMXCIV/);
+  await page.getByLabel('Numbers or Roman numerals').fill('I\nIIII');assert.doesNotMatch(await listPanel.innerText(),/MCMXCIV/);await page.getByRole('button',{name:'Convert list'}).click();assert.match(await page.locator('#tool-app').innerText(),/Line 2: That is not a standard/);
+  await page.getByLabel('Chart start').fill('3998');await page.getByLabel('Chart end').fill('3999');await page.getByRole('button',{name:'Generate chart'}).click();const chartPanel=page.getByRole('region',{name:'Roman chart result',exact:true});assert.match(await chartPanel.innerText(),/3999 = MMMCMXCIX/);await page.getByLabel('Chart end').fill('1');assert.doesNotMatch(await chartPanel.innerText(),/MMMCMXCIX/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[], 'roman mobile accessibility');
   await go('sitemap-generator');

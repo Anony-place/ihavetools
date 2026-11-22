@@ -810,6 +810,12 @@ await domTest('unit converters reject numeric underflow instead of showing zero'
  v.value='1e-999';fire(v,'input');assert.match(app.textContent,/too small to represent/);assert.doesNotMatch(app.textContent,/Equal to…/);
  v.value='0e-999';fire(v,'input');assert.match(app.textContent,/Equal to…/);
 });
+await domTest('Roman list and chart report validation and stale invalidation', async () => {
+ const app=await loadToolPage('roman-numeral-converter','converters');const list=app.querySelector('textarea');const result=app.querySelector('[aria-label="List conversion result output"]');
+ list.value='1994\n\nxlix';fire(list,'input');click(btnByLabel(app,'Convert list'));assert.match(result.textContent,/Line 1: 1994 → MCMXCIV/);assert.match(result.textContent,/Line 3: xlix → 49/);
+ list.value='I\nIIII';fire(list,'input');assert.doesNotMatch(result.textContent,/MCMXCIV/);click(btnByLabel(app,'Convert list'));assert.match(app.textContent,/Line 2: That is not a standard/);assert.doesNotMatch(result.textContent,/Line 1/);
+ const start=[...app.querySelectorAll('input[type=number]')][0],end=[...app.querySelectorAll('input[type=number]')][1],chart=app.querySelector('[aria-label="Roman chart result output"]');click(btnByLabel(app,'Generate chart'));assert.match(chart.textContent,/100 = C/);end.value='201';fire(end,'input');assert.doesNotMatch(chart.textContent,/100 = C/);click(btnByLabel(app,'Generate chart'));assert.match(app.textContent,/at most 200 numbers/);start.value='200';end.value='201';fire(start,'input');click(btnByLabel(app,'Generate chart'));assert.match(chart.textContent,/201 = CCI/);
+});
 await domTest('Roman date conversion supports both orders and clears stale results', async () => {
  const app=await loadToolPage('roman-numeral-converter','converters');
  const date=app.querySelector('input[type=date]'), sels=app.querySelectorAll('select');date.value='2024-02-29';fire(date,'input');click(btnByLabel(app,'Convert date'));assert.match(app.textContent,/XXIX \/ II \/ MMXXIV/);

@@ -2,7 +2,7 @@
 // iHaveTools — Unit converters (shared engine)
 // length, weight, temperature, time, speed, data-storage, area, volume
 // =============================================================================
-import { h, field, input, select, segControl, btn, actionsRow, resultPanel, statusLine, table, fmtNumber, mountTool, copyButton } from '../ui.js';
+import { h, field, input, textarea, select, segControl, btn, actionsRow, resultPanel, statusLine, table, fmtNumber, mountTool, copyButton } from '../ui.js';
 
 /* Engine: convert(value, from, to) via base-unit factors; temperature is special. */
 export const UNIT_SETS = {
@@ -136,6 +136,40 @@ export function fromRoman(str) {
     total += cur < next ? -cur : cur;
   }
   return total;
+}
+
+/** Bounded mixed-format conversion, preserving physical line numbers. */
+export function romanBatch(raw) {
+  const text = String(raw);
+  if (text.length > 10000) throw new Error('List exceeds 10,000 characters.');
+  const lines = text.split(/\r\n|\r|\n/).map((value, index) => ({value: value.trim(), line: index + 1})).filter(row => row.value);
+  if (!lines.length || lines.length > 200) throw new Error('Enter 1 to 200 nonblank values, one per line.');
+  return lines.map(({value, line}) => {
+    try {
+      if (value.length > 32) throw new Error('Value is too long.');
+      if (/^[0-9]+$/.test(value)) {
+        const number = Number(value);
+        return {line, input: value, number, roman: toRoman(number)};
+      }
+      const number = fromRoman(value);
+      return {line, input: value, number, roman: toRoman(number)};
+    } catch (error) { throw new Error(`Line ${line}: ${error.message}`); }
+  });
+}
+
+/** Inclusive chart with a fixed maximum number of rows. */
+export function romanRange(start, end) {
+  const parse = value => {
+    const text = String(value).trim();
+    if (!/^[0-9]{1,4}$/.test(text)) throw new Error('Range endpoints must be whole decimal numbers from 1 to 3999.');
+    const n = Number(text);
+    if (n < 1 || n > 3999) throw new Error('Range endpoints must be whole decimal numbers from 1 to 3999.');
+    return n;
+  };
+  const first = parse(start), last = parse(end);
+  if (last < first) throw new Error('The end must be at least the start.');
+  if (last - first + 1 > 200) throw new Error('A chart can contain at most 200 numbers.');
+  return Array.from({length: last - first + 1}, (_, i) => ({number: first + i, roman: toRoman(first + i)}));
 }
 
 /** Proleptic Gregorian date validation, without time zones or Date's year 0–99 quirks. */
@@ -280,6 +314,37 @@ const defs = {
     root.append(h('h2',{text:'Roman date converter'}),h('p',{class:'hint',text:'Each date component is converted separately. Dates use the proleptic Gregorian calendar; historic Roman calendar conventions are not represented.'}),
       h('div',{class:'field-row'},field({label:'Date conversion direction',control:direction}),field({label:'Roman date order',control:order})),dateField,romanField,
       actionsRow(btn({label:'Convert date',icon:'calendar',onClick:convertDate})),dateStatus,dateResult.panel);
+
+    const batch = textarea({rows: 6, placeholder: '1994\nXLIX\n2026'});
+    const batchStatus = statusLine('');
+    const batchResult = resultPanel({label:'List conversion result', copy:true, download:true, downloadName:'roman-list.txt', placeholder:'Convert a list to see the result.'});
+    batch.addEventListener('input', () => {batchResult.placeholder(); batchStatus.set('List changed. Convert again.', 'info');});
+    const convertList = () => {
+      try {
+        const rows = romanBatch(batch.value);
+        batchResult.set(rows.map(row => `Line ${row.line}: ${row.input} → ${/^[0-9]+$/.test(row.input) ? row.roman : row.number}`).join('\n'));
+        batchStatus.set(`Converted ${rows.length} values.`, 'success');
+      } catch (error) { batchResult.placeholder(); batchStatus.set(error.message, 'error'); }
+    };
+    const start = input({type:'number',min:'1',max:'3999',step:'1',value:'1'});
+    const end = input({type:'number',min:'1',max:'3999',step:'1',value:'100'});
+    const rangeStatus = statusLine('');
+    const rangeResult = resultPanel({label:'Roman chart result',copy:true,download:true,downloadName:'roman-chart.txt',placeholder:'Generate a chart to see the result.'});
+    [start,end].forEach(el => el.addEventListener('input', () => {rangeResult.placeholder(); rangeStatus.set('Range changed. Generate again.', 'info');}));
+    const generateRange = () => {
+      try {
+        const rows = romanRange(start.value,end.value);
+        rangeResult.set(rows.map(row => `${row.number} = ${row.roman}`).join('\n'));
+        rangeStatus.set(`Generated ${rows.length} values.`, 'success');
+      } catch (error) {rangeResult.placeholder(); rangeStatus.set(error.message, 'error');}
+    };
+    root.append(h('h2',{text:'Convert a list'}),
+      field({label:'Numbers or Roman numerals',control:batch,hint:'One value per line, up to 200 nonblank values and 10,000 characters. Decimal and standard Roman values can be mixed; blank lines are skipped.'}),
+      actionsRow(btn({label:'Convert list',onClick:convertList})),batchStatus,batchResult.panel,
+      h('h2',{text:'Roman numeral chart'}),h('p',{class:'hint',text:'Generate an inclusive range of up to 200 whole numbers from 1 to 3999.'}),
+      h('div',{class:'field-row'},field({label:'Chart start',control:start}),field({label:'Chart end',control:end})),
+      actionsRow(btn({label:'Generate chart',onClick:generateRange})),rangeStatus,rangeResult.panel);
+
   },
 };
 
