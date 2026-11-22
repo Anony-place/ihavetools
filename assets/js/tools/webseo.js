@@ -338,6 +338,7 @@ const robotsPatternMatches = (pattern, path) => {
 const robotsPath = (raw) => {
   const value = String(raw || '').trim();
   if (value.length > 8192) throw new Error('Test path must be no longer than 8,192 characters.');
+  if (/[\x00-\x1f\x7f]/.test(value)) throw new Error('Test path must not contain control characters.');
   if (!value) throw new Error('Enter a URL or path to test.');
   if (/^[a-z][a-z0-9+.-]*:/i.test(value)) {
     let url;
@@ -359,6 +360,7 @@ const robotsPath = (raw) => {
 export function testRobotsAccess(rules, userAgent, rawPath) {
   const path = robotsPath(rawPath);
   const ua = String(userAgent || '*').trim().toLowerCase() || '*';
+  if (ua.length > 512 || /[\x00-\x1f\x7f]/.test(ua)) throw new Error('Test user-agent must be at most 512 characters with no control characters.');
   const specific = (rules || []).filter((rule) => {
     const token = String(rule.agent || '*').trim().toLowerCase();
     return token && token !== '*' && (ua === token || ua.includes(token));
@@ -393,6 +395,17 @@ export function testRobotsAccess(rules, userAgent, rawPath) {
     ruleType: winner?.type || null,
     pattern: winner?.pattern || null,
   };
+}
+
+/** Test saved rules against a bounded list; no live URLs are fetched. */
+export function testRobotsBatch(rules,agent,raw) {
+  const input=String(raw);if(input.length>50000)throw new Error('Batch input exceeds 50,000 characters.');
+  const lines=input.split(/\r\n|\r|\n/).map((line,i)=>({line:line.trim(),number:i+1})).filter(row=>row.line);
+  if(!lines.length||lines.length>50)throw new Error('Enter 1 to 50 nonblank URLs or paths, one per line.');
+  const patterns=rules.flatMap(r=>[...(r.allow||[]),...(r.disallow||[])]);
+  const cost=lines.length*patterns.reduce((n,p)=>n+String(p).length,0)+patterns.length*lines.reduce((n,l)=>n+l.line.length,0);
+  if(cost>5000000)throw new Error('Batch is too large for these rules; reduce the number or length of paths or rules.');
+  return lines.map(({line,number})=>{try{return {line:number,...testRobotsAccess(rules,agent,line)};}catch(e){throw new Error(`Line ${number}: ${e.message}`);}});
 }
 
 /* ═══════════════════════════ Sitemap XML builder ═══════════════════════════ */
@@ -512,6 +525,8 @@ const defs = {
     const testAgent = input({ type: 'text', value: 'Googlebot', placeholder: 'Googlebot, Bingbot, GPTBot…' });
     const testUrl = input({ type: 'text', value: '/private/', placeholder: '/private/ or https://example.com/private/' });
     const testOut = resultPanel({ label: 'Crawl test result', copy: false, placeholder: 'Run a test to see which rule wins.' });
+    const batchInput = textarea({rows:5,placeholder:'/\n/private/\n/private/public/'});
+    const batchOut = resultPanel({label:'Batch crawl test',download:true,downloadName:'robots-test.txt',placeholder:'Run a batch test to see results.'});
     const status = statusLine('');
     let rules = [{ agent: '*', disallow: [], allow: [] }];
     const runTest = () => {
@@ -526,6 +541,15 @@ const defs = {
         ].join('\n'));
       } catch (e) { testOut.placeholder(); status.set(e.message, 'error'); }
     };
+    const runBatch = () => {
+      try {
+        buildRobots(rules, options());
+        const results=testRobotsBatch(rules,testAgent.value,batchInput.value);
+        const summary=results.map(r=>`Line ${r.line}: ${r.allowed?'Allowed':'Blocked'} | ${r.path} | Group: ${r.agentGroup} | ${r.pattern?`${r.ruleType}: ${r.pattern}`:'No matching rule'}`);
+        batchOut.set(['Approximate local simulation of saved draft rules. No URL was fetched. Verify with official crawler tools.',...summary].join('\n'));
+        status.set(`Tested ${results.length} paths locally. Review crawler-specific behavior before publishing.`, 'success');
+      } catch(e) {batchOut.placeholder();status.set(e.message,'error');}
+    };
     const render = () => {
       rows.replaceChildren(...rules.map((r, i) => h('div', { class: 'file-row', style: 'flex-wrap:wrap' },
         h('code', { class: 'mono', text: `UA: ${r.agent}` }),
@@ -535,6 +559,7 @@ const defs = {
           h('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'aria-label': `Remove ${r.agent} rule ${i + 1}`, onclick: () => { if (formWrap.childElementCount) { status.set('Save or cancel the open rule editor first.', 'error'); return; } confirmWrap.replaceChildren(); rules.splice(i, 1); if (!rules.length) rules = [{ agent: '*', disallow: [], allow: [] }]; formWrap.replaceChildren(); render(); build(); } }, 'Remove')))));
     };
     const build = () => {
+      batchOut.placeholder('Rules or settings changed. Run the batch test again.');
       try {
         const text = buildRobots(rules, options());
         out.set(text);
@@ -544,6 +569,7 @@ const defs = {
     };
     [sitemap, extraSitemaps, delay].forEach(el => el.addEventListener('input', build));
     [testAgent, testUrl].forEach(el => el.addEventListener('input', () => testOut.placeholder('Inputs changed. Run the test again.')));
+    [testAgent,batchInput].forEach(el => el.addEventListener('input',()=>batchOut.placeholder('Inputs changed. Run the batch test again.')));
     const addRule = (index = null) => {
       if (formWrap.childElementCount) { status.set('Save or cancel the open rule editor first.', 'error'); return; }
       confirmWrap.replaceChildren();
@@ -605,7 +631,10 @@ const defs = {
         field({ label: 'Crawler user-agent', control: testAgent }),
         field({ label: 'URL or path', control: testUrl })),
       actionsRow(btn({ label: 'Test crawler access', variant: 'secondary', icon: 'check', onClick: runTest })),
-      h('br'), testOut.panel);
+      h('br'), testOut.panel,
+      h('h3',{text:'Test multiple paths',style:'margin:22px 0 10px'}),
+      field({label:'URLs or paths to test',control:batchInput,hint:'One per line, up to 50 paths and 50,000 characters total. Uses the crawler user-agent above and saved draft rules only; URLs are not fetched.'}),
+      actionsRow(btn({label:'Test paths',variant:'secondary',onClick:runBatch})),batchOut.panel);
     render(); build();
   },
 

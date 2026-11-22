@@ -1360,6 +1360,14 @@ await test('robots.txt output shape', () => {
   assert.match(out, /Sitemap: https:\/\/x\.y\/sitemap\.xml/);
   assert.match(out, /Crawl-delay: 2/);
 });
+await test('robots batch tester bounds input and identifies errors', () => {
+ const rules=[{agent:'*',disallow:['/private/'],allow:['/private/public/']},{agent:'Googlebot',disallow:['/blocked'],allow:[]}];
+ const r=seo.testRobotsBatch(rules,'Bingbot','/\n\n/private/x\nhttps://example.com/private/public/a#f');assert.deepEqual(r.map(x=>[x.line,x.allowed,x.pattern]),[[1,true,null],[3,false,'/private/'],[4,true,'/private/public/']]);
+ assert.equal(seo.testRobotsBatch(rules,'Googlebot','/private/x')[0].allowed,true);
+ assert.throws(()=>seo.testRobotsBatch(rules,'bot','/ok\nftp://bad'),/Line 2/);assert.throws(()=>seo.testRobotsBatch(rules,'bot',''),/1 to 50/);assert.throws(()=>seo.testRobotsBatch(rules,'bot','/a\n'.repeat(51)),/1 to 50/);assert.throws(()=>seo.testRobotsBatch(rules,'bot','x'.repeat(50001)),/50,000/);
+ assert.throws(()=>seo.testRobotsAccess(rules,'x'.repeat(513),'/'),/512/);assert.throws(()=>seo.testRobotsAccess(rules,'bot\ninjected','/'),/control/);assert.throws(()=>seo.testRobotsAccess(rules,'bot','/a\tb'),/control/);
+ assert.throws(()=>seo.testRobotsBatch([{agent:'*',disallow:Array(5000).fill('/'+'a'.repeat(100))}],'bot',('/xyz\n').repeat(50)),/too large/);
+});
 await test('robots crawl tester: specific group and longest pattern win', () => {
   const rules = [
     { agent: '*', disallow: ['/private/', '/*.pdf$'], allow: ['/private/public/'] },

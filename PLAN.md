@@ -11,6 +11,12 @@
 
 ---
 
+## Robots draft batch-testing and safety — plan (2026-10-31)
+
+The provided Search Console export shows robots-generator impressions, but its dates need confirmation; unfiltered data and competitor [batch testing](https://quanticdata.io/tools/robots-txt-tester/) suggest workflows, not proven demand. The existing draft tester is approximate, does not fetch live files, and must not claim crawler parity. Implement bounded local batch testing of saved draft rules for one agent and multiple paths, showing each winning rule and clearly reporting invalid lines. Invalidate stale batch reports after changes and disclose draft-only, encoding and origin limits. Harden test inputs against control characters and excessive lengths. Test engines, UI, browser/mobile/accessibility, run full checks, one PR and production verification. Reference [Google robots documentation](https://developers.google.com/crawling/docs/robots-txt/robots-txt-spec) without promising indexing or crawler behavior.
+
+---
+
 ## Attendance and converter usability batch — plan (2026-10-31)
 
 Search Console sheets provided by the user show attendance and time converter impressions with few clicks, but exports carry dates beyond this session's stated date; confirm chronology before treating them as a current baseline. Unfiltered page/query reports do not establish attribution, demand or outcomes. Competitor [attendance planning](https://miniwebtool.com/attendance-percentage-calculator/) suggests comparing targets; the current tool already supports finite-term and scenario calculations. Avoid duplicating that work.

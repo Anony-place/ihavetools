@@ -2434,6 +2434,11 @@ await domTest('Time converter explains averages and links calendar tools', async
  assert.ok(app.querySelector('a[href="/tools/time-duration-calculator/"]'));
  const n=app.querySelector('input[type=number]'), sels=app.querySelectorAll('select'); n.value='1'; sels[0].value='month (avg)'; sels[1].value='day'; fire(sels[1],'change'); assert.match(app.textContent,/30\.436875 day/);
 });
+await domTest('robots batch tests saved rules and invalidates reports',async()=>{
+ const app=await loadToolPage('robots-txt-generator','webseo'), batch=[...app.querySelectorAll('textarea')].find(el=>el.placeholder.includes('/private/')), agent=app.querySelector('input[placeholder^="Googlebot"]');
+ click(btnByLabel(app,'Block everything'));click(btnByLabel(app,'Confirm replace rules'));batch.value='/\n/private/';click(btnByLabel(app,'Test paths'));const output=document.querySelector('[aria-label="Batch crawl test output"]');assert.match(output.textContent,/Line 1: Blocked/);assert.match(output.textContent,/Line 2: Blocked/);
+ agent.value='Bingbot';fire(agent,'input');assert.doesNotMatch(output.textContent,/Line 1/);batch.value='/ok\nftp://bad';click(btnByLabel(app,'Test paths'));assert.match(statusText(document),/Line 2/);assert.doesNotMatch(output.textContent,/Line 1/);batch.value='/';click(btnByLabel(app,'Test paths'));click(btnByLabel(app,'Allow everything'));click(btnByLabel(app,'Confirm replace rules'));assert.doesNotMatch(output.textContent,/Line 1/);
+});
 await domTest('GSC pages: finite term, roman breakdown, editable robots rules', async () => {
  let app=await loadToolPage('attendance-calculator','student'); const nums=app.querySelectorAll('input[type=number]');
  nums[3].value='20'; click(btnByLabel(app,'Calculate attendance')); assert.match(app.textContent,/17 of 20/); assert.match(app.textContent,/3Can miss by term end/);
