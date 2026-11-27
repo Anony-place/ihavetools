@@ -703,10 +703,35 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 .date-combined > summary { cursor: pointer; font-weight: 650; }
 .date-combined .field-row { margin-top: 10px; }
 
-/* Python editor and output stay together on wide screens, and stack on phones. */
-.python-playground { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+/* Python workspace: full-height IDE surface with a readable console. */
+.python-workspace { min-width: 0; }
+.python-workspace:fullscreen { background: var(--surface); padding: 18px 24px; overflow: auto; }
+.python-workspace:fullscreen .python-playground { min-height: calc(100vh - 120px); }
+.python-toolbar .action-row { align-items: center; }
+.python-playground { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr); gap: 16px; align-items: stretch; }
 .python-editor, .python-console { min-width: 0; }
-.python-editor textarea { height: clamp(360px, 55vh, 700px); min-height: 260px; white-space: pre; overflow: auto; tab-size: 4; }
-.python-console .result-panel { margin-top: 0; }
-.python-console .result-body { min-height: 240px; max-height: 50vh; overflow: auto; }
-@media (max-width: 720px) { .python-playground { grid-template-columns: minmax(0, 1fr); } .python-editor textarea { height: 320px; min-height: 240px; } .python-console .result-body { min-height: 160px; } }
+.python-editor { border: 1px solid #374151; border-radius: 10px; overflow: hidden; background: #282c34; }
+.python-file-tab { display: flex; justify-content: space-between; gap: 12px; color: #d8dee9; background: #21252b; padding: 11px 16px; font: 600 0.82rem var(--mono); border-bottom: 1px solid #3d424b; }
+.python-language { color: #abb2bf; font-weight: 400; }
+.python-code-editor .cm-editor { height: clamp(550px, 72vh, 1100px); font: 14px/1.6 var(--mono); }
+.python-code-editor .cm-scroller { overflow: auto; font-family: var(--mono); }
+.python-code-editor .cm-content { min-height: 100%; }
+.python-code-editor .cm-editor.cm-focused { outline: 2px solid #8ca8ff; outline-offset: -2px; }
+.python-workspace:fullscreen .python-code-editor .cm-editor { height: calc(100vh - 210px); min-height: 420px; }
+.python-editor > .field { margin: 0; padding: 12px; color: #fff; }
+.python-editor > .field textarea { height: clamp(550px,72vh,1100px); min-height: 320px; white-space: pre; overflow: auto; tab-size: 4; }
+.python-editor-footer { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 8px 14px; background: #21252b; color: #c8d0dc; }
+.python-editor-footer .hint { color: #c8d0dc; font-size: .76rem; }
+.python-console { display: flex; flex-direction: column; gap: 14px; }
+.python-console .result-panel { margin-top: 0; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 360px; }
+.python-console .result-body { flex: 1; min-height: 260px; max-height: 75vh; overflow: auto; background: #171b22; color: #e2e8f0; }
+.python-console .result-body .placeholder { color: #aeb9c8; }
+.python-console .result-body pre { font-size: .9rem; }
+@media (max-width: 720px) {
+  .python-playground { grid-template-columns: minmax(0, 1fr); }
+  .python-code-editor .cm-editor, .python-editor > .field textarea { height: 460px; min-height: 320px; }
+  .python-console .result-panel { min-height: 240px; }
+  .python-console .result-body { min-height: 180px; }
+  .python-workspace:fullscreen { padding: 12px; }
+  .python-workspace:fullscreen .python-code-editor .cm-editor { height: 48vh; min-height: 260px; }
+}
