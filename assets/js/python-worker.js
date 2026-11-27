@@ -38,7 +38,7 @@ self.onmessage = async ({ data }) => {
       const answer = decoder.decode(sharedBytes.subarray(0, length));
       Atomics.store(shared, 1, 0);
       return answer;
-    } });
+    }, isatty:true });
     py.setStdout({ write }); py.setStderr({ write });
     let error = '';
     try { py.runPython(data.code); } catch (e) { error = String(e); }
