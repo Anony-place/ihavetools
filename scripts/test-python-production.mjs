@@ -17,5 +17,11 @@ try {
   console.log('Python status:',status);
   assert.match(status,/Program finished/);
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(),/production-smoke-42/);
-  console.log('✓ Deployed Python runtime executes code in Chromium');
+  // Production stdin regression: input() must receive supplied lines, not EOF.
+  await page.getByRole('textbox',{name:'Python code',exact:true}).fill('port = int(input("Port number daalo: "))\\nif port == 22:\\n    print("SSH Service - High Security Alert!")\\nelif port == 80:\\n    print("HTTP Service - Unencrypted Web Traffic")\\nelif port == 443:\\n    print("HTTPS Service - Secure Web Traffic")\\nelse:\\n    print("Unknown or other port")');
+  await page.getByLabel('Standard input (for input())').fill('22\\n');
+  await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
+  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /SSH Service - High Security Alert!/);
+  console.log('✓ Deployed Python runtime executes print() and input() in Chromium');
 } finally { await browser.close(); }
