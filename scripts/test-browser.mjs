@@ -1254,6 +1254,17 @@ try {
   let cropData=await sharp(await readFile(await (await cropDownload).path())).ensureAlpha().raw().toBuffer({resolveWithObject:true});
   assert.deepEqual([cropData.info.width,cropData.info.height],[20,10]);
   assert.deepEqual([...cropData.data.subarray(0,4)],[255,0,0,255]); assert.deepEqual([...cropData.data.subarray(19*4,20*4)],[0,0,255,255]);
+  await page.getByLabel('Output width (px)').fill('40');
+  await page.getByRole('button',{name:'Crop',exact:true}).click();
+  assert.match(await page.locator('#tool-app .status-line').innerText(),/both output dimensions/);
+  await page.getByLabel('Output height (px)').fill('20');
+  await page.getByLabel('Output format').selectOption('jpeg');
+  await page.getByLabel('Maximum file size').fill('5');
+  await page.getByRole('button',{name:'Crop',exact:true}).click();
+  cropDownload=page.waitForEvent('download'); await page.getByRole('button',{name:/Download 40 × 20 JPEG/}).click();
+  const sizedCrop = await readFile(await (await cropDownload).path());
+  assert.ok(sizedCrop.length <= 5000); const sizedMeta=await sharp(sizedCrop).metadata(); assert.deepEqual([sizedMeta.width,sizedMeta.height],[40,20]);
+  await page.getByLabel('Maximum file size').fill(''); await page.getByLabel('Output width (px)').fill(''); await page.getByLabel('Output height (px)').fill(''); await page.getByLabel('Output format').selectOption('png');
   await page.getByLabel('Left (px)').fill('70'); await page.getByRole('button',{name:'Crop',exact:true}).click();
   assert.match(await page.locator('#tool-app .status-line').innerText(),/within the image/); assert.equal(await page.locator('#tool-app .img-preview').count(),0);
   await page.locator('#tool-app input[type=file]').setInputFiles(cropFile);
