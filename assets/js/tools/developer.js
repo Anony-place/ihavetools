@@ -690,7 +690,8 @@ const defs = {
         else if (data.type === 'result') { stopWorker(); outputText += data.output; if (data.error) outputText += (outputText && !outputText.endsWith('\n') ? '\n' : '') + data.error; if (data.truncated) outputText += '\n[Output truncated at 100,000 bytes.]'; out.set(outputText || '(No output)'); status.set(data.error ? 'Program ended with an error.' : 'Program finished. Each run starts fresh.', data.error ? 'error' : 'success'); }
         else if (data.type === 'failure') { stopWorker(); status.set('Python failed to initialize: ' + data.message,'error'); }
       };
-      current.onerror = e => { if(worker === current) { stopWorker(); status.set('Python worker failed to load or run. Check your connection and retry.','error'); e.preventDefault(); } };
+      current.onerror = e => { if(worker === current) { const detail = [e.message || 'Unknown worker error', e.filename ? e.filename.split('/').pop() : '', e.lineno ? 'line '+e.lineno : ''].filter(Boolean).join(' · '); stopWorker(); status.set('Python worker error: ' + detail + '. Check that Pyodide assets are reachable, then reload the page.','error'); e.preventDefault(); } };
+      current.onmessageerror = () => { if(worker === current) { stopWorker(); status.set('Python worker message could not be decoded. Reload the page and retry.','error'); } };
       current.postMessage({code:code.value,stdin:stdin.value,stdinBuffer});
     }});
     const stopButton = btn({label:'Stop Python',variant:'secondary',disabled:true,onClick:() => { if(stdinControl){Atomics.store(stdinControl,0,2);Atomics.notify(stdinControl,0);} liveInputRow.hidden=true; stopWorker(); if (!outputText) out.placeholder('Stopped before output.'); status.set('Stopped. The interpreter and its temporary files were discarded.'); }});
