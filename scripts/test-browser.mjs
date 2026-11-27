@@ -768,7 +768,9 @@ try {
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /Hello, world!/);
-  const pyCode = page.getByRole('textbox',{name:'Python code',exact:true}), pyInput = page.getByLabel('Standard input');
+  const pyCode = page.getByRole('textbox',{name:'Python code',exact:true}), pyInput = page.getByLabel('Standard input (for input())');
+  const stdinBox = await pyInput.boundingBox(), outputBox = await page.getByRole('region',{name:'Python output',exact:true}).boundingBox();
+  assert.ok(stdinBox.y < outputBox.y, 'standard input is visible above output so input() is discoverable');
   await pyCode.fill('import json\nprint(json.dumps({"number": int(input()) + 2}))'); await pyInput.fill('40\n');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
