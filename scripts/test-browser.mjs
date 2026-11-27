@@ -754,6 +754,14 @@ try {
   console.log('✓ JSON Pointer exact output, import validation and mobile accessibility');
 
   await go('python-playground');
+  await page.locator('.python-code-editor .cm-content').waitFor();
+  assert.ok((await page.locator('.python-code-editor .cm-editor').boundingBox()).height >= 550, 'large Python editor');
+  assert.ok(await page.locator('.python-code-editor .cm-lineNumbers .cm-gutterElement').count() >= 2, 'line numbers visible');
+  assert.ok(await page.locator('.python-code-editor .cm-line span').count() > 0, 'syntax tokens rendered');
+  await page.getByRole('button',{name:'Full screen',exact:true}).click();
+  await page.waitForFunction(() => !!document.fullscreenElement);
+  await page.getByRole('button',{name:'Exit full screen',exact:true}).click();
+  await page.waitForFunction(() => !document.fullscreenElement);
   const desktopEditor = await page.getByLabel('Python code').boundingBox();
   const desktopOutput = await page.getByRole('region',{name:'Python output',exact:true}).boundingBox();
   assert.ok(desktopOutput.x >= desktopEditor.x + desktopEditor.width - 1, 'Python editor and output are side by side on desktop');
@@ -776,6 +784,12 @@ try {
   assert.match(await page.locator('#tool-app .status-line').textContent(), /Stopped/);
   await pyCode.fill('x'.repeat(100001)); await page.getByRole('button',{name:'Run Python',exact:true}).click();
   assert.match(await page.locator('#tool-app .status-line').textContent(), /100,000/);
+  await pyCode.fill('print("keyboard run")'); await pyCode.press('Control+Enter');
+  await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
+  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /keyboard run/);
+  await page.locator('label.switch').filter({hasText:'Tab inserts spaces'}).click();
+  await pyCode.fill('x'); await pyCode.press('End'); await pyCode.press('Tab');
+  assert.match(await pyCode.textContent(), /x {1,4}/, 'Tab indents when opted in');
   await pyCode.fill('print("test")');
   const pyDownload=page.waitForEvent('download'); await page.getByRole('button',{name:'Download code'}).click();
   assert.equal(await readFile(await (await pyDownload).path(),'utf8'),'print("test")');
@@ -784,7 +798,15 @@ try {
   assert.ok(mobileOutput.y >= mobileEditor.y + mobileEditor.height, 'Python output stacks below editor on mobile');
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'Python playground accessibility');
   await page.setViewportSize({width:1280,height:800});
-  console.log('✓ Python runtime, stdin, errors, worker stop, download and mobile accessibility');
+  await page.route('**/assets/vendor/codemirror-python/editor.js', route => route.abort());
+  await go('python-playground');
+  await page.locator('#tool-app .status-line').getByText(/basic editor instead/).waitFor();
+  await page.getByLabel('Python code').fill('print("fallback works")');
+  await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
+  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(),/fallback works/);
+  await page.unroute('**/assets/vendor/codemirror-python/editor.js');
+  console.log('✓ Python editor, fullscreen, keyboard, fallback, runtime and mobile accessibility');
 
   await go('html-live-preview');
   assert.equal(await page.locator('#tool-app').evaluate(el => [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'null')), false);

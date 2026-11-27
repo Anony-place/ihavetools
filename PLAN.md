@@ -3286,3 +3286,11 @@ User reports the Python tool is not usable and wants side-by-side output. Batch:
 1. Put editor and output side-by-side on desktop, stack at narrow widths, and make Run, loading/error state and input requirements obvious.
 2. Keep output visible during execution, including on stop/timeout, with bounded streaming and clear failure messages. Maintain disposable workers and honest security/input limits.
 3. Test actual execution, stdin, errors, streaming/stop, desktop/mobile geometry and accessibility in Chromium, plus a separate production HTTP/runtime smoke check; verify deployed files and report any production-only failures.
+
+## Python editor workspace follow-up
+
+User requested a larger box and a real editor feel. Deliver one complete batch:
+large Python-highlighted, numbered editor, desktop side-by-side console, mobile
+stacking, accessible keyboard controls and full-screen workspace; retain a usable
+plain-text fallback and current execution/privacy behavior. Test real code edits,
+execution, keyboard controls, fullscreen, mobile and accessibility in Chromium.

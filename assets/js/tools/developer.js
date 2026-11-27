@@ -673,13 +673,33 @@ const defs = {
     }});
     const stopButton = btn({label:'Stop Python',variant:'secondary',disabled:true,onClick:() => { stopWorker(); if (!outputText) out.placeholder('Stopped before output.'); status.set('Stopped. The interpreter and its temporary files were discarded.'); }});
     window.addEventListener('pagehide', stopWorker);
-    root.append(h('p',{class:'hint',text:'Run trusted code only. Code can make network requests; do not enter secrets. Each run starts fresh.'}),
-      actionsRow(runButton,stopButton,copyButton(()=>code.value,{label:'Copy code'}),downloadButton(()=>code.value,'main.py',{label:'Download code',mime:'text/x-python;charset=utf-8'})),
+    const fallback = field({label:'Python code',control:code});
+    const editorHost = h('div',{class:'python-code-editor'});
+    const editorTitle = h('div',{class:'python-file-tab', 'aria-hidden':'true'},'●  main.py',h('span',{class:'python-language',text:'Python 3'}));
+    const tabs = switchChip({label:'Tab inserts spaces',checked:false}); tabs.hidden = true;
+    const workspace = h('div',{class:'python-workspace'});
+    const fullscreen = btn({label:'Full screen',variant:'secondary',onClick:async () => {
+      try {
+        if (document.fullscreenElement === workspace) await document.exitFullscreen();
+        else if (workspace.requestFullscreen) await workspace.requestFullscreen();
+        else status.set('Full screen is not supported in this browser.','warning');
+      } catch { status.set('Unable to enter full screen in this browser.','warning'); }
+    }});
+    document.addEventListener('fullscreenchange', () => { fullscreen.textContent = document.fullscreenElement === workspace ? 'Exit full screen' : 'Full screen'; });
+    workspace.append(
+      h('div',{class:'python-toolbar'},actionsRow(runButton,stopButton,fullscreen,copyButton(()=>code.value,{label:'Copy code'}),downloadButton(()=>code.value,'main.py',{label:'Download code',mime:'text/x-python;charset=utf-8'}))),
       status,
       h('div',{class:'python-playground'},
-        h('div',{class:'python-editor'},field({label:'Python code',control:code,hint:'Maximum 100,000 characters. Your code is not saved automatically.'})),
-        h('div',{class:'python-console'},out.panel,field({label:'Standard input',control:stdin,hint:'For input(), enter one line per answer BEFORE running. Maximum 100,000 characters; not an interactive terminal.'}))),
+        h('div',{class:'python-editor'},editorTitle,editorHost,fallback,
+          h('div',{class:'python-editor-footer'},tabs,h('span',{class:'hint',text:'Ctrl/⌘ + Enter runs · Code is not saved automatically'}))),
+        h('div',{class:'python-console'},out.panel,field({label:'Standard input',control:stdin,hint:'For input(), enter one line per answer BEFORE running. Maximum 100,000 characters; not an interactive terminal.'}))));
+    root.append(h('p',{class:'hint',text:'Run trusted code only. Code can make network requests; do not enter secrets. Each run starts fresh.'}),workspace,
       privacyNote('The runtime downloads from this site on first use. Worker isolation is not a security sandbox; code can make network requests. Runs stop after 15 seconds, but memory is not strictly limited.'));
+    import('/assets/vendor/codemirror-python/editor.js').then(({mountPythonEditor}) => {
+      const editor = mountPythonEditor(editorHost, code.value, text => { code.value = text; code.dispatchEvent(new Event('input',{bubbles:true})); }, () => { if (!runButton.disabled) runButton.click(); });
+      fallback.hidden = true; tabs.hidden = false;
+      tabs.querySelector('input').addEventListener('change', event => editor.setTabMode(event.target.checked));
+    }).catch(() => { editorTitle.hidden = true; editorHost.hidden = true; status.set('Code editor could not load; using the basic editor instead. You can still run Python.','warning'); });
   },
   'json-string-escape'(root) {encodingTool(root,{label:'Text or JSON string literal',convert:jsonStringConvert,hint:'Encode plain text as a quoted JSON string; decode requires one complete quoted JSON string literal.'});},
   'text-hex-converter'(root) {encodingTool(root,{label:'Text or hex bytes',convert:utf8HexConvert,hint:'UTF-8 text ↔ hexadecimal byte pairs; max 1,000,000 UTF-16 code units. Invalid UTF-8 is rejected.'});},
