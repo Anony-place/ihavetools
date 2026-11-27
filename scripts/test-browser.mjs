@@ -753,6 +753,32 @@ try {
   await page.setViewportSize({width:1280,height:800});
   console.log('✓ JSON Pointer exact output, import validation and mobile accessibility');
 
+  await go('python-playground');
+  await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
+  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /Hello, World/);
+  const pyCode = page.getByLabel('Python code'), pyInput = page.getByLabel('Standard input');
+  await pyCode.fill('import json\nprint(json.dumps({"number": int(input()) + 2}))'); await pyInput.fill('40\n');
+  await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
+  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /"number": 42/);
+  await pyCode.fill('print(missing_name)'); await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  await page.locator('#tool-app .status-line').getByText(/ended with an error/).waitFor({timeout:90000});
+  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /NameError/);
+  await pyCode.fill('while True: pass'); await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  await page.locator('#tool-app .status-line').getByText(/Running Python/).waitFor({timeout:90000});
+  await page.getByRole('button',{name:'Stop Python',exact:true}).click();
+  assert.match(await page.locator('#tool-app .status-line').textContent(), /Stopped/);
+  await pyCode.fill('x'.repeat(100001)); await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  assert.match(await page.locator('#tool-app .status-line').textContent(), /100,000/);
+  await pyCode.fill('print("test")');
+  const pyDownload=page.waitForEvent('download'); await page.getByRole('button',{name:'Download code'}).click();
+  assert.equal(await readFile(await (await pyDownload).path(),'utf8'),'print("test")');
+  await page.setViewportSize({width:320,height:844});
+  assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'Python playground accessibility');
+  await page.setViewportSize({width:1280,height:800});
+  console.log('✓ Python runtime, stdin, errors, worker stop, download and mobile accessibility');
+
   await go('html-live-preview');
   assert.equal(await page.locator('#tool-app').evaluate(el => [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim() === 'null')), false);
   assert.ok((await page.locator('#tool-app iframe').boundingBox()).height >= 500, 'preview has ample desktop height');

@@ -3257,3 +3257,25 @@ cheezein, order me: (1) indexing complete hona, (2) backlinks/launch,
 (3) lagataar naye tools + deep content, (4) custom domain (jab ho sake).
 Plan isi order me bana hai — code wala hissa mai sambhal raha hu,
 bahar wala tumhare haath me hai. 🤝
+
+## Daily-use gaps: developer and creator batches (2026-10-31)
+
+Catalog audit: no Python runner or YouTube video/audio downloader; HTML preview,
+YouTube thumbnail finder and local video-to-WAV are different tools. Existing
+competitors offer a simple code editor, output and standard input, but this is
+not evidence of traffic volume. Official YouTube terms restrict downloads and
+YouTube Help provides downloads of one's own uploads in Studio. A general link
+ripper is deferred pending an authorized implementation and rights/platform
+review; no misleading UI or claims.
+
+1. **Python playground**: self-host pinned Pyodide runtime, browser worker,
+   script editor and prefilled standard input, output/errors, stop/timeout,
+   copy/download, clear limits and security/privacy caveats; real browser,
+   mobile, accessibility and failure tests, one PR and production verification.
+2. **Creator media workflows**: audit local audio/video gaps and file limits;
+   research practical codecs, browser compatibility and licensing before a
+   cohesive implementation plan. Do not label local file conversion a YouTube
+   downloader. Direct users to official downloads for their uploads.
+3. **Other daily-use gaps**: inventory existing tools and research user needs and
+   search evidence; prioritize distinct complete workflows over duplicate pages.
+   Define deliverables and tests before implementation in a separate batch.
