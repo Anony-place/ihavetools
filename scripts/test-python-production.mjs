@@ -19,7 +19,7 @@ try {
   assert.match(status,/Program finished/);
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(),/production-smoke-42/);
   // Production stdin regression: input() must receive supplied lines, not EOF.
-  await page.getByRole('textbox',{name:'Python code',exact:true}).fill('port = int(input("Port number daalo: "))\\nif port == 22:\\n    print("SSH Service - High Security Alert!")\\nelif port == 80:\\n    print("HTTP Service - Unencrypted Web Traffic")\\nelif port == 443:\\n    print("HTTPS Service - Secure Web Traffic")\\nelse:\\n    print("Unknown or other port")');
+  await page.getByRole('textbox',{name:'Python code',exact:true}).fill('port = int(input("Port number daalo: "))\nif port == 22:\n    print("SSH Service - High Security Alert!")\nelif port == 80:\n    print("HTTP Service - Unencrypted Web Traffic")\nelif port == 443:\n    print("HTTPS Service - Secure Web Traffic")\nelse:\n    print("Unknown or other port")');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.getByText('Port number daalo:',{exact:false}).waitFor({timeout:90000});
   await page.getByPlaceholder('Type input() answer and press Enter').fill('22');
