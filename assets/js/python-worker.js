@@ -25,8 +25,8 @@ self.onmessage = async ({ data }) => {
     const shared = new Int32Array(data.stdinBuffer);
     const sharedBytes = new Uint8Array(data.stdinBuffer, 8);
     const decoder = new TextDecoder();
-    const answers = data.stdin ? data.stdin.split(/\\r?\\n/) : [];
-    if (data.stdin && /\\r?\\n$/.test(data.stdin)) answers.pop();
+    const answers = data.stdin ? data.stdin.split(/\r?\n/) : [];
+    if (data.stdin && /\r?\n$/.test(data.stdin)) answers.pop();
     let answerIndex = 0;
     py.setStdin({ stdin: prompt => {
       if (answerIndex < answers.length) return answers[answerIndex++];
