@@ -1335,15 +1335,30 @@ try {
 
   await page.setViewportSize({ width: 320, height: 844 });
   await go('image-compressor');
-  const compressorImage = await sharp({create:{width:80,height:60,channels:4,background:'#ff000080'}}).png().toBuffer();
+  const compressorPixels = Buffer.alloc(80 * 60 * 4);
+  for (let i = 0; i < 80 * 60; i++) { compressorPixels[i*4] = (i * 73) % 256; compressorPixels[i*4+1] = (i * 151 + Math.floor(i / 80) * 31) % 256; compressorPixels[i*4+2] = (i * 37) % 256; compressorPixels[i*4+3] = 128; }
+  const compressorImage = await sharp(compressorPixels,{raw:{width:80,height:60,channels:4}}).png().toBuffer();
   await page.locator('#tool-app input[type=file]').setInputFiles({name:'alpha.png',mimeType:'image/png',buffer:compressorImage});
-  await page.getByLabel('Target size (KiB)').fill('5');
+  await page.getByLabel('Maximum target size').fill('5');
   await page.getByRole('button',{name:'Compress',exact:true}).click();
   await page.locator('#tool-app .img-preview').waitFor();
   const compressorInfo=await page.locator('#tool-app .img-preview').evaluate(async img=>{const b=await (await fetch(img.src)).blob(); return {size:b.size,type:b.type};});
   assert.ok(compressorInfo.size<=5120); assert.equal(compressorInfo.type,'image/jpeg');
   assert.match(await page.locator('#tool-app').innerText(),/tested quality/i);
   const dl=page.waitForEvent('download'); await page.getByRole('button',{name:'Download compressed image'}).click(); assert.match((await dl).suggestedFilename(),/\.jpg$/);
+  await page.getByLabel('Size unit').selectOption('kb');
+  await page.getByLabel('Maximum target size').fill('5');
+  await page.getByLabel('Minimum size (optional)').fill('6');
+  await page.getByRole('button',{name:'Compress',exact:true}).click();
+  await page.locator('#tool-app .status-line').getByText(/Minimum size cannot exceed/).waitFor();
+  await page.getByLabel('Minimum size (optional)').fill('1');
+  await page.getByLabel('Max height (px)').fill('30');
+  await page.getByRole('button',{name:'Compress',exact:true}).click();
+  await page.locator('#tool-app .img-preview').waitFor();
+  const ranged = await page.locator('#tool-app .img-preview').evaluate(async img => ({size:(await (await fetch(img.src)).blob()).size,width:img.naturalWidth,height:img.naturalHeight}));
+  assert.ok(ranged.size >= 1000 && ranged.size <= 5000); assert.equal(ranged.width,40); assert.equal(ranged.height,30);
+  await page.getByLabel('Minimum size (optional)').fill('');
+
   await page.getByLabel('Output format').selectOption('png'); assert.equal(await page.locator('#tool-app .img-preview').count(),0);
   await page.getByRole('button',{name:'Compress',exact:true}).click(); await page.locator('#tool-app .status-line').getByText(/JPEG and WebP only/).waitFor();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));

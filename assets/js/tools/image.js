@@ -313,9 +313,12 @@ const defs = {
     quality.addEventListener('input', () => { qualityOut.textContent = `${quality.value}%`; });
     const fmtSel = select({ options: [{ v: 'jpeg', t: 'JPEG' }, { v: 'webp', t: 'WebP' }, { v: 'png', t: 'PNG' }], value: 'jpeg' });
     const target = input({ type: 'number', min: 1, max: 51200, step: 1, placeholder: 'optional' });
+    const minimum = input({ type: 'number', min: 1, max: 51200, step: 1, placeholder: 'optional' });
+    const sizeUnit = select({ options: [{v:'kib',t:'KiB (1,024 bytes)'},{v:'kb',t:'KB (1,000 bytes)'}], value:'kib' });
     const refreshQuality = () => { quality.disabled = fmtSel.value === 'png' || target.value !== ''; };
     fmtSel.addEventListener('change', refreshQuality); target.addEventListener('input', refreshQuality); target.addEventListener('change', refreshQuality);
     const maxW = input({ type: 'number', min: 1, placeholder: 'original' });
+    const maxH = input({ type: 'number', min: 1, placeholder: 'original' });
     const status = statusLine('Choose an image to begin.');
     const grid = statsGrid();
     const preview = h('div', {}), previews = previewManager(preview);
@@ -331,7 +334,7 @@ const defs = {
     zone.addEventListener('iht-files', (e) => { if (e.detail[0]) origHook(e.detail[0]); });
     zone.addEventListener('iht-rejected', () => { revision++; file = null; lastBlob = null; grid.replaceChildren(); previews.clear(); zone.resetSelectionUI(); status.set('Selection rejected. Choose an image no larger than 100 MiB.', 'error'); });
     window.addEventListener('pagehide', () => { revision++; previews.clear(); }, { once: true });
-    [quality, fmtSel, maxW, target].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; grid.replaceChildren(); previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
+    [quality, fmtSel, maxW, maxH, target, minimum, sizeUnit].forEach((el) => { for (const type of ['input', 'change']) el.addEventListener(type, () => { revision++; grid.replaceChildren(); previews.clear(); status.set('Settings changed. Run the tool again for a new output.', 'info'); }); });
     const run = async () => {
       if (!file) { status.set('Choose an image first.', 'warning'); return; }
       previews.clear(); grid.replaceChildren();
@@ -342,14 +345,18 @@ const defs = {
         const img = await loadImage(selected);
         if (file !== selected || revision !== token) return;
         let w = img.naturalWidth, h0 = img.naturalHeight;
-        const fmt = fmtSel.value, targetKiB = target.value === '' ? null : Number(target.value);
-        if (targetKiB !== null && (!Number.isSafeInteger(targetKiB) || targetKiB < 1 || targetKiB > 51200)) throw new Error('Target size must be a whole number from 1 to 51,200 KiB.');
-        if (targetKiB !== null && fmt === 'png') throw new Error('Target size is available for JPEG and WebP only. Clear the target to use PNG.');
-        if (maxW.value !== '' && (!Number.isSafeInteger(Number(maxW.value)) || Number(maxW.value) < 1)) throw new Error('Max width must be a positive whole number.');
-        if (Number(maxW.value) > 0 && Number(maxW.value) < w) {
-          const t = computeTargetDims(w, h0, { width: Math.floor(Number(maxW.value)) });
-          w = t.width; h0 = t.height;
+        const fmt = fmtSel.value, targetSize = target.value === '' ? null : Number(target.value), minSize = minimum.value === '' ? null : Number(minimum.value);
+        const unitBytes = sizeUnit.value === 'kb' ? 1000 : 1024;
+        if (targetSize !== null && (!Number.isSafeInteger(targetSize) || targetSize < 1 || targetSize > 51200)) throw new Error('Target size must be a whole number from 1 to 51,200.');
+        if (minSize !== null && (!Number.isSafeInteger(minSize) || minSize < 1 || minSize > 51200)) throw new Error('Minimum size must be a whole number from 1 to 51,200.');
+        if (minSize !== null && targetSize === null) throw new Error('Enter a maximum target when using a minimum size.');
+        if (minSize !== null && minSize > targetSize) throw new Error('Minimum size cannot exceed the maximum target.');
+        if (targetSize !== null && fmt === 'png') throw new Error('Target size is available for JPEG and WebP only. Clear the target to use PNG.');
+        for (const [value, name] of [[maxW.value, 'Max width'], [maxH.value, 'Max height']]) {
+          if (value !== '' && (!Number.isSafeInteger(Number(value)) || Number(value) < 1)) throw new Error(`${name} must be a positive whole number.`);
         }
+        const fitted = fitInside(w, h0, maxW.value === '' ? null : Number(maxW.value), maxH.value === '' ? null : Number(maxH.value));
+        w = fitted.width; h0 = fitted.height;
         validateCanvasSize(w, h0);
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h0;
@@ -359,14 +366,15 @@ const defs = {
         if (fmt === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h0); }
         ctx.drawImage(img, 0, 0, w, h0);
         const isCurrent = () => file === selected && revision === token;
-        const targetResult = targetKiB === null ? null : await encodeToTarget(q => canvasToBlob(canvas, MIME_BY_FMT[fmt], q), targetKiB * 1024, isCurrent);
+        const targetResult = targetSize === null ? null : await encodeToTarget(q => canvasToBlob(canvas, MIME_BY_FMT[fmt], q), targetSize * unitBytes, isCurrent);
+        if (targetResult && minSize !== null && targetResult.blob.size < minSize * unitBytes) throw new Error('No tested quality met the minimum and maximum at these dimensions. Try a wider range or different dimensions.');
         const blob = targetResult ? targetResult.blob : await canvasToBlob(canvas, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : clampQuality(quality.value));
         if (file !== selected || revision !== token) return;
         lastBlob = blob;
         const change = sizeChange(file.size, blob.size);
         grid.set([
           { label: 'Original', value: fmtBytes(file.size) },
-          { label: 'Compressed', value: fmtBytes(blob.size), kind: blob.size < file.size ? 'good' : 'warn' },
+          { label: 'Compressed', value: `${fmtBytes(blob.size)} (${blob.size.toLocaleString('en-US')} bytes)`, kind: blob.size < file.size ? 'good' : 'warn' },
           { label: 'Size change', value: change, kind: blob.size < file.size ? 'good' : 'warn' },
           ...(targetResult ? [{label:'Tested quality', value:`${targetResult.quality}%`}] : []),
           { label: 'Dimensions', value: `${w} × ${h0}` },
@@ -379,15 +387,18 @@ const defs = {
             } }, 'Download compressed image'))));
         const outcome = `${fmtBytes(file.size)} → ${fmtBytes(blob.size)} (${change}).`;
         if (blob.size >= file.size) status.set(`Done — ${outcome} Try different dimensions, quality or format if you need a smaller file.`, 'warning');
-        else status.set(`Compressed ✓ ${outcome}${targetResult ? ' Target met using a tested quality.' : ''}`, 'success');
+        else status.set(`Compressed ✓ ${outcome}${targetResult ? (minSize !== null ? ' Size range met using a tested quality.' : ' Target met using a tested quality.') : ''}`, 'success');
       } catch (e) { if (file === selected && revision === token) { grid.replaceChildren(); previews.clear(); status.set(e.message, 'error'); } }
     };
     root.append(zone,
       h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' },
         field({ label: 'Quality (%)', control: quality, hint: 'JPEG/WebP only; ignored when a target is set.' }), qualityOut,
         field({ label: 'Output format', control: fmtSel }),
-        field({ label: 'Max width (px)', control: maxW, hint: 'Blank keeps original size' }),
-        field({ label: 'Target size (KiB)', control: target, hint: 'Optional JPEG/WebP quality search. 1 KiB = 1,024 bytes; may fail at these dimensions.' })),
+        field({ label: 'Max width (px)', control: maxW, hint: 'Optional; preserves aspect ratio, no enlargement.' }),
+        field({ label: 'Max height (px)', control: maxH, hint: 'Optional; both dimensions are upper bounds, not an exact crop.' }),
+        field({ label: 'Maximum target size', control: target, hint: 'Maximum in selected unit; JPEG/WebP only. Bounded quality search may fail.' }),
+        field({ label: 'Minimum size (optional)', control: minimum, hint: 'Optional lower bound in the same unit. A maximum is required.' }),
+        field({ label: 'Size unit', control: sizeUnit, hint: 'KiB = 1,024 bytes; KB = 1,000 bytes.' })),
       actionsRow(btn({ label: 'Compress', icon: 'minimize', onClick: run })),
       status, grid, preview,
       privacyNote('Processed locally, never uploaded. Canvas output may discard metadata and animation. JPEG flattens transparency onto white. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));

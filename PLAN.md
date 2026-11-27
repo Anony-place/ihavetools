@@ -3294,3 +3294,20 @@ large Python-highlighted, numbered editor, desktop side-by-side console, mobile
 stacking, accessible keyboard controls and full-screen workspace; retain a usable
 plain-text fallback and current execution/privacy behavior. Test real code edits,
 execution, keyboard controls, fullscreen, mobile and accessibility in Chromium.
+
+## Daily-use research: numbered batches (2026-10-31)
+
+1. **Image form-size workflow (current):** Extend the existing single Image Compressor, not a duplicate. Optional minimum and maximum byte-size band in user-selected KB (1,000 bytes) or KiB (1,024 bytes), bounded best-effort quality search, exact byte report, optional maximum height alongside width with aspect-ratio preservation. Never claim exact dimensions, guaranteed match, lossless JPEG or portal acceptance. Test invalid bands, actual encoded byte limits, stale results, preview/download, mobile/accessibility and full suite in one PR.
+2. **Python stdin investigation:** Research browser-worker interactive input, cross-origin isolation and compatibility. The current Python editor preloads input and already supports local execution. Only plan interactive input after feasibility/security review; do not pretend it is a live terminal.
+3. **Other creator/data gaps:** Audit image crop/form workflows, audio/video conversion and structured-data validation; evaluate actual needs, rights, cost, compatibility and GSC page-filtered evidence before defining another substantial batch. No artificial traffic or arbitrary YouTube downloader promise.
+
+Competitive offerings indicate possible workflows, not verified search volumes. As-of-date discrepancies in the available exports prevent a trustworthy current demand ranking; obtain matching current Search Console exports and compare filters before asserting one.
+
+## Four-month traffic goal (starting 2026-10-31)
+
+The requested 100,000 is an aspirational goal, not a forecast. Until the metric is confirmed, use **100,000 organic Google Search clicks cumulative over four completed calendar months** as a working definition; monthly visits or all-channel users would be a different target. Search Console clicks are not unique users. October 31 is a partial setup day, so the working measurement window is 2026-11-01 through 2027-02-28. Sum daily clicks for the exact property, Search type Web, all countries and devices; exclude incomplete days, annotate deployments, and track weekly as well as cumulative. Do not infer results before those dates.
+
+1. Establish access to the correct property and a verified baseline. Export chart plus Pages and Queries with the same dates, country, device and Search type. Use page-filtered Queries for attribution; retain exports privately, not in Git. Log indexed/excluded counts separately and use URL Inspection on a small representative set. Confirm actual analytics user/session tracking and consent before making claims about total visits.
+2. Ship and validate useful workflow improvements, beginning with image size limits, then select the next batch using real page-filtered query evidence, user feedback and technical feasibility. Avoid mass-generated near-duplicate landing pages. Reference: https://developers.google.com/search/docs/fundamentals/creating-helpful-content
+3. Every week compare equal completed periods with `scripts/traffic-report.mjs`: clicks, impressions, CTR and position per page, with search type and filters recorded. Flag low sample sizes and look for regressions. Check representative URLs, canonical, crawlable links and sitemap; discovery is not guaranteed indexing: https://developers.google.com/search/docs/crawling-indexing/sitemaps/overview
+4. Review at 30/60/90 days: prioritize pages with real impressions and a clear user need, inspect behavior and fix issues, and stop experiments that do not help users. Compare actual cumulative clicks against the 100k goal without promising an outcome; later weeks and months are not yet measured. Meaningful outreach and community sharing should follow each useful release without spam or purchased links.
