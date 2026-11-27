@@ -827,6 +827,10 @@ const defs = {
     const coords = [xIn, yIn, widthIn, heightIn];
     const format = select({options:[{v:'png',t:'PNG (transparent)'}, {v:'jpeg',t:'JPEG (white background)'}, {v:'webp',t:'WebP (transparent)'}], value:'png'});
     const quality = input({type:'number', min:5, max:100, step:1, value:'90'});
+    const outputWidth = input({type:'number', min:1, step:1, placeholder:'crop width'});
+    const outputHeight = input({type:'number', min:1, step:1, placeholder:'crop height'});
+    const target = input({type:'number', min:1, max:51200, step:1, placeholder:'optional'});
+    const unit = select({options:[{v:'kb',t:'KB (1,000 bytes)'},{v:'kib',t:'KiB (1,024 bytes)'}],value:'kb'});
     const stage = h('div', { class: 'cropper-stage' });
     const canvas = document.createElement('canvas');
     stage.append(canvas);
@@ -933,8 +937,8 @@ const defs = {
       if (sel && img) { sel = applyAspect(sel); sel.x = Math.min(sel.x, canvas.width - sel.w); sel.y = Math.min(sel.y, canvas.height - sel.h); showFields(); draw(); }
       status.set('Aspect applied to the current selection. Crop to create a new output.', 'info');
     });
-    const settingsChanged = () => { revision++; previews.clear(); quality.disabled = format.value === 'png'; status.set('Output settings changed. Crop again.', 'info'); };
-    format.addEventListener('change', settingsChanged); quality.addEventListener('input', settingsChanged); quality.disabled = true;
+    const settingsChanged = () => { revision++; previews.clear(); quality.disabled = format.value === 'png' || target.value !== ''; status.set('Output settings changed. Crop again.', 'info'); };
+    [format, quality, outputWidth, outputHeight, target, unit].forEach(el => { for (const type of ['input','change']) el.addEventListener(type, settingsChanged); }); quality.disabled = true;
     const resetSelection = () => {
       if (!img) { status.set('Choose an image first.', 'warning'); return; }
       revision++; previews.clear(); sel = {x:0, y:0, w:canvas.width, h:canvas.height}; showFields(); draw();
@@ -955,33 +959,39 @@ const defs = {
       if (!crop) { status.set('Enter whole-number coordinates within the image, with positive width and height.', 'warning'); return; }
       const fmt = format.value, q = Number(quality.value);
       if (!Object.hasOwn(MIME_BY_FMT, fmt)) { status.set('Choose a supported output format.', 'error'); return; }
-      if (fmt !== 'png' && (!quality.value || !Number.isInteger(q) || q < 5 || q > 100)) { status.set('Quality must be a whole number from 5 to 100.', 'warning'); return; }
+      if (fmt !== 'png' && !target.value && (!quality.value || !Number.isInteger(q) || q < 5 || q > 100)) { status.set('Quality must be a whole number from 5 to 100.', 'warning'); return; }
       status.set('Cropping…', 'info');
       const selected = file, token = ++revision;
       try {
         const { x:sx, y:sy, w:sw, h:sh } = crop;
         const out = document.createElement('canvas');
-        const width = Math.max(1, Math.round(sw)), height = Math.max(1, Math.round(sh));
+        if ((outputWidth.value === '') !== (outputHeight.value === '')) throw new Error('Enter both output dimensions or leave both blank.');
+        const width = outputWidth.value === '' ? sw : Number(outputWidth.value), height = outputHeight.value === '' ? sh : Number(outputHeight.value);
+        if (![width,height].every(n => Number.isSafeInteger(n) && n > 0)) throw new Error('Output dimensions must be positive whole numbers.');
+        const targetSize = target.value === '' ? null : Number(target.value);
+        if (targetSize !== null && (!Number.isSafeInteger(targetSize) || targetSize < 1 || targetSize > 51200)) throw new Error('Maximum size must be a whole number from 1 to 51,200.');
+        if (targetSize !== null && fmt === 'png') throw new Error('Maximum size search is available for JPEG and WebP only.');
         validateCanvasSize(width, height);
         out.width = width; out.height = height;
         const ctx = out.getContext('2d');
         if (fmt === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, width, height); }
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, out.width, out.height);
-        const blob = await canvasToBlob(out, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100);
+        const result = targetSize === null ? null : await encodeToTarget(q => canvasToBlob(out, MIME_BY_FMT[fmt], q), targetSize * (unit.value === 'kb' ? 1000 : 1024), () => file === selected && revision === token);
+        const blob = result ? result.blob : await canvasToBlob(out, MIME_BY_FMT[fmt], fmt === 'png' ? undefined : q / 100);
         if (file !== selected || revision !== token) return;
         previews.show(blob, (url) => h('div', {},
           h('img', { class: 'img-preview', src: url, alt: 'Cropped preview', style: 'margin-top:12px' }),
           h('div', { style: 'margin-top:10px' }, h('button', { type: 'button', class: 'btn btn-primary', onclick: () => { downloadImage(blob, `cropped-${baseName(selected.name)}.${EXT_BY_FMT[fmt]}`); } }, `Download ${out.width} × ${out.height} ${fmt === 'jpeg' ? 'JPEG' : fmt.toUpperCase()}`))));
-        status.set(`Cropped to ${out.width} × ${out.height} px ✓`, 'success');
+        status.set(`Cropped to ${out.width} × ${out.height} px · ${blob.size.toLocaleString('en-US')} bytes${result ? ` · tested quality ${result.quality}%` : ''} ✓`, 'success');
       } catch (e) { if (file === selected && revision === token) status.set(e.message, 'error'); }
     };
     root.append(zone, h('div', { class: 'field-row', style: 'margin-top:14px;align-items:end' }, field({ label: 'Aspect ratio', control: aspect })),
       h('p', { class: 'hint', text: 'Drag the preview or enter pixel coordinates from the top-left corner. Aspect buttons adjust the current selection; Center selection uses the whole image and active ratio. Manual coordinates can use any ratio.' }),
       h('div', { class: 'field-row' }, field({ label: 'Left (px)', control: xIn }), field({ label: 'Top (px)', control: yIn }), field({ label: 'Crop width (px)', control: widthIn }), field({ label: 'Crop height (px)', control: heightIn })),
-      h('div', {class:'field-row'}, field({label:'Output format', control:format}), field({label:'Quality (5–100)', control:quality, hint:'For JPEG and WebP; PNG ignores quality.'})),
+      h('div', {class:'field-row'}, field({label:'Output width (px)', control:outputWidth, hint:'Enter both dimensions to resize; leave both blank to keep the crop size.'}), field({label:'Output height (px)', control:outputHeight, hint:'A different ratio stretches the selection; inspect the preview.'}), field({label:'Output format', control:format}), field({label:'Quality (5–100)', control:quality, hint:'JPEG/WebP; ignored for PNG or maximum size search.'}), field({label:'Maximum file size', control:target, hint:'Optional JPEG/WebP quality search; may not find a match.'}), field({label:'File size unit', control:unit})),
       actionsRow(btn({ label: 'Crop', icon: 'crop', onClick: run }), btn({label:'Select full image', variant:'secondary', onClick:resetSelection}), btn({label:'Center selection', variant:'secondary', onClick:centerSelection})),
       status, h('br'), stage, preview,
-      privacyNote('Processed locally, never uploaded. PNG and WebP can preserve transparency; JPEG uses a white background. JPEG and WebP use lossy quality settings. Canvas output may discard metadata and animation. Unsupported encoders are rejected; output size may be larger than the original. Browser decoding can consume substantial memory. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
+      privacyNote('Processed locally, never uploaded. PNG and WebP can preserve transparency; JPEG uses a white background. JPEG and WebP use lossy quality settings. Canvas output may discard metadata and animation. Unsupported encoders are rejected; output size may be larger than the original. Browser decoding can consume substantial memory. Resizing may stretch if ratios differ. A target is best effort and does not guarantee portal acceptance. Output is limited to 16,384 px per side and 40 million pixels; input is limited to 100 MiB.'));
   },
 
   'image-metadata-viewer'(root) {
