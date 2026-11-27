@@ -59,8 +59,7 @@ jobs:
             exit 1
           }
 
-      - name: Diagnostic public Python runtime smoke test
-        continue-on-error: true
+      - name: Public Python runtime smoke test
         run: |
           CHROMIUM_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node scripts/test-python-production.mjs
 
