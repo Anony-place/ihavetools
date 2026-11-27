@@ -644,16 +644,17 @@ function encodingTool(root,{label,convert,hint}) {
 
 const defs = {
   'python-playground'(root) {
-    const starter = 'name = input("What is your name? ")\nprint("Hello,", name)\n';
-    const code = textarea({rows:14,value:starter}), stdin = textarea({rows:4,value:'World\n'});
+    const starter = 'print("Hello, world!")\nprint(2 + 3)\n';
+    const code = textarea({rows:18,value:starter}), stdin = textarea({rows:4,value:''});
     const out = resultPanel({label:'Python output',download:true,downloadName:'python-output.txt',placeholder:'Run your program to see output.'});
     const status = statusLine('Ready. The Python runtime loads when you run code.');
-    let worker = null, timer = null;
+    let worker = null, timer = null, outputText = '';
+    const showOutput = () => { if (outputText) out.set(outputText); };
     const stopWorker = () => { clearTimeout(timer); timer = null; if (worker) worker.terminate(); worker = null; runButton.disabled = false; stopButton.disabled = true; };
-    const reset = () => { if (worker) stopWorker(); out.placeholder(); status.set('Input changed. Run again.'); };
+    const reset = () => { if (worker) stopWorker(); outputText = ''; out.placeholder(); status.set('Input changed. Run again.'); };
     code.addEventListener('input', reset); stdin.addEventListener('input', reset);
     const runButton = btn({label:'Run Python', onClick:() => {
-      stopWorker(); out.placeholder();
+      stopWorker(); outputText = ''; out.placeholder('Loading Python…');
       if (code.value.length > 100000 || stdin.value.length > 100000) { status.set('Code and input must each be at most 100,000 characters.','error'); return; }
       if (!window.Worker) { status.set('This browser does not support Web Workers.','error'); return; }
       try { worker = new Worker('/assets/js/python-worker.js'); } catch { status.set('Could not start the Python worker.','error'); return; }
@@ -663,18 +664,21 @@ const defs = {
       current.onmessage = ({data}) => {
         if (worker !== current) return;
         if (data.type === 'ready') { clearTimeout(timer); status.set('Running Python…'); timer = setTimeout(() => { if(worker === current) { stopWorker(); status.set('Stopped after the 15-second execution limit.','error'); } },15000); }
-        else if (data.type === 'result') { stopWorker(); const text = data.output + (data.error ? (data.output && !data.output.endsWith('\n') ? '\n' : '') + data.error : '') + (data.truncated ? '\n[Output truncated at 100,000 bytes.]' : ''); out.set(text || '(No output)'); status.set(data.error ? 'Program ended with an error.' : 'Program finished. Each run starts fresh.', data.error ? 'error' : 'success'); }
+        else if (data.type === 'output') { outputText += data.text; showOutput(); }
+        else if (data.type === 'result') { stopWorker(); outputText += data.output; if (data.error) outputText += (outputText && !outputText.endsWith('\n') ? '\n' : '') + data.error; if (data.truncated) outputText += '\n[Output truncated at 100,000 bytes.]'; out.set(outputText || '(No output)'); status.set(data.error ? 'Program ended with an error.' : 'Program finished. Each run starts fresh.', data.error ? 'error' : 'success'); }
         else if (data.type === 'failure') { stopWorker(); status.set('Python failed to initialize: ' + data.message,'error'); }
       };
       current.onerror = e => { if(worker === current) { stopWorker(); status.set('Python worker failed to load or run. Check your connection and retry.','error'); e.preventDefault(); } };
       current.postMessage({code:code.value,stdin:stdin.value});
     }});
-    const stopButton = btn({label:'Stop Python',variant:'secondary',disabled:true,onClick:() => { stopWorker(); out.placeholder(); status.set('Stopped. The interpreter and its temporary files were discarded.'); }});
+    const stopButton = btn({label:'Stop Python',variant:'secondary',disabled:true,onClick:() => { stopWorker(); if (!outputText) out.placeholder('Stopped before output.'); status.set('Stopped. The interpreter and its temporary files were discarded.'); }});
     window.addEventListener('pagehide', stopWorker);
     root.append(h('p',{class:'hint',text:'Run trusted code only. Code can make network requests; do not enter secrets. Each run starts fresh.'}),
-      field({label:'Python code',control:code,hint:'Maximum 100,000 characters. Your code is not saved automatically.'}),
-      field({label:'Standard input',control:stdin,hint:'Optional input supplied before execution; one line per input() call. Maximum 100,000 characters.'}),
-      actionsRow(runButton,stopButton,copyButton(()=>code.value,{label:'Copy code'}),downloadButton(()=>code.value,'main.py',{label:'Download code',mime:'text/x-python;charset=utf-8'})),status,out.panel,
+      actionsRow(runButton,stopButton,copyButton(()=>code.value,{label:'Copy code'}),downloadButton(()=>code.value,'main.py',{label:'Download code',mime:'text/x-python;charset=utf-8'})),
+      status,
+      h('div',{class:'python-playground'},
+        h('div',{class:'python-editor'},field({label:'Python code',control:code,hint:'Maximum 100,000 characters. Your code is not saved automatically.'})),
+        h('div',{class:'python-console'},out.panel,field({label:'Standard input',control:stdin,hint:'For input(), enter one line per answer BEFORE running. Maximum 100,000 characters; not an interactive terminal.'}))),
       privacyNote('The runtime downloads from this site on first use. Worker isolation is not a security sandbox; code can make network requests. Runs stop after 15 seconds, but memory is not strictly limited.'));
   },
   'json-string-escape'(root) {encodingTool(root,{label:'Text or JSON string literal',convert:jsonStringConvert,hint:'Encode plain text as a quoted JSON string; decode requires one complete quoted JSON string literal.'});},

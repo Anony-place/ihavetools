@@ -3279,3 +3279,10 @@ review; no misleading UI or claims.
 3. **Other daily-use gaps**: inventory existing tools and research user needs and
    search evidence; prioritize distinct complete workflows over duplicate pages.
    Define deliverables and tests before implementation in a separate batch.
+
+## Python playground usability and execution follow-up
+
+User reports the Python tool is not usable and wants side-by-side output. Batch:
+1. Put editor and output side-by-side on desktop, stack at narrow widths, and make Run, loading/error state and input requirements obvious.
+2. Keep output visible during execution, including on stop/timeout, with bounded streaming and clear failure messages. Maintain disposable workers and honest security/input limits.
+3. Test actual execution, stdin, errors, streaming/stop, desktop/mobile geometry and accessibility in Chromium, plus a separate production HTTP/runtime smoke check; verify deployed files and report any production-only failures.

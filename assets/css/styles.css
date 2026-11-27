@@ -702,3 +702,11 @@ input[type="date"], input[type="time"] { font-variant-numeric: tabular-nums; }
 .date-combined { margin: 16px 0; }
 .date-combined > summary { cursor: pointer; font-weight: 650; }
 .date-combined .field-row { margin-top: 10px; }
+
+/* Python editor and output stay together on wide screens, and stack on phones. */
+.python-playground { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.python-editor, .python-console { min-width: 0; }
+.python-editor textarea { height: clamp(360px, 55vh, 700px); min-height: 260px; white-space: pre; overflow: auto; tab-size: 4; }
+.python-console .result-panel { margin-top: 0; }
+.python-console .result-body { min-height: 240px; max-height: 50vh; overflow: auto; }
+@media (max-width: 720px) { .python-playground { grid-template-columns: minmax(0, 1fr); } .python-editor textarea { height: 320px; min-height: 240px; } .python-console .result-body { min-height: 160px; } }

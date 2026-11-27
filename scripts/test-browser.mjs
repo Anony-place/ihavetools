@@ -754,9 +754,12 @@ try {
   console.log('✓ JSON Pointer exact output, import validation and mobile accessibility');
 
   await go('python-playground');
+  const desktopEditor = await page.getByLabel('Python code').boundingBox();
+  const desktopOutput = await page.getByRole('region',{name:'Python output',exact:true}).boundingBox();
+  assert.ok(desktopOutput.x >= desktopEditor.x + desktopEditor.width - 1, 'Python editor and output are side by side on desktop');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
-  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /Hello, World/);
+  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /Hello, world!/);
   const pyCode = page.getByLabel('Python code'), pyInput = page.getByLabel('Standard input');
   await pyCode.fill('import json\nprint(json.dumps({"number": int(input()) + 2}))'); await pyInput.fill('40\n');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
@@ -765,9 +768,11 @@ try {
   await pyCode.fill('print(missing_name)'); await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/ended with an error/).waitFor({timeout:90000});
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /NameError/);
-  await pyCode.fill('while True: pass'); await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  await pyCode.fill('print("Streaming!", flush=True)\nwhile True: pass'); await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Running Python/).waitFor({timeout:90000});
+  await page.getByRole('region',{name:'Python output output'}).getByText('Streaming!').waitFor({timeout:90000});
   await page.getByRole('button',{name:'Stop Python',exact:true}).click();
+  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /Streaming!/);
   assert.match(await page.locator('#tool-app .status-line').textContent(), /Stopped/);
   await pyCode.fill('x'.repeat(100001)); await page.getByRole('button',{name:'Run Python',exact:true}).click();
   assert.match(await page.locator('#tool-app .status-line').textContent(), /100,000/);
@@ -775,6 +780,8 @@ try {
   const pyDownload=page.waitForEvent('download'); await page.getByRole('button',{name:'Download code'}).click();
   assert.equal(await readFile(await (await pyDownload).path(),'utf8'),'print("test")');
   await page.setViewportSize({width:320,height:844});
+  const mobileEditor=await pyCode.boundingBox(), mobileOutput=await page.getByRole('region',{name:'Python output',exact:true}).boundingBox();
+  assert.ok(mobileOutput.y >= mobileEditor.y + mobileEditor.height, 'Python output stacks below editor on mobile');
   assert.deepEqual((await new AxeBuilder({page}).include('#tool-app').withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations.map(v=>v.id),[],'Python playground accessibility');
   await page.setViewportSize({width:1280,height:800});
   console.log('✓ Python runtime, stdin, errors, worker stop, download and mobile accessibility');
