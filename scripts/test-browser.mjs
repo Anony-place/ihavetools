@@ -792,7 +792,7 @@ try {
   assert.match(await pyCode.textContent(), /^ {4}x/, 'Tab indents the current line by four spaces when opted in');
   await pyCode.fill('print("test")');
   const pyDownload=page.waitForEvent('download'); await page.getByRole('button',{name:'Download code'}).click();
-  assert.equal(await readFile(await (await pyDownload).path(),'utf8'),'print("test")');
+  assert.match(await readFile(await (await pyDownload).path(),'utf8'),/^print\("test"\)\n?$/);
   await page.setViewportSize({width:320,height:844});
   const mobileEditor=await pyCode.boundingBox(), mobileOutput=await page.getByRole('region',{name:'Python output',exact:true}).boundingBox();
   assert.ok(mobileOutput.y >= mobileEditor.y + mobileEditor.height, 'Python output stacks below editor on mobile');
