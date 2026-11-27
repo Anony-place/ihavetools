@@ -1,1 +1,3 @@
 scripts/fixtures/*.pdf binary
+assets/vendor/pyodide-0.27.7/*.wasm binary
+assets/vendor/pyodide-0.27.7/*.zip binary
