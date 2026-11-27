@@ -692,7 +692,7 @@ const defs = {
       h('div',{class:'python-playground'},
         h('div',{class:'python-editor'},editorTitle,editorHost,fallback,
           h('div',{class:'python-editor-footer'},tabs,h('span',{class:'hint',text:'Ctrl/⌘ + Enter runs · Code is not saved automatically'}))),
-        h('div',{class:'python-console'},out.panel,field({label:'Standard input',control:stdin,hint:'For input(), enter one line per answer BEFORE running. Maximum 100,000 characters; not an interactive terminal.'}))));
+        h('div',{class:'python-console'},field({label:'Standard input (for input())',control:stdin,hint:'Enter answers here BEFORE running — one answer per line, in the same order as input() calls. Example: 22. This is preloaded stdin, not an interactive terminal. Maximum 100,000 characters.'}),out.panel)));
     root.append(h('p',{class:'hint',text:'Run trusted code only. Code can make network requests; do not enter secrets. Each run starts fresh.'}),workspace,
       privacyNote('The runtime downloads from this site on first use. Worker isolation is not a security sandbox; code can make network requests. Runs stop after 15 seconds, but memory is not strictly limited.'));
     import('/assets/vendor/codemirror-python/editor.js').then(({mountPythonEditor}) => {
