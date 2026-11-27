@@ -1,4 +1,4 @@
-import {EditorState, Compartment} from '@codemirror/state';
+import {EditorState, Compartment, Prec} from '@codemirror/state';
 import {EditorView, keymap} from '@codemirror/view';
 import {indentWithTab} from '@codemirror/commands';
 import {basicSetup} from 'codemirror';
@@ -14,7 +14,7 @@ export function mountPythonEditor(parent, text, onChange, onRun) {
       EditorView.contentAttributes.of({'aria-label':'Python code', 'aria-multiline':'true'}),
       EditorView.lineWrapping,
       tabKeys.of([]),
-      keymap.of([{key:'Mod-Enter', run:() => { onRun(); return true; }}]),
+      Prec.high(keymap.of([{key:'Mod-Enter', run:() => { onRun(); return true; }}])),
       EditorView.updateListener.of(update => { if(update.docChanged) onChange(update.state.doc.toString()); })
     ]})
   });
