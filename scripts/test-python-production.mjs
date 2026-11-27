@@ -10,7 +10,7 @@ try {
   page.on('pageerror', e => console.log('page error:',e.message));
   const response = await page.goto(`${origin}/tools/python-playground/`,{waitUntil:'load',timeout:60000});
   assert.equal(response.status(),200);
-  await page.getByLabel('Python code').fill('print("production-smoke-42")');
+  await page.getByRole('textbox',{name:'Python code',exact:true}).fill('print("production-smoke-42")');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished|error|failed|did not load|Stopped/i).waitFor({timeout:90000});
   const status=await page.locator('#tool-app .status-line').textContent();

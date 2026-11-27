@@ -762,13 +762,13 @@ try {
   await page.waitForFunction(() => !!document.fullscreenElement);
   await page.getByRole('button',{name:'Exit full screen',exact:true}).click();
   await page.waitForFunction(() => !document.fullscreenElement);
-  const desktopEditor = await page.getByLabel('Python code').boundingBox();
+  const desktopEditor = await page.getByRole('textbox',{name:'Python code',exact:true}).boundingBox();
   const desktopOutput = await page.getByRole('region',{name:'Python output',exact:true}).boundingBox();
   assert.ok(desktopOutput.x >= desktopEditor.x + desktopEditor.width - 1, 'Python editor and output are side by side on desktop');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /Hello, world!/);
-  const pyCode = page.getByLabel('Python code'), pyInput = page.getByLabel('Standard input');
+  const pyCode = page.getByRole('textbox',{name:'Python code',exact:true}), pyInput = page.getByLabel('Standard input');
   await pyCode.fill('import json\nprint(json.dumps({"number": int(input()) + 2}))'); await pyInput.fill('40\n');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
@@ -801,7 +801,7 @@ try {
   await page.route('**/assets/vendor/codemirror-python/editor.js', route => route.abort());
   await go('python-playground');
   await page.locator('#tool-app .status-line').getByText(/basic editor instead/).waitFor();
-  await page.getByLabel('Python code').fill('print("fallback works")');
+  await page.getByRole('textbox',{name:'Python code',exact:true}).fill('print("fallback works")');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(),/fallback works/);
