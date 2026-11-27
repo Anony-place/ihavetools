@@ -1005,7 +1005,7 @@ export const tools = [
     keywords: ['compress image', 'image optimizer', 'reduce image size', 'jpeg', 'png', 'webp', 'file size', 'target size', 'compress image to kb'],
     aliases: ['compress jpeg', 'compress png', 'reduce image size', 'image optimizer', 'image compression'],
     popularity: 92, featured: true, added: '2026-06-04',
-    steps: 'Drop or choose an image (JPG, PNG or WebP).|Choose the format, quality and optional max width, or a target KiB for JPEG/WebP.|Click Compress, inspect the preview and compare sizes, then download.',
+    steps: 'Drop or choose an image (JPG, PNG or WebP).|Choose the format, quality and optional maximum dimensions, or a maximum and optional minimum size for JPEG/WebP.|Click Compress, inspect the preview and compare sizes, then download.',
     guide: [
       { h: 'Lossy vs lossless, in one minute',
         p: 'JPEG and this browser’s quality-based WebP output are lossy: details can be discarded even at high quality. PNG encodes the canvas losslessly, but resizing, decoding and colour conversion can still alter the original pixels. JPEG flattens transparency onto white; PNG or WebP can retain it. Preserve the original and inspect the result.' },
@@ -1017,7 +1017,7 @@ export const tools = [
           ['Logo / graphic with transparency', 'Try PNG or WebP; inspect edges', '— / 90+'],
         ] },
         p: 'Start around 80 for a photo, then inspect at the intended display size and compare output bytes. Format, image content and browser encoder all affect results; no format is always smallest.' },
-      { h: 'Try a target size', p: 'For JPEG or WebP, enter a target in KiB (1 KiB is 1,024 bytes). The tool tests a bounded set of quality levels and returns a tested file at or below the target, if found. It does not resize automatically or guarantee the best quality. If no tested quality fits, increase the target or lower max width. PNG does not support this quality search.' },
+      { h: 'Try a target size', p: 'For JPEG or WebP, enter a maximum and optionally a minimum in KB (1,000 bytes) or KiB (1,024 bytes). The tool searches a bounded set of qualities and checks the actual output bytes; it can fail even if an untested quality would fit. It does not automatically resize to meet a target or guarantee the best quality. Adjust the range or maximum dimensions if needed. PNG does not support this quality search. Check your form’s current requirements; no portal acceptance is guaranteed.' },
       { h: 'Shrink dimensions before quality',
         p: 'A 4000 × 3000 image resized to 800 × 600 has 25 times fewer pixels, but file size does not fall by a predictable percentage. A smaller width can reduce bytes while discarding detail; inspect on the actual display and keep the original. A maximum width does not enlarge a smaller image.' },
     ],
