@@ -59,6 +59,11 @@ jobs:
             exit 1
           }
 
+      - name: Diagnostic public Python runtime smoke test
+        continue-on-error: true
+        run: |
+          CHROMIUM_PATH="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" node scripts/test-python-production.mjs
+
       - name: Verify deployment config
         run: |
           test -f firebase.json
