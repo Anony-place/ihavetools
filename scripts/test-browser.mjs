@@ -24,7 +24,8 @@ const server = createServer(async (req, res) => {
     let path = resolve(root, `.${decodeURIComponent(url.pathname)}`);
     if (path !== root && !path.startsWith(root + sep)) throw new Error('invalid path');
     if ((await stat(path)).isDirectory()) path = resolve(path, 'index.html');
-    res.writeHead(200, { 'content-type': types[extname(path)] || 'application/octet-stream', 'cache-control': 'no-store' });
+    const isolation = url.pathname.startsWith('/tools/python-playground/') ? { 'cross-origin-opener-policy':'same-origin', 'cross-origin-embedder-policy':'require-corp' } : {};
+    res.writeHead(200, { 'content-type': types[extname(path)] || 'application/octet-stream', 'cache-control': 'no-store', ...isolation });
     res.end(await readFile(path));
   } catch { res.writeHead(404); res.end('Not found'); }
 });
@@ -768,11 +769,15 @@ try {
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /Hello, world!/);
-  const pyCode = page.getByRole('textbox',{name:'Python code',exact:true}), pyInput = page.getByLabel('Standard input (for input())');
+  assert.equal(await page.evaluate(()=>crossOriginIsolated),true,'Python playground must enable cross-origin isolation for interactive stdin');
+  const pyCode = page.getByRole('textbox',{name:'Python code',exact:true}), pyInput = page.getByLabel('Preloaded input (optional)');
   const stdinBox = await pyInput.boundingBox(), outputBox = await page.getByRole('region',{name:'Python output',exact:true}).boundingBox();
-  assert.ok(stdinBox.y < outputBox.y, 'standard input is visible above output so input() is discoverable');
-  await pyCode.fill('import json\nprint(json.dumps({"number": int(input()) + 2}))'); await pyInput.fill('40\n');
+  assert.ok(stdinBox.y < outputBox.y, 'optional preloaded input is visible above output');
+  await pyCode.fill('import json\nprint(json.dumps({"number": int(input("Enter a number: ")) + 2}))');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  await page.getByText('Enter a number:',{exact:false}).waitFor({timeout:90000});
+  await page.getByPlaceholder('Type input() answer and press Enter').fill('40');
+  await page.getByRole('button',{name:'Send input',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /"number": 42/);
   await pyCode.fill('print(missing_name)'); await page.getByRole('button',{name:'Run Python',exact:true}).click();
