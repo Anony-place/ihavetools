@@ -3,6 +3,7 @@ import {EditorView, keymap} from '@codemirror/view';
 import {indentWithTab} from '@codemirror/commands';
 import {basicSetup} from 'codemirror';
 import {python} from '@codemirror/lang-python';
+import {indentUnit} from '@codemirror/language';
 import {oneDark} from '@codemirror/theme-one-dark';
 
 export function mountPythonEditor(parent, text, onChange, onRun) {
@@ -10,7 +11,7 @@ export function mountPythonEditor(parent, text, onChange, onRun) {
   const view = new EditorView({
     parent,
     state: EditorState.create({doc:text, extensions:[
-      basicSetup, python(), oneDark, EditorState.tabSize.of(4),
+      basicSetup, python(), oneDark, EditorState.tabSize.of(4), indentUnit.of('    '),
       EditorView.contentAttributes.of({'aria-label':'Python code', 'aria-multiline':'true'}),
       EditorView.lineWrapping,
       tabKeys.of([]),

@@ -789,7 +789,7 @@ try {
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /keyboard run/);
   await page.locator('label.switch').filter({hasText:'Tab inserts spaces'}).click();
   await pyCode.fill('x'); await pyCode.press('End'); await pyCode.press('Tab');
-  assert.match(await pyCode.textContent(), /x {1,4}/, 'Tab indents when opted in');
+  assert.match(await pyCode.textContent(), /^ {4}x/, 'Tab indents the current line by four spaces when opted in');
   await pyCode.fill('print("test")');
   const pyDownload=page.waitForEvent('download'); await page.getByRole('button',{name:'Download code'}).click();
   assert.equal(await readFile(await (await pyDownload).path(),'utf8'),'print("test")');
