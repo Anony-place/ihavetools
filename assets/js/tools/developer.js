@@ -656,6 +656,7 @@ const defs = {
       const bytes = new TextEncoder().encode(liveInput.value);
       if (bytes.length > 65536) { status.set('Input is too long (maximum 65,536 UTF-8 bytes).','error'); return; }
       new Uint8Array(stdinBuffer,8).set(bytes);
+      outputText += liveInput.value + '\\n'; showOutput();
       Atomics.store(stdinControl,1,bytes.length);
       Atomics.store(stdinControl,0,1);
       Atomics.notify(stdinControl,0);
@@ -684,7 +685,7 @@ const defs = {
       current.onmessage = ({data}) => {
         if (worker !== current) return;
         if (data.type === 'ready') { clearTimeout(timer); status.set('Running Python…'); timer = setTimeout(() => { if(worker === current) { stopWorker(); status.set('Stopped after the 15-second execution limit.','error'); } },15000); }
-        else if (data.type === 'input-request') { clearTimeout(timer); timer = null; liveInputLabel.textContent = data.prompt || 'Enter a value'; liveInputRow.hidden = false; liveInput.focus(); status.set('Python is waiting for input…'); }
+        else if (data.type === 'input-request') { clearTimeout(timer); timer = null; outputText += String(data.prompt || ''); showOutput(); liveInputLabel.textContent = data.prompt || 'Enter a value'; liveInputRow.hidden = false; liveInput.focus(); status.set('Python is waiting for input…'); }
         else if (data.type === 'output') { outputText += data.text; showOutput(); }
         else if (data.type === 'result') { stopWorker(); outputText += data.output; if (data.error) outputText += (outputText && !outputText.endsWith('\n') ? '\n' : '') + data.error; if (data.truncated) outputText += '\n[Output truncated at 100,000 bytes.]'; out.set(outputText || '(No output)'); status.set(data.error ? 'Program ended with an error.' : 'Program finished. Each run starts fresh.', data.error ? 'error' : 'success'); }
         else if (data.type === 'failure') { stopWorker(); status.set('Python failed to initialize: ' + data.message,'error'); }
