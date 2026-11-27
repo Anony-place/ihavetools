@@ -10,6 +10,7 @@ try {
   page.on('pageerror', e => console.log('page error:',e.message));
   const response = await page.goto(`${origin}/tools/python-playground/`,{waitUntil:'load',timeout:60000});
   assert.equal(response.status(),200);
+  assert.equal(await page.evaluate(()=>crossOriginIsolated),true,'production Python playground must be cross-origin isolated');
   await page.getByRole('textbox',{name:'Python code',exact:true}).fill('print("production-smoke-42")');
   await page.getByRole('button',{name:'Run Python',exact:true}).click();
   await page.locator('#tool-app .status-line').getByText(/Program finished|error|failed|did not load|Stopped/i).waitFor({timeout:90000});
@@ -17,5 +18,13 @@ try {
   console.log('Python status:',status);
   assert.match(status,/Program finished/);
   assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(),/production-smoke-42/);
-  console.log('✓ Deployed Python runtime executes code in Chromium');
+  // Production stdin regression: input() must receive supplied lines, not EOF.
+  await page.getByRole('textbox',{name:'Python code',exact:true}).fill('port = int(input("Port number daalo: "))\nif port == 22:\n    print("SSH Service - High Security Alert!")\nelif port == 80:\n    print("HTTP Service - Unencrypted Web Traffic")\nelif port == 443:\n    print("HTTPS Service - Secure Web Traffic")\nelse:\n    print("Unknown or other port")');
+  await page.getByRole('button',{name:'Run Python',exact:true}).click();
+  await page.getByText('Port number daalo:',{exact:false}).waitFor({timeout:90000});
+  await page.getByPlaceholder('Type input() answer and press Enter').fill('22');
+  await page.getByRole('button',{name:'Send input',exact:true}).click();
+  await page.locator('#tool-app .status-line').getByText(/Program finished/).waitFor({timeout:90000});
+  assert.match(await page.getByRole('region',{name:'Python output output'}).textContent(), /SSH Service - High Security Alert!/);
+  console.log('✓ Deployed Python runtime executes print() and input() in Chromium');
 } finally { await browser.close(); }

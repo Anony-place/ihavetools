@@ -645,7 +645,26 @@ function encodingTool(root,{label,convert,hint}) {
 const defs = {
   'python-playground'(root) {
     const starter = 'print("Hello, world!")\nprint(2 + 3)\n';
-    const code = textarea({rows:18,value:starter}), stdin = textarea({rows:4,value:''});
+    const code = textarea({rows:18,value:starter}), stdin = textarea({rows:3,value:''});
+    const liveInput = h('input',{type:'text',class:'python-live-input',autocomplete:'off',spellcheck:'false',placeholder:'Type input() answer and press Enter'});
+    const liveInputLabel = h('label',{class:'python-live-input-label',text:'Program is waiting for input'});
+    const liveInputRow = h('div',{class:'python-live-input-row'},liveInputLabel,liveInput,btn({label:'Send input',onClick:sendLiveInput}));
+    liveInputRow.hidden = true;
+    let stdinBuffer = null, stdinControl = null;
+    function sendLiveInput() {
+      if (!stdinControl || Atomics.load(stdinControl,0) !== 0) return;
+      const bytes = new TextEncoder().encode(liveInput.value);
+      if (bytes.length > 65536) { status.set('Input is too long (maximum 65,536 UTF-8 bytes).','error'); return; }
+      new Uint8Array(stdinBuffer,8).set(bytes);
+      outputText += liveInput.value + '\\n'; showOutput();
+      Atomics.store(stdinControl,1,bytes.length);
+      Atomics.store(stdinControl,0,1);
+      Atomics.notify(stdinControl,0);
+      liveInput.value = ''; liveInputRow.hidden = true;
+      status.set('Input sent. Python is running…');
+      timer = setTimeout(() => { if(worker) { stopWorker(); status.set('Stopped after the 15-second execution limit.','error'); } },15000);
+    } 
+    liveInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();sendLiveInput();}});
     const out = resultPanel({label:'Python output',download:true,downloadName:'python-output.txt',placeholder:'Run your program to see output.'});
     const status = statusLine('Ready. The Python runtime loads when you run code.');
     let worker = null, timer = null, outputText = '';
@@ -657,6 +676,8 @@ const defs = {
       stopWorker(); outputText = ''; out.placeholder('Loading Python…');
       if (code.value.length > 100000 || stdin.value.length > 100000) { status.set('Code and input must each be at most 100,000 characters.','error'); return; }
       if (!window.Worker) { status.set('This browser does not support Web Workers.','error'); return; }
+      if (!window.crossOriginIsolated || typeof SharedArrayBuffer === 'undefined') { status.set('Interactive input requires cross-origin isolation, which this browser or deployment does not provide.','error'); return; }
+      stdinBuffer = new SharedArrayBuffer(8 + 65536); stdinControl = new Int32Array(stdinBuffer);
       try { worker = new Worker('/assets/js/python-worker.js'); } catch { status.set('Could not start the Python worker.','error'); return; }
       const current = worker; runButton.disabled = true; stopButton.disabled = false;
       status.set('Loading Python runtime…');
@@ -664,14 +685,15 @@ const defs = {
       current.onmessage = ({data}) => {
         if (worker !== current) return;
         if (data.type === 'ready') { clearTimeout(timer); status.set('Running Python…'); timer = setTimeout(() => { if(worker === current) { stopWorker(); status.set('Stopped after the 15-second execution limit.','error'); } },15000); }
+        else if (data.type === 'input-request') { clearTimeout(timer); timer = null; outputText += String(data.prompt || ''); showOutput(); liveInputLabel.textContent = data.prompt || 'Enter a value'; liveInputRow.hidden = false; liveInput.focus(); status.set('Python is waiting for input…'); }
         else if (data.type === 'output') { outputText += data.text; showOutput(); }
         else if (data.type === 'result') { stopWorker(); outputText += data.output; if (data.error) outputText += (outputText && !outputText.endsWith('\n') ? '\n' : '') + data.error; if (data.truncated) outputText += '\n[Output truncated at 100,000 bytes.]'; out.set(outputText || '(No output)'); status.set(data.error ? 'Program ended with an error.' : 'Program finished. Each run starts fresh.', data.error ? 'error' : 'success'); }
         else if (data.type === 'failure') { stopWorker(); status.set('Python failed to initialize: ' + data.message,'error'); }
       };
       current.onerror = e => { if(worker === current) { stopWorker(); status.set('Python worker failed to load or run. Check your connection and retry.','error'); e.preventDefault(); } };
-      current.postMessage({code:code.value,stdin:stdin.value});
+      current.postMessage({code:code.value,stdin:stdin.value,stdinBuffer});
     }});
-    const stopButton = btn({label:'Stop Python',variant:'secondary',disabled:true,onClick:() => { stopWorker(); if (!outputText) out.placeholder('Stopped before output.'); status.set('Stopped. The interpreter and its temporary files were discarded.'); }});
+    const stopButton = btn({label:'Stop Python',variant:'secondary',disabled:true,onClick:() => { if(stdinControl){Atomics.store(stdinControl,0,2);Atomics.notify(stdinControl,0);} liveInputRow.hidden=true; stopWorker(); if (!outputText) out.placeholder('Stopped before output.'); status.set('Stopped. The interpreter and its temporary files were discarded.'); }});
     window.addEventListener('pagehide', stopWorker);
     const fallback = field({label:'Python code',control:code});
     const editorHost = h('div',{class:'python-code-editor'});
@@ -692,7 +714,7 @@ const defs = {
       h('div',{class:'python-playground'},
         h('div',{class:'python-editor'},editorTitle,editorHost,fallback,
           h('div',{class:'python-editor-footer'},tabs,h('span',{class:'hint',text:'Ctrl/⌘ + Enter runs · Code is not saved automatically'}))),
-        h('div',{class:'python-console'},out.panel,field({label:'Standard input',control:stdin,hint:'For input(), enter one line per answer BEFORE running. Maximum 100,000 characters; not an interactive terminal.'}))));
+        h('div',{class:'python-console'},field({label:'Preloaded input (optional)',control:stdin,hint:'Optional: one answer per line. Leave empty to get a live prompt whenever Python calls input().' }),liveInputRow,out.panel)));
     root.append(h('p',{class:'hint',text:'Run trusted code only. Code can make network requests; do not enter secrets. Each run starts fresh.'}),workspace,
       privacyNote('The runtime downloads from this site on first use. Worker isolation is not a security sandbox; code can make network requests. Runs stop after 15 seconds, but memory is not strictly limited.'));
     import('/assets/vendor/codemirror-python/editor.js').then(({mountPythonEditor}) => {

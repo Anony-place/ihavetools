@@ -22,9 +22,23 @@ self.onmessage = async ({ data }) => {
   try {
     const py = await loadPyodide({ indexURL: '/assets/vendor/pyodide-0.27.7/' });
     self.postMessage({ type: 'ready' });
-    const encoded = new TextEncoder().encode(data.stdin);
-    let offset = 0;
-    py.setStdin({ read: buffer => { const n = Math.min(buffer.length, encoded.length - offset); buffer.set(encoded.subarray(offset, offset + n)); offset += n; return n; } });
+    const shared = new Int32Array(data.stdinBuffer);
+    const sharedBytes = new Uint8Array(data.stdinBuffer, 8);
+    const decoder = new TextDecoder();
+    const answers = data.stdin ? data.stdin.split(/\r?\n/) : [];
+    if (data.stdin && /\r?\n$/.test(data.stdin)) answers.pop();
+    let answerIndex = 0;
+    py.setStdin({ stdin: prompt => {
+      if (answerIndex < answers.length) return answers[answerIndex++];
+      self.postMessage({ type:'input-request', prompt:String(prompt || '') });
+      while (Atomics.load(shared, 0) === 0) Atomics.wait(shared, 0, 0, 1000);
+      const state = Atomics.exchange(shared, 0, 0);
+      if (state === 2) throw new Error('Execution stopped while waiting for input.');
+      const length = Atomics.load(shared, 1);
+      const answer = decoder.decode(sharedBytes.subarray(0, length));
+      Atomics.store(shared, 1, 0);
+      return answer;
+    }, isatty:true });
     py.setStdout({ write }); py.setStderr({ write });
     let error = '';
     try { py.runPython(data.code); } catch (e) { error = String(e); }
